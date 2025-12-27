@@ -100,10 +100,7 @@ export default function UniversalPaymentModal({
             return
         }
 
-        if (totalBalance > 0 && totalPayment > totalBalance) {
-            toast.error(`Payment amount (${currency(totalPayment)}) exceeds outstanding balance (${currency(totalBalance)})`)
-            return
-        }
+        // Allow overpayments - they create credit with the entity
 
         setIsSubmitting(true)
 
@@ -258,15 +255,21 @@ export default function UniversalPaymentModal({
 
                     {/* Total Payment Display */}
                     {totalPayment > 0 && (
-                        <div className="rounded-lg border bg-green-50 p-3">
+                        <div className={`rounded-lg border p-3 ${totalPayment > totalBalance && totalBalance > 0 ? 'bg-amber-50 border-amber-200' : 'bg-green-50'}`}>
                             <div className="flex items-center justify-between">
                                 <span className="text-sm font-medium">Total Payment:</span>
                                 <span className="text-lg font-bold text-green-700">{currency(totalPayment)}</span>
                             </div>
-                            {totalBalance > 0 && (
+                            {totalBalance > 0 && totalPayment <= totalBalance && (
                                 <div className="flex items-center justify-between mt-1">
                                     <span className="text-xs text-muted-foreground">Remaining after payment:</span>
-                                    <span className="text-sm font-medium">{currency(Math.max(0, totalBalance - totalPayment))}</span>
+                                    <span className="text-sm font-medium">{currency(totalBalance - totalPayment)}</span>
+                                </div>
+                            )}
+                            {totalBalance > 0 && totalPayment > totalBalance && (
+                                <div className="flex items-center justify-between mt-1">
+                                    <span className="text-xs text-amber-700 font-medium">Credit to {type === 'supplier' ? 'Supplier' : 'Company'}:</span>
+                                    <span className="text-sm font-bold text-amber-700">{currency(totalPayment - totalBalance)}</span>
                                 </div>
                             )}
                         </div>

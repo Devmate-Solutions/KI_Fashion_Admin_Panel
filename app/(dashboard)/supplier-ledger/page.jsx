@@ -985,8 +985,8 @@ export default function SupplierLedgerPage() {
     }
 
     if (amount > balance.amount) {
-      toast.error(`Payment amount (${formatNumber(amount)}) exceeds remaining balance (${formatNumber(balance.amount)})`)
-      return
+      // Overpayment creates credit with supplier - show warning but allow
+      console.log(`Overpayment: ${formatNumber(amount)} exceeds remaining balance ${formatNumber(balance.amount)}. Credit will be created.`)
     }
 
     setIsMarkingAsPaid(true)
@@ -1050,18 +1050,16 @@ export default function SupplierLedgerPage() {
       return
     }
 
-    // Validate payment doesn't exceed supplier's remaining balance
+    // Allow overpayments - they create credit with the supplier
     const remainingBalance = supplierDetails?.balance || 0
     if (remainingBalance > 0 && amount > remainingBalance) {
-      toast.error(`Payment amount (${formatNumber(amount)}) exceeds remaining balance (${formatNumber(remainingBalance)})`)
-      return
+      console.log(`Overpayment: ${formatNumber(amount)} exceeds remaining balance ${formatNumber(remainingBalance)}. Credit will be created.`)
     }
 
-    // Validate dispatch order payment amount if dispatch order is selected
+    // Allow overpayments on dispatch orders - creates credit
     if (selectedDispatchOrderId && selectedDispatchOrderId !== 'none' && selectedDispatchOrder) {
       if (amount > selectedDispatchOrder.remainingBalance) {
-        toast.error(`Payment amount (${formatNumber(amount)}) exceeds dispatch order remaining balance (${formatNumber(selectedDispatchOrder.remainingBalance)})`)
-        return
+        console.log(`Overpayment on dispatch order: ${formatNumber(amount)} exceeds ${formatNumber(selectedDispatchOrder.remainingBalance)}. Credit will be created.`)
       }
     }
 
