@@ -528,7 +528,10 @@ export default function DispatchOrderDetailPage({ params }) {
   ]);
 
   const remainingBalance = dispatchOrder?.paymentDetails?.remainingBalance || 0;
-  const canAddPayment = isConfirmed && remainingBalance > 0;
+  // Calculate supplier due (negative remaining balance means we overpaid, supplier owes us)
+  const supplierDue = remainingBalance < 0 ? Math.abs(remainingBalance) : 0;
+  // Allow adding payments for confirmed orders (even if fully paid or overpaid)
+  const canAddPayment = isConfirmed;
 
   // Calculate supplier currency values for Confirm Order section (no exchange rate, no percentage)
   const confirmOrderSupplierCurrency = useMemo(() => {
@@ -894,15 +897,6 @@ export default function DispatchOrderDetailPage({ params }) {
       return;
     }
 
-    if (amount > remainingBalance) {
-      toast.error(
-        `Payment amount (${currency(
-          amount
-        )}) exceeds remaining balance (${currency(remainingBalance)})`
-      );
-      return;
-    }
-
     if (!paymentMethod || !["cash", "bank"].includes(paymentMethod)) {
       toast.error("Please select a valid payment method");
       return;
@@ -911,6 +905,13 @@ export default function DispatchOrderDetailPage({ params }) {
     setIsSubmittingPayment(true);
 
     try {
+      // Calculate outstanding balance (supplier due) if payment exceeds remaining balance
+      const newRemainingBalance = remainingBalance - amount;
+      const outstandingBalance =
+        newRemainingBalance < 0 ? Math.abs(newRemainingBalance) : 0;
+      const finalRemainingBalance =
+        newRemainingBalance > 0 ? newRemainingBalance : 0;
+
       await ledgerAPI.createEntry({
         type: "supplier",
         entityId: dispatchOrder.supplier._id,
@@ -928,7 +929,8 @@ export default function DispatchOrderDetailPage({ params }) {
         paymentDetails: {
           cashPayment: paymentMethod === "cash" ? amount : 0,
           bankPayment: paymentMethod === "bank" ? amount : 0,
-          remainingBalance: 0,
+          remainingBalance: finalRemainingBalance,
+          outstandingBalance: outstandingBalance, // Supplier owes us this amount
         },
       });
 
@@ -951,11 +953,22 @@ export default function DispatchOrderDetailPage({ params }) {
       queryClient.invalidateQueries(["unpaid-dispatch-orders"]);
     } catch (error) {
       console.error("Error creating payment:", error);
-      toast.error(
+      console.error("Error response:", error.response?.data);
+      console.error("Payment payload sent:", {
+        amount,
+        remainingBalance,
+        outstandingBalance,
+        finalRemainingBalance,
+      });
+
+      // Show detailed error message
+      const errorMessage =
         error.response?.data?.message ||
-          error.message ||
-          "Failed to record payment"
-      );
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to record payment";
+
+      toast.error(errorMessage);
     } finally {
       setIsSubmittingPayment(false);
     }
@@ -2405,7 +2418,7 @@ export default function DispatchOrderDetailPage({ params }) {
                       })()}
                     </div>
                   )}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-4">
                   <div className="flex items-center gap-2">
                     <Banknote className="h-4 w-4 text-muted-foreground" />
                     <div>
@@ -2438,16 +2451,71 @@ export default function DispatchOrderDetailPage({ params }) {
                     <Label className="text-xs text-muted-foreground">
                       Remaining Balance
                     </Label>
-                    <p
-                      className={`font-medium text-sm ${
-                        remainingBalance > 0 ? "text-red-600" : "text-green-600"
-                      }`}
-                    >
-                      {remainingBalance.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </p>
+                    {(() => {
+                      const pendingAmount = parseFloat(paymentAmount) || 0;
+                      const previewRemaining = remainingBalance - pendingAmount;
+                      const displayRemaining =
+                        previewRemaining > 0 ? previewRemaining : 0;
+                      const hasPreview = showPaymentForm && pendingAmount > 0;
+                      return (
+                        <>
+                          <p
+                            className={`font-medium text-sm ${
+                              displayRemaining > 0
+                                ? "text-red-600"
+                                : "text-green-600"
+                            }`}
+                          >
+                            {displayRemaining.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </p>
+                          {hasPreview &&
+                            previewRemaining !== remainingBalance && (
+                              <p className="text-xs text-orange-500 mt-1"></p>
+                            )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">
+                      Outstanding Balance
+                    </Label>
+                    {(() => {
+                      const pendingAmount = parseFloat(paymentAmount) || 0;
+                      const previewRemaining = remainingBalance - pendingAmount;
+                      const previewSupplierDue =
+                        previewRemaining < 0
+                          ? Math.abs(previewRemaining)
+                          : supplierDue;
+                      const hasPreview =
+                        showPaymentForm &&
+                        pendingAmount > 0 &&
+                        previewRemaining < 0;
+                      return (
+                        <>
+                          <p
+                            className={`font-medium text-sm ${
+                              previewSupplierDue > 0
+                                ? "text-blue-600"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {previewSupplierDue.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </p>
+                          {previewSupplierDue > 0 && (
+                            <p className="text-xs text-blue-500 mt-1">
+                              {hasPreview ? "" : ""}
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               </CardContent>
@@ -2471,14 +2539,19 @@ export default function DispatchOrderDetailPage({ params }) {
                       type="number"
                       step="0.01"
                       min="0.01"
-                      max={remainingBalance}
                       value={paymentAmount}
                       onChange={(e) => setPaymentAmount(e.target.value)}
                       placeholder="Enter amount"
                       disabled={isSubmittingPayment}
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      Max: {currency(remainingBalance)}
+                      {remainingBalance > 0
+                        ? `Remaining Balance: ${currency(remainingBalance)}`
+                        : supplierDue > 0
+                        ? `Fully paid. Outstanding Balance: ${currency(
+                            supplierDue
+                          )}`
+                        : "Fully paid"}
                     </p>
                   </div>
                   <div>
