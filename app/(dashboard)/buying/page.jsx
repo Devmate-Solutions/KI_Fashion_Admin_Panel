@@ -325,7 +325,8 @@ export default function BuyingPage() {
                 <Edit className="h-3.5 w-3.5 mr-1" />
                 Edit
               </Button>
-              {row.dispatchOrderId && (
+              {/* Revert and Delete buttons commented out */}
+              {/* {row.dispatchOrderId && (
                 <>
                   <Button
                     variant="ghost"
@@ -356,7 +357,7 @@ export default function BuyingPage() {
                     Delete
                   </Button>
                 </>
-              )}
+              )} */}
             </div>
           )
         },
@@ -572,8 +573,8 @@ export default function BuyingPage() {
         }}
       />
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      {/* Delete Confirmation Dialog - Commented out */}
+      {/* <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Purchase</DialogTitle>
@@ -617,10 +618,10 @@ export default function BuyingPage() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
 
-      {/* Revert to Pending Confirmation Dialog */}
-      <Dialog open={showRevertDialog} onOpenChange={setShowRevertDialog}>
+      {/* Revert to Pending Confirmation Dialog - Commented out */}
+      {/* <Dialog open={showRevertDialog} onOpenChange={setShowRevertDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Revert to Pending</DialogTitle>
@@ -664,7 +665,7 @@ export default function BuyingPage() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
     </div>
   )
 }

@@ -105,7 +105,7 @@ const inventoryColumns = [
     render: (row) => row.sku || "-",
   },
   {
-    header: "Stock",
+    header: "Available Stock",
     accessor: "currentStock",
     render: (row) => (
       <div className="tabular-nums font-semibold">{formatNumber(row.currentStock)}</div>
@@ -119,7 +119,7 @@ const inventoryColumns = [
     ),
   },
   {
-    header: "Reorder",
+    header: "Stock Limit",
     accessor: "reorderLevel",
     render: (row) => (
       <div className="tabular-nums">{formatNumber(row.reorderLevel)}</div>
@@ -140,7 +140,7 @@ const inventoryColumns = [
     accessor: "needsReorder",
     render: (row) => (
       <Badge variant={row.needsReorder ? "destructive" : row.lowStock ? "secondary" : "outline"}>
-        {row.needsReorder ? "Reorder" : row.lowStock ? "Low Stock" : "Healthy"}
+        {row.needsReorder ? "Re-Order" : row.lowStock ? "Low Stock" : "Healthy"}
       </Badge>
     ),
   },

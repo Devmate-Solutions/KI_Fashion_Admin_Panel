@@ -2580,6 +2580,7 @@ export default function DispatchOrderDetailPage({ params }) {
                       value={paymentDate}
                       onChange={(e) => setPaymentDate(e.target.value)}
                       disabled={isSubmittingPayment}
+                      max={new Date().toISOString().split("T")[0]}
                     />
                   </div>
                   <div>
