@@ -16,8 +16,9 @@ import { Label } from "@/components/ui/label"
 import { buyersAPI } from "@/lib/api/endpoints/buyers"
 import { salesAPI } from "@/lib/api/endpoints/sales"
 import { productsAPI } from "@/lib/api/endpoints/products"
-import { productTypesAPI } from "@/lib/api/endpoints/productTypes"
 import { useBuyers } from "@/lib/hooks/useBuyers"
+import { MultiSelect } from "@/components/ui/multi-select"
+import { SEASON_OPTIONS } from "@/lib/constants/seasons"
 import ProductImageGallery from "@/components/ui/ProductImageGallery"
 import ProductSelectionModal from "@/components/modals/ProductSelectionModal"
 
@@ -81,8 +82,6 @@ export default function SaleForm({ onSave }) {
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [productsError, setProductsError] = useState(null)
 
-  // Product types
-  const [productTypes, setProductTypes] = useState([])
 
   // Product code lookup state
   const lookupTimeoutRefs = useRef({})
@@ -258,19 +257,6 @@ export default function SaleForm({ onSave }) {
     }
   }
 
-  // Fetch product types
-  useEffect(() => {
-    async function fetchProductTypes() {
-      try {
-        const response = await productTypesAPI.getAll({ limit: 1000 })
-        const typesList = response.data?.data || response.data || []
-        setProductTypes(typesList)
-      } catch (err) {
-        console.error('Error fetching product types:', err)
-      }
-    }
-    fetchProductTypes()
-  }, [])
 
   // Add new row to cart
   function addRow() {
@@ -279,7 +265,7 @@ export default function SaleForm({ onSave }) {
       productId: "",
       productName: "",
       productCode: "",
-      productType: "",
+      season: [],
       unitPrice: 0,
       quantity: 1,
       photo: null,
@@ -315,8 +301,13 @@ export default function SaleForm({ onSave }) {
       productId: product.id,
       productName: product.name,
       productCode: product.productCode,
-      productType: product.productType?._id || product.productType?.id || product.productType, // Handle object or ID
-      productTypeName: product.productType?.name || product.productType, // Store name for display
+      season: Array.isArray(product.season) 
+        ? product.season 
+        : product.season 
+          ? [product.season] 
+          : product.productType 
+            ? (Array.isArray(product.productType) ? product.productType : [product.productType])
+            : [],
       unitPrice: Number(product.defaultPrice || 0).toFixed(2), // Fix to 2 decimals
       quantity: 1,
       photo: product.images?.[0] || product.image,
@@ -374,7 +365,8 @@ export default function SaleForm({ onSave }) {
     const invalidRows = rows.filter(row =>
       !row.productName ||
       !row.productCode ||
-      !row.productType ||
+      !row.season ||
+      row.season.length === 0 ||
       !row.unitPrice ||
       row.unitPrice <= 0 ||
       !row.quantity ||
@@ -382,7 +374,7 @@ export default function SaleForm({ onSave }) {
     )
 
     if (invalidRows.length > 0) {
-      setError('Please fill in product name, code, product type, unit price, and quantity for all rows')
+      setError('Please fill in product name, code, season, unit price, and quantity for all rows')
       return
     }
 
@@ -442,7 +434,7 @@ export default function SaleForm({ onSave }) {
             const productData = {
               name: row.productName.trim(),
               sku: (row.productCode || `AUTO-${Date.now()}`).toUpperCase(),
-              productType: row.productType,
+              season: Array.isArray(row.season) ? row.season : [],
               category: 'General',
               specifications: {
                 color: row.primaryColor || undefined
@@ -717,7 +709,7 @@ export default function SaleForm({ onSave }) {
                 <th className="text-left p-3 font-medium min-w-[150px]">Name</th>
                 <th className="text-left p-3 font-medium min-w-[120px]">Code</th>
                 <th className="text-left p-3 font-medium min-w-[80px]">Image</th>
-                <th className="text-left p-3 font-medium min-w-[150px]">Product Type</th>
+                <th className="text-left p-3 font-medium min-w-[150px]">Season</th>
                 <th className="text-right p-3 font-medium min-w-[100px]">Unit Price</th>
                 <th className="text-right p-3 font-medium min-w-[100px]">Quantity</th>
                 <th className="text-right p-3 font-medium min-w-[100px]">Total</th>
@@ -770,8 +762,13 @@ export default function SaleForm({ onSave }) {
                                     productId: product._id || product.id,
                                     productName: product.name || name,
                                     productCode: product.productCode || product.sku || r.productCode,
-                                    productType: product.productType || r.productType,
-                                    productTypeName: product.productType?.name || r.productTypeName,
+                                    season: Array.isArray(product.season) 
+                                      ? product.season 
+                                      : product.season 
+                                        ? [product.season] 
+                                        : product.productType 
+                                          ? (Array.isArray(product.productType) ? product.productType : [product.productType])
+                                          : (r.season || []),
                                     unitPrice: Number(unitPrice || 0).toFixed(2),
                                     photo: product.images?.[0] || product.image || r.photo
                                   } : r
@@ -817,8 +814,13 @@ export default function SaleForm({ onSave }) {
                                     productId: product._id || product.id,
                                     productName: product.name || r.productName,
                                     productCode: product.productCode || product.sku || code,
-                                    productType: product.productType || r.productType,
-                                    productTypeName: product.productType?.name || r.productTypeName,
+                                    season: Array.isArray(product.season) 
+                                      ? product.season 
+                                      : product.season 
+                                        ? [product.season] 
+                                        : product.productType 
+                                          ? (Array.isArray(product.productType) ? product.productType : [product.productType])
+                                          : (r.season || []),
                                     unitPrice: Number(unitPrice || 0).toFixed(2),
                                     photo: product.images?.[0] || product.image || r.photo
                                   } : r
@@ -845,15 +847,15 @@ export default function SaleForm({ onSave }) {
                     />
                   </td>
 
-                  {/* Product Type */}
+                  {/* Season */}
                   <td className="p-2">
-                    <div className="h-8 flex items-center px-3 text-sm bg-muted/50 rounded-md border border-transparent text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
-                      {(() => {
-                        const typeId = typeof row.productType === 'object' ? (row.productType._id || row.productType.id) : row.productType;
-                        const type = productTypes.find(t => String(t._id || t.id) === String(typeId));
-                        return type?.name || row.productTypeName || "—";
-                      })()}
-                    </div>
+                    <MultiSelect
+                      options={SEASON_OPTIONS}
+                      value={Array.isArray(row.season) ? row.season : []}
+                      onChange={(selectedSeasons) => updateRow(row.id, "season", selectedSeasons)}
+                      placeholder="Select seasons"
+                      disabled={isSaving}
+                    />
                   </td>
 
                   {/* Unit Price */}

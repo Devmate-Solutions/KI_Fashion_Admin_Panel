@@ -39,9 +39,9 @@ export default function ProductSelectionModal({ open, onClose, products = [], on
                     <div className="flex flex-col">
                         <span className="font-medium text-sm">{row.name}</span>
                         <span className="text-xs text-muted-foreground">Code: {row.productCode}</span>
-                        {row.productType && (
+                        {row.season && Array.isArray(row.season) && row.season.length > 0 && (
                             <Badge variant="outline" className="w-fit mt-1 text-[10px] h-5 px-1">
-                                {row.productType.name || row.productType}
+                                {row.season.join(", ")}
                             </Badge>
                         )}
                     </div>

@@ -18,8 +18,9 @@ import { suppliersAPI } from "@/lib/api/endpoints/suppliers"
 import { purchasesAPI } from "@/lib/api/endpoints/purchases"
 import { productsAPI } from "@/lib/api/endpoints/products"
 import { usersAPI } from "@/lib/api/endpoints/users"
-import { productTypesAPI } from "@/lib/api/endpoints/productTypes"
 import { logisticsCompaniesAPI } from "@/lib/api/endpoints/logisticsCompanies"
+import { MultiSelect } from "@/components/ui/multi-select"
+import { SEASON_OPTIONS } from "@/lib/constants/seasons"
 import ImageGallery from "@/components/ui/ImageGallery"
 import PacketConfigurationModal from "@/components/modals/PacketConfigurationModal"
 
@@ -76,8 +77,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [productsError, setProductsError] = useState(null)
   
-  // Product types
-  const [productTypes, setProductTypes] = useState([])
   
   // Product code lookup state (no status indicators)
   const lookupTimeoutRefs = useRef({}) // Track debounce timeouts per row
@@ -305,19 +304,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
     }
   }
 
-  // Fetch product types
-  useEffect(() => {
-    async function fetchProductTypes() {
-      try {
-        const response = await productTypesAPI.getAll({ limit: 1000 })
-        const typesList = response.data?.data || response.data || []
-        setProductTypes(typesList)
-      } catch (err) {
-        console.error('Error fetching product types:', err)
-      }
-    }
-    fetchProductTypes()
-  }, [])
 
   // Add new row to cart
   function addRow() {
@@ -326,7 +312,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       productId: "",
       productName: "",
       productCode: "",
-      productType: "",
+      season: [],
       costPrice: 0,
       primaryColor: [],
       size: [],
@@ -669,7 +655,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
     const invalidRows = rows.filter(row =>
       !row.productName ||
       !row.productCode ||
-      !row.productType ||
+      !row.season ||
+      row.season.length === 0 ||
       !row.costPrice ||
       row.costPrice <= 0 ||
       !row.quantity ||
@@ -677,7 +664,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
     )
 
     if (invalidRows.length > 0) {
-      setError('Please fill in product name, code, product type, cost price, and quantity for all rows')
+      setError('Please fill in product name, code, season, cost price, and quantity for all rows')
       return
     }
 
@@ -747,7 +734,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
             const productData = {
               name: row.productName.trim(),
               sku: (row.productCode || `AUTO-${Date.now()}`).toUpperCase(),
-              productType: row.productType,
+              season: Array.isArray(row.season) ? row.season : [],
               category: 'General', // Default category, can be updated later
               size: Array.isArray(row.size) && row.size.length > 0
                 ? row.size.join(', ')
@@ -863,8 +850,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         if (row.productCode) {
           itemPayload.productCode = row.productCode
         }
-        if (row.productType) {
-          itemPayload.productType = row.productType
+        if (row.season && Array.isArray(row.season) && row.season.length > 0) {
+          itemPayload.season = row.season
         }
         if (costPrice > 0) {
           itemPayload.costPrice = costPrice
@@ -1101,7 +1088,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 <th className="text-left p-3 font-medium min-w-[150px]">Name</th>
                 <th className="text-left p-3 font-medium min-w-[120px]">Code</th>
                 <th className="text-left p-3 font-medium min-w-[80px]">Image</th>
-                <th className="text-left p-3 font-medium min-w-[150px]">Product Type</th>
+                <th className="text-left p-3 font-medium min-w-[150px]">Season</th>
                 <th className="text-right p-3 font-medium min-w-[100px]">Cost Price</th>
                 <th className="text-left p-3 font-medium min-w-[100px]">Primary Color</th>
                 <th className="text-left p-3 font-medium min-w-[100px]">Size</th>
@@ -1159,7 +1146,13 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                                     productId: product._id || product.id,
                                     productName: product.name || name, // Use database name
                                     productCode: product.productCode || product.sku || r.productCode,
-                                    productType: product.productType || r.productType,
+                                    season: Array.isArray(product.season) 
+                                      ? product.season 
+                                      : product.season 
+                                        ? [product.season] 
+                                        : product.productType 
+                                          ? (Array.isArray(product.productType) ? product.productType : [product.productType])
+                                          : (r.season || []),
                                     costPrice: costPrice || r.costPrice,
                                     primaryColor: Array.isArray(product.primaryColor) 
                                       ? product.primaryColor 
@@ -1238,7 +1231,13 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                                     productId: product._id || product.id,
                                     productName: product.name || r.productName,
                                     productCode: product.productCode || product.sku || code,
-                                    productType: product.productType || r.productType,
+                                    season: Array.isArray(product.season) 
+                                      ? product.season 
+                                      : product.season 
+                                        ? [product.season] 
+                                        : product.productType 
+                                          ? (Array.isArray(product.productType) ? product.productType : [product.productType])
+                                          : (r.season || []),
                                     costPrice: costPrice || r.costPrice,
                                     primaryColor: Array.isArray(product.primaryColor) 
                                       ? product.primaryColor 
@@ -1398,23 +1397,15 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                     })()}
                   </td>
 
-                  {/* Product Type */}
+                  {/* Season */}
                   <td className="p-2">
-                    <Select
-                      value={row.productType || undefined}
-                      onValueChange={(value) => updateRow(row.id, "productType", value)}
-                    >
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {productTypes.map((type) => (
-                          <SelectItem key={type._id || type.id} value={String(type._id || type.id)}>
-                            {type.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <MultiSelect
+                      options={SEASON_OPTIONS}
+                      value={Array.isArray(row.season) ? row.season : []}
+                      onChange={(selectedSeasons) => updateRow(row.id, "season", selectedSeasons)}
+                      placeholder="Select seasons"
+                      disabled={isSaving}
+                    />
                   </td>
 
                   {/* Cost Price */}
