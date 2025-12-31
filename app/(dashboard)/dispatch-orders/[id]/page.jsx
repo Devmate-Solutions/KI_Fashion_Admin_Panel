@@ -183,6 +183,43 @@ export default function DispatchOrderDetailPage({ params }) {
       dispatchOrder?.status === "confirmed",
   });
 
+  // Fetch supplier's total balance (for Add Payment form)
+  const { data: supplierLedgerData } = useQuery({
+    queryKey: ["supplier-total-balance", dispatchOrder?.supplier?._id],
+    queryFn: async () => {
+      if (!dispatchOrder || !dispatchOrder.supplier?._id) return null;
+      try {
+        const response = await ledgerAPI.getSupplierLedger(
+          dispatchOrder.supplier._id,
+          { limit: 1000 }
+        );
+        const backendResponse = response?.data || response;
+        const ledgerData = backendResponse?.data || backendResponse;
+        return {
+          totalRemainingBalance: ledgerData?.totalRemainingBalance || 0,
+          totalOutstandingBalance: ledgerData?.totalOutstandingBalance || 0,
+        };
+      } catch (error) {
+        console.error("Error fetching supplier total balance:", error);
+        return null;
+      }
+    },
+    enabled:
+      !!dispatchOrder &&
+      !!dispatchOrder.supplier?._id &&
+      showPaymentForm &&
+      isConfirmed,
+  });
+
+  // Calculate supplier's total balance
+  const supplierTotalBalance = useMemo(() => {
+    if (!supplierLedgerData) return 0;
+    return (
+      (supplierLedgerData.totalRemainingBalance || 0) -
+      (supplierLedgerData.totalOutstandingBalance || 0)
+    );
+  }, [supplierLedgerData]);
+
   // Calculate values that depend on dispatchOrder (safe to use even if undefined)
   const isConfirmed = dispatchOrder?.status === "confirmed";
   const isPending = dispatchOrder?.status === "pending";
@@ -2418,7 +2455,7 @@ export default function DispatchOrderDetailPage({ params }) {
                       })()}
                     </div>
                   )}
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="flex items-center gap-2">
                     <Banknote className="h-4 w-4 text-muted-foreground" />
                     <div>
@@ -2479,44 +2516,6 @@ export default function DispatchOrderDetailPage({ params }) {
                       );
                     })()}
                   </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">
-                      Outstanding Balance
-                    </Label>
-                    {(() => {
-                      const pendingAmount = parseFloat(paymentAmount) || 0;
-                      const previewRemaining = remainingBalance - pendingAmount;
-                      const previewSupplierDue =
-                        previewRemaining < 0
-                          ? Math.abs(previewRemaining)
-                          : supplierDue;
-                      const hasPreview =
-                        showPaymentForm &&
-                        pendingAmount > 0 &&
-                        previewRemaining < 0;
-                      return (
-                        <>
-                          <p
-                            className={`font-medium text-sm ${
-                              previewSupplierDue > 0
-                                ? "text-blue-600"
-                                : "text-muted-foreground"
-                            }`}
-                          >
-                            {previewSupplierDue.toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </p>
-                          {previewSupplierDue > 0 && (
-                            <p className="text-xs text-blue-500 mt-1">
-                              {hasPreview ? "" : ""}
-                            </p>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -2553,6 +2552,33 @@ export default function DispatchOrderDetailPage({ params }) {
                           )}`
                         : "Fully paid"}
                     </p>
+                    {supplierTotalBalance !== undefined && (
+                      <p className="text-xs font-semibold text-indigo-700 mt-2 pt-2 border-t border-indigo-200">
+                        Supplier Total Balance:{" "}
+                        <span
+                          className={
+                            supplierTotalBalance > 0
+                              ? "text-green-600"
+                              : supplierTotalBalance < 0
+                              ? "text-red-600"
+                              : "text-slate-600"
+                          }
+                        >
+                          {supplierTotalBalance > 0 ? "+" : ""}
+                          {currency(Math.abs(supplierTotalBalance))}
+                        </span>
+                        {supplierTotalBalance > 0 && (
+                          <span className="text-green-600 ml-1">
+                            (Admin owes supplier)
+                          </span>
+                        )}
+                        {supplierTotalBalance < 0 && (
+                          <span className="text-red-600 ml-1">
+                            (Supplier owes admin)
+                          </span>
+                        )}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <Label htmlFor="payment-method">
