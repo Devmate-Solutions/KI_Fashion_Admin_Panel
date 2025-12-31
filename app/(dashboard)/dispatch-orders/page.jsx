@@ -11,6 +11,7 @@ import { Eye, Plus } from "lucide-react"
 
 const statusStyles = {
   pending: "bg-sky-500/15 text-sky-600 border-sky-200",
+  "pending-approval": "bg-amber-500/15 text-amber-600 border-amber-200",
   confirmed: "bg-emerald-500/15 text-emerald-600 border-emerald-200",
   picked_up: "bg-blue-500/15 text-blue-600 border-blue-200",
   in_transit: "bg-amber-500/15 text-amber-600 border-amber-200",
@@ -117,7 +118,7 @@ export default function DispatchOrdersPage() {
         const status = row.status || "pending"
         return (
           <Badge className={statusStyles[status] || statusStyles.pending}>
-            {status.replace("_", " ").toUpperCase()}
+            {status.replace(/_/g, " ").replace(/-/g, " ").toUpperCase()}
           </Badge>
         )
       },

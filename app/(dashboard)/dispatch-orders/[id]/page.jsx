@@ -7,12 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   useDispatchOrder,
   useConfirmDispatchOrder,
+  useSubmitApproval,
   useReturnDispatchItems,
   useDeleteDispatchOrder,
 } from "@/lib/hooks/useDispatchOrders";
+import { useAuthStore } from "@/store/store";
 import { ledgerAPI } from "@/lib/api/endpoints/ledger";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSuppliers } from "@/lib/hooks/useSuppliers";
@@ -83,6 +86,7 @@ const getImageArray = (item) => {
 
 const statusStyles = {
   pending: "bg-sky-500/15 text-sky-600 border-sky-200",
+  "pending-approval": "bg-amber-500/15 text-amber-600 border-amber-200",
   confirmed: "bg-emerald-500/15 text-emerald-600 border-emerald-200",
   picked_up: "bg-blue-500/15 text-blue-600 border-blue-200",
   in_transit: "bg-amber-500/15 text-amber-600 border-amber-200",
@@ -95,8 +99,12 @@ export default function DispatchOrderDetailPage({ params }) {
   const dispatchOrderId = params.id;
   const { data: dispatchOrder, isLoading } = useDispatchOrder(dispatchOrderId);
   const confirmMutation = useConfirmDispatchOrder();
+  const submitApprovalMutation = useSubmitApproval();
   const returnMutation = useReturnDispatchItems();
   const deleteMutation = useDeleteDispatchOrder();
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'super-admin';
+  const isAdmin = user?.role === 'admin';
 
   const [activeTab, setActiveTab] = useState("confirm");
   const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -119,6 +127,7 @@ export default function DispatchOrderDetailPage({ params }) {
   const [editedDispatchDate, setEditedDispatchDate] = useState("");
   const [editedDiscount, setEditedDiscount] = useState("0");
   const [editedTotalBoxes, setEditedTotalBoxes] = useState("0");
+  const [totalBoxesConfirmed, setTotalBoxesConfirmed] = useState(false);
 
   // Item verification and editing state
   const [itemVerifications, setItemVerifications] = useState({}); // {itemIndex: boolean}
@@ -222,7 +231,8 @@ export default function DispatchOrderDetailPage({ params }) {
 
   // Calculate values that depend on dispatchOrder (safe to use even if undefined)
   const isConfirmed = dispatchOrder?.status === "confirmed";
-  const isPending = dispatchOrder?.status === "pending";
+  const isPending = dispatchOrder?.status === "pending" || dispatchOrder?.status === "pending-approval";
+  const canEdit = isPending; // Both pending and pending-approval can be edited
 
   // Initialize exchange rate and percentage from dispatch order or defaults
   useEffect(() => {
@@ -231,6 +241,7 @@ export default function DispatchOrderDetailPage({ params }) {
       setPercentage(String(dispatchOrder.percentage || 0));
       setEditedDiscount(String(dispatchOrder.totalDiscount || 0));
       setEditedTotalBoxes(String(dispatchOrder.totalBoxes || 0));
+      setTotalBoxesConfirmed(false); // Reset confirmation when order loads
 
       // Initialize order fields (supplier remains uneditable - use original value)
       if (dispatchOrder.logisticsCompany) {
@@ -752,6 +763,17 @@ export default function DispatchOrderDetailPage({ params }) {
       );
     }
 
+    // Check if total boxes is confirmed
+    if (!totalBoxesConfirmed) {
+      errors.push("Total boxes must be confirmed before order confirmation");
+    }
+
+    // Check if total boxes is greater than 0
+    const totalBoxesValue = parseInt(editedTotalBoxes) || 0;
+    if (totalBoxesValue <= 0) {
+      errors.push("Total boxes must be greater than 0");
+    }
+
     return { isValid: errors.length === 0, errors };
   }, [
     dispatchOrder,
@@ -762,6 +784,116 @@ export default function DispatchOrderDetailPage({ params }) {
     newItems,
     itemVerifications,
     editedItems,
+    totalBoxesConfirmed,
+    editedTotalBoxes,
+  ]);
+
+  const handleSubmitApproval = useCallback(() => {
+    console.log("handleSubmitApproval called");
+    if (!dispatchOrderId) {
+      console.log("No dispatch order ID");
+      return;
+    }
+
+    // Validate before submitting
+    const { isValid, errors } = validateOrderBeforeConfirm();
+    console.log("Validation result:", { isValid, errors });
+
+    if (!isValid) {
+      toast.error(
+        <div>
+          <p className="font-semibold">Cannot submit order for approval:</p>
+          <ul className="mt-1 list-disc list-inside text-sm">
+            {errors.map((err, idx) => (
+              <li key={idx}>{err}</li>
+            ))}
+          </ul>
+        </div>,
+        { duration: 5000 }
+      );
+      return;
+    }
+
+    console.log("Validation passed, preparing approval submission...");
+
+    // Prepare items array with edited values and exclude removed items
+    const finalItems = [];
+
+    // Add edited existing items (excluding removed ones)
+    dispatchOrder.items?.forEach((item, idx) => {
+      if (!itemsToRemove.includes(idx)) {
+        const itemData = editedItems[idx] || item;
+
+        // Get edited packets if they exist
+        let itemPackets = item.packets;
+        if (editedItems[idx]?.packets) {
+          itemPackets = editedItems[idx].packets;
+        }
+
+        finalItems.push({
+          ...item,
+          productName: itemData.productName,
+          productCode: itemData.productCode,
+          quantity: parseFloat(itemData.quantity),
+          costPrice: parseFloat(itemData.costPrice),
+          primaryColor: itemData.primaryColor,
+          productImage: itemData.images,
+          packets: itemPackets,
+          boxes: itemData.boxStr
+            ? itemData.boxStr
+                .split(",")
+                .map((s) => ({ boxNumber: parseInt(s.trim()) }))
+                .filter((b) => !isNaN(b.boxNumber))
+            : [],
+          useVariantTracking: item.useVariantTracking,
+        });
+      }
+    });
+
+    // Add new items
+    newItems.forEach((item) => {
+      finalItems.push(item);
+    });
+
+    const approvalData = {
+      id: dispatchOrderId,
+      items: finalItems,
+      totalBoxes: parseInt(editedTotalBoxes) || 0,
+      paymentData: {
+        cashPayment: parseFloat(cashPayment) || 0,
+        bankPayment: parseFloat(bankPayment) || 0,
+        exchangeRate: parseFloat(exchangeRate) || 1.0,
+        percentage: parseFloat(percentage) || 0,
+        discount: confirmOrderSupplierCurrency.discount,
+      },
+    };
+
+    console.log("Calling submitApprovalMutation with data:", approvalData);
+
+    submitApprovalMutation.mutate(approvalData, {
+      onSuccess: () => {
+        setCashPayment("0");
+        setBankPayment("0");
+        setExchangeRate("1.0");
+        setPercentage("0");
+        setActiveTab("confirm");
+        toast.success("Order submitted for approval successfully!");
+      },
+    });
+  }, [
+    dispatchOrderId,
+    validateOrderBeforeConfirm,
+    dispatchOrder,
+    itemsToRemove,
+    editedItems,
+    newItems,
+    cashPayment,
+    bankPayment,
+    exchangeRate,
+    percentage,
+    editedTotalBoxes,
+    submitApprovalMutation,
+    confirmOrderSupplierCurrency.discount,
   ]);
 
   const handleConfirm = useCallback(() => {
@@ -899,7 +1031,7 @@ export default function DispatchOrderDetailPage({ params }) {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Ctrl+Enter to confirm (only in confirm tab and form is valid)
+      // Ctrl+Enter to confirm/submit (only in confirm tab and form is valid)
       if (
         e.key === "Enter" &&
         e.ctrlKey &&
@@ -910,9 +1042,14 @@ export default function DispatchOrderDetailPage({ params }) {
         e.preventDefault();
         const { isValid } = validateOrderBeforeConfirm();
         if (isValid) {
-          handleConfirm();
+          // Super-admin: confirm, Admin: submit approval (only for pending)
+          if (isSuperAdmin) {
+            handleConfirm();
+          } else if (isAdmin && dispatchOrder.status === 'pending') {
+            handleSubmitApproval();
+          }
         } else {
-          toast.error("Please fix validation errors before confirming");
+          toast.error("Please fix validation errors before submitting");
         }
       }
     };
@@ -925,6 +1062,9 @@ export default function DispatchOrderDetailPage({ params }) {
     dispatchOrder,
     validateOrderBeforeConfirm,
     handleConfirm,
+    handleSubmitApproval,
+    isSuperAdmin,
+    isAdmin,
   ]);
 
   const handleAddPayment = async () => {
@@ -1162,7 +1302,7 @@ export default function DispatchOrderDetailPage({ params }) {
         <Badge
           className={statusStyles[dispatchOrder.status] || statusStyles.pending}
         >
-          {dispatchOrder.status?.replace("_", " ").toUpperCase()}
+          {dispatchOrder.status?.replace(/_/g, " ").replace(/-/g, " ").toUpperCase()}
         </Badge>
       </div>
 
@@ -1324,11 +1464,17 @@ export default function DispatchOrderDetailPage({ params }) {
                 {isPending && editingField === "discount" ? (
                   <div className="flex gap-1">
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       min="0"
                       step="0.01"
                       value={editedDiscount}
-                      onChange={(e) => setEditedDiscount(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow only numbers and one decimal point
+                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                        setEditedDiscount(sanitized);
+                      }}
                       onBlur={() => setEditingField(null)}
                       className="h-9 text-sm border-blue-500 border-2"
                       placeholder="0.00"
@@ -1390,17 +1536,45 @@ export default function DispatchOrderDetailPage({ params }) {
 
               {/* Total Boxes - Editable for pending orders */}
               <div>
-                <Label className="text-xs text-muted-foreground">
-                  Total Boxes
-                </Label>
+                <div className="flex items-center gap-2 mb-1">
+                  <Label className="text-xs text-muted-foreground">
+                    Total Boxes
+                  </Label>
+                  {isPending && (
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="total-boxes-confirmed"
+                        checked={totalBoxesConfirmed}
+                        onCheckedChange={(checked) => {
+                          setTotalBoxesConfirmed(checked === true);
+                        }}
+                        className="h-4 w-4"
+                      />
+                      <Label
+                        htmlFor="total-boxes-confirmed"
+                        className="text-xs text-muted-foreground cursor-pointer"
+                      >
+                        Confirm
+                      </Label>
+                    </div>
+                  )}
+                </div>
                 {isPending && editingField === "totalBoxes" ? (
                   <div className="flex gap-1">
                     <Input
-                      type="number"
-                      min="0"
-                      step="1"
+                      type="text"
+                      inputMode="numeric"
                       value={editedTotalBoxes}
-                      onChange={(e) => setEditedTotalBoxes(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow only numbers
+                        const sanitized = value.replace(/[^0-9]/g, '');
+                        setEditedTotalBoxes(sanitized);
+                        // Reset confirmation when value changes
+                        if (sanitized !== editedTotalBoxes) {
+                          setTotalBoxesConfirmed(false);
+                        }
+                      }}
                       onBlur={() => setEditingField(null)}
                       className="h-9 text-sm border-blue-500 border-2"
                       placeholder="0"
@@ -1549,17 +1723,17 @@ export default function DispatchOrderDetailPage({ params }) {
                       <th className="p-2 text-left text-purple-900 font-semibold">
                         Code
                       </th>
-                      <th className="p-2 text-left text-purple-900 font-semibold">
+                      <th className="p-2 text-left text-purple-900 font-semibold w-24">
                         Colors
                       </th>
-                      <th className="p-2 text-left text-purple-900 font-semibold">
+                      <th className="p-2 text-left text-purple-900 font-semibold w-24">
                         Sizes
                       </th>
-                      <th className="p-2 text-center text-purple-900 font-semibold">
+                      <th className="p-2 text-center text-purple-900 font-semibold w-16">
                         Packets
                       </th>
                       <th className="p-2 text-right text-purple-900 font-semibold">
-                        {isPending ? "Quantity" : "Remaining Qty"}
+                        {isPending ? "QTY" : "Remaining Qty"}
                       </th>
                       {!isPending && (
                         <th className="p-2 text-right text-purple-900 font-semibold">
@@ -1652,7 +1826,7 @@ export default function DispatchOrderDetailPage({ params }) {
                               showCount={true}
                             />
                           </td>
-                          <td className="p-2">
+                          <td className="p-2 align-top">
                             {isPending && !isRemoved ? (
                               <Input
                                 value={itemData.productName}
@@ -1673,7 +1847,7 @@ export default function DispatchOrderDetailPage({ params }) {
                               </div>
                             )}
                           </td>
-                          <td className="p-2">
+                          <td className="p-2 align-top">
                             {isPending && !isRemoved ? (
                               <Input
                                 value={itemData.productCode}
@@ -1692,9 +1866,9 @@ export default function DispatchOrderDetailPage({ params }) {
                               <span>{itemData.productCode}</span>
                             )}
                           </td>
-                          <td className="p-2">
+                          <td className="p-2 w-24 align-top">
                             {isPending && !isRemoved ? (
-                              <div className="min-w-[140px]">
+                              <div className="min-w-[100px]">
                                 <ArrayInput
                                   value={
                                     Array.isArray(itemData.primaryColor)
@@ -1724,7 +1898,7 @@ export default function DispatchOrderDetailPage({ params }) {
                                     {itemData.primaryColor.map((color, idx) => (
                                       <span
                                         key={idx}
-                                        className="inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs"
+                                        className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px]"
                                       >
                                         {color}
                                       </span>
@@ -1738,9 +1912,9 @@ export default function DispatchOrderDetailPage({ params }) {
                               </div>
                             )}
                           </td>
-                          <td className="p-2">
+                          <td className="p-2 w-24 align-top">
                             {isPending && !isRemoved ? (
-                              <div className="min-w-[140px]">
+                              <div className="min-w-[100px]">
                                 <ArrayInput
                                   value={
                                     Array.isArray(itemData.size)
@@ -1770,7 +1944,7 @@ export default function DispatchOrderDetailPage({ params }) {
                                     {itemData.size.map((s, idx) => (
                                       <span
                                         key={idx}
-                                        className="inline-block px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs"
+                                        className="inline-block px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-[10px]"
                                       >
                                         {s}
                                       </span>
@@ -1784,20 +1958,16 @@ export default function DispatchOrderDetailPage({ params }) {
                               </div>
                             )}
                           </td>
-                          <td className="p-2">
-                            <div className="flex flex-col gap-1.5 min-w-[140px]">
+                          <td className="p-2 w-16 text-center">
+                            <div className="flex flex-col gap-1.5 items-center">
                               {isPending ? (
                                 <>
                                   {item.packets?.length > 0 ? (
-                                    <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center justify-center gap-1">
                                       <span className="text-xs font-medium text-slate-600">
                                         {item.packets[0].isLoose
                                           ? null
-                                          : `${item.packets.length} Packet${
-                                              item.packets.length !== 1
-                                                ? "s"
-                                                : ""
-                                            }`}
+                                          : item.packets.length}
                                       </span>
                                       <Button
                                         variant="ghost"
@@ -1825,7 +1995,7 @@ export default function DispatchOrderDetailPage({ params }) {
                                     </div>
                                   ) : (
                                     <Button
-                                      variant="outline"
+                                      variant="ghost"
                                       size="sm"
                                       onClick={() => {
                                         const modalItemId = String(
@@ -1842,10 +2012,10 @@ export default function DispatchOrderDetailPage({ params }) {
                                         });
                                         setPacketDialogOpen(true);
                                       }}
-                                      className="text-xs w-full justify-start text-slate-600 h-8"
+                                      className="h-6 w-6 p-0 hover:bg-slate-100 text-slate-500 hover:text-blue-600"
+                                      title="Configure Packets"
                                     >
-                                      <Package className="h-3.5 w-3.5 mr-2 text-blue-500" />
-                                      Configure
+                                      <Package className="h-3.5 w-3.5 text-blue-500" />
                                     </Button>
                                   )}
                                 </>
@@ -1988,67 +2158,73 @@ export default function DispatchOrderDetailPage({ params }) {
                               })()}
                             </div>
                           </td>
-                          <td className="p-2 text-right">
-                            {isPending && !isRemoved ? (
-                              <div className="flex flex-col items-end gap-1">
+                          <td className="p-2 text-right align-top">
+                            <div className="flex flex-col items-end gap-1">
+                              {isPending && !isRemoved ? (
                                 <Input
-                                  type="number"
-                                  min="0"
-                                  step="1"
+                                  type="text"
+                                  inputMode="numeric"
                                   value={itemData.quantity}
-                                  onChange={(e) =>
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    // Allow only numbers
+                                    const sanitized = value.replace(/[^0-9]/g, '');
                                     setEditedItems({
                                       ...editedItems,
                                       [item.index]: {
                                         ...itemData,
-                                        quantity: e.target.value,
+                                        quantity: sanitized,
                                       },
-                                    })
-                                  }
-                                  className="h-8 text-sm w-20 text-right"
+                                    });
+                                  }}
+                                  className="h-8 text-sm w-10 text-right"
                                 />
-                                {item.totalReturned > 0 && (
-                                  <span className="text-[10px] text-red-600 font-medium">
-                                    -{item.totalReturned} returned
-                                  </span>
-                                )}
-                                <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
-                                  Remaining: {item.confirmedQty}
+                              ) : (
+                                <span className="font-medium text-blue-700 h-8 flex items-center">
+                                  {/* ALWAYS show remaining quantity (confirmedQty) which matches Return History */}
+                                  {item.confirmedQty ?? 0}
                                 </span>
-                              </div>
-                            ) : (
-                              <span className="font-medium text-blue-700">
-                                {/* ALWAYS show remaining quantity (confirmedQty) which matches Return History */}
-                                {item.confirmedQty ?? 0}
-                              </span>
-                            )}
+                              )}
+                              {isPending && item.totalReturned > 0 && (
+                                <span className="text-[10px] text-red-600 font-medium">
+                                  -{item.totalReturned} returned
+                                </span>
+                              )}
+                              {isPending && (
+                                <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                                  rem: {item.confirmedQty}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           {!isPending && (
                             <>
-                              <td className="p-2 text-right text-red-600 font-medium">
+                              <td className="p-2 text-right text-red-600 font-medium align-top">
                                 {item.totalReturned}
                               </td>
-                              <td className="p-2 text-right font-medium text-muted-foreground">
+                              <td className="p-2 text-right font-medium text-muted-foreground align-top">
                                 {item.quantity}
                               </td>
                             </>
                           )}
-                          <td className="p-2 text-right">
+                          <td className="p-2 text-right align-top">
                             {isPending && !isRemoved ? (
                               <Input
-                                type="number"
-                                min="0"
-                                step="0.01"
+                                type="text"
+                                inputMode="decimal"
                                 value={itemData.costPrice}
-                                onChange={(e) =>
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  // Allow only numbers and one decimal point
+                                  const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
                                   setEditedItems({
                                     ...editedItems,
                                     [item.index]: {
                                       ...itemData,
-                                      costPrice: e.target.value,
+                                      costPrice: sanitized,
                                     },
-                                  })
-                                }
+                                  });
+                                }}
                                 className="h-8 text-sm w-24 text-right"
                               />
                             ) : (
@@ -2057,7 +2233,7 @@ export default function DispatchOrderDetailPage({ params }) {
                               </span>
                             )}
                           </td>
-                          <td className="p-2 text-right font-semibold text-slate-700">
+                          <td className="p-2 text-right font-semibold text-slate-700 align-top">
                             {supplierPaymentItemTotal?.toFixed(2) || "—"}
                             {!isPending && item.totalReturned > 0 && (
                               <div className="text-[9px] text-red-600 mt-0.5">
@@ -2069,10 +2245,10 @@ export default function DispatchOrderDetailPage({ params }) {
                               </div>
                             )}
                           </td>
-                          <td className="p-2 text-right text-blue-700">
+                          <td className="p-2 text-right text-blue-700 align-top">
                             {landedPrice?.toFixed(2) || "—"}
                           </td>
-                          <td className="p-2 text-right font-medium text-blue-700">
+                          <td className="p-2 text-right font-medium text-blue-700 align-top">
                             {itemTotal?.toFixed(2) || "—"}
                             {!isPending && item.totalReturned > 0 && (
                               <div className="text-[9px] text-red-600 mt-0.5">
@@ -2088,7 +2264,7 @@ export default function DispatchOrderDetailPage({ params }) {
                             )}
                           </td>
                           {isPending && (
-                            <td className="p-2 text-center">
+                            <td className="p-2 text-center align-top">
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -2140,7 +2316,7 @@ export default function DispatchOrderDetailPage({ params }) {
 
         {/* Confirm Order Tab */}
         <TabsContent value="confirm" className="space-y-4 mt-4">
-          {/* Confirm Form (only for pending orders) */}
+          {/* Confirm Form (for pending and pending-approval orders) */}
           {isPending && (
             <Card className="bg-gradient-to-br from-emerald-50/80 to-teal-50/60 border-2 border-emerald-200">
               <CardHeader className="bg-emerald-100/50 border-b border-emerald-200">
@@ -2160,9 +2336,8 @@ export default function DispatchOrderDetailPage({ params }) {
                     </Label>
                     <Input
                       id="exchange-rate"
-                      type="number"
-                      min="0.01"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
                       value={exchangeRate}
                       onChange={(e) => setExchangeRate(e.target.value)}
                       className="h-10 text-base"
@@ -2175,11 +2350,17 @@ export default function DispatchOrderDetailPage({ params }) {
                     </Label>
                     <Input
                       id="percentage"
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       min="0"
                       step="0.1"
                       value={percentage}
-                      onChange={(e) => setPercentage(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow only numbers and one decimal point
+                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                        setPercentage(sanitized);
+                      }}
                       className="h-10 text-base"
                       placeholder="0"
                     />
@@ -2196,11 +2377,17 @@ export default function DispatchOrderDetailPage({ params }) {
                     </Label>
                     <Input
                       id="cash-payment"
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       min="0"
                       step="0.01"
                       value={cashPayment}
-                      onChange={(e) => setCashPayment(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow only numbers and one decimal point
+                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                        setCashPayment(sanitized);
+                      }}
                       className="h-10 text-base"
                       placeholder="0.00"
                     />
@@ -2215,11 +2402,17 @@ export default function DispatchOrderDetailPage({ params }) {
                     </Label>
                     <Input
                       id="bank-payment"
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       min="0"
                       step="0.01"
                       value={bankPayment}
-                      onChange={(e) => setBankPayment(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow only numbers and one decimal point
+                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                        setBankPayment(sanitized);
+                      }}
                       className="h-10 text-base"
                       placeholder="0.00"
                     />
@@ -2395,29 +2588,64 @@ export default function DispatchOrderDetailPage({ params }) {
                     </>
                   )}
                 </Button>
-                <Button
-                  onClick={() => {
-                    console.log("Confirm button clicked");
-                    handleConfirm();
-                  }}
-                  disabled={
-                    confirmMutation.isPending || deleteMutation.isPending
-                  }
-                  size="lg"
-                  className="min-w-[160px]"
-                >
-                  {confirmMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Confirm Order
-                    </>
-                  )}
-                </Button>
+                {/* Super-admin: Confirm Order button (for both pending and pending-approval) */}
+                {isSuperAdmin && (dispatchOrder?.status === 'pending' || dispatchOrder?.status === 'pending-approval') && (
+                  <Button
+                    onClick={() => {
+                      console.log("Confirm button clicked");
+                      handleConfirm();
+                    }}
+                    disabled={
+                      confirmMutation.isPending || 
+                      deleteMutation.isPending ||
+                      !totalBoxesConfirmed
+                    }
+                    size="lg"
+                    className="min-w-[160px]"
+                    title={!totalBoxesConfirmed ? "Please confirm total boxes before confirming order" : ""}
+                  >
+                    {confirmMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Confirm Order
+                      </>
+                    )}
+                  </Button>
+                )}
+                {/* Admin: Submit Approval button (only for pending orders) */}
+                {isAdmin && dispatchOrder?.status === 'pending' && (
+                  <Button
+                    onClick={() => {
+                      console.log("Submit Approval button clicked");
+                      handleSubmitApproval();
+                    }}
+                    disabled={
+                      submitApprovalMutation.isPending || 
+                      deleteMutation.isPending ||
+                      !totalBoxesConfirmed
+                    }
+                    size="lg"
+                    className="min-w-[160px]"
+                    title={!totalBoxesConfirmed ? "Please confirm total boxes before submitting for approval" : ""}
+                  >
+                    {submitApprovalMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Submit Approval
+                      </>
+                    )}
+                  </Button>
+                )}
               </CardFooter>
             </Card>
           )}
@@ -2535,11 +2763,17 @@ export default function DispatchOrderDetailPage({ params }) {
                     </Label>
                     <Input
                       id="payment-amount"
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       step="0.01"
                       min="0.01"
                       value={paymentAmount}
-                      onChange={(e) => setPaymentAmount(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow only numbers and one decimal point
+                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                        setPaymentAmount(sanitized);
+                      }}
                       placeholder="Enter amount"
                       disabled={isSubmittingPayment}
                     />
@@ -2931,17 +3165,19 @@ export default function DispatchOrderDetailPage({ params }) {
                               <div className="flex justify-center">
                                 <Input
                                   id={`return-qty-${item.index}`}
-                                  type="number"
-                                  min="0"
+                                  type="text"
+                                  inputMode="numeric"
                                   max={remainingQty}
                                   step="1"
                                   value={returnQuantities[item.index] || ""}
                                   onChange={(e) => {
                                     const val = e.target.value;
+                                    // Allow only numbers
+                                    const sanitized = val.replace(/[^0-9]/g, '');
                                     if (
-                                      val === "" ||
-                                      (parseFloat(val) >= 0 &&
-                                        parseFloat(val) <= remainingQty)
+                                      sanitized === "" ||
+                                      (parseFloat(sanitized) >= 0 &&
+                                        parseFloat(sanitized) <= remainingQty)
                                     ) {
                                       setReturnQuantities({
                                         ...returnQuantities,
