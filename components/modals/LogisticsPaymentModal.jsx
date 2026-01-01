@@ -205,12 +205,18 @@ export default function LogisticsPaymentModal({
             </Label>
             <Input
               id="cashAmount"
-              type="number"
+              type="text"
+              inputMode="decimal"
               min="0"
               step="0.01"
               placeholder="0.00"
               value={form.cashAmount}
-              onChange={(e) => setForm({ ...form, cashAmount: e.target.value })}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Allow only numbers and one decimal point
+                const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                setForm({ ...form, cashAmount: sanitized });
+              }}
               className="text-right"
             />
           </div>
@@ -223,12 +229,18 @@ export default function LogisticsPaymentModal({
             </Label>
             <Input
               id="bankAmount"
-              type="number"
+              type="text"
+              inputMode="decimal"
               min="0"
               step="0.01"
               placeholder="0.00"
               value={form.bankAmount}
-              onChange={(e) => setForm({ ...form, bankAmount: e.target.value })}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Allow only numbers and one decimal point
+                const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                setForm({ ...form, bankAmount: sanitized });
+              }}
               className="text-right"
             />
           </div>

@@ -146,11 +146,15 @@ export default function ExpenseFormNew({ expense, onSave, onCancel, isLoading })
         </Label>
         <Input
           id="amount"
-          type="number"
-          step="0.01"
-          min="0"
+          type="text"
+          inputMode="decimal"
           value={formData.amount}
-          onChange={(e) => handleChange('amount', e.target.value)}
+          onChange={(e) => {
+            const value = e.target.value;
+            // Allow only numbers and one decimal point
+            const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+            handleChange('amount', sanitized);
+          }}
           placeholder="0.00"
           className={errors.amount ? 'border-red-500' : ''}
         />

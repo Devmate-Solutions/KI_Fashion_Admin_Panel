@@ -15,13 +15,13 @@
 //   '/inventory': { permissions: ['inventory'] },
 //   '/purchases': { permissions: ['purchases'] },
 //   '/expenses': { permissions: ['expenses'] },
-//   '/users': { permissions: ['users'], roles: ['admin', 'manager'] },
+//   '/users': { permissions: ['users'], roles: ['super-admin', 'admin'] },
 //   '/reports': { permissions: ['reports'] },
-//   '/settings': { roles: ['admin'] },
-//   '/logistics': {roles: ['admin']},                                  // Any authenticated user can access logistics
-//   '/product-types': { roles: ['admin'] },            // Admin only
-//   '/cost-types': { roles: ['admin'] },               // Admin only
-//   '/delivery-personnel': { roles: ['admin'] },       // Admin only
+//   '/settings': { roles: ['super-admin'] },
+//   '/logistics': {roles: ['super-admin']},                                  // Any authenticated user can access logistics
+//   '/product-types': { roles: ['super-admin'] },            // Admin only
+//   '/cost-types': { roles: ['super-admin'] },               // Admin only
+//   '/delivery-personnel': { roles: ['super-admin'] },       // Admin only
 //   '/home': {},                                       // Any authenticated user
 //   '/buying': {},                                     // Any authenticated user
 //   '/selling': {},                                    // Any authenticated user
@@ -29,7 +29,7 @@
 //   '/customer-ledger': {},                            // Any authenticated user
 //   '/supplier-ledger': {},                            // Any authenticated user
 //   '/daily-report-form': {},                          // Any authenticated user
-//   '/setup': { roles: ['admin'] },                    // Admin only
+//   '/setup': { roles: ['super-admin'] },                    // Admin only
 // };
 
 // /**
@@ -171,14 +171,14 @@ const ROUTE_PERMISSIONS = {
   '/inventory': { permissions: ['inventory'] },
   '/purchases': { permissions: ['purchases'] },
   '/expenses': { permissions: ['expenses'] },
-  '/users': { permissions: ['users'], roles: ['admin', 'manager'] },
+  '/users': { permissions: ['users'], roles: ['super-admin', 'admin'] },
   '/reports': { permissions: ['reports'] },
-  '/settings': { roles: ['admin'] },
-  '/logistics': {roles: ['admin']},                                  // Any authenticated user can access logistics
-  '/dispatch-orders': { roles: ['admin', 'manager'] }, // Admin and manager can access dispatch orders
-  '/product-types': { roles: ['admin'] },            // Admin only
-  '/cost-types': { roles: ['admin'] },               // Admin only
-  '/delivery-personnel': { roles: ['admin'] },       // Admin only
+  '/settings': { roles: ['super-admin'] },
+  '/logistics': {roles: ['super-admin']},                                  // Any authenticated user can access logistics
+  '/dispatch-orders': { roles: ['super-admin', 'admin'] }, // Admin and manager can access dispatch orders
+  '/product-types': { roles: ['super-admin'] },            // Admin only
+  '/cost-types': { roles: ['super-admin'] },               // Admin only
+  '/delivery-personnel': { roles: ['super-admin'] },       // Admin only
   '/home': {},                                       // Any authenticated user
   '/buying': {},                                     // Any authenticated user
   '/selling': {},                                    // Any authenticated user
@@ -186,7 +186,7 @@ const ROUTE_PERMISSIONS = {
   '/customer-ledger': {},                            // Any authenticated user
   '/supplier-ledger': {},                            // Any authenticated user
   '/daily-report-form': {},                          // Any authenticated user
-  '/setup': { roles: ['admin'] },                    // Admin only
+  '/setup': { roles: ['super-admin'] },                    // Admin only
 };
 
 /**

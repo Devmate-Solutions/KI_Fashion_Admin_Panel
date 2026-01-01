@@ -25,18 +25,28 @@ export function AuthProvider({ children }) {
 
   // Handle redirects based on auth status
   useEffect(() => {
-    if (!isLoading) {
-      const isPublicPath = PUBLIC_PATHS.some(path => pathname.startsWith(path));
-      
-      // If not authenticated and trying to access protected route
-      if (!isAuthenticated && !isPublicPath) {
-        router.push('/login');
-      } 
-      // If authenticated and on login/register page
-      else if (isAuthenticated && isPublicPath) {
-        router.push('/home');
-      }
+    // Don't redirect while loading or if pathname is not yet available
+    if (isLoading || !pathname) {
+      return;
     }
+
+    const isPublicPath = PUBLIC_PATHS.some(path => pathname.startsWith(path));
+    
+    // If not authenticated and trying to access protected route
+    if (!isAuthenticated && !isPublicPath) {
+      router.push('/login');
+      return;
+    } 
+    
+    // If authenticated and on login/register page, redirect to home
+    // Only redirect if we're actually on a public auth page
+    if (isAuthenticated && isPublicPath) {
+      router.push('/home');
+      return;
+    }
+    
+    // Don't redirect if user is authenticated and on a protected route
+    // Let them access the route they requested
   }, [isAuthenticated, isLoading, pathname, router]);
 
   // Show loading spinner while checking authentication

@@ -20,7 +20,7 @@ import { productsAPI } from "@/lib/api/endpoints/products"
 import { usersAPI } from "@/lib/api/endpoints/users"
 import { logisticsCompaniesAPI } from "@/lib/api/endpoints/logisticsCompanies"
 import { MultiSelect } from "@/components/ui/multi-select"
-import { SEASON_OPTIONS } from "@/lib/constants/seasons"
+import { SEASON_OPTIONS, normalizeSeasonArray } from "@/lib/constants/seasons"
 import ImageGallery from "@/components/ui/ImageGallery"
 import PacketConfigurationModal from "@/components/modals/PacketConfigurationModal"
 
@@ -734,7 +734,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
             const productData = {
               name: row.productName.trim(),
               sku: (row.productCode || `AUTO-${Date.now()}`).toUpperCase(),
-              season: Array.isArray(row.season) ? row.season : [],
+              season: normalizeSeasonArray(row.season || []),
               category: 'General', // Default category, can be updated later
               size: Array.isArray(row.size) && row.size.length > 0
                 ? row.size.join(', ')
@@ -851,7 +851,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           itemPayload.productCode = row.productCode
         }
         if (row.season && Array.isArray(row.season) && row.season.length > 0) {
-          itemPayload.season = row.season
+          itemPayload.season = normalizeSeasonArray(row.season)
         }
         if (costPrice > 0) {
           itemPayload.costPrice = costPrice
@@ -991,10 +991,15 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
             <Label htmlFor="exchange-rate">Exchange Rate</Label>
             <Input
               id="exchange-rate"
-              type="number"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               value={exchangeRate}
-              onChange={(e) => setExchangeRate(Number(e.target.value))}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Allow only numbers and one decimal point
+                const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                setExchangeRate(sanitized === "" ? "" : Number(sanitized));
+              }}
             />
             <p className="text-xs text-muted-foreground">
               Rate to convert supplier currency to base currency (£)
@@ -1005,10 +1010,15 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
             <Label htmlFor="percentage">Percentage (%)</Label>
             <Input
               id="percentage"
-              type="number"
-              step="0.1"
+              type="text"
+              inputMode="decimal"
               value={percentage}
-              onChange={(e) => setPercentage(Number(e.target.value))}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Allow only numbers and one decimal point
+                const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                setPercentage(sanitized === "" ? "" : Number(sanitized));
+              }}
             />
           </div>
 
@@ -1411,11 +1421,15 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   {/* Cost Price */}
                   <td className="p-2">
                     <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       value={row.costPrice}
-                      onChange={(e) => updateRow(row.id, "costPrice", Number(e.target.value))}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow only numbers and one decimal point
+                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                        updateRow(row.id, "costPrice", sanitized === "" ? "" : Number(sanitized));
+                      }}
                       className="h-8 text-sm text-right tabular-nums"
                     />
                   </td>
@@ -1595,10 +1609,15 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   {/* Total Quantity */}
                   <td className="p-2">
                     <Input
-                      type="number"
-                      min="1"
+                      type="text"
+                      inputMode="numeric"
                       value={row.quantity}
-                      onChange={(e) => updateRow(row.id, "quantity", Number(e.target.value) || 0)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow only numbers
+                        const sanitized = value.replace(/[^0-9]/g, '');
+                        updateRow(row.id, "quantity", sanitized === "" ? "" : Number(sanitized) || 0);
+                      }}
                       className="h-8 text-sm text-right tabular-nums"
                     />
                   </td>
@@ -1662,10 +1681,15 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               <Label htmlFor="total-boxes">Number of Boxes</Label>
               <Input
                 id="total-boxes"
-                type="number"
-                min="0"
+                type="text"
+                inputMode="numeric"
                 value={totalBoxes}
-                onChange={(e) => setTotalBoxes(Number(e.target.value) || 0)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow only numbers
+                  const sanitized = value.replace(/[^0-9]/g, '');
+                  setTotalBoxes(sanitized === "" ? "" : Number(sanitized) || 0);
+                }}
                 className="mt-1"
               />
               <p className="text-xs text-muted-foreground mt-1">
@@ -1753,10 +1777,15 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               <Label htmlFor="discount">Discount</Label>
               <Input
                 id="discount"
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 value={discount}
-                onChange={(e) => setDiscount(Number(e.target.value || 0))}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow only numbers and one decimal point
+                  const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                  setDiscount(sanitized === "" ? "" : Number(sanitized || 0));
+                }}
                 onKeyDown={(e) => handlePaymentKeyDown(e, "discount")}
                 className="text-lg"
               />
@@ -1769,10 +1798,15 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               <Input
                 id="cash"
                 ref={cashInputRef}
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 value={cash}
-                onChange={(e) => setCash(Number(e.target.value || 0))}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow only numbers and one decimal point
+                  const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                  setCash(sanitized === "" ? "" : Number(sanitized || 0));
+                }}
                 onKeyDown={(e) => handlePaymentKeyDown(e, "cash")}
                 className="text-lg"
               />
@@ -1786,10 +1820,15 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               <Input
                 id="bank"
                 ref={bankInputRef}
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 value={bank}
-                onChange={(e) => setBank(Number(e.target.value || 0))}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow only numbers and one decimal point
+                  const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                  setBank(sanitized === "" ? "" : Number(sanitized || 0));
+                }}
                 onKeyDown={(e) => handlePaymentKeyDown(e, "bank")}
                 className="text-lg"
               />

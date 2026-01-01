@@ -1252,12 +1252,18 @@ export default function SupplierLedgerPage() {
                 <Label htmlFor="mark-paid-amount">Payment Amount <span className="text-red-500">*</span></Label>
                 <Input
                   id="mark-paid-amount"
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   step="0.01"
                   min="0.01"
                   max={markAsPaidDialog.balance.amount}
                   value={markAsPaidForm.amount}
-                  onChange={(e) => setMarkAsPaidForm({ ...markAsPaidForm, amount: e.target.value })}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow only numbers and one decimal point
+                    const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                    setMarkAsPaidForm({ ...markAsPaidForm, amount: sanitized });
+                  }}
                   placeholder="Enter payment amount"
                   disabled={isMarkingAsPaid}
                 />
@@ -1379,12 +1385,18 @@ export default function SupplierLedgerPage() {
                     <Label htmlFor="amount">Payment Amount <span className="text-red-500">*</span></Label>
                     <Input
                       id="amount"
-                      type="number"
+                      type="text"
+                  inputMode="decimal"
                       step="0.01"
                       min="0.01"
                       max={selectedDispatchOrder ? selectedDispatchOrder.remainingBalance : (supplierDetails?.balance || undefined)}
                       value={paymentForm.amount}
-                      onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow only numbers and one decimal point
+                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                        setPaymentForm({ ...paymentForm, amount: sanitized });
+                      }}
                       placeholder="Enter payment amount"
                       disabled={isSubmittingPayment}
                     />

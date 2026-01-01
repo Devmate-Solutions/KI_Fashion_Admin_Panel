@@ -175,10 +175,15 @@ export default function CompositionEditor({
                   return (
                     <td key={size} className="px-2 py-2 border-slate-200">
                       <Input
-                        type="number"
-                        min="0"
+                        type="text"
+                        inputMode="numeric"
                         value={value === 0 ? '' : value}
-                        onChange={(e) => updateCell(color, size, e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Allow only numbers
+                          const sanitized = value.replace(/[^0-9]/g, '');
+                          updateCell(color, size, sanitized);
+                        }}
                         disabled={readOnly}
                         placeholder="0"
                         className={`text-center text-sm h-9 ${value > 0 ? 'bg-blue-50 border-blue-300 font-semibold' : ''}`}

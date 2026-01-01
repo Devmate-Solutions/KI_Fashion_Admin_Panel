@@ -713,25 +713,35 @@ export function EditBuyerForm({ open, buyer, onClose, onSubmit, loading = false 
                 <div>
                   <label className="block text-sm font-medium mb-1">Credit Limit</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={formData.creditLimit}
-                    onChange={(e) => handleChange('creditLimit', parseFloat(e.target.value) || 0)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow only numbers and one decimal point
+                      const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                      handleChange('creditLimit', sanitized === "" ? 0 : parseFloat(sanitized) || 0);
+                    }}
                     disabled={loading}
                     className="w-full px-3 py-2 border border-input rounded-md bg-background disabled:opacity-50"
-                    min="0"
-                    step="0.01"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium mb-1">Discount Rate (%)</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={formData.discountRate}
-                    onChange={(e) => handleChange('discountRate', parseFloat(e.target.value) || 0)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow only numbers and one decimal point
+                      const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                      handleChange('discountRate', sanitized === "" ? 0 : parseFloat(sanitized) || 0);
+                    }}
                     disabled={loading}
                     className="w-full px-3 py-2 border border-input rounded-md bg-background disabled:opacity-50"
-                    min="0"
+                  />
                     max="100"
                     step="0.01"
                   />

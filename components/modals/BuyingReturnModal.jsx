@@ -256,11 +256,17 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
                       </td>
                       <td className="p-2">
                         <Input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
                           min="1"
                           max={product.currentStock}
                           value={product.quantity}
-                          onChange={(e) => updateProduct(product.productId, "quantity", Number(e.target.value))}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            // Allow only numbers
+                            const sanitized = value.replace(/[^0-9]/g, '');
+                            updateProduct(product.productId, "quantity", sanitized === "" ? "" : Number(sanitized));
+                          }}
                           className="h-8 text-right"
                         />
                       </td>

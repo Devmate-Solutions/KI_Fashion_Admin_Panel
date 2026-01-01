@@ -25,7 +25,7 @@ export default function UsersPage() {
 
   // Get current user to check if admin
   const user = useAuthStore((state) => state.user)
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = user?.role === 'super-admin'
 
   // Fetch all users - we'll filter client-side for now
   const { data: allUsers = [], isLoading } = useUsers()
@@ -46,7 +46,7 @@ export default function UsersPage() {
     if (activeTab === 0) {
       // Employees tab: admin, manager, employee, accountant
       return allUsers.filter(user => 
-        ['admin', 'manager', 'employee', 'accountant'].includes(user.role)
+        ['super-admin', 'admin', 'employee', 'accountant'].includes(user.role)
       )
     } else if (activeTab === 1) {
       // Suppliers tab: role='supplier'

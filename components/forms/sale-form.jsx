@@ -18,7 +18,7 @@ import { salesAPI } from "@/lib/api/endpoints/sales"
 import { productsAPI } from "@/lib/api/endpoints/products"
 import { useBuyers } from "@/lib/hooks/useBuyers"
 import { MultiSelect } from "@/components/ui/multi-select"
-import { SEASON_OPTIONS } from "@/lib/constants/seasons"
+import { SEASON_OPTIONS, normalizeSeasonArray } from "@/lib/constants/seasons"
 import ProductImageGallery from "@/components/ui/ProductImageGallery"
 import ProductSelectionModal from "@/components/modals/ProductSelectionModal"
 
@@ -434,7 +434,7 @@ export default function SaleForm({ onSave }) {
             const productData = {
               name: row.productName.trim(),
               sku: (row.productCode || `AUTO-${Date.now()}`).toUpperCase(),
-              season: Array.isArray(row.season) ? row.season : [],
+              season: normalizeSeasonArray(row.season || []),
               category: 'General',
               specifications: {
                 color: row.primaryColor || undefined
@@ -861,11 +861,17 @@ export default function SaleForm({ onSave }) {
                   {/* Unit Price */}
                   <td className="p-2">
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       step="0.01"
                       min="0"
                       value={row.unitPrice}
-                      onChange={(e) => updateRow(row.id, "unitPrice", Number(e.target.value))}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow only numbers and one decimal point
+                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                        updateRow(row.id, "unitPrice", sanitized === "" ? "" : Number(sanitized));
+                      }}
                       onBlur={(e) => {
                         const val = parseFloat(e.target.value)
                         if (!isNaN(val)) {
@@ -879,10 +885,15 @@ export default function SaleForm({ onSave }) {
                   {/* Quantity */}
                   <td className="p-2">
                     <Input
-                      type="number"
-                      min="1"
+                      type="text"
+                      inputMode="numeric"
                       value={row.quantity}
-                      onChange={(e) => updateRow(row.id, "quantity", Number(e.target.value))}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow only numbers
+                        const sanitized = value.replace(/[^0-9]/g, '');
+                        updateRow(row.id, "quantity", sanitized === "" ? "" : Number(sanitized));
+                      }}
                       className="h-8 text-sm text-right tabular-nums"
                     />
                   </td>
@@ -947,10 +958,16 @@ export default function SaleForm({ onSave }) {
               <Label htmlFor="discount">Discount</Label>
               <Input
                 id="discount"
-                type="number"
+                type="text"
+                inputMode="numeric"
                 step="0.01"
                 value={discount}
-                onChange={(e) => setDiscount(Number(e.target.value || 0))}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow only numbers and one decimal point
+                  const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                  setDiscount(sanitized === "" ? "" : Number(sanitized || 0));
+                }}
                 onKeyDown={(e) => handlePaymentKeyDown(e, "discount")}
                 placeholder="0.00"
                 className="text-lg"
@@ -961,10 +978,16 @@ export default function SaleForm({ onSave }) {
               <Input
                 id="cash"
                 ref={cashInputRef}
-                type="number"
+                type="text"
+                inputMode="numeric"
                 step="0.01"
                 value={cash}
-                onChange={(e) => setCash(Number(e.target.value || 0))}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow only numbers and one decimal point
+                  const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                  setCash(sanitized === "" ? "" : Number(sanitized || 0));
+                }}
                 onKeyDown={(e) => handlePaymentKeyDown(e, "cash")}
                 placeholder="0.00"
                 className="text-lg"
@@ -979,10 +1002,16 @@ export default function SaleForm({ onSave }) {
               <Input
                 id="bank"
                 ref={bankInputRef}
-                type="number"
+                type="text"
+                inputMode="numeric"
                 step="0.01"
                 value={bank}
-                onChange={(e) => setBank(Number(e.target.value || 0))}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow only numbers and one decimal point
+                  const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                  setBank(sanitized === "" ? "" : Number(sanitized || 0));
+                }}
                 onKeyDown={(e) => handlePaymentKeyDown(e, "bank")}
                 placeholder="0.00"
                 className="text-lg"

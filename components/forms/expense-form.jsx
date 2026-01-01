@@ -214,10 +214,16 @@ export default function ExpenseForm({ onSave }) {
             <Label htmlFor="exchange-rate">Exchange Rate</Label>
             <Input
               id="exchange-rate"
-              type="number"
+              type="text"
+              inputMode="decimal"
               step="0.01"
               value={exchangeRate}
-              onChange={(e) => setExchangeRate(Number(e.target.value))}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Allow only numbers and one decimal point
+                const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                setExchangeRate(sanitized === "" ? "" : Number(sanitized));
+              }}
             />
           </div>
 
@@ -225,7 +231,8 @@ export default function ExpenseForm({ onSave }) {
             <Label htmlFor="number-of-items">Number of Items</Label>
             <Input
               id="number-of-items"
-              type="number"
+              type="text"
+              inputMode="numeric"
               value={numberOfItems}
               readOnly
               disabled
@@ -238,10 +245,16 @@ export default function ExpenseForm({ onSave }) {
             <Label htmlFor="euro">Euro</Label>
             <Input
               id="euro"
-              type="number"
+              type="text"
+              inputMode="decimal"
               step="0.01"
               value={euro}
-              onChange={(e) => setEuro(Number(e.target.value))}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Allow only numbers and one decimal point
+                const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                setEuro(sanitized === "" ? "" : Number(sanitized));
+              }}
             />
           </div>
 
@@ -249,10 +262,16 @@ export default function ExpenseForm({ onSave }) {
             <Label htmlFor="pound">Pound</Label>
             <Input
               id="pound"
-              type="number"
+              type="text"
+              inputMode="decimal"
               step="0.01"
               value={pound}
-              onChange={(e) => setPound(Number(e.target.value))}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Allow only numbers and one decimal point
+                const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                setPound(sanitized === "" ? "" : Number(sanitized));
+              }}
             />
           </div>
 
@@ -260,7 +279,8 @@ export default function ExpenseForm({ onSave }) {
             <Label htmlFor="total-cost">Total Cost</Label>
             <Input
               id="total-cost"
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={totals.totalCost.toFixed(2)}
               readOnly
               disabled
@@ -273,10 +293,16 @@ export default function ExpenseForm({ onSave }) {
             <Label htmlFor="percentage">Percentage (%)</Label>
             <Input
               id="percentage"
-              type="number"
+              type="text"
+              inputMode="decimal"
               step="0.1"
               value={percentage}
-              onChange={(e) => setPercentage(Number(e.target.value))}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Allow only numbers and one decimal point
+                const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                setPercentage(sanitized === "" ? "" : Number(sanitized));
+              }}
             />
           </div>
         </div>
@@ -333,24 +359,36 @@ export default function ExpenseForm({ onSave }) {
                   </td>
                   <td className="p-2">
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       value={row.quantity}
-                      onChange={(e) => updateRow(row.id, "quantity", Number(e.target.value))}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow only numbers
+                        const sanitized = value.replace(/[^0-9]/g, '');
+                        updateRow(row.id, "quantity", sanitized === "" ? "" : Number(sanitized));
+                      }}
                       className="text-right min-w-[100px]"
                     />
                   </td>
                   <td className="p-2">
                     <Input
-                      type="number"
-                      step="0.01"
+                      type="text"
+              inputMode="decimal"
                       value={row.unitPrice}
-                      onChange={(e) => updateRow(row.id, "unitPrice", Number(e.target.value))}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow only numbers and one decimal point
+                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                        updateRow(row.id, "unitPrice", sanitized === "" ? "" : Number(sanitized));
+                      }}
                       className="text-right min-w-[120px]"
                     />
                   </td>
                   <td className="p-2">
                     <Input
-                      type="number"
+                      type="text"
+              inputMode="decimal"
                       value={row.totalPrice.toFixed(2)}
                       readOnly
                       disabled

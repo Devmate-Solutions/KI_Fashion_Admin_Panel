@@ -211,7 +211,7 @@ export const useAuthStore = create((set, get) => ({
     if (!user) return false;
     
     // Admin has all permissions
-    if (user.role === 'admin') return true;
+    if (user.role === 'super-admin') return true;
     
     return user.permissions?.includes(permission);
   },
@@ -237,7 +237,7 @@ export const useAuthStore = create((set, get) => ({
     if (!user) return false;
     
     // Admin has all permissions
-    if (user.role === 'admin') return true;
+    if (user.role === 'super-admin') return true;
     
     return permissions.some(permission => user.permissions?.includes(permission));
   }

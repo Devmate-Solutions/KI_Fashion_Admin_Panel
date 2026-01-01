@@ -177,12 +177,16 @@ export function LogisticsCompanyForm({ open, onClose, onSubmit, loading = false,
             </Label>
             <Input
               id="boxRate"
-              type="number"
-              min="0"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               placeholder="0.00"
               value={formData.boxRate}
-              onChange={(e) => handleChange('boxRate', e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Allow only numbers and one decimal point
+                const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                handleChange('boxRate', sanitized);
+              }}
               className={errors.boxRate ? 'border-red-500' : ''}
             />
             {errors.boxRate && (

@@ -273,11 +273,19 @@ export default function ReturnItemsPage() {
                                         <div className="flex items-center gap-4">
                                             <Input
                                                 id="quantity"
-                                                type="number"
+                                                type="text"
+                                                inputMode="numeric"
                                                 min="1"
                                                 max={selectedItem.availableForReturn}
                                                 className="text-lg font-medium"
                                                 {...register("quantity", { required: true, min: 1, max: selectedItem.availableForReturn })}
+                                                onChange={(e) => {
+                                                  const value = e.target.value;
+                                                  // Allow only numbers
+                                                  const sanitized = value.replace(/[^0-9]/g, '');
+                                                  e.target.value = sanitized;
+                                                  register("quantity", { required: true, min: 1, max: selectedItem.availableForReturn }).onChange(e);
+                                                }}
                                             />
                                             <div className="text-sm text-muted-foreground whitespace-nowrap">
                                                 / {selectedItem.availableForReturn} avail

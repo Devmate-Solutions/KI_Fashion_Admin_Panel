@@ -312,7 +312,12 @@ export default function BuyingReturnForm({ onSave }) {
                       min="1"
                       max={item.availableQty}
                       value={item.returnQty}
-                      onChange={(e) => updateItem(item.id, "returnQty", Number(e.target.value))}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow only numbers
+                        const sanitized = value.replace(/[^0-9]/g, '');
+                        updateItem(item.id, "returnQty", sanitized === "" ? "" : Number(sanitized));
+                      }}
                       className="h-8 text-right tabular-nums"
                     />
                   </td>
