@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import DataTable from "@/components/data-table"
 import { useDispatchOrders } from "@/lib/hooks/useDispatchOrders"
+import { useAuthStore } from "@/store/store"
 import { Eye, Plus } from "lucide-react"
 
 const statusStyles = {
@@ -21,11 +22,16 @@ const statusStyles = {
 
 export default function DispatchOrdersPage() {
   const router = useRouter()
+  const { user } = useAuthStore()
+  const isSuperAdmin = user?.role === 'super-admin'
 
   const params = useMemo(() => {
-    const p = { limit: 100, status: 'pending' }
+    // Super-admin can see both 'pending' and 'pending-approval' orders
+    // Admin can only see 'pending' orders
+    const status = isSuperAdmin ? 'pending,pending-approval' : 'pending'
+    const p = { limit: 100, status }
     return p
-  }, [])
+  }, [isSuperAdmin])
 
   const { data: dispatchOrders = [], isLoading } = useDispatchOrders(params)
 
@@ -147,7 +153,9 @@ export default function DispatchOrdersPage() {
         <div>
           <h1 className="text-2xl font-semibold">Dispatch Orders</h1>
           <p className="text-sm text-muted-foreground">
-            Manage pending dispatch orders from suppliers. Confirmed orders appear in the Buying page.
+            {isSuperAdmin 
+              ? "Manage pending and pending-approval dispatch orders from suppliers. Confirmed orders appear in the Buying page."
+              : "Manage pending dispatch orders from suppliers. Confirmed orders appear in the Buying page."}
           </p>
         </div>
       </div>

@@ -48,15 +48,15 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
   const [isLoadingSuppliers, setIsLoadingSuppliers] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState(null)
-  
+
   // Suppliers (from API)
   const [suppliers, setSuppliers] = useState(() =>
     Array.isArray(initialSuppliers)
       ? initialSuppliers.map((s) => ({
-          id: s?._id || s?.id,
-          name: s?.name,
-          _original: s,
-        }))
+        id: s?._id || s?.id,
+        name: s?.name,
+        _original: s,
+      }))
       : []
   )
   const [supplierId, setSupplierId] = useState("")
@@ -76,14 +76,14 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
   const [products, setProducts] = useState([])
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [productsError, setProductsError] = useState(null)
-  
-  
+
+
   // Product code lookup state (no status indicators)
   const lookupTimeoutRefs = useRef({}) // Track debounce timeouts per row
-  
+
   // Product name lookup state (no status indicators)
   const nameLookupTimeoutRefs = useRef({}) // Track debounce timeouts per row
-  
+
   // Metadata fields (removed tc and TC_OPTIONS)
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0])
   const [exchangeRate, setExchangeRate] = useState(1.0)
@@ -127,12 +127,12 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
   const [discount, setDiscount] = useState(0)
   const [cash, setCash] = useState(0)
   const [bank, setBank] = useState(0)
-  
+
   // Refs for keyboard navigation
   const cashInputRef = useRef(null)
   const bankInputRef = useRef(null)
   const saveButtonRef = useRef(null)
-  
+
   // Refs for file inputs (one per row)
   const fileInputRefs = useRef({})
 
@@ -147,9 +147,9 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       try {
         setIsLoadingSuppliers(true)
         setError(null)
-        
+
         // Fetch all suppliers (not just those with user accounts)
-        const response = await suppliersAPI.getAll({ 
+        const response = await suppliersAPI.getAll({
           isActive: true,
           limit: 1000
         })
@@ -199,7 +199,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       try {
         setIsLoadingLogisticsCompanies(true)
         const response = await logisticsCompaniesAPI.getAll({ isActive: true, limit: 1000 })
-        
+
         let companiesList = []
         if (response?.data?.data) {
           companiesList = Array.isArray(response.data.data) ? response.data.data : []
@@ -254,16 +254,16 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       setError('Please enter supplier name')
       return
     }
-    
+
     if (!newSupplierPhone.trim()) {
       setError('Please enter supplier phone')
       return
     }
-    
+
     try {
       setIsCreatingSupplier(true)
       setError(null)
-      
+
       // Create supplier with minimal fields (name and phone)
       const response = await suppliersAPI.create({
         name: newSupplierName.trim(),
@@ -272,7 +272,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       })
 
       const newSupplier = response.data?.data || response.data
-      
+
       if (newSupplier) {
         // Add new supplier to the list
         const normalizedSupplier = {
@@ -284,7 +284,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           supplierId: newSupplier._id || newSupplier.id,
           _original: newSupplier
         }
-        
+
         setSuppliers(prev => [...prev, normalizedSupplier])
         setSupplierId(String(normalizedSupplier.id))
         setNewSupplierName("")
@@ -294,10 +294,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       }
     } catch (err) {
       console.error('Error creating supplier:', err)
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data?.error || 
-                          err.message || 
-                          'Failed to create supplier. Please try again.'
+      const errorMessage = err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        'Failed to create supplier. Please try again.'
       setError(errorMessage)
     } finally {
       setIsCreatingSupplier(false)
@@ -339,7 +339,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         // Supplier Payment Amount = costPrice (NO exchange rate, NO profit margin) - what admin pays supplier in supplier currency
         const supplierPaymentAmount = costPrice
         const supplierPaymentTotal = supplierPaymentAmount * quantity
-        
+
         // Landed Price = (Cost Price / Exchange Rate) × (1 + Percentage/100) - for inventory valuation in base currency
         const landedPrice = (costPrice / exRate) * (1 + (percent / 100))
         const landedTotal = landedPrice * quantity
@@ -368,7 +368,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           // Formula: costPrice × quantity (in supplier currency)
           const supplierPaymentAmount = costPrice
           const supplierPaymentTotal = supplierPaymentAmount * quantity
-          
+
           // Landed Price (for inventory valuation - WITH profit margin)
           // Formula: (cost price / exchange rate) × (1 + percentage/100)
           const landedPrice = (costPrice / exRate) * (1 + (percent / 100))
@@ -390,13 +390,13 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
   const handleCellClick = (rowId, fieldName) => {
     const row = rows.find(r => r.id === rowId)
     if (!row) return
-    
+
     setEditingCell({ rowId, fieldName })
     // For arrays, show empty string to start adding
     if (fieldName === 'primaryColor' || fieldName === 'size') {
       setEditValue("")
     } else {
-      const currentValue = Array.isArray(row[fieldName]) 
+      const currentValue = Array.isArray(row[fieldName])
         ? row[fieldName].join(', ')
         : (row[fieldName] || "")
       setEditValue(currentValue)
@@ -418,10 +418,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
     if (fieldName === 'primaryColor' || fieldName === 'size') {
       // For arrays, add the new value to existing array
-      const currentArray = Array.isArray(row[fieldName]) 
-        ? row[fieldName] 
+      const currentArray = Array.isArray(row[fieldName])
+        ? row[fieldName]
         : (row[fieldName] ? [row[fieldName]] : [])
-      
+
       if (trimmedValue && !currentArray.includes(trimmedValue)) {
         updateRow(rowId, fieldName, [...currentArray, trimmedValue])
       } else {
@@ -443,7 +443,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
   function removeRow(id) {
     setRows((r) => r.filter((x) => x.id !== id))
-    
+
     // Clean up images when row is removed
     const newImages = { ...productImages }
     const newPreviews = { ...imagePreviews }
@@ -451,12 +451,12 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
     delete newPreviews[id]
     setProductImages(newImages)
     setImagePreviews(newPreviews)
-    
+
     // Clean up packet configuration
     const newPackets = { ...productPackets }
     delete newPackets[id]
     setProductPackets(newPackets)
-    
+
     // Clean up file input ref
     delete fileInputRefs.current[id]
   }
@@ -596,24 +596,24 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       const quantity = Number(row.quantity || 0)
       return sum + (costPrice * quantity)
     }, 0)
-    
+
     // Calculate landed total (for inventory valuation - WITH profit margin)
     const grandTotal = rows.reduce((sum, row) => sum + Number(row.landedTotal || 0), 0)
-    
+
     // Discount applies to supplierPaymentTotal (what admin owes supplier), not landed total
     const discountAmount = Number(discount || 0)
     const supplierPaymentAfterDiscount = Math.max(0, supplierPaymentTotal - discountAmount)
-    
+
     const paid = Number(cash || 0) + Number(bank || 0)
     // Remaining balance = supplierPaymentTotal - discount - paid
     const remaining = Math.max(0, supplierPaymentAfterDiscount - paid)
-    return { 
-      supplierPaymentTotal, 
-      grandTotal, 
+    return {
+      supplierPaymentTotal,
+      grandTotal,
       discountAmount,
       supplierPaymentAfterDiscount,
-      paid, 
-      remaining 
+      paid,
+      remaining
     }
   }, [rows, discount, cash, bank])
 
@@ -644,12 +644,12 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       setError('Please select a supplier')
       return
     }
-    
+
     if (rows.length === 0) {
       setError('Please add at least one product')
       return
     }
-    
+
     // Validate that all rows have required fields
     // Product ID is optional if product name is provided (manual entry)
     const invalidRows = rows.filter(row =>
@@ -685,7 +685,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       // For rows without productId, try to find product by name or code
       const itemsWithProducts = await Promise.all(rows.map(async (row) => {
         let productId = row.productId
-        
+
         // If no productId but we have product name or code, try to find it
         if (!productId && (row.productName || row.productCode)) {
           try {
@@ -702,7 +702,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 if (row.productName) {
                   const nameResponse = await productsAPI.search(row.productName)
                   const productsList = nameResponse.data?.data || nameResponse.data || []
-                  const product = productsList.find(p => 
+                  const product = productsList.find(p =>
                     p.name?.toLowerCase() === row.productName.trim().toLowerCase()
                   ) || productsList[0]
                   if (product) {
@@ -714,7 +714,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               // Try name search
               const nameResponse = await productsAPI.search(row.productName)
               const productsList = nameResponse.data?.data || nameResponse.data || []
-              const product = productsList.find(p => 
+              const product = productsList.find(p =>
                 p.name?.toLowerCase() === row.productName.trim().toLowerCase()
               ) || productsList[0]
               if (product) {
@@ -725,7 +725,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
             console.error('Error searching for product:', searchErr)
           }
         }
-        
+
         // If still no productId, create the product automatically
         if (!productId) {
           try {
@@ -761,18 +761,18 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
             }
           } catch (createErr) {
             console.error('Error creating product:', createErr)
-            const errorMessage = createErr.response?.data?.message || 
-                                createErr.response?.data?.error || 
-                                createErr.message || 
-                                `Failed to create product "${row.productName}"`
+            const errorMessage = createErr.response?.data?.message ||
+              createErr.response?.data?.error ||
+              createErr.message ||
+              `Failed to create product "${row.productName}"`
             throw new Error(errorMessage)
           }
         }
-        
+
         // Upload images if any exist for this row
         let imageUrls = []
         const rowImages = productImages[row.id] || []
-        
+
         // Get existing images from previews (URLs that were already uploaded)
         const existingPreviews = imagePreviews[row.id] || {}
         const existingImageKeys = Object.keys(existingPreviews).filter(key => key.startsWith('existing-'))
@@ -784,19 +784,19 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           })
           .map(key => existingPreviews[key])
           .filter(url => url && typeof url === 'string' && url.trim() !== '')
-        
+
         imageUrls = [...existingUrls]
-        
+
         // Upload new images if product exists
         if (productId && rowImages.length > 0) {
           try {
             for (const imageFile of rowImages) {
               try {
                 const uploadResponse = await productsAPI.uploadImage(productId, imageFile)
-                const uploadedImageUrl = uploadResponse.data?.data?.imageUrl || 
-                                       uploadResponse.data?.imageUrl ||
-                                       uploadResponse.data?.data?.product?.images?.[0]
-                
+                const uploadedImageUrl = uploadResponse.data?.data?.imageUrl ||
+                  uploadResponse.data?.imageUrl ||
+                  uploadResponse.data?.data?.product?.images?.[0]
+
                 if (uploadedImageUrl) {
                   imageUrls.push(uploadedImageUrl)
                   console.log(`Uploaded image for product ${productId}: ${imageFile.name}`)
@@ -806,10 +806,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               } catch (uploadErr) {
                 console.error(`Error uploading image ${imageFile.name}:`, uploadErr)
                 // Continue with other images even if one fails
-                const errorMessage = uploadErr.response?.data?.message || 
-                                   uploadErr.response?.data?.error || 
-                                   uploadErr.message || 
-                                   'Failed to upload image'
+                const errorMessage = uploadErr.response?.data?.message ||
+                  uploadErr.response?.data?.error ||
+                  uploadErr.message ||
+                  'Failed to upload image'
                 console.warn(`Skipping image ${imageFile.name}: ${errorMessage}`)
               }
             }
@@ -818,18 +818,18 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
             // Continue anyway - images are optional
           }
         }
-        
+
         // Calculate supplier payment and landed price from cost price, exchange rate, and percentage
         const costPrice = Number(row.costPrice || 0)
         const exRate = Number(exchangeRate || 1)
         const percent = Number(percentage || 0)
         const quantity = Number(row.quantity)
-        
+
         // Supplier Payment Amount (what admin pays supplier - NO exchange rate, NO profit margin)
         // Formula: costPrice × quantity (in supplier currency)
         const supplierPaymentAmount = costPrice
         const supplierPaymentTotal = supplierPaymentAmount * quantity
-        
+
         // Landed Price (for inventory valuation - WITH profit margin)
         // Formula: (cost price / exchange rate) × (1 + percentage/100)
         const landedPrice = (costPrice / exRate) * (1 + (percent / 100))
@@ -842,7 +842,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           quantity: quantity,
           landedTotal: landedTotal,
         }
-        
+
         // Add optional fields only if they have values
         if (row.productName) {
           itemPayload.productName = row.productName
@@ -856,21 +856,21 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         if (costPrice > 0) {
           itemPayload.costPrice = costPrice
         }
-        
+
         // primaryColor can be array or string
         if (Array.isArray(row.primaryColor) && row.primaryColor.length > 0) {
           itemPayload.primaryColor = row.primaryColor
         } else if (typeof row.primaryColor === 'string' && row.primaryColor.trim()) {
           itemPayload.primaryColor = row.primaryColor.trim()
         }
-        
+
         // size can be array or string
         if (Array.isArray(row.size) && row.size.length > 0) {
           itemPayload.size = row.size
         } else if (typeof row.size === 'string' && row.size.trim()) {
           itemPayload.size = row.size.trim()
         }
-        
+
         if (row.material) {
           itemPayload.material = row.material
         }
@@ -880,14 +880,14 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         if (imageUrls.length > 0) {
           itemPayload.productImage = imageUrls
         }
-        
+
         // Add packet configuration if configured
         const packetConfig = productPackets[row.id]
         if (packetConfig && packetConfig.useVariantTracking) {
           itemPayload.useVariantTracking = true
           itemPayload.packets = packetConfig.packets || []
         }
-        
+
         return itemPayload
       }))
 
@@ -917,28 +917,28 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         items: itemsWithProducts,
         totalBoxes: Number(totalBoxes || 0),
       }
-      
+
       // Add logistics company if selected
       if (logisticsCompanyId) {
         payload.logisticsCompany = logisticsCompanyId
       }
 
       const response = await purchasesAPI.create(payload)
-      
+
       // Success! Call parent callback with response
       if (onSave) {
         onSave(response.data?.data || response.data)
       }
-      
+
     } catch (err) {
       console.error('Error saving purchase:', err)
-      
+
       // Extract error message from API response
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data?.error || 
-                          err.message || 
-                          'Failed to save purchase. Please try again.'
-      
+      const errorMessage = err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        'Failed to save purchase. Please try again.'
+
       setError(errorMessage)
     } finally {
       setIsSaving(false)
@@ -996,9 +996,15 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               value={exchangeRate}
               onChange={(e) => {
                 const value = e.target.value;
-                // Allow only numbers and one decimal point
-                const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                setExchangeRate(sanitized === "" ? "" : Number(sanitized));
+                // Allow only numbers and one decimal point, limit to 2 decimal places
+                let sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./, '$1');
+                // Limit to 2 decimal places
+                const parts = sanitized.split('.');
+                if (parts[1] && parts[1].length > 2) {
+                  sanitized = parts[0] + '.' + parts[1].slice(0, 2);
+                }
+                // Keep as string to allow typing decimal point
+                setExchangeRate(sanitized);
               }}
             />
             <p className="text-xs text-muted-foreground">
@@ -1015,9 +1021,15 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               value={percentage}
               onChange={(e) => {
                 const value = e.target.value;
-                // Allow only numbers and one decimal point
-                const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                setPercentage(sanitized === "" ? "" : Number(sanitized));
+                // Allow only numbers and one decimal point, limit to 2 decimal places
+                let sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./, '$1');
+                // Limit to 2 decimal places
+                const parts = sanitized.split('.');
+                if (parts[1] && parts[1].length > 2) {
+                  sanitized = parts[0] + '.' + parts[1].slice(0, 2);
+                }
+                // Keep as string to allow typing decimal point
+                setPercentage(sanitized);
               }}
             />
           </div>
@@ -1025,8 +1037,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           <div className="space-y-2">
             <Label htmlFor="supplier">Supplier</Label>
             <div className="flex gap-2">
-              <Select 
-                value={supplierId || undefined} 
+              <Select
+                value={supplierId || undefined}
                 onValueChange={setSupplierId}
                 disabled={isLoadingSuppliers}
               >
@@ -1036,7 +1048,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 <SelectContent>
                   {suppliers.map((s) => (
                     <SelectItem key={s.id} value={String(s.id)}>
-                      {s.name} {s.company ? `(${s.company})` : ''}
+                      {s.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1055,14 +1067,14 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="logistics-company">Logistics Company</Label>
-            <Select 
-              value={logisticsCompanyId || undefined} 
+            <Label htmlFor="logistics-company">Logistics Company <small>(Optional)</small></Label>
+            <Select
+              value={logisticsCompanyId || undefined}
               onValueChange={(value) => setLogisticsCompanyId(value || "")}
               disabled={isLoadingLogisticsCompanies}
             >
               <SelectTrigger id="logistics-company">
-                <SelectValue placeholder={isLoadingLogisticsCompanies ? "Loading..." : "Select logistics company (optional)..."} />
+                <SelectValue placeholder={isLoadingLogisticsCompanies ? "Loading..." : "Select company .."} />
               </SelectTrigger>
               <SelectContent>
                 {logisticsCompanies.map((company) => (
@@ -1127,54 +1139,54 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                       onChange={(e) => {
                         const name = e.target.value
                         updateRow(row.id, "productName", name)
-                        
+
                         // Debounced product name lookup (silent)
                         if (nameLookupTimeoutRefs.current[row.id]) {
                           clearTimeout(nameLookupTimeoutRefs.current[row.id])
                         }
-                        
+
                         if (name.trim().length >= 2) {
                           nameLookupTimeoutRefs.current[row.id] = setTimeout(async () => {
                             try {
                               const response = await productsAPI.search(name.trim())
                               const productsList = response.data?.data || response.data || []
-                              
+
                               // Find exact match first, then partial match
-                              let product = productsList.find(p => 
+                              let product = productsList.find(p =>
                                 p.name?.toLowerCase() === name.trim().toLowerCase()
                               ) || productsList[0]
-                              
+
                               if (product) {
                                 // Auto-populate product fields
                                 const costPrice = Number(
                                   product.pricing?.costPrice || product.costPrice || 0
                                 )
 
-                                setRows(prev => prev.map(r => 
+                                setRows(prev => prev.map(r =>
                                   r.id === row.id ? {
                                     ...r,
                                     productId: product._id || product.id,
                                     productName: product.name || name, // Use database name
                                     productCode: product.productCode || product.sku || r.productCode,
-                                    season: Array.isArray(product.season) 
-                                      ? product.season 
-                                      : product.season 
-                                        ? [product.season] 
-                                        : product.productType 
+                                    season: Array.isArray(product.season)
+                                      ? product.season
+                                      : product.season
+                                        ? [product.season]
+                                        : product.productType
                                           ? (Array.isArray(product.productType) ? product.productType : [product.productType])
                                           : (r.season || []),
                                     costPrice: costPrice || r.costPrice,
-                                    primaryColor: Array.isArray(product.primaryColor) 
-                                      ? product.primaryColor 
+                                    primaryColor: Array.isArray(product.primaryColor)
+                                      ? product.primaryColor
                                       : (product.color || product.primaryColor ? [product.color || product.primaryColor] : (r.primaryColor || [])),
-                                    size: Array.isArray(product.size) 
-                                      ? product.size 
+                                    size: Array.isArray(product.size)
+                                      ? product.size
                                       : (product.size || product.dimension ? [product.size || product.dimension] : (r.size || [])),
                                     photo: product.images?.[0] || product.image || r.photo,
                                     images: Array.isArray(product.images) ? product.images : (product.image ? [product.image] : [])
                                   } : r
                                 ))
-                                
+
                                 // Store existing images in previews
                                 if (product.images && Array.isArray(product.images) && product.images.length > 0) {
                                   const existingPreviews = {}
@@ -1199,7 +1211,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                         } else {
                           // Clear product ID if name is cleared
                           if (name.trim().length === 0) {
-                            setRows(prev => prev.map(r => 
+                            setRows(prev => prev.map(r =>
                               r.id === row.id ? { ...r, productId: "" } : r
                             ))
                           }
@@ -1217,49 +1229,49 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                       onChange={(e) => {
                         const code = e.target.value
                         updateRow(row.id, "productCode", code)
-                        
+
                         // Debounced product lookup (silent)
                         if (lookupTimeoutRefs.current[row.id]) {
                           clearTimeout(lookupTimeoutRefs.current[row.id])
                         }
-                        
+
                         if (code.trim().length >= 2) {
                           lookupTimeoutRefs.current[row.id] = setTimeout(async () => {
                             try {
                               const response = await productsAPI.lookupByCode(code.trim())
                               const product = response.data?.data || response.data
-                              
+
                               if (product) {
                                 // Auto-populate product fields
                                 const costPrice = Number(
                                   product.pricing?.costPrice || product.costPrice || 0
                                 )
 
-                                setRows(prev => prev.map(r => 
+                                setRows(prev => prev.map(r =>
                                   r.id === row.id ? {
                                     ...r,
                                     productId: product._id || product.id,
                                     productName: product.name || r.productName,
                                     productCode: product.productCode || product.sku || code,
-                                    season: Array.isArray(product.season) 
-                                      ? product.season 
-                                      : product.season 
-                                        ? [product.season] 
-                                        : product.productType 
+                                    season: Array.isArray(product.season)
+                                      ? product.season
+                                      : product.season
+                                        ? [product.season]
+                                        : product.productType
                                           ? (Array.isArray(product.productType) ? product.productType : [product.productType])
                                           : (r.season || []),
                                     costPrice: costPrice || r.costPrice,
-                                    primaryColor: Array.isArray(product.primaryColor) 
-                                      ? product.primaryColor 
+                                    primaryColor: Array.isArray(product.primaryColor)
+                                      ? product.primaryColor
                                       : (product.color || product.primaryColor ? [product.color || product.primaryColor] : (r.primaryColor || [])),
-                                    size: Array.isArray(product.size) 
-                                      ? product.size 
+                                    size: Array.isArray(product.size)
+                                      ? product.size
                                       : (product.size || product.dimension ? [product.size || product.dimension] : (r.size || [])),
                                     photo: product.images?.[0] || product.image || r.photo,
                                     images: Array.isArray(product.images) ? product.images : (product.image ? [product.image] : [])
                                   } : r
                                 ))
-                                
+
                                 // Store existing images in previews
                                 if (product.images && Array.isArray(product.images) && product.images.length > 0) {
                                   const existingPreviews = {}
@@ -1293,7 +1305,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                       const existingPreviews = imagePreviews[row.id] || {}
                       const existingImageKeys = Object.keys(existingPreviews).filter(key => key.startsWith('existing-'))
                       const newFiles = productImages[row.id] || []
-                      
+
                       // Get all images for gallery
                       const allImages = [
                         ...existingImageKeys
@@ -1333,7 +1345,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                       return (
                         <div className="relative">
                           {allImages.length === 0 ? (
-                            <div 
+                            <div
                               className="h-12 w-12 flex items-center justify-center rounded border border-border bg-muted cursor-pointer hover:border-primary transition-colors"
                               onClick={() => {
                                 const input = fileInputRefs.current[row.id]
@@ -1941,7 +1953,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 setShowAddSupplier(false)
                 setNewSupplierName("")
                 setNewSupplierPhone("")
-        setNewSupplierPhoneAreaCode("")
+                setNewSupplierPhoneAreaCode("")
               }}
               disabled={isCreatingSupplier}
             >
@@ -1961,7 +1973,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       {imageGalleryState && (() => {
         const rowId = imageGalleryState.rowId
         const row = rows.find(r => r.id === rowId)
-        
+
         return (
           <ImageGallery
             key={`gallery-${rowId}-${imageGalleryState.images.length}`}
@@ -1970,7 +1982,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
             onClose={() => setImageGalleryState(null)}
             onRemove={(imageId) => {
               const rowImages = imageGalleryState.images
-              
+
               if (imageId.startsWith('existing-') || imageId.startsWith('fallback-')) {
                 const updatedPreviews = { ...imagePreviews }
                 if (updatedPreviews[rowId]) {
@@ -1983,10 +1995,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   }
                 }
                 setImagePreviews(updatedPreviews)
-                setRows(prev => prev.map(r => 
+                setRows(prev => prev.map(r =>
                   r.id === rowId ? { ...r, photo: null, images: [] } : r
                 ))
-                
+
                 const updatedImages = rowImages.filter(img => img.id !== imageId)
                 if (updatedImages.length === 0) {
                   setImageGalleryState(null)
@@ -2020,13 +2032,13 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   const existingPreviews = imagePreviews[rowId] || {}
                   const existingImageKeys = Object.keys(existingPreviews).filter(key => key.startsWith('existing-'))
                   const newFiles = productImages[rowId] || []
-                  
+
                   // Check if all new files have previews ready
                   const allPreviewsReady = newFiles.every(file => {
                     const fileId = getFileId(file)
                     return existingPreviews[fileId]
                   })
-                  
+
                   if (allPreviewsReady || attempt >= 10) {
                     // All previews ready or max attempts reached
                     const updatedImages = [
@@ -2060,8 +2072,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
             title={`Product Images - ${row?.productName || row?.productCode || 'Product'}`}
           />
         )
-          })()}
-      
+      })()}
+
       {/* Packet Configuration Modal */}
       {packetModalOpen && packetModalProduct && (
         <PacketConfigurationModal
@@ -2074,15 +2086,15 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           item={{
             productName: packetModalProduct.productName || packetModalProduct.productCode || 'Product',
             quantity: packetModalProduct.quantity || 0,
-            primaryColor: Array.isArray(packetModalProduct.primaryColor) 
-              ? packetModalProduct.primaryColor 
-              : packetModalProduct.primaryColor 
-                ? [packetModalProduct.primaryColor] 
+            primaryColor: Array.isArray(packetModalProduct.primaryColor)
+              ? packetModalProduct.primaryColor
+              : packetModalProduct.primaryColor
+                ? [packetModalProduct.primaryColor]
                 : [],
-            size: Array.isArray(packetModalProduct.size) 
-              ? packetModalProduct.size 
-              : packetModalProduct.size 
-                ? [packetModalProduct.size] 
+            size: Array.isArray(packetModalProduct.size)
+              ? packetModalProduct.size
+              : packetModalProduct.size
+                ? [packetModalProduct.size]
                 : [],
             id: String(packetModalProduct.id),
             packets: productPackets[packetModalProduct.id]?.packets || [],

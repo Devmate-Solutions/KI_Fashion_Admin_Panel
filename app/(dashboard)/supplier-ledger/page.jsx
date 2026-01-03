@@ -173,6 +173,27 @@ export default function SupplierLedgerPage() {
 
   const calculatedTotalPending = calculatedCashPending + calculatedBankPending
 
+  // Calculate total pending from the actual remaining amounts in pendingBalances
+  // This matches what's shown in the "Remaining" column of the table
+  const calculatedTotalPendingFromRemaining = useMemo(() => {
+    return pendingBalances.reduce((sum, balance) => {
+      return sum + (balance.amount || 0)
+    }, 0)
+  }, [pendingBalances])
+
+  // Calculate outstanding balance for selected supplier from pendingBalances
+  const calculatedOutstandingBalance = useMemo(() => {
+    if (selectedSupplierId === 'all' || !selectedSupplierId) {
+      return 0
+    }
+    return pendingBalances
+      .filter(balance => {
+        const balanceSupplierId = balance.supplierId || balance.supplier?._id || balance.supplier?.id
+        return String(balanceSupplierId) === String(selectedSupplierId)
+      })
+      .reduce((sum, balance) => sum + (balance.amount || 0), 0)
+  }, [pendingBalances, selectedSupplierId])
+
   // Transform payment history for Tab 3
   const paymentHistoryTransactions = useMemo(() => {
     if (!paymentHistoryData?.entries) return []
@@ -729,11 +750,6 @@ export default function SupplierLedgerPage() {
     []
   )
 
-  // Calculate total balances
-  const totalBalance = useMemo(() => {
-    return suppliers.reduce((sum, supplier) => sum + (supplier.balance || 0), 0)
-  }, [suppliers])
-
   // Transform all ledger entries for Tab 1 display
   // Show ALL transactions - purchases, payments, AND returns (complete history)
   const allLedgerTransactions = useMemo(() => {
@@ -811,6 +827,74 @@ export default function SupplierLedgerPage() {
     })
   }, [allLedgerData])
 
+  // Use totalBalance from API (calculated by BalanceService using aggregation)
+  // This is the SSOT - calculates SUM(debit - credit) for all suppliers or a specific supplier
+  const calculatedTotalBalance = useMemo(() => {
+    // Always use the API's totalBalance which is calculated correctly via aggregation
+    // This is more accurate than calculating from entry balances
+    return allLedgerData?.totalBalance || 0
+  }, [allLedgerData])
+
+  // Create a map of supplier balances from allLedgerTransactions (same source as calculatedTotalBalance)
+  // This ensures the modal uses the exact same balance calculation as the parent page
+  const supplierBalanceMap = useMemo(() => {
+    const balanceMap = {}
+    
+    if (!allLedgerTransactions || allLedgerTransactions.length === 0) {
+      return balanceMap
+    }
+    
+    // Sort by date descending to get latest entries first
+    const sortedEntries = [...allLedgerTransactions].sort((a, b) => {
+      const dateA = new Date(a.date || a.raw?.date || 0)
+      const dateB = new Date(b.date || b.raw?.date || 0)
+      if (dateA.getTime() !== dateB.getTime()) {
+        return dateB.getTime() - dateA.getTime()
+      }
+      // If dates are equal, sort by createdAt
+      const createdAtA = new Date(a.raw?.createdAt || 0)
+      const createdAtB = new Date(b.raw?.createdAt || 0)
+      return createdAtB.getTime() - createdAtA.getTime()
+    })
+    
+    // Get the latest balance for each supplier
+    for (const entry of sortedEntries) {
+      const supplierId = entry.supplierId?.toString() || entry.raw?.entityId?.toString() || entry.raw?.entityId?._id?.toString()
+      if (supplierId && balanceMap[supplierId] === undefined) {
+        balanceMap[supplierId] = entry.balance || 0
+      }
+    }
+    
+    return balanceMap
+  }, [allLedgerTransactions])
+
+  // Calculate balance for modal - use the same calculation as calculatedTotalBalance
+  const balanceForModal = useMemo(() => {
+    if (selectedSupplierId === 'all' || !selectedSupplierId) {
+      return 0 // No specific supplier selected
+    }
+    
+    // Priority 1: Use balance from allLedgerTransactions (same as parent page display)
+    const balanceFromMap = supplierBalanceMap[String(selectedSupplierId)]
+    if (balanceFromMap !== undefined && balanceFromMap !== null) {
+      return Math.abs(balanceFromMap)
+    }
+    
+    // Priority 2: ledgerData.currentBalance (if available)
+    if (ledgerData?.currentBalance !== undefined && ledgerData.currentBalance !== null) {
+      return Math.abs(ledgerData.currentBalance)
+    }
+    
+    // Priority 3: calculated outstanding balance from pending balances
+    if (calculatedOutstandingBalance !== undefined) {
+      return Math.abs(calculatedOutstandingBalance)
+    }
+    
+    // Final fallback: supplier balance from dropdownSuppliers
+    const supplier = dropdownSuppliers.find(s => String(s.id) === selectedSupplierId)
+    return Math.abs(supplier?.balance || 0)
+  }, [selectedSupplierId, supplierBalanceMap, ledgerData?.currentBalance, calculatedOutstandingBalance, dropdownSuppliers])
+
   // Ledger table columns for Tab 1 - Complete History (Purchases + Payments)
   const allLedgerColumns = useMemo(
     () => [
@@ -878,6 +962,7 @@ export default function SupplierLedgerPage() {
 
   const ledgerTabContent = (
     <div className="space-y-6">
+      {/* {JSON.stringify(allLedgerTransactions)} */}
       <div className="bg-white rounded-lg border p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -944,8 +1029,8 @@ export default function SupplierLedgerPage() {
                 <p className="text-sm text-muted-foreground">
                   {ledgerSupplierFilter === 'all' ? 'Total Balance (All Suppliers)' : 'Supplier Balance'}
                 </p>
-                <p className={`text-2xl font-bold ${(allLedgerData?.totalBalance || 0) >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {formatNumber(Math.abs(allLedgerData?.totalBalance || 0))}
+                <p className={`text-2xl font-bold ${(calculatedTotalBalance || 0) >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {formatNumber(Math.abs(calculatedTotalBalance || 0))}
                 </p>
               </div>
             </div>
@@ -1179,6 +1264,7 @@ export default function SupplierLedgerPage() {
 
   const paymentDetails = (
     <>
+    {/* {JSON.stringify(pendingBalances)} */}
       {/* Stats Cards - Total Paid and Total Pending */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-white rounded-lg border p-6">
@@ -1190,8 +1276,7 @@ export default function SupplierLedgerPage() {
         <div className="bg-white rounded-lg border p-6">
           <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Pending</h3>
           <div className="text-2xl font-bold text-red-600">
-            {formatNumber(Math.abs(allLedgerData?.totalBalance || 0))}
-            {/* {formatNumber(calculatedTotalPending - pendingTotals.totalPaid)} */}
+            {formatNumber(Math.abs(calculatedTotalPendingFromRemaining || 0))}
           </div>
         </div>
       </div>
@@ -1646,7 +1731,14 @@ export default function SupplierLedgerPage() {
             ? (dropdownSuppliers.find(s => String(s.id) === selectedSupplierId)?.name || 'Supplier')
             : ''
         }
-        totalBalance={Math.abs(allLedgerData?.totalBalance || supplierDetails?.balance || 0)}
+        totalBalance={
+          selectedSupplierId !== 'all'
+            ? Math.abs(dropdownSuppliers.find(s => String(s.id) === selectedSupplierId)?.balance || 0)
+            : 0
+        }
+        ledgerBalance={balanceForModal}
+        ledgerBalanceSupplierId={selectedSupplierId !== 'all' ? selectedSupplierId : null}
+        supplierBalanceMap={supplierBalanceMap}
         entities={dropdownSuppliers}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['pending-balances'] })

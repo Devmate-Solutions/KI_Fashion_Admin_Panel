@@ -192,6 +192,12 @@ export default function DispatchOrderDetailPage({ params }) {
       dispatchOrder?.status === "confirmed",
   });
 
+  // Calculate values that depend on dispatchOrder (safe to use even if undefined)
+  // Must be declared before useQuery hooks that use them
+  const isConfirmed = dispatchOrder?.status === "confirmed";
+  const isPending = dispatchOrder?.status === "pending" || dispatchOrder?.status === "pending-approval";
+  const canEdit = isPending; // Both pending and pending-approval can be edited
+
   // Fetch supplier's total balance (for Add Payment form)
   const { data: supplierLedgerData } = useQuery({
     queryKey: ["supplier-total-balance", dispatchOrder?.supplier?._id],
@@ -228,11 +234,6 @@ export default function DispatchOrderDetailPage({ params }) {
       (supplierLedgerData.totalOutstandingBalance || 0)
     );
   }, [supplierLedgerData]);
-
-  // Calculate values that depend on dispatchOrder (safe to use even if undefined)
-  const isConfirmed = dispatchOrder?.status === "confirmed";
-  const isPending = dispatchOrder?.status === "pending" || dispatchOrder?.status === "pending-approval";
-  const canEdit = isPending; // Both pending and pending-approval can be edited
 
   // Initialize exchange rate and percentage from dispatch order or defaults
   useEffect(() => {
