@@ -53,6 +53,7 @@ export default function SupplierLedgerPage() {
 
   // Filter for Tab 1 - Supplier Ledger
   const [ledgerSupplierFilter, setLedgerSupplierFilter] = useState("all")
+  const [ledgerFilterBy, setLedgerFilterBy] = useState("all")
 
   // Filters for Tab 2 (Pending Payments)
   const [dateFrom, setDateFrom] = useState("")
@@ -756,11 +757,38 @@ export default function SupplierLedgerPage() {
     if (!allLedgerData?.entries) return []
 
     // Show purchases, payments, and returns (complete ledger history)
-    const filteredEntries = allLedgerData.entries.filter(entry =>
+    let filteredEntries = allLedgerData.entries.filter(entry =>
       entry.transactionType === 'purchase' ||
       entry.transactionType === 'payment' ||
       entry.transactionType === 'return'
     )
+
+    // Apply Consolidated Filter
+    if (ledgerFilterBy !== 'all') {
+      filteredEntries = filteredEntries.filter(entry => {
+        if (ledgerFilterBy === 'cash') {
+          return entry.transactionType === 'payment' && entry.paymentMethod === 'cash'
+        }
+        if (ledgerFilterBy === 'bank') {
+          return entry.transactionType === 'payment' && entry.paymentMethod === 'bank'
+        }
+        if (ledgerFilterBy === 'return') {
+          return entry.transactionType === 'return'
+        }
+        if (ledgerFilterBy === 'discount') {
+          // Check if purchase has discount
+          if (entry.transactionType !== 'purchase') return false
+
+          let hasDiscount = false
+          if (entry.referenceId && typeof entry.referenceId === 'object') {
+            const discount = entry.referenceId.totalDiscount || entry.referenceId.discount || 0
+            hasDiscount = discount > 0
+          }
+          return hasDiscount
+        }
+        return true
+      })
+    }
 
     return filteredEntries.map(entry => {
       const supplier = entry.entityId || {}
@@ -804,6 +832,19 @@ export default function SupplierLedgerPage() {
         readableReference = entry.reference || entry.referenceNumber
       }
 
+      // Calculate separate payment amounts
+      const cashPaid = (entry.transactionType === 'payment' && entry.paymentMethod === 'cash') ? (entry.credit || 0) : 0
+      const bankPaid = (entry.transactionType === 'payment' && entry.paymentMethod === 'bank') ? (entry.credit || 0) : 0
+
+      // Calculate return amount
+      const returnAmount = (entry.transactionType === 'return') ? (entry.credit || 0) : 0
+
+      // Get discount from reference
+      let discountAmount = 0
+      if (entry.referenceId && typeof entry.referenceId === 'object') {
+        discountAmount = entry.referenceId.totalDiscount || entry.referenceId.discount || 0
+      }
+
       return {
         id: entry._id || entry.id,
         date: entry.date || entry.createdAt,
@@ -813,7 +854,12 @@ export default function SupplierLedgerPage() {
         transactionType: entry.transactionType || entry.type,
         description: entry.description || entry.notes || '-',
         debit: entry.debit || 0,
+        debit: entry.debit || 0,
         credit: entry.credit || 0,
+        cashPaid,
+        bankPaid,
+        returnAmount,
+        discount: discountAmount,
         balance: entry.balance || 0,
         reference: readableReference,
         referenceId: (entry.referenceId && typeof entry.referenceId === 'object' && entry.referenceId._id)
@@ -825,7 +871,7 @@ export default function SupplierLedgerPage() {
         raw: entry
       }
     })
-  }, [allLedgerData])
+  }, [allLedgerData, ledgerFilterBy])
 
   // Use totalBalance from API (calculated by BalanceService using aggregation)
   // This is the SSOT - calculates SUM(debit - credit) for all suppliers or a specific supplier
@@ -839,11 +885,11 @@ export default function SupplierLedgerPage() {
   // This ensures the modal uses the exact same balance calculation as the parent page
   const supplierBalanceMap = useMemo(() => {
     const balanceMap = {}
-    
+
     if (!allLedgerTransactions || allLedgerTransactions.length === 0) {
       return balanceMap
     }
-    
+
     // Sort by date descending to get latest entries first
     const sortedEntries = [...allLedgerTransactions].sort((a, b) => {
       const dateA = new Date(a.date || a.raw?.date || 0)
@@ -856,7 +902,7 @@ export default function SupplierLedgerPage() {
       const createdAtB = new Date(b.raw?.createdAt || 0)
       return createdAtB.getTime() - createdAtA.getTime()
     })
-    
+
     // Get the latest balance for each supplier
     for (const entry of sortedEntries) {
       const supplierId = entry.supplierId?.toString() || entry.raw?.entityId?.toString() || entry.raw?.entityId?._id?.toString()
@@ -864,7 +910,7 @@ export default function SupplierLedgerPage() {
         balanceMap[supplierId] = entry.balance || 0
       }
     }
-    
+
     return balanceMap
   }, [allLedgerTransactions])
 
@@ -873,23 +919,23 @@ export default function SupplierLedgerPage() {
     if (selectedSupplierId === 'all' || !selectedSupplierId) {
       return 0 // No specific supplier selected
     }
-    
+
     // Priority 1: Use balance from allLedgerTransactions (same as parent page display)
     const balanceFromMap = supplierBalanceMap[String(selectedSupplierId)]
     if (balanceFromMap !== undefined && balanceFromMap !== null) {
       return Math.abs(balanceFromMap)
     }
-    
+
     // Priority 2: ledgerData.currentBalance (if available)
     if (ledgerData?.currentBalance !== undefined && ledgerData.currentBalance !== null) {
       return Math.abs(ledgerData.currentBalance)
     }
-    
+
     // Priority 3: calculated outstanding balance from pending balances
     if (calculatedOutstandingBalance !== undefined) {
       return Math.abs(calculatedOutstandingBalance)
     }
-    
+
     // Final fallback: supplier balance from dropdownSuppliers
     const supplier = dropdownSuppliers.find(s => String(s.id) === selectedSupplierId)
     return Math.abs(supplier?.balance || 0)
@@ -942,12 +988,49 @@ export default function SupplierLedgerPage() {
           </span>
         )
       },
+      // Removed "Credit (Paid)" column in favor of split columns
+      // {
+      //   header: "Credit (Paid)",
+      //   accessor: "credit",
+      //   render: (row) => (
+      //     <span className={`tabular-nums font-semibold ${row.credit > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+      //       {row.credit > 0 ? formatNumber(row.credit) : '-'}
+      //     </span>
+      //   )
+      // },
       {
-        header: "Credit (Paid)",
-        accessor: "credit",
+        header: "Cash Paid",
+        accessor: "cashPaid",
         render: (row) => (
-          <span className={`tabular-nums font-semibold ${row.credit > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
-            {row.credit > 0 ? formatNumber(row.credit) : '-'}
+          <span className={`tabular-nums font-semibold ${row.cashPaid > 0 ? 'text-blue-600' : 'text-muted-foreground'}`}>
+            {row.cashPaid > 0 ? formatNumber(row.cashPaid) : '-'}
+          </span>
+        )
+      },
+      {
+        header: "Bank Paid",
+        accessor: "bankPaid",
+        render: (row) => (
+          <span className={`tabular-nums font-semibold ${row.bankPaid > 0 ? 'text-purple-600' : 'text-muted-foreground'}`}>
+            {row.bankPaid > 0 ? formatNumber(row.bankPaid) : '-'}
+          </span>
+        )
+      },
+      {
+        header: "Return",
+        accessor: "returnAmount",
+        render: (row) => (
+          <span className={`tabular-nums font-semibold ${row.returnAmount > 0 ? 'text-orange-600' : 'text-muted-foreground'}`}>
+            {row.returnAmount > 0 ? formatNumber(row.returnAmount) : '-'}
+          </span>
+        )
+      },
+      {
+        header: "Discount",
+        accessor: "discount",
+        render: (row) => (
+          <span className={`tabular-nums font-semibold ${row.discount > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+            {row.discount > 0 ? formatNumber(row.discount) : '-'}
           </span>
         )
       },
@@ -993,6 +1076,24 @@ export default function SupplierLedgerPage() {
                       {supplier.name} {supplier.company ? `(${supplier.company})` : ''}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-[200px]">
+              <Label htmlFor="ledger-filter-by" className="mb-2 block">Filter By</Label>
+              <Select
+                value={ledgerFilterBy}
+                onValueChange={setLedgerFilterBy}
+              >
+                <SelectTrigger id="ledger-filter-by">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="bank">Bank</SelectItem>
+                  <SelectItem value="discount">Discount</SelectItem>
+                  <SelectItem value="return">Return</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1264,7 +1365,7 @@ export default function SupplierLedgerPage() {
 
   const paymentDetails = (
     <>
-    {/* {JSON.stringify(pendingBalances)} */}
+      {/* {JSON.stringify(pendingBalances)} */}
       {/* Stats Cards - Total Paid and Total Pending */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-white rounded-lg border p-6">
@@ -1471,7 +1572,7 @@ export default function SupplierLedgerPage() {
                     <Input
                       id="amount"
                       type="text"
-                  inputMode="decimal"
+                      inputMode="decimal"
                       step="0.01"
                       min="0.01"
                       max={selectedDispatchOrder ? selectedDispatchOrder.remainingBalance : (supplierDetails?.balance || undefined)}

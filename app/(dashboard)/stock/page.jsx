@@ -88,14 +88,20 @@ const inventoryColumns = [
     },
   },
   {
+    header: "Supplier",
+    accessor: "supplierName",
+    render: (row) => {
+      console.log('[Supplier Column]', { supplierName: row.supplierName, product: row.product, suppliers: row.product?.suppliers });
+      return <div className="font-medium">{row.supplierName || "—"}</div>;
+    },
+  },
+  {
     header: "Product",
     accessor: "productName",
     render: (row) => (
       <div>
         <div className="font-medium leading-tight">{row.productName}</div>
-        <div className="text-xs text-muted-foreground">
-          {row.brand && row.brand !== "-" ? row.brand : row.category || ""}
-        </div>
+
       </div>
     ),
   },
@@ -190,7 +196,7 @@ export default function StockPage() {
   const [selectedProductId, setSelectedProductId] = useState("")
 
   const defaultFilterState = useMemo(
-    () => ({ search: "", category: undefined, lowStock: false, needsReorder: false }),
+    () => ({ search: "", lowStock: false, needsReorder: false }),
     []
   )
   const [filterForm, setFilterForm] = useState(defaultFilterState)
@@ -220,10 +226,6 @@ export default function StockPage() {
 
       if (appliedFilters.needsReorder) {
         params.needsReorder = true
-      }
-
-      if (appliedFilters.category) {
-        params.category = appliedFilters.category
       }
 
       return params
@@ -519,6 +521,28 @@ export default function StockPage() {
         </form>
       </div> */}
 
+      {/* Unified Search Filter */}
+      <div className="rounded-[4px] border border-border bg-card p-4">
+        <form onSubmit={handleApplyFilters} className="flex gap-4">
+          <div className="flex-1">
+            <Input
+              id="filter-search"
+              placeholder="Search by SKU, product name, or supplier..."
+              value={filterForm.search}
+              onChange={(event) =>
+                setFilterForm((prev) => ({ ...prev, search: event.target.value }))
+              }
+            />
+          </div>
+          <Button type="submit">
+            Apply
+          </Button>
+          <Button type="button" variant="outline" onClick={handleResetFilters}>
+            Reset
+          </Button>
+        </form>
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Boxes className="h-5 w-5 text-muted-foreground" />
@@ -526,35 +550,7 @@ export default function StockPage() {
             Inventory records: <span className="font-semibold text-foreground">{inventoryPagination?.totalItems ?? inventoryItems.length}</span>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Select
-            value={selectedProductId}
-            onValueChange={(value) => setSelectedProductId(value)}
-            disabled={inventoryItems.length === 0}
-          >
-            <SelectTrigger className="w-[220px]">
-              <SelectValue placeholder="Select product" />
-            </SelectTrigger>
-            <SelectContent>
-              {productOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" onClick={() => setAddDialogOpen(true)} disabled={!productOptions.length}>
-            Add Stock
-          </Button>
-          <Button variant="outline" onClick={() => setReduceDialogOpen(true)} disabled={!productOptions.length}>
-            Reduce Stock
-          </Button>
-          <Button variant="outline" onClick={() => setAdjustDialogOpen(true)} disabled={!productOptions.length}>
-            Adjust Stock
-          </Button>
-        </div>
       </div>
-
       <DataTable
         title="Inventory"
         columns={inventoryColumns}
@@ -827,7 +823,6 @@ export default function StockPage() {
 
   const tabs = [
     { label: "Inventory", content: inventoryTab },
-    { label: "Stock Movements", content: movementsTab },
   ]
 
   const addStockFields = [

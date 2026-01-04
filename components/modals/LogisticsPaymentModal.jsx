@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, CreditCard, Banknote, Truck } from "lucide-react"
 import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { useQueryClient } from "@tanstack/react-query"
+import { useLogisticsPayableDetail } from "@/lib/hooks/useLogisticsPayables"
 import toast from "react-hot-toast"
 
 // Logistics currency format (GBP - Pounds)
@@ -35,12 +36,30 @@ export default function LogisticsPaymentModal({
   const queryClient = useQueryClient()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedEntityId, setSelectedEntityId] = useState(initialEntityId || '')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const searchInputRef = useRef(null)
+  const dropdownRef = useRef(null)
+
   const [form, setForm] = useState({
     cashAmount: '',
     bankAmount: '',
     date: '',
     notes: ''
   })
+
+  // Set default date to today when modal opens
+  useEffect(() => {
+    if (open && !form.date) {
+      const today = new Date().toISOString().split('T')[0]
+      setForm(prev => ({ ...prev, date: today }))
+    }
+  }, [open])
+
+  // Fetch detailed balance for the selected company
+  const { data: companyDetail, isLoading: isLoadingBalance } = useLogisticsPayableDetail(
+    selectedEntityId && selectedEntityId !== 'all' ? selectedEntityId : null
+  )
 
   // Update selected entity when prop changes
   useEffect(() => {
@@ -53,11 +72,42 @@ export default function LogisticsPaymentModal({
   useEffect(() => {
     if (!open) {
       setForm({ cashAmount: '', bankAmount: '', date: '', notes: '' })
+      setSearchQuery('')
+      setShowSuggestions(false)
       if (!initialEntityId) {
         setSelectedEntityId('')
       }
     }
   }, [open, initialEntityId])
+
+  // Filter entities based on search query
+  const filteredEntities = searchQuery.trim()
+    ? entities.filter((entity) => {
+      const name = (entity.name || '').toLowerCase()
+      const company = (entity.company || '').toLowerCase()
+      const query = searchQuery.toLowerCase()
+      return name.includes(query) || company.includes(query)
+    }).slice(0, 10)
+    : []
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target) &&
+        searchInputRef.current &&
+        !searchInputRef.current.contains(event.target)
+      ) {
+        setShowSuggestions(false)
+      }
+    }
+
+    if (showSuggestions) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showSuggestions])
 
   const cashAmount = parseFloat(form.cashAmount) || 0
   const bankAmount = parseFloat(form.bankAmount) || 0
@@ -67,16 +117,29 @@ export default function LogisticsPaymentModal({
   const selectedEntity = entities.find(e => (e._id || e.id) === selectedEntityId)
   const entityName = selectedEntity?.name || selectedEntity?.company || initialEntityName || ''
   const entityId = selectedEntityId || initialEntityId
-  const totalBalance = selectedEntity?.balance
-    ? Math.abs(selectedEntity.balance)
-    : initialBalance
+
+  // Use the fetched detailed balance if available, otherwise fallback to entity balance or initialBalance
+  const totalBalance = companyDetail?.outstandingBalance !== undefined
+    ? companyDetail.outstandingBalance
+    : (selectedEntity?.balance
+      ? Math.abs(selectedEntity.balance)
+      : initialBalance)
 
   const handleClose = () => {
     setForm({ cashAmount: '', bankAmount: '', date: '', notes: '' })
+    setSearchQuery('')
+    setShowSuggestions(false)
     if (!initialEntityId) {
       setSelectedEntityId('')
     }
     onClose()
+  }
+
+  const handleCompanySelect = (entity) => {
+    const entityIdStr = String(entity._id || entity.id)
+    setSelectedEntityId(entityIdStr)
+    setSearchQuery('')
+    setShowSuggestions(false)
   }
 
   const handleSubmit = async () => {
@@ -90,11 +153,6 @@ export default function LogisticsPaymentModal({
       return
     }
 
-    if (totalBalance > 0 && totalPayment > totalBalance) {
-      toast.error(`Payment amount (${currency(totalPayment)}) exceeds outstanding balance (${currency(totalBalance)})`)
-      return
-    }
-
     setIsSubmitting(true)
 
     try {
@@ -102,13 +160,9 @@ export default function LogisticsPaymentModal({
 
       if (cashAmount > 0) {
         paymentPromises.push(
-          ledgerAPI.createEntry({
-            type: 'logistics',
-            entityId: entityId,
-            entityModel: 'LogisticsCompany',
-            transactionType: 'payment',
+          ledgerAPI.distributeLogisticsPayment(entityId, {
+            amount: cashAmount,
             paymentMethod: 'cash',
-            credit: cashAmount,
             date: form.date || new Date().toISOString(),
             description: form.notes || `Cash payment to ${entityName}`
           })
@@ -117,13 +171,9 @@ export default function LogisticsPaymentModal({
 
       if (bankAmount > 0) {
         paymentPromises.push(
-          ledgerAPI.createEntry({
-            type: 'logistics',
-            entityId: entityId,
-            entityModel: 'LogisticsCompany',
-            transactionType: 'payment',
+          ledgerAPI.distributeLogisticsPayment(entityId, {
+            amount: bankAmount,
             paymentMethod: 'bank',
-            credit: bankAmount,
             date: form.date || new Date().toISOString(),
             description: form.notes || `Bank payment to ${entityName}`
           })
@@ -150,7 +200,7 @@ export default function LogisticsPaymentModal({
     }
   }
 
-  const showEntitySelector = !initialEntityId && entities.length > 0
+  const showEntitySelector = entities.length > 0
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -163,23 +213,62 @@ export default function LogisticsPaymentModal({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Entity Selector */}
+          {/* Entity Selector - Text Search Input */}
           {showEntitySelector && (
             <div className="space-y-2">
-              <Label htmlFor="entity-select">Select Logistics Company</Label>
-              <Select value={selectedEntityId} onValueChange={setSelectedEntityId}>
-                <SelectTrigger id="entity-select">
-                  <SelectValue placeholder="Choose a company..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {entities.map((entity) => (
-                    <SelectItem key={entity._id || entity.id} value={entity._id || entity.id}>
-                      {entity.name || entity.company}
-                      {entity.balance ? ` (${currency(Math.abs(entity.balance))})` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="entity-search">Select Logistics Company</Label>
+              <div className="relative">
+                <Input
+                  id="entity-search"
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Search company by name..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setSearchQuery(value)
+                    setShowSuggestions(value.trim().length > 0)
+                  }}
+                  onFocus={() => {
+                    if (searchQuery.trim().length > 0) {
+                      setShowSuggestions(true)
+                    }
+                  }}
+                />
+                {showSuggestions && filteredEntities.length > 0 && (
+                  <div
+                    ref={dropdownRef}
+                    className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-auto"
+                  >
+                    <div className="p-1">
+                      {filteredEntities.map((entity) => {
+                        const entityIdStr = String(entity._id || entity.id)
+                        const entityName = entity.name || entity.company || ''
+                        const isSelected = selectedEntityId === entityIdStr
+
+                        return (
+                          <div
+                            key={entityIdStr}
+                            onClick={() => handleCompanySelect(entity)}
+                            className={`flex items-center px-3 py-2 text-sm rounded-sm cursor-pointer hover:bg-slate-100 ${isSelected ? 'bg-slate-50 font-medium' : ''
+                              }`}
+                          >
+                            {entityName}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+                {showSuggestions && searchQuery.trim().length > 0 && filteredEntities.length === 0 && (
+                  <div
+                    ref={dropdownRef}
+                    className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg p-3 text-sm text-muted-foreground"
+                  >
+                    No companies found.
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -192,7 +281,13 @@ export default function LogisticsPaymentModal({
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Total Outstanding (GBP)</Label>
-                <p className="font-semibold text-lg text-red-600">{currency(totalBalance)}</p>
+                <p className="font-semibold text-lg text-red-600">
+                  {isLoadingBalance ? (
+                    <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                  ) : (
+                    currency(totalBalance)
+                  )}
+                </p>
               </div>
             </div>
           </div>
@@ -247,15 +342,21 @@ export default function LogisticsPaymentModal({
 
           {/* Total Payment Display */}
           {totalPayment > 0 && (
-            <div className="rounded-lg border bg-green-50 p-3">
+            <div className={`rounded-lg border p-3 ${totalPayment > totalBalance && totalBalance > 0 ? 'bg-amber-50 border-amber-200' : 'bg-green-50'}`}>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Total Payment:</span>
                 <span className="text-lg font-bold text-green-700">{currency(totalPayment)}</span>
               </div>
-              {totalBalance > 0 && (
+              {totalBalance > 0 && totalPayment <= totalBalance && (
                 <div className="flex items-center justify-between mt-1">
                   <span className="text-xs text-muted-foreground">Remaining after payment:</span>
-                  <span className="text-sm font-medium">{currency(Math.max(0, totalBalance - totalPayment))}</span>
+                  <span className="text-sm font-medium">{currency(totalBalance - totalPayment)}</span>
+                </div>
+              )}
+              {totalBalance > 0 && totalPayment > totalBalance && (
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-xs text-amber-700 font-medium">Credit to Company:</span>
+                  <span className="text-sm font-bold text-amber-700">{currency(totalPayment - totalBalance)}</span>
                 </div>
               )}
             </div>

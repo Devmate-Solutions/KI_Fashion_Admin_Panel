@@ -28,7 +28,7 @@ const items = [
   { href: "/buying", label: "Buying / Sourcing", icon: ShoppingBag },
   { href: "/dispatch-orders", label: "Dispatch Orders", icon: Truck },
   { type: "separator", label: "Finance & Accounts" },
-  { href: "/cash-tracking", label: "Cash Tracking", icon: Wallet },
+  // { href: "/cash-tracking", label: "Cash Tracking", icon: Wallet },
   { href: "/expenses", label: "Expenses", icon: FileText },
   { href: "/customer-ledger", label: "Customer Ledger", icon: BookUser },
   { href: "/supplier-ledger", label: "Supplier Ledger", icon: Users },
@@ -58,14 +58,13 @@ export default function Sidebar() {
   useEffect(() => {
     try {
       window.localStorage.setItem("sidebar:collapsed", String(collapsed))
-    } catch {}
+    } catch { }
   }, [collapsed])
 
   return (
     <aside
-      className={`border-r border-slate-100 bg-white text-slate-900 hidden md:flex md:flex-col transition-all duration-300 ${
-        collapsed ? "w-20" : "w-64"
-      }`}
+      className={`border-r border-slate-100 bg-white text-slate-900 hidden md:flex md:flex-col transition-all duration-300 ${collapsed ? "w-20" : "w-64"
+        }`}
       aria-label="Main navigation"
       data-collapsed={collapsed}
     >
@@ -95,7 +94,7 @@ export default function Sidebar() {
               )
             }
 
-            const active = pathname === it.href || (it.href !== '/home' && pathname.startsWith(it.href))
+            const active = pathname === it.href || (it.href !== '/home' && pathname.startsWith(it.href + '/'))
             const Icon = it.icon
             return (
               <li key={it.href}>
@@ -104,8 +103,8 @@ export default function Sidebar() {
                   title={it.label}
                   aria-label={it.label}
                   className={`flex items-center gap-3 px-4 py-3 text-sm transition-all rounded-xl relative group
-                    ${active 
-                      ? "bg-blue-600 text-white shadow-lg shadow-blue-100 font-bold" 
+                    ${active
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-100 font-bold"
                       : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"}`}
                 >
                   <Icon className={`h-5 w-5 shrink-0 ${active ? "text-white" : "text-slate-400 group-hover:text-slate-900"}`} aria-hidden="true" />

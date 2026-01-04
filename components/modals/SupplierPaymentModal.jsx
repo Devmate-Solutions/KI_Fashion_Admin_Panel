@@ -123,18 +123,18 @@ export default function SupplierPaymentModal({
     // 2. parentLedgerBalance (if for current supplier)
     // 3. selectedEntity.balance (from entities array)
     // 4. initialBalance (fallback)
-    
+
     // Priority 1: Use balance from supplierBalanceMap (same calculation as parent page)
     const balanceFromMap = selectedEntityId ? supplierBalanceMap[String(selectedEntityId)] : null
-    
+
     // Priority 2: Use parentLedgerBalance if it's for the currently selected supplier
-    const shouldUseParentBalance = parentLedgerBalanceSupplierId && 
-                                   selectedEntityId && 
-                                   String(parentLedgerBalanceSupplierId) === String(selectedEntityId) &&
-                                   parentLedgerBalance !== undefined && 
-                                   parentLedgerBalance !== null &&
-                                   balanceFromMap === undefined
-    
+    const shouldUseParentBalance = parentLedgerBalanceSupplierId &&
+        selectedEntityId &&
+        String(parentLedgerBalanceSupplierId) === String(selectedEntityId) &&
+        parentLedgerBalance !== undefined &&
+        parentLedgerBalance !== null &&
+        balanceFromMap === undefined
+
     const totalBalance = balanceFromMap !== undefined && balanceFromMap !== null
         ? Math.abs(balanceFromMap)
         : (shouldUseParentBalance
@@ -192,13 +192,9 @@ export default function SupplierPaymentModal({
                 // Credit transactions (payments)
                 if (cashAmount > 0) {
                     paymentPromises.push(
-                        ledgerAPI.createEntry({
-                            type: 'supplier',
-                            entityId: entityId,
-                            entityModel: 'Supplier',
-                            transactionType: 'payment',
+                        ledgerAPI.distributeSupplierPayment(entityId, {
+                            amount: cashAmount,
                             paymentMethod: 'cash',
-                            credit: cashAmount,
                             date: form.date,
                             description: form.notes || `Cash payment to ${entityName}`
                         })
@@ -207,13 +203,9 @@ export default function SupplierPaymentModal({
 
                 if (bankAmount > 0) {
                     paymentPromises.push(
-                        ledgerAPI.createEntry({
-                            type: 'supplier',
-                            entityId: entityId,
-                            entityModel: 'Supplier',
-                            transactionType: 'payment',
+                        ledgerAPI.distributeSupplierPayment(entityId, {
+                            amount: bankAmount,
                             paymentMethod: 'bank',
-                            credit: bankAmount,
                             date: form.date,
                             description: form.notes || `Bank payment to ${entityName}`
                         })

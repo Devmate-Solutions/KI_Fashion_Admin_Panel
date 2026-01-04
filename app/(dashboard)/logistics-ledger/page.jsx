@@ -48,8 +48,9 @@ export default function LogisticsLedgerPage() {
   // Universal payment modal state
   const [universalPaymentOpen, setUniversalPaymentOpen] = useState(false)
 
-  // Filter for Tab 1 - Ledger
+  // Filters for Tab 1 - Ledger
   const [ledgerCompanyFilter, setLedgerCompanyFilter] = useState("all")
+  const [ledgerTypeFilter, setLedgerTypeFilter] = useState("all")
 
   // Filters for Tab 3 (Payment History)
   const [paymentHistoryCompany, setPaymentHistoryCompany] = useState("all")
@@ -139,10 +140,21 @@ export default function LogisticsLedgerPage() {
       return []
     }
 
-    const filteredEntries = allLedgerData.entries.filter(entry =>
+    let filteredEntries = allLedgerData.entries.filter(entry =>
       entry.transactionType === 'charge' ||
       entry.transactionType === 'payment'
     )
+
+    // Apply type filter
+    if (ledgerTypeFilter !== 'all') {
+      if (ledgerTypeFilter === 'charge') {
+        filteredEntries = filteredEntries.filter(e => e.transactionType === 'charge')
+      } else if (ledgerTypeFilter === 'cash') {
+        filteredEntries = filteredEntries.filter(e => e.transactionType === 'payment' && e.paymentMethod === 'cash')
+      } else if (ledgerTypeFilter === 'bank') {
+        filteredEntries = filteredEntries.filter(e => e.transactionType === 'payment' && e.paymentMethod === 'bank')
+      }
+    }
 
     return filteredEntries.map(entry => {
       const company = entry.entityId || {}
@@ -189,10 +201,11 @@ export default function LogisticsLedgerPage() {
         referenceModel: entry.referenceModel || '-',
         paymentMethod: entry.paymentMethod || null,
         paymentDetails: entry.paymentDetails || null,
+        boxRate: company.rates?.boxRate || null,
         raw: entry
       }
     })
-  }, [allLedgerData])
+  }, [allLedgerData, ledgerTypeFilter])
 
   // Transform payment history for Tab 3
   const paymentHistoryTransactions = useMemo(() => {
@@ -323,10 +336,7 @@ export default function LogisticsLedgerPage() {
       {
         header: "Box Rate",
         accessor: "boxRate",
-        render: (row) => {
-          const ref = row.raw?.referenceId;
-          return <span>{ref?.boxRate ? currency(ref.boxRate) : '-'}</span>
-        }
+        render: (row) => <span>{row.boxRate ? currency(row.boxRate) : '-'}</span>
       },
       {
         header: "Debit (Charges)",
@@ -338,11 +348,20 @@ export default function LogisticsLedgerPage() {
         )
       },
       {
-        header: "Credit (Paid)",
-        accessor: "credit",
+        header: "Cash Paid",
+        accessor: "cashPaid",
         render: (row) => (
-          <span className={`tabular-nums font-semibold ${row.credit > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
-            {row.credit > 0 ? formatNumber(row.credit) : '-'}
+          <span className={`tabular-nums font-semibold ${row.credit > 0 && row.paymentMethod === 'cash' ? 'text-green-600' : 'text-muted-foreground'}`}>
+            {row.credit > 0 && row.paymentMethod === 'cash' ? formatNumber(row.credit) : '-'}
+          </span>
+        )
+      },
+      {
+        header: "Bank Paid",
+        accessor: "bankPaid",
+        render: (row) => (
+          <span className={`tabular-nums font-semibold ${row.credit > 0 && row.paymentMethod === 'bank' ? 'text-green-600' : 'text-muted-foreground'}`}>
+            {row.credit > 0 && row.paymentMethod === 'bank' ? formatNumber(row.credit) : '-'}
           </span>
         )
       },
@@ -408,15 +427,15 @@ export default function LogisticsLedgerPage() {
           </span>
         )
       },
-      {
-        header: "Payment Type",
-        accessor: "paymentType",
-        render: (row) => (
-          <Badge variant="outline" className={row.paymentType === 'cash' ? 'border-green-500 text-green-700' : 'border-blue-500 text-blue-700'}>
-            {row.paymentType === 'cash' ? 'Cash' : 'Bank'}
-          </Badge>
-        )
-      },
+      // {
+      //   header: "Payment Type",
+      //   accessor: "paymentType",
+      //   render: (row) => (
+      //     <Badge variant="outline" className={row.paymentType === 'cash' ? 'border-green-500 text-green-700' : 'border-blue-500 text-blue-700'}>
+      //       {row.paymentType === 'cash' ? 'Cash' : 'Bank'}
+      //     </Badge>
+      //   )
+      // },
       {
         header: "Status",
         accessor: "status",
@@ -661,6 +680,23 @@ export default function LogisticsLedgerPage() {
             <p className="text-sm text-muted-foreground mt-1">All charges and payments - complete accounting record</p>
           </div>
           <div className="flex items-center gap-4">
+            <div className="w-[200px]">
+              <Label htmlFor="ledger-type-filter" className="mb-2 block">Filter by Type</Label>
+              <Select
+                value={ledgerTypeFilter}
+                onValueChange={setLedgerTypeFilter}
+              >
+                <SelectTrigger id="ledger-type-filter">
+                  <SelectValue placeholder="All Transactions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Transactions</SelectItem>
+                  <SelectItem value="charge">Logistics Charges</SelectItem>
+                  <SelectItem value="cash">Payments - Cash</SelectItem>
+                  <SelectItem value="bank">Payments - Bank</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="w-[250px]">
               <Label htmlFor="ledger-company-filter" className="mb-2 block">Filter by Company</Label>
               <Select
@@ -728,7 +764,7 @@ export default function LogisticsLedgerPage() {
                   {ledgerCompanyFilter === 'all' ? 'Total Balance (All Companies)' : 'Company Balance'}
                 </p>
                 <p className={`text-2xl font-bold ${(allLedgerData?.totalBalance || 0) >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {formatNumber(Math.abs(allLedgerData?.totalBalance || 0))}
+                  {(allLedgerData?.totalBalance || 0) > 0 ? '-' : ''}{currency(Math.abs(allLedgerData?.totalBalance || 0))}
                 </p>
               </div>
             </div>
@@ -797,7 +833,10 @@ export default function LogisticsLedgerPage() {
         <div className="bg-white rounded-lg border p-6">
           <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Pending</h3>
           <div className="text-2xl font-bold text-red-600">
-            {formatNumber(Math.abs(allLedgerData?.totalBalance || 0))}
+            {/* {JSON.stringify(pendingTotals)} */}
+            {formatNumber(pendingTotals.totalPending || 0)}
+
+            {/* {(allLedgerData?.totalBalance || 0) > 0 ? '- ' : ''}{currency(Math.abs(allLedgerData?.totalBalance || 0))} */}
           </div>
         </div>
       </div>
@@ -977,7 +1016,7 @@ export default function LogisticsLedgerPage() {
                     <Input
                       id="amount"
                       type="text"
-                  inputMode="decimal"
+                      inputMode="decimal"
                       step="0.01"
                       min="0.01"
                       value={paymentForm.amount}

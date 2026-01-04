@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import DataTable from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,8 +16,16 @@ import {
   useApproveExpense,
   useRejectExpense,
 } from "@/lib/hooks/useExpenses"
-import { Plus, Trash2, Check, X, Edit } from "lucide-react"
+import { useCostTypes } from "@/lib/hooks/useCostTypes"
+import { Plus, Trash2, Check, X, Edit, Filter, RotateCcw } from "lucide-react"
 import toast from "react-hot-toast"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 function currency(n) {
   const num = Number(n || 0)
@@ -25,12 +34,28 @@ function currency(n) {
 
 export default function ExpensesPage() {
   const router = useRouter()
-  const [filters, setFilters] = useState({})
+  const [filters, setFilters] = useState({
+    search: '',
+    costType: 'all',
+    status: 'all',
+    paymentMethod: 'all',
+  })
   const [showForm, setShowForm] = useState(false)
   const [editingExpense, setEditingExpense] = useState(null)
 
-  const { data: expensesData, isLoading, error } = useExpenses(filters)
-  
+  const queryParams = useMemo(() => {
+    const params = { ...filters }
+    if (params.costType === 'all') delete params.costType
+    if (params.status === 'all') delete params.status
+    if (params.paymentMethod === 'all') delete params.paymentMethod
+    return params
+  }, [filters])
+
+  const { data: expensesData, isLoading, error } = useExpenses(queryParams)
+
+  const { data: costTypesResponse = [] } = useCostTypes({ isActive: true })
+  const costTypes = Array.isArray(costTypesResponse) ? costTypesResponse : costTypesResponse?.data || []
+
   // Ensure expenses is always an array
   const expenses = useMemo(() => {
     if (!expensesData) return []
@@ -38,16 +63,16 @@ export default function ExpensesPage() {
     if (Array.isArray(expensesData)) return expensesData
     return []
   }, [expensesData])
-  
+
   const summary = expensesData?.summary || {}
-  
+
   // Log error if any
   useEffect(() => {
     if (error) {
       console.error('Expenses query error:', error)
     }
   }, [error])
-  
+
   const createMutation = useCreateExpense()
   const updateMutation = useUpdateExpense()
   const deleteMutation = useDeleteExpense()
@@ -187,10 +212,26 @@ export default function ExpensesPage() {
         },
       },
       {
-        header: "Vendor",
-        accessor: "vendor",
+        header: "Reference",
+        accessor: "dispatchOrderNumber",
         render: (row) => (
-          <span>{row.vendor || "—"}</span>
+          row.dispatchOrderId ? (
+            <div className="flex flex-col">
+              <Link
+                href={`/dispatch-orders/${row.dispatchOrderId}`}
+                className="text-primary hover:underline font-medium"
+              >
+                {row.dispatchOrderNumber || "View"}
+              </Link>
+              {row.supplierName && (
+                <span className="text-[10px] text-muted-foreground mt-0.5 bg-muted px-1.5 py-0.5 rounded w-fit leading-none">
+                  {row.supplierName}
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          )
         ),
       },
       {
@@ -294,6 +335,85 @@ export default function ExpensesPage() {
           <div className="text-sm text-muted-foreground">Pending Approvals</div>
           <div className="text-2xl font-bold mt-1 text-amber-600">{pendingCount}</div>
         </div>
+      </div>
+
+      {/* Filters Bar */}
+      <div className="flex flex-wrap items-center gap-4 mb-6 p-4 border rounded-lg bg-card">
+        <div className="flex items-center gap-2 mr-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Filters:</span>
+        </div>
+
+        {/* Cost Type Filter */}
+        <div className="w-[200px]">
+          <Select
+            value={filters.costType}
+            onValueChange={(value) => setFilters(prev => ({ ...prev, costType: value }))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="All Cost Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Cost Types</SelectItem>
+              {costTypes.map((type) => (
+                <SelectItem key={type.id} value={type.id}>
+                  {type.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Status Filter */}
+        <div className="w-[150px]">
+          <Select
+            value={filters.status}
+            onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Payment Method Filter */}
+        <div className="w-[180px]">
+          <Select
+            value={filters.paymentMethod}
+            onValueChange={(value) => setFilters(prev => ({ ...prev, paymentMethod: value }))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="All Payment Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Payment Types</SelectItem>
+              <SelectItem value="cash">Cash</SelectItem>
+              <SelectItem value="bank_transfer">Bank</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Clear Filters */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="ml-auto gap-2"
+          onClick={() => setFilters({
+            search: '',
+            costType: 'all',
+            status: 'all',
+            paymentMethod: 'all',
+          })}
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          Clear
+        </Button>
       </div>
 
       {/* Expenses Table */}
