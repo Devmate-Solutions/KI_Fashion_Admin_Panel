@@ -2796,8 +2796,7 @@ export default function DispatchOrderDetailPage({ params }) {
                     {(() => {
                       const pendingAmount = parseFloat(paymentAmount) || 0;
                       const previewRemaining = remainingBalance - pendingAmount;
-                      const displayRemaining =
-                        previewRemaining > 0 ? previewRemaining : 0;
+                      const displayRemaining = previewRemaining;
                       const hasPreview = showPaymentForm && pendingAmount > 0;
                       return (
                         <>
