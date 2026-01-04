@@ -18,7 +18,6 @@ import {
 } from "@/lib/hooks/useExpenses"
 import { useCostTypes } from "@/lib/hooks/useCostTypes"
 import { Plus, Trash2, Check, X, Edit, Filter, RotateCcw } from "lucide-react"
-import toast from "react-hot-toast"
 import {
   Select,
   SelectContent,

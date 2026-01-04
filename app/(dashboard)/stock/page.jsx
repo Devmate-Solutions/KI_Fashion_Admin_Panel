@@ -120,67 +120,121 @@ const inventoryColumns = [
     accessor: "season",
     render: (row) => {
       const season = row.product?.season;
-      if (Array.isArray(season)) {
-        return season.join(", ") || "—";
+      const seasons = Array.isArray(season) ? season : season ? [season] : [];
+
+      if (seasons.length === 0) {
+        return <span className="text-muted-foreground">—</span>;
       }
-      return season || "—";
+
+      return (
+        <div className="flex flex-wrap gap-1">
+          {seasons.map((s, idx) => (
+            <span
+              key={idx}
+              className="inline-block px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded text-[10px] font-medium"
+            >
+              {s}
+            </span>
+          ))}
+        </div>
+      );
     },
   },
   {
     header: "Size",
     accessor: "size",
     render: (row) => {
-      // Check variant composition first (most accurate)
-      if (
+      let sizes = [];
+
+      // Check product size array first (primary source after schema update)
+      const productSize = row.product?.size;
+      if (Array.isArray(productSize) && productSize.length > 0) {
+        sizes = productSize;
+      } else if (productSize) {
+        sizes = [productSize];
+      } else if (
+        // Fallback to variant composition
         row.raw?.variantComposition &&
         Array.isArray(row.raw.variantComposition) &&
         row.raw.variantComposition.length > 0
       ) {
-        const sizes = new Set();
+        const sizeSet = new Set();
         row.raw.variantComposition.forEach((variant) => {
-          if (variant.size) sizes.add(variant.size);
+          if (variant.size) sizeSet.add(variant.size);
         });
-        if (sizes.size > 0) {
-          return Array.from(sizes).join(", ");
-        }
+        sizes = Array.from(sizeSet);
+      } else {
+        // Final fallback to inventory record level
+        const size = row.raw?.size;
+        sizes = Array.isArray(size) ? size : size ? [size] : [];
       }
-      // Check inventory record level
-      const size = row.raw?.size || row.product?.size;
-      if (Array.isArray(size)) {
-        return size.join(", ") || "—";
+
+      if (sizes.length === 0) {
+        return <span className="text-muted-foreground">—</span>;
       }
-      return size || "—";
+
+      return (
+        <div className="flex flex-wrap gap-1">
+          {sizes.map((s, idx) => (
+            <span
+              key={idx}
+              className="inline-block px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-[10px] font-medium"
+            >
+              {s}
+            </span>
+          ))}
+        </div>
+      );
     },
   },
   {
     header: "Color",
     accessor: "color",
     render: (row) => {
-      // Check variant composition first (most accurate)
-      if (
+      let colors = [];
+
+      // Check product color array first (primary source after schema update)
+      const productColor = row.product?.color;
+      if (Array.isArray(productColor) && productColor.length > 0) {
+        colors = productColor;
+      } else if (productColor) {
+        colors = [productColor];
+      } else if (
+        // Fallback to variant composition
         row.raw?.variantComposition &&
         Array.isArray(row.raw.variantComposition) &&
         row.raw.variantComposition.length > 0
       ) {
-        const colors = new Set();
+        const colorSet = new Set();
         row.raw.variantComposition.forEach((variant) => {
-          if (variant.color) colors.add(variant.color);
+          if (variant.color) colorSet.add(variant.color);
         });
-        if (colors.size > 0) {
-          return Array.from(colors).join(", ");
-        }
+        colors = Array.from(colorSet);
+      } else {
+        // Final fallback to inventory record level
+        const color =
+          row.raw?.primaryColor ||
+          row.raw?.color ||
+          row.product?.specifications?.color;
+        colors = Array.isArray(color) ? color : color ? [color] : [];
       }
-      // Check inventory record level
-      const color =
-        row.raw?.primaryColor ||
-        row.raw?.color ||
-        row.product?.specifications?.color ||
-        row.product?.primaryColor ||
-        row.product?.color;
-      if (Array.isArray(color)) {
-        return color.join(", ") || "—";
+
+      if (colors.length === 0) {
+        return <span className="text-muted-foreground">—</span>;
       }
-      return color || "—";
+
+      return (
+        <div className="flex flex-wrap gap-1">
+          {colors.map((c, idx) => (
+            <span
+              key={idx}
+              className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px] font-medium"
+            >
+              {c}
+            </span>
+          ))}
+        </div>
+      );
     },
   },
   {
@@ -226,8 +280,8 @@ const inventoryColumns = [
           row.needsReorder
             ? "destructive"
             : row.lowStock
-            ? "secondary"
-            : "outline"
+              ? "secondary"
+              : "outline"
         }
       >
         {row.needsReorder ? "Re-Order" : row.lowStock ? "Low Stock" : "Healthy"}
@@ -260,8 +314,8 @@ const movementColumns = [
           row.type === "in"
             ? "secondary"
             : row.type === "adjust"
-            ? "outline"
-            : "destructive"
+              ? "outline"
+              : "destructive"
         }
       >
         {row.type?.toUpperCase() || "-"}
@@ -821,7 +875,7 @@ export default function StockPage() {
                 }
                 className={
                   (inventoryPagination?.currentPage || 1) >=
-                  (inventoryPagination?.totalPages || 1)
+                    (inventoryPagination?.totalPages || 1)
                     ? "pointer-events-none opacity-50"
                     : undefined
                 }
@@ -923,9 +977,8 @@ export default function StockPage() {
                               return (
                                 <tr
                                   key={index}
-                                  className={`border-b border-slate-200 ${
-                                    index % 2 === 0 ? "bg-white" : "bg-slate-50"
-                                  }`}
+                                  className={`border-b border-slate-200 ${index % 2 === 0 ? "bg-white" : "bg-slate-50"
+                                    }`}
                                 >
                                   <td className="px-3 py-2 font-medium text-slate-700">
                                     {variant.color}
@@ -1127,7 +1180,7 @@ export default function StockPage() {
                 }
                 className={
                   (movementPagination?.currentPage || 1) >=
-                  (movementPagination?.totalPages || 1)
+                    (movementPagination?.totalPages || 1)
                     ? "pointer-events-none opacity-50"
                     : undefined
                 }
