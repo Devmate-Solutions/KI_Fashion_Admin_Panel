@@ -242,7 +242,13 @@ export default function DispatchOrderDetailPage({ params }) {
       setPercentage(String(dispatchOrder.percentage || 0));
       setEditedDiscount(String(dispatchOrder.totalDiscount || 0));
       setEditedTotalBoxes(String(dispatchOrder.totalBoxes || 0));
-      setTotalBoxesConfirmed(false); // Reset confirmation when order loads
+      setTotalBoxesConfirmed(!!dispatchOrder.isTotalBoxesConfirmed);
+
+      // Initialize financials from paymentDetails (drafts)
+      if (dispatchOrder.paymentDetails) {
+        setCashPayment(String(dispatchOrder.paymentDetails.cashPayment || 0));
+        setBankPayment(String(dispatchOrder.paymentDetails.bankPayment || 0));
+      }
 
       // Initialize order fields (supplier remains uneditable - use original value)
       if (dispatchOrder.logisticsCompany) {
@@ -275,13 +281,13 @@ export default function DispatchOrderDetailPage({ params }) {
           primaryColor: Array.isArray(item.primaryColor)
             ? item.primaryColor
             : item.primaryColor
-            ? [item.primaryColor]
-            : [],
+              ? [item.primaryColor]
+              : [],
           size: Array.isArray(item.size)
             ? item.size
             : item.size
-            ? [item.size]
-            : [],
+              ? [item.size]
+              : [],
           images: item.productImage || item.product?.images || [],
           packets: item.packets || [],
           useVariantTracking: item.useVariantTracking || false,
@@ -301,89 +307,110 @@ export default function DispatchOrderDetailPage({ params }) {
     ? parseFloat(percentage) || 0
     : dispatchOrder?.percentage || 0;
 
-  const itemsWithDetails = (dispatchOrder?.items || []).map((item, index) => {
-    const totalReturned =
-      dispatchOrder?.returnedItems
-        ?.filter((returned) => returned.itemIndex === index)
-        .reduce((sum, returned) => sum + returned.quantity, 0) || 0;
+  const itemsWithDetails = useMemo(() => {
+    // Start with existing items
+    const existing = (dispatchOrder?.items || []).map((item, index) => {
+      const totalReturned =
+        dispatchOrder?.returnedItems
+          ?.filter((returned) => returned.itemIndex === index)
+          .reduce((sum, returned) => sum + returned.quantity, 0) || 0;
 
-    // Calculate confirmed quantity (remaining after returns)
-    // ALWAYS calculate remaining quantity if returns exist, regardless of order status
-    // For confirmed orders, use confirmedQuantities if available, otherwise calculate from original - returned
-    // For pending orders, if returns exist, still calculate remaining; otherwise use original quantity
-    let confirmedQty;
-    if (totalReturned > 0) {
-      // If items have been returned, ALWAYS calculate remaining quantity
-      const confirmedQtyFromBackend = dispatchOrder?.confirmedQuantities?.find(
-        (cq) => cq.itemIndex === index
-      )?.quantity;
-      if (
-        confirmedQtyFromBackend !== undefined &&
-        confirmedQtyFromBackend !== null
-      ) {
-        confirmedQty = confirmedQtyFromBackend;
+      // Calculate confirmed quantity (remaining after returns)
+      let confirmedQty;
+      if (totalReturned > 0) {
+        const confirmedQtyFromBackend = dispatchOrder?.confirmedQuantities?.find(
+          (cq) => cq.itemIndex === index
+        )?.quantity;
+        if (
+          confirmedQtyFromBackend !== undefined &&
+          confirmedQtyFromBackend !== null
+        ) {
+          confirmedQty = confirmedQtyFromBackend;
+        } else {
+          confirmedQty = Math.max(0, item.quantity - totalReturned);
+        }
+      } else if (isPending) {
+        confirmedQty = item.quantity;
       } else {
-        // Calculate remaining: original quantity minus total returned
-        confirmedQty = Math.max(0, item.quantity - totalReturned);
+        const confirmedQtyFromBackend = dispatchOrder?.confirmedQuantities?.find(
+          (cq) => cq.itemIndex === index
+        )?.quantity;
+        confirmedQty =
+          confirmedQtyFromBackend !== undefined &&
+            confirmedQtyFromBackend !== null
+            ? confirmedQtyFromBackend
+            : item.quantity;
       }
-    } else if (isPending) {
-      // No returns and order is pending - use original quantity
-      confirmedQty = item.quantity;
-    } else {
-      // Confirmed order with no returns - use confirmedQuantities if available, otherwise original
-      const confirmedQtyFromBackend = dispatchOrder?.confirmedQuantities?.find(
-        (cq) => cq.itemIndex === index
-      )?.quantity;
-      confirmedQty =
-        confirmedQtyFromBackend !== undefined &&
-        confirmedQtyFromBackend !== null
-          ? confirmedQtyFromBackend
-          : item.quantity;
-    }
 
-    // Use edited values if available (for pending orders), otherwise use original
-    const itemData =
-      isPending && editedItems[index] ? editedItems[index] : item;
-    const costPrice = parseFloat(itemData.costPrice) || 0;
+      // Use edited values if available (for pending orders), otherwise use original
+      const itemData =
+        isPending && editedItems[index] ? editedItems[index] : item;
+      const costPrice = parseFloat(itemData.costPrice) || 0;
 
-    // The quantity used for calculations and display should always be the REMAINING quantity
-    // (Original/Edited quantity minus returns)
-    const quantity = isPending
-      ? Math.max(0, (parseFloat(itemData.quantity) || 0) - totalReturned)
-      : confirmedQty;
+      const quantity = isPending
+        ? Math.max(0, (parseFloat(itemData.quantity) || 0) - totalReturned)
+        : confirmedQty;
 
-    // Supplier Payment Amount (what admin pays supplier - NO profit margin)
-    // Formula: (cost price / exchange rate) × quantity
-    const supplierPaymentAmount = isPending
-      ? costPrice / currentExchangeRate
-      : item.supplierPaymentAmount || costPrice / currentExchangeRate;
+      const supplierPaymentAmount = isPending
+        ? costPrice / currentExchangeRate
+        : item.supplierPaymentAmount || costPrice / currentExchangeRate;
 
-    // Landed Price (for inventory valuation - WITH profit margin)
-    // Formula: (cost price / exchange rate) × (1 + percentage/100)
-    const landedPrice = isPending
-      ? (costPrice / currentExchangeRate) * (1 + currentPercentage / 100)
-      : item.landedPrice ||
+      const landedPrice = isPending
+        ? (costPrice / currentExchangeRate) * (1 + currentPercentage / 100)
+        : item.landedPrice ||
         (costPrice / currentExchangeRate) * (1 + currentPercentage / 100);
 
-    return {
-      ...item,
-      ...itemData, // Include edited values
-      index,
-      totalReturned,
-      confirmedQty: quantity,
-      supplierPaymentAmount,
-      // Supplier payment total in supplier currency: cost price × quantity
-      supplierPaymentItemTotal: costPrice * quantity,
-      landedPrice,
-      itemTotal: landedPrice * quantity,
-    };
-  });
+      return {
+        ...item,
+        ...itemData, // Include edited values
+        index,
+        originalIndex: index,
+        totalReturned,
+        confirmedQty: quantity,
+        supplierPaymentAmount,
+        supplierPaymentItemTotal: costPrice * quantity,
+        landedPrice,
+        itemTotal: landedPrice * quantity,
+        isNew: false,
+        isRemoved: itemsToRemove.includes(index)
+      };
+    });
+
+    // Add new items (only if in pending state)
+    let allItems = [...existing];
+    if (isPending) {
+      const newItemEntries = newItems.map((item, index) => {
+        const costPrice = parseFloat(item.costPrice) || 0;
+        const quantity = parseFloat(item.quantity) || 0;
+        const supplierPaymentAmount = costPrice / currentExchangeRate;
+        const landedPrice = (costPrice / currentExchangeRate) * (1 + currentPercentage / 100);
+
+        return {
+          ...item,
+          index: -1 - index, // Negative index for new items to distinguish
+          originalIndex: null,
+          totalReturned: 0,
+          confirmedQty: quantity,
+          supplierPaymentAmount,
+          supplierPaymentItemTotal: costPrice * quantity,
+          landedPrice,
+          itemTotal: landedPrice * quantity,
+          isNew: true,
+          isRemoved: false,
+          productImage: item.images || item.productImage || [] // Mapping field name
+        };
+      });
+      allItems = [...allItems, ...newItemEntries];
+    }
+
+    return allItems;
+  }, [dispatchOrder, isPending, editedItems, newItems, itemsToRemove, currentExchangeRate, currentPercentage]);
 
   // Calculate totals with safe defaults - REACTIVE to edited values
-  // Filter out removed items and include edited quantities/prices
-  const activeItemsWithDetails = itemsWithDetails.filter(
-    (_, idx) => !itemsToRemove.includes(idx)
-  );
+  // Only include items that are not removed
+  const activeItemsWithDetails = useMemo(() => {
+    return itemsWithDetails.filter(item => !item.isRemoved);
+  }, [itemsWithDetails]);
 
   const packetConfigItems = useMemo(() => {
     return activeItemsWithDetails.map((item, idx) => {
@@ -597,9 +624,9 @@ export default function DispatchOrderDetailPage({ params }) {
             (cq) => cq.itemIndex === index
           )?.quantity ||
           item.quantity -
-            (dispatchOrder?.returnedItems
-              ?.filter((r) => r.itemIndex === index)
-              .reduce((sum, r) => sum + r.quantity, 0) || 0);
+          (dispatchOrder?.returnedItems
+            ?.filter((r) => r.itemIndex === index)
+            .reduce((sum, r) => sum + r.quantity, 0) || 0);
         const costPrice = parseFloat(item.costPrice) || 0;
         supplierPaymentAmount += costPrice * confirmedQty;
       });
@@ -838,13 +865,14 @@ export default function DispatchOrderDetailPage({ params }) {
           quantity: parseFloat(itemData.quantity),
           costPrice: parseFloat(itemData.costPrice),
           primaryColor: itemData.primaryColor,
+          size: itemData.size,
           productImage: itemData.images,
           packets: itemPackets,
           boxes: itemData.boxStr
             ? itemData.boxStr
-                .split(",")
-                .map((s) => ({ boxNumber: parseInt(s.trim()) }))
-                .filter((b) => !isNaN(b.boxNumber))
+              .split(",")
+              .map((s) => ({ boxNumber: parseInt(s.trim()) }))
+              .filter((b) => !isNaN(b.boxNumber))
             : [],
           useVariantTracking: item.useVariantTracking,
         });
@@ -867,6 +895,9 @@ export default function DispatchOrderDetailPage({ params }) {
         percentage: parseFloat(percentage) || 0,
         discount: confirmOrderSupplierCurrency.discount,
       },
+      logisticsCompany: editedLogisticsCompany,
+      dispatchDate: editedDispatchDate,
+      isTotalBoxesConfirmed: totalBoxesConfirmed,
     };
 
     console.log("Calling submitApprovalMutation with data:", approvalData);
@@ -895,6 +926,9 @@ export default function DispatchOrderDetailPage({ params }) {
     editedTotalBoxes,
     submitApprovalMutation,
     confirmOrderSupplierCurrency.discount,
+    editedLogisticsCompany,
+    editedDispatchDate,
+    totalBoxesConfirmed,
   ]);
 
   const handleConfirm = useCallback(() => {
@@ -946,13 +980,14 @@ export default function DispatchOrderDetailPage({ params }) {
           quantity: parseFloat(itemData.quantity),
           costPrice: parseFloat(itemData.costPrice),
           primaryColor: itemData.primaryColor,
+          size: itemData.size,
           productImage: itemData.images,
           packets: itemPackets, // Include edited packets
           boxes: itemData.boxStr
             ? itemData.boxStr
-                .split(",")
-                .map((s) => ({ boxNumber: parseInt(s.trim()) }))
-                .filter((b) => !isNaN(b.boxNumber))
+              .split(",")
+              .map((s) => ({ boxNumber: parseInt(s.trim()) }))
+              .filter((b) => !isNaN(b.boxNumber))
             : [], // Include edited boxes
           useVariantTracking: item.useVariantTracking,
         });
@@ -978,6 +1013,9 @@ export default function DispatchOrderDetailPage({ params }) {
         percentage: parseFloat(percentage) || 0,
         discount: confirmOrderSupplierCurrency.discount,
       },
+      logisticsCompany: editedLogisticsCompany,
+      dispatchDate: editedDispatchDate,
+      isTotalBoxesConfirmed: totalBoxesConfirmed,
     };
 
     console.log("Calling confirmMutation with data:", confirmData);
@@ -991,23 +1029,7 @@ export default function DispatchOrderDetailPage({ params }) {
         setActiveTab("confirm");
         toast.success("Order confirmed successfully!");
 
-        // Log warning if edits were made that couldn't be saved
-        if (
-          itemsToRemove.length > 0 ||
-          newItems.length > 0 ||
-          editedLogisticsCompany !==
-            (dispatchOrder.logisticsCompany?._id ||
-              dispatchOrder.logisticsCompany) ||
-          editedDispatchDate !==
-            (dispatchOrder.dispatchDate
-              ? new Date(dispatchOrder.dispatchDate).toISOString().split("T")[0]
-              : "")
-        ) {
-          toast.warning(
-            "Note: Item edits require backend update to be saved. Only payment details were confirmed.",
-            { duration: 6000 }
-          );
-        }
+        // No warning needed as edits are now saved
       },
     });
   }, [
@@ -1027,6 +1049,7 @@ export default function DispatchOrderDetailPage({ params }) {
     editedTotalBoxes,
     confirmMutation,
     confirmOrderSupplierCurrency.discount,
+    totalBoxesConfirmed,
   ]);
 
   // Keyboard shortcuts
@@ -1169,8 +1192,7 @@ export default function DispatchOrderDetailPage({ params }) {
         // Validate quantity doesn't exceed remaining
         if (qtyNum > remainingQty) {
           toast.error(
-            `Return quantity for ${
-              item?.productName || "item"
+            `Return quantity for ${item?.productName || "item"
             } exceeds remaining quantity (${remainingQty})`
           );
           return null;
@@ -1389,11 +1411,10 @@ export default function DispatchOrderDetailPage({ params }) {
                   </div>
                 ) : (
                   <p
-                    className={`font-medium text-sm p-2 rounded ${
-                      isPending
-                        ? "cursor-pointer hover:bg-blue-50 border border-transparent hover:border-blue-300"
-                        : ""
-                    }`}
+                    className={`font-medium text-sm p-2 rounded ${isPending
+                      ? "cursor-pointer hover:bg-blue-50 border border-transparent hover:border-blue-300"
+                      : ""
+                      }`}
                     onDoubleClick={() =>
                       isPending && setEditingField("logisticsCompany")
                     }
@@ -1435,23 +1456,30 @@ export default function DispatchOrderDetailPage({ params }) {
                   </div>
                 ) : (
                   <p
-                    className={`font-medium text-sm p-2 rounded ${
-                      isPending
-                        ? "cursor-pointer hover:bg-blue-50 border border-transparent hover:border-blue-300"
-                        : ""
-                    }`}
+                    className={`font-medium text-sm p-2 rounded ${isPending
+                      ? "cursor-pointer hover:bg-blue-50 border border-transparent hover:border-blue-300"
+                      : ""
+                      }`}
                     onDoubleClick={() =>
                       isPending && setEditingField("dispatchDate")
                     }
                     title={isPending ? "" : ""}
                   >
-                    {editedDispatchDate
-                      ? new Date(editedDispatchDate).toLocaleDateString("en-GB")
-                      : dispatchOrder.dispatchDate
-                      ? new Date(dispatchOrder.dispatchDate).toLocaleDateString(
-                          "en-GB"
-                        )
-                      : "—"}
+                    {(() => {
+                      if (editedDispatchDate) {
+                        const [year, month, day] = editedDispatchDate.split("-");
+                        return `${day}/${month}/${year}`;
+                      }
+                      if (dispatchOrder.dispatchDate) {
+                        const date = new Date(dispatchOrder.dispatchDate);
+                        // Using UTC methods to avoid timezone shifts for these dates
+                        const day = String(date.getUTCDate()).padStart(2, '0');
+                        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                        const year = date.getUTCFullYear();
+                        return `${day}/${month}/${year}`;
+                      }
+                      return "—";
+                    })()}
                   </p>
                 )}
               </div>
@@ -1492,11 +1520,10 @@ export default function DispatchOrderDetailPage({ params }) {
                   </div>
                 ) : (
                   <p
-                    className={`font-medium text-sm p-2 rounded ${
-                      isPending
-                        ? "cursor-pointer hover:bg-blue-50 border border-transparent hover:border-blue-300"
-                        : ""
-                    }`}
+                    className={`font-medium text-sm p-2 rounded ${isPending
+                      ? "cursor-pointer hover:bg-blue-50 border border-transparent hover:border-blue-300"
+                      : ""
+                      }`}
                     onDoubleClick={() =>
                       isPending && setEditingField("discount")
                     }
@@ -1504,33 +1531,33 @@ export default function DispatchOrderDetailPage({ params }) {
                   >
                     {isPending
                       ? (() => {
-                          if (
-                            dispatchOrder?.returnedItems &&
-                            dispatchOrder.returnedItems.length > 0
-                          ) {
-                            // Show the calculated proportional discount for pending orders with returns
-                            return confirmOrderSupplierCurrency.discount.toLocaleString(
-                              undefined,
-                              {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              }
-                            );
-                          }
-                          return editedDiscount;
-                        })()
+                        if (
+                          dispatchOrder?.returnedItems &&
+                          dispatchOrder.returnedItems.length > 0
+                        ) {
+                          // Show the calculated proportional discount for pending orders with returns
+                          return confirmOrderSupplierCurrency.discount.toLocaleString(
+                            undefined,
+                            {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            }
+                          );
+                        }
+                        return editedDiscount;
+                      })()
                       : (() => {
-                          // For display in Order Information, show discount in supplier currency (amount)
-                          // For pending orders: totalDiscount is stored in supplier currency
+                        // For display in Order Information, show discount in supplier currency (amount)
+                        // For pending orders: totalDiscount is stored in supplier currency
 
-                          const discountValue =
-                            dispatchOrder.totalDiscount || 0;
-                          // Format as number (supplier currency) without EUR symbol
-                          return discountValue.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          });
-                        })()}
+                        const discountValue =
+                          dispatchOrder.totalDiscount || 0;
+                        // Format as number (supplier currency) without EUR symbol
+                        return discountValue.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        });
+                      })()}
                   </p>
                 )}
               </div>
@@ -1592,11 +1619,10 @@ export default function DispatchOrderDetailPage({ params }) {
                   </div>
                 ) : (
                   <p
-                    className={`font-medium text-sm p-2 rounded ${
-                      isPending
-                        ? "cursor-pointer hover:bg-blue-50 border border-transparent hover:border-blue-300"
-                        : ""
-                    }`}
+                    className={`font-medium text-sm p-2 rounded ${isPending
+                      ? "cursor-pointer hover:bg-blue-50 border border-transparent hover:border-blue-300"
+                      : ""
+                      }`}
                     onDoubleClick={() =>
                       isPending && setEditingField("totalBoxes")
                     }
@@ -1618,9 +1644,9 @@ export default function DispatchOrderDetailPage({ params }) {
                     <p className="font-medium text-sm">
                       {dispatchOrder.exchangeRate
                         ? dispatchOrder.exchangeRate.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 4,
-                          })
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 4,
+                        })
                         : "—"}
                     </p>
                   </div>
@@ -1690,15 +1716,15 @@ export default function DispatchOrderDetailPage({ params }) {
                     {activeItemsWithDetails.some(
                       (item) => item.totalReturned > 0
                     ) && (
-                      <span className="text-xs text-red-600 ml-2">
-                        (
-                        {activeItemsWithDetails.reduce(
-                          (sum, item) => sum + item.totalReturned,
-                          0
-                        )}{" "}
-                        returned)
-                      </span>
-                    )}
+                        <span className="text-xs text-red-600 ml-2">
+                          (
+                          {activeItemsWithDetails.reduce(
+                            (sum, item) => sum + item.totalReturned,
+                            0
+                          )}{" "}
+                          returned)
+                        </span>
+                      )}
                   </>
                 )}
               </div>
@@ -1729,6 +1755,9 @@ export default function DispatchOrderDetailPage({ params }) {
                       </th>
                       <th className="p-2 text-left text-purple-900 font-semibold w-24">
                         Sizes
+                      </th>
+                      <th className="p-2 text-left text-purple-900 font-semibold w-24">
+                        Season
                       </th>
                       <th className="p-2 text-center text-purple-900 font-semibold w-16">
                         Packets
@@ -1790,17 +1819,16 @@ export default function DispatchOrderDetailPage({ params }) {
                       return (
                         <tr
                           key={item.index}
-                          className={`border-b border-purple-100 transition-colors ${
-                            isRemoved
-                              ? "opacity-50 bg-red-50"
-                              : isPending && !isVerified
+                          className={`border-b border-purple-100 transition-colors ${isRemoved
+                            ? "opacity-50 bg-red-50"
+                            : isPending && !isVerified
                               ? "bg-amber-50/50"
                               : isPending && isVerified
-                              ? "bg-green-50/30"
-                              : idx % 2 === 0
-                              ? "bg-white"
-                              : "bg-purple-50/20"
-                          }`}
+                                ? "bg-green-50/30"
+                                : idx % 2 === 0
+                                  ? "bg-white"
+                                  : "bg-purple-50/20"
+                            }`}
                         >
                           {isPending && (
                             <td className="p-2 text-center">
@@ -1875,8 +1903,8 @@ export default function DispatchOrderDetailPage({ params }) {
                                     Array.isArray(itemData.primaryColor)
                                       ? itemData.primaryColor
                                       : itemData.primaryColor
-                                      ? [itemData.primaryColor]
-                                      : []
+                                        ? [itemData.primaryColor]
+                                        : []
                                   }
                                   onChange={(colors) =>
                                     setEditedItems({
@@ -1894,7 +1922,7 @@ export default function DispatchOrderDetailPage({ params }) {
                             ) : (
                               <div className="text-xs">
                                 {Array.isArray(itemData.primaryColor) &&
-                                itemData.primaryColor.length > 0 ? (
+                                  itemData.primaryColor.length > 0 ? (
                                   <div className="flex flex-wrap gap-1">
                                     {itemData.primaryColor.map((color, idx) => (
                                       <span
@@ -1921,8 +1949,8 @@ export default function DispatchOrderDetailPage({ params }) {
                                     Array.isArray(itemData.size)
                                       ? itemData.size
                                       : itemData.size
-                                      ? [itemData.size]
-                                      : []
+                                        ? [itemData.size]
+                                        : []
                                   }
                                   onChange={(sizes) =>
                                     setEditedItems({
@@ -1940,7 +1968,7 @@ export default function DispatchOrderDetailPage({ params }) {
                             ) : (
                               <div className="text-xs">
                                 {Array.isArray(itemData.size) &&
-                                itemData.size.length > 0 ? (
+                                  itemData.size.length > 0 ? (
                                   <div className="flex flex-wrap gap-1">
                                     {itemData.size.map((s, idx) => (
                                       <span
@@ -1976,9 +2004,9 @@ export default function DispatchOrderDetailPage({ params }) {
                                         onClick={() => {
                                           const modalItemId = String(
                                             item.index ??
-                                              item.productCode ??
-                                              item.productName ??
-                                              "0"
+                                            item.productCode ??
+                                            item.productName ??
+                                            "0"
                                           );
                                           setSelectedItemForPackets({
                                             ...item,
@@ -2001,9 +2029,9 @@ export default function DispatchOrderDetailPage({ params }) {
                                       onClick={() => {
                                         const modalItemId = String(
                                           item.index ??
-                                            item.productCode ??
-                                            item.productName ??
-                                            "0"
+                                          item.productCode ??
+                                          item.productName ??
+                                          "0"
                                         );
                                         setSelectedItemForPackets({
                                           ...item,
@@ -2286,11 +2314,10 @@ export default function DispatchOrderDetailPage({ params }) {
                                 className="h-8 w-8 p-0"
                               >
                                 <Trash2
-                                  className={`h-4 w-4 ${
-                                    isRemoved
-                                      ? "text-green-600"
-                                      : "text-red-600"
-                                  }`}
+                                  className={`h-4 w-4 ${isRemoved
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                    }`}
                                 />
                               </Button>
                             </td>
@@ -2552,11 +2579,10 @@ export default function DispatchOrderDetailPage({ params }) {
                         Remaining Balance:
                       </span>
                       <span
-                        className={`font-semibold text-lg ${
-                          confirmOrderSupplierCurrency.remainingBalance > 0
-                            ? "text-red-600"
-                            : "text-green-600"
-                        }`}
+                        className={`font-semibold text-lg ${confirmOrderSupplierCurrency.remainingBalance > 0
+                          ? "text-red-600"
+                          : "text-green-600"
+                          }`}
                       >
                         {confirmOrderSupplierCurrency.remainingBalance.toLocaleString(
                           undefined,
@@ -2597,7 +2623,7 @@ export default function DispatchOrderDetailPage({ params }) {
                       handleConfirm();
                     }}
                     disabled={
-                      confirmMutation.isPending || 
+                      confirmMutation.isPending ||
                       deleteMutation.isPending ||
                       !totalBoxesConfirmed
                     }
@@ -2618,15 +2644,15 @@ export default function DispatchOrderDetailPage({ params }) {
                     )}
                   </Button>
                 )}
-                {/* Admin: Submit Approval button (only for pending orders) */}
-                {isAdmin && dispatchOrder?.status === 'pending' && (
+                {/* Admin: Submit Approval button (for pending and pending-approval orders) */}
+                {isAdmin && (dispatchOrder?.status === 'pending' || dispatchOrder?.status === 'pending-approval') && (
                   <Button
                     onClick={() => {
                       console.log("Submit Approval button clicked");
                       handleSubmitApproval();
                     }}
                     disabled={
-                      submitApprovalMutation.isPending || 
+                      submitApprovalMutation.isPending ||
                       deleteMutation.isPending ||
                       !totalBoxesConfirmed
                     }
@@ -2642,7 +2668,7 @@ export default function DispatchOrderDetailPage({ params }) {
                     ) : (
                       <>
                         <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Submit Approval
+                        {dispatchOrder?.status === 'pending-approval' ? 'Re-submit for Approval' : 'Submit Approval'}
                       </>
                     )}
                   </Button>
@@ -2726,11 +2752,10 @@ export default function DispatchOrderDetailPage({ params }) {
                       return (
                         <>
                           <p
-                            className={`font-medium text-sm ${
-                              displayRemaining > 0
-                                ? "text-red-600"
-                                : "text-green-600"
-                            }`}
+                            className={`font-medium text-sm ${displayRemaining > 0
+                              ? "text-red-600"
+                              : "text-green-600"
+                              }`}
                           >
                             {displayRemaining.toLocaleString(undefined, {
                               minimumFractionDigits: 2,
@@ -2782,10 +2807,10 @@ export default function DispatchOrderDetailPage({ params }) {
                       {remainingBalance > 0
                         ? `Remaining Balance: ${currency(remainingBalance)}`
                         : supplierDue > 0
-                        ? `Fully paid. Outstanding Balance: ${currency(
+                          ? `Fully paid. Outstanding Balance: ${currency(
                             supplierDue
                           )}`
-                        : "Fully paid"}
+                          : "Fully paid"}
                     </p>
                     {supplierTotalBalance !== undefined && (
                       <p className="text-xs font-semibold text-indigo-700 mt-2 pt-2 border-t border-indigo-200">
@@ -2795,8 +2820,8 @@ export default function DispatchOrderDetailPage({ params }) {
                             supplierTotalBalance > 0
                               ? "text-green-600"
                               : supplierTotalBalance < 0
-                              ? "text-red-600"
-                              : "text-slate-600"
+                                ? "text-red-600"
+                                : "text-slate-600"
                           }
                         >
                           {supplierTotalBalance > 0 ? "+" : ""}
@@ -2929,9 +2954,8 @@ export default function DispatchOrderDetailPage({ params }) {
                           {paymentHistory.map((payment, idx) => (
                             <tr
                               key={idx}
-                              className={`border-b border-amber-100 ${
-                                idx % 2 === 0 ? "bg-white" : "bg-amber-50/20"
-                              }`}
+                              className={`border-b border-amber-100 ${idx % 2 === 0 ? "bg-white" : "bg-amber-50/20"
+                                }`}
                             >
                               <td className="p-2">
                                 {new Date(payment.date).toLocaleDateString(
@@ -3004,9 +3028,8 @@ export default function DispatchOrderDetailPage({ params }) {
                           {dispatchOrder.returns.map((returnDoc, idx) => (
                             <tr
                               key={idx}
-                              className={`border-b border-rose-100 ${
-                                idx % 2 === 0 ? "bg-white" : "bg-rose-50/20"
-                              }`}
+                              className={`border-b border-rose-100 ${idx % 2 === 0 ? "bg-white" : "bg-rose-50/20"
+                                }`}
                             >
                               <td className="p-2">
                                 {new Date(
@@ -3111,13 +3134,12 @@ export default function DispatchOrderDetailPage({ params }) {
                         return (
                           <tr
                             key={item.index}
-                            className={`border-b border-rose-100 transition-colors ${
-                              hasReturnQty
-                                ? "bg-rose-200/40"
-                                : idx % 2 === 0
+                            className={`border-b border-rose-100 transition-colors ${hasReturnQty
+                              ? "bg-rose-200/40"
+                              : idx % 2 === 0
                                 ? "bg-white"
                                 : "bg-rose-50/20"
-                            }`}
+                              }`}
                           >
                             <td className="p-2">
                               <ProductImageGallery
@@ -3153,11 +3175,10 @@ export default function DispatchOrderDetailPage({ params }) {
                             </td>
                             <td className="p-2 text-center">
                               <span
-                                className={`font-semibold ${
-                                  remainingQty === 0
-                                    ? "text-muted-foreground"
-                                    : ""
-                                }`}
+                                className={`font-semibold ${remainingQty === 0
+                                  ? "text-muted-foreground"
+                                  : ""
+                                  }`}
                               >
                                 {remainingQty}
                               </span>
@@ -3271,59 +3292,59 @@ export default function DispatchOrderDetailPage({ params }) {
               {Object.values(returnQuantities).some(
                 (qty) => qty && parseFloat(qty) > 0
               ) && (
-                <Card className="bg-gradient-to-r from-rose-200/60 to-pink-200/40 border-2 border-rose-400">
-                  <CardContent className="pt-4">
-                    <p className="text-sm font-semibold mb-3">Return Summary</p>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        {Object.entries(returnQuantities)
-                          .filter(([_, qty]) => qty && parseFloat(qty) > 0)
-                          .map(([itemIndex, qty]) => {
-                            const item = itemsWithDetails.find(
-                              (i) => i.index === parseInt(itemIndex)
-                            );
-                            return (
-                              <div
-                                key={itemIndex}
-                                className="flex items-center justify-between text-sm"
-                              >
-                                <span className="text-muted-foreground truncate mr-2">
-                                  {item?.productName}:
-                                </span>
-                                <span className="font-semibold">{qty} qty</span>
-                              </div>
-                            );
-                          })}
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">
-                            Total Items:
-                          </span>
-                          <span className="font-semibold">
-                            {
-                              Object.values(returnQuantities).filter(
-                                (qty) => qty && parseFloat(qty) > 0
-                              ).length
-                            }
-                          </span>
+                  <Card className="bg-gradient-to-r from-rose-200/60 to-pink-200/40 border-2 border-rose-400">
+                    <CardContent className="pt-4">
+                      <p className="text-sm font-semibold mb-3">Return Summary</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          {Object.entries(returnQuantities)
+                            .filter(([_, qty]) => qty && parseFloat(qty) > 0)
+                            .map(([itemIndex, qty]) => {
+                              const item = itemsWithDetails.find(
+                                (i) => i.index === parseInt(itemIndex)
+                              );
+                              return (
+                                <div
+                                  key={itemIndex}
+                                  className="flex items-center justify-between text-sm"
+                                >
+                                  <span className="text-muted-foreground truncate mr-2">
+                                    {item?.productName}:
+                                  </span>
+                                  <span className="font-semibold">{qty} qty</span>
+                                </div>
+                              );
+                            })}
                         </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">
-                            Total Quantity:
-                          </span>
-                          <span className="font-semibold text-lg">
-                            {Object.values(returnQuantities).reduce(
-                              (sum, qty) => sum + (parseFloat(qty) || 0),
-                              0
-                            )}
-                          </span>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">
+                              Total Items:
+                            </span>
+                            <span className="font-semibold">
+                              {
+                                Object.values(returnQuantities).filter(
+                                  (qty) => qty && parseFloat(qty) > 0
+                                ).length
+                              }
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">
+                              Total Quantity:
+                            </span>
+                            <span className="font-semibold text-lg">
+                              {Object.values(returnQuantities).reduce(
+                                (sum, qty) => sum + (parseFloat(qty) || 0),
+                                0
+                              )}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                    </CardContent>
+                  </Card>
+                )}
 
               <CardFooter className="flex items-center justify-end gap-4 pt-4 px-0">
                 <Button

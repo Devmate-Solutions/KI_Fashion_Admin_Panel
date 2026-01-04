@@ -26,12 +26,11 @@ export default function DispatchOrdersPage() {
   const isSuperAdmin = user?.role === 'super-admin'
 
   const params = useMemo(() => {
-    // Super-admin can see both 'pending' and 'pending-approval' orders
-    // Admin can only see 'pending' orders
-    const status = isSuperAdmin ? 'pending,pending-approval' : 'pending'
+    // Show all active and pending orders for admins
+    const status = 'pending,pending-approval,confirmed'
     const p = { limit: 100, status }
     return p
-  }, [isSuperAdmin])
+  }, [])
 
   const { data: dispatchOrders = [], isLoading } = useDispatchOrders(params)
 
@@ -85,14 +84,14 @@ export default function DispatchOrdersPage() {
         // Calculate remaining quantity after returns
         const totalQuantity = row.totalQuantity || 0
         let totalReturned = 0
-        
+
         // Sum up all returned quantities from returnedItems
         if (row.returnedItems && Array.isArray(row.returnedItems)) {
           totalReturned = row.returnedItems.reduce((sum, returned) => {
             return sum + (returned.quantity || 0)
           }, 0)
         }
-        
+
         // For confirmed orders, use confirmedQuantities if available
         let remainingQuantity = totalQuantity
         if (row.status === 'confirmed' && row.confirmedQuantities && Array.isArray(row.confirmedQuantities)) {
@@ -104,7 +103,7 @@ export default function DispatchOrdersPage() {
           // For other statuses, subtract returned items
           remainingQuantity = totalQuantity - totalReturned
         }
-        
+
         return (
           <div className="flex flex-col">
             <span className="font-medium">{remainingQuantity}</span>
@@ -153,9 +152,7 @@ export default function DispatchOrdersPage() {
         <div>
           <h1 className="text-2xl font-semibold">Dispatch Orders</h1>
           <p className="text-sm text-muted-foreground">
-            {isSuperAdmin 
-              ? "Manage pending and pending-approval dispatch orders from suppliers. Confirmed orders appear in the Buying page."
-              : "Manage pending dispatch orders from suppliers. Confirmed orders appear in the Buying page."}
+            Manage pending, pending-approval, and confirmed dispatch orders from suppliers.
           </p>
         </div>
       </div>
