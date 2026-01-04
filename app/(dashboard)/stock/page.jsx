@@ -1,21 +1,21 @@
-"use client"
+"use client";
 
-import React, { useEffect, useMemo, useState } from "react"
-import Tabs from "../../../components/tabs"
-import DataTable from "../../../components/data-table"
-import FormDialog from "../../../components/form-dialog"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
+import React, { useEffect, useMemo, useState } from "react";
+import Tabs from "../../../components/tabs";
+import DataTable from "../../../components/data-table";
+import FormDialog from "../../../components/form-dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
   Pagination,
   PaginationContent,
@@ -23,7 +23,7 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from "@/components/ui/pagination"
+} from "@/components/ui/pagination";
 import {
   useInventoryList,
   useInventoryItem,
@@ -31,33 +31,33 @@ import {
   useAddStock,
   useReduceStock,
   useAdjustStock,
-} from "@/lib/hooks/useInventory"
-import { toast } from "react-hot-toast"
-import { Boxes, Loader2, MoveRight, RefreshCcw } from "lucide-react"
-import ProductImageGallery from "@/components/ui/ProductImageGallery"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+} from "@/lib/hooks/useInventory";
+import { toast } from "react-hot-toast";
+import { Boxes, Loader2, MoveRight, RefreshCcw } from "lucide-react";
+import ProductImageGallery from "@/components/ui/ProductImageGallery";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const LIST_LIMIT = 20
-const MOVEMENT_LIMIT = 20
+const LIST_LIMIT = 20;
+const MOVEMENT_LIMIT = 20;
 
 function formatNumber(value) {
   return Number(value || 0).toLocaleString(undefined, {
     maximumFractionDigits: 0,
-  })
+  });
 }
 
 function formatDecimal(value) {
   return Number(value || 0).toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })
+  });
 }
 
 function formatDateTime(value) {
-  if (!value) return "-"
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "-"
-  return date.toLocaleString('en-GB')
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("en-GB");
 }
 
 // Helper to get image array from various sources
@@ -66,7 +66,9 @@ const getImageArray = (item) => {
     return item.product.images;
   }
   if (item.productImage) {
-    return Array.isArray(item.productImage) ? item.productImage : [item.productImage];
+    return Array.isArray(item.productImage)
+      ? item.productImage
+      : [item.productImage];
   }
   return [];
 };
@@ -91,7 +93,11 @@ const inventoryColumns = [
     header: "Supplier",
     accessor: "supplierName",
     render: (row) => {
-      console.log('[Supplier Column]', { supplierName: row.supplierName, product: row.product, suppliers: row.product?.suppliers });
+      console.log("[Supplier Column]", {
+        supplierName: row.supplierName,
+        product: row.product,
+        suppliers: row.product?.suppliers,
+      });
       return <div className="font-medium">{row.supplierName || "—"}</div>;
     },
   },
@@ -101,7 +107,6 @@ const inventoryColumns = [
     render: (row) => (
       <div>
         <div className="font-medium leading-tight">{row.productName}</div>
-
       </div>
     ),
   },
@@ -111,17 +116,80 @@ const inventoryColumns = [
     render: (row) => row.sku || "-",
   },
   {
+    header: "Season",
+    accessor: "season",
+    render: (row) => {
+      const season = row.product?.season;
+      if (Array.isArray(season)) {
+        return season.join(", ") || "—";
+      }
+      return season || "—";
+    },
+  },
+  {
+    header: "Size",
+    accessor: "size",
+    render: (row) => {
+      // Check variant composition first (most accurate)
+      if (
+        row.raw?.variantComposition &&
+        Array.isArray(row.raw.variantComposition) &&
+        row.raw.variantComposition.length > 0
+      ) {
+        const sizes = new Set();
+        row.raw.variantComposition.forEach((variant) => {
+          if (variant.size) sizes.add(variant.size);
+        });
+        if (sizes.size > 0) {
+          return Array.from(sizes).join(", ");
+        }
+      }
+      // Check inventory record level
+      const size = row.raw?.size || row.product?.size;
+      if (Array.isArray(size)) {
+        return size.join(", ") || "—";
+      }
+      return size || "—";
+    },
+  },
+  {
+    header: "Color",
+    accessor: "color",
+    render: (row) => {
+      // Check variant composition first (most accurate)
+      if (
+        row.raw?.variantComposition &&
+        Array.isArray(row.raw.variantComposition) &&
+        row.raw.variantComposition.length > 0
+      ) {
+        const colors = new Set();
+        row.raw.variantComposition.forEach((variant) => {
+          if (variant.color) colors.add(variant.color);
+        });
+        if (colors.size > 0) {
+          return Array.from(colors).join(", ");
+        }
+      }
+      // Check inventory record level
+      const color =
+        row.raw?.primaryColor ||
+        row.raw?.color ||
+        row.product?.specifications?.color ||
+        row.product?.primaryColor ||
+        row.product?.color;
+      if (Array.isArray(color)) {
+        return color.join(", ") || "—";
+      }
+      return color || "—";
+    },
+  },
+  {
     header: "Available Stock",
     accessor: "currentStock",
     render: (row) => (
-      <div className="tabular-nums font-semibold">{formatNumber(row.currentStock)}</div>
-    ),
-  },
-  {
-    header: "Available",
-    accessor: "availableStock",
-    render: (row) => (
-      <div className="tabular-nums">{formatNumber(row.availableStock)}</div>
+      <div className="tabular-nums font-semibold">
+        {formatNumber(row.currentStock)}
+      </div>
     ),
   },
   {
@@ -134,23 +202,48 @@ const inventoryColumns = [
   {
     header: "Avg Cost",
     accessor: "averageCostPrice",
-    render: (row) => <span className="tabular-nums">{formatDecimal(row.averageCostPrice)}</span>,
+    render: (row) => (
+      <span className="tabular-nums">
+        {formatDecimal(row.averageCostPrice)}
+      </span>
+    ),
   },
   {
     header: "Value",
     accessor: "totalValue",
-    render: (row) => <span className="tabular-nums font-semibold">{formatDecimal(row.totalValue)}</span>,
+    render: (row) => (
+      <span className="tabular-nums font-semibold">
+        {formatDecimal(row.totalValue)}
+      </span>
+    ),
   },
   {
     header: "Status",
     accessor: "needsReorder",
     render: (row) => (
-      <Badge variant={row.needsReorder ? "destructive" : row.lowStock ? "secondary" : "outline"}>
+      <Badge
+        variant={
+          row.needsReorder
+            ? "destructive"
+            : row.lowStock
+            ? "secondary"
+            : "outline"
+        }
+      >
         {row.needsReorder ? "Re-Order" : row.lowStock ? "Low Stock" : "Healthy"}
       </Badge>
     ),
   },
-]
+  {
+    header: "Date/Time",
+    accessor: "lastStockUpdate",
+    render: (row) => (
+      <div className="text-sm text-muted-foreground">
+        {formatDateTime(row.lastStockUpdate)}
+      </div>
+    ),
+  },
+];
 
 const movementColumns = [
   {
@@ -162,7 +255,15 @@ const movementColumns = [
     header: "Type",
     accessor: "type",
     render: (row) => (
-      <Badge variant={row.type === "in" ? "secondary" : row.type === "adjust" ? "outline" : "destructive"}>
+      <Badge
+        variant={
+          row.type === "in"
+            ? "secondary"
+            : row.type === "adjust"
+            ? "outline"
+            : "destructive"
+        }
+      >
         {row.type?.toUpperCase() || "-"}
       </Badge>
     ),
@@ -170,7 +271,9 @@ const movementColumns = [
   {
     header: "Quantity",
     accessor: "quantity",
-    render: (row) => <span className="tabular-nums">{formatNumber(row.quantity)}</span>,
+    render: (row) => (
+      <span className="tabular-nums">{formatNumber(row.quantity)}</span>
+    ),
   },
   { header: "Reference", accessor: "reference" },
   {
@@ -183,72 +286,101 @@ const movementColumns = [
     accessor: "notes",
     render: (row) => row.notes || "-",
   },
-]
+];
 
 function currency(n) {
-  const num = Number(n || 0)
-  return `£${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const num = Number(n || 0);
+  return `£${num.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 export default function StockPage() {
-  const [page, setPage] = useState(1)
-  const [movementPage, setMovementPage] = useState(1)
-  const [selectedProductId, setSelectedProductId] = useState("")
+  const [page, setPage] = useState(1);
+  const [movementPage, setMovementPage] = useState(1);
+  const [selectedProductId, setSelectedProductId] = useState("");
 
   const defaultFilterState = useMemo(
-    () => ({ search: "", lowStock: false, needsReorder: false }),
+    () => ({
+      search: "",
+      lowStock: false,
+      needsReorder: false,
+      startDate: "",
+      endDate: "",
+    }),
     []
-  )
-  const [filterForm, setFilterForm] = useState(defaultFilterState)
-  const [appliedFilters, setAppliedFilters] = useState(defaultFilterState)
+  );
+  const [filterForm, setFilterForm] = useState(defaultFilterState);
+  const [appliedFilters, setAppliedFilters] = useState(defaultFilterState);
 
   const defaultMovementFilters = useMemo(
     () => ({ type: undefined, startDate: "", endDate: "" }),
     []
-  )
-  const [movementFilterForm, setMovementFilterForm] = useState(defaultMovementFilters)
-  const [movementFilters, setMovementFilters] = useState(defaultMovementFilters)
+  );
+  const [movementFilterForm, setMovementFilterForm] = useState(
+    defaultMovementFilters
+  );
+  const [movementFilters, setMovementFilters] = useState(
+    defaultMovementFilters
+  );
 
-  const inventoryParams = useMemo(
-    () => {
-      const params = {
-        page,
-        limit: LIST_LIMIT,
-      }
+  const inventoryParams = useMemo(() => {
+    const params = {
+      page,
+      limit: LIST_LIMIT,
+    };
 
-      if (appliedFilters.search?.trim()) {
-        params.search = appliedFilters.search.trim()
-      }
+    if (appliedFilters.search?.trim()) {
+      params.search = appliedFilters.search.trim();
+    }
 
-      if (appliedFilters.lowStock) {
-        params.lowStock = true
-      }
+    if (appliedFilters.lowStock) {
+      params.lowStock = true;
+    }
 
-      if (appliedFilters.needsReorder) {
-        params.needsReorder = true
-      }
+    if (appliedFilters.needsReorder) {
+      params.needsReorder = true;
+    }
 
-      return params
-    },
-    [page, appliedFilters]
-  )
+    if (appliedFilters.startDate) {
+      params.startDate = appliedFilters.startDate;
+    }
 
-  const { data: inventoryData, isLoading: inventoryLoading, isFetching: inventoryFetching } =
-    useInventoryList(inventoryParams)
+    if (appliedFilters.endDate) {
+      params.endDate = appliedFilters.endDate;
+    }
 
-  const inventoryItems = inventoryData?.items ?? []
+    return params;
+  }, [page, appliedFilters]);
+
+  const {
+    data: inventoryData,
+    isLoading: inventoryLoading,
+    isFetching: inventoryFetching,
+  } = useInventoryList(inventoryParams);
+
+  const inventoryItems = inventoryData?.items ?? [];
 
   // Calculate summary statistics
-  const totalStockValue = inventoryItems.reduce((sum, item) => sum + (item.totalValue || 0), 0)
-  const totalStockItems = inventoryItems.reduce((sum, item) => sum + (item.currentStock || 0), 0)
-  const lowStockCount = inventoryItems.filter(item => item.lowStock || item.needsReorder).length
-  const totalProducts = inventoryItems.length
+  const totalStockValue = inventoryItems.reduce(
+    (sum, item) => sum + (item.totalValue || 0),
+    0
+  );
+  const totalStockItems = inventoryItems.reduce(
+    (sum, item) => sum + (item.currentStock || 0),
+    0
+  );
+  const lowStockCount = inventoryItems.filter(
+    (item) => item.lowStock || item.needsReorder
+  ).length;
+  const totalProducts = inventoryItems.length;
 
   // Debug: Log first item to check image data
   React.useEffect(() => {
     if (inventoryItems.length > 0) {
       const firstItem = inventoryItems[0];
-      console.log('[Stock Table] First inventory item:', {
+      console.log("[Stock Table] First inventory item:", {
         productName: firstItem.productName,
         product: firstItem.product,
         hasProduct: !!firstItem.product,
@@ -257,17 +389,17 @@ export default function StockPage() {
         imagesIsArray: Array.isArray(firstItem.product?.images),
         imagesLength: firstItem.product?.images?.length,
         productImage: firstItem.productImage,
-        raw: firstItem.raw
+        raw: firstItem.raw,
       });
     }
   }, [inventoryItems]);
-  const inventoryPagination = inventoryData?.pagination
+  const inventoryPagination = inventoryData?.pagination;
 
   useEffect(() => {
     if (!selectedProductId && inventoryItems.length > 0) {
-      setSelectedProductId(inventoryItems[0].productId)
+      setSelectedProductId(inventoryItems[0].productId);
     }
-  }, [inventoryItems, selectedProductId])
+  }, [inventoryItems, selectedProductId]);
 
   const productOptions = useMemo(
     () =>
@@ -276,23 +408,24 @@ export default function StockPage() {
         value: item.productId,
       })),
     [inventoryItems]
-  )
+  );
 
   const categories = useMemo(() => {
-    const unique = new Set()
+    const unique = new Set();
     inventoryItems.forEach((item) => {
-      if (item.category) unique.add(item.category)
-    })
-    return Array.from(unique).sort()
-  }, [inventoryItems])
+      if (item.category) unique.add(item.category);
+    });
+    return Array.from(unique).sort();
+  }, [inventoryItems]);
 
-  const { data: selectedInventory, isLoading: detailLoading } = useInventoryItem(selectedProductId, {
-    enabled: Boolean(selectedProductId),
-  })
+  const { data: selectedInventory, isLoading: detailLoading } =
+    useInventoryItem(selectedProductId, {
+      enabled: Boolean(selectedProductId),
+    });
 
   useEffect(() => {
-    setMovementPage(1)
-  }, [selectedProductId])
+    setMovementPage(1);
+  }, [selectedProductId]);
 
   const movementParams = useMemo(
     () => ({
@@ -303,54 +436,56 @@ export default function StockPage() {
       endDate: movementFilters.endDate || undefined,
     }),
     [movementPage, movementFilters]
-  )
+  );
 
   const {
     data: movementData,
     isLoading: movementLoading,
     isFetching: movementFetching,
-  } = useInventoryMovements(selectedProductId, movementParams, { enabled: Boolean(selectedProductId) })
+  } = useInventoryMovements(selectedProductId, movementParams, {
+    enabled: Boolean(selectedProductId),
+  });
 
-  const movementItems = movementData?.items ?? []
-  const movementPagination = movementData?.pagination
+  const movementItems = movementData?.items ?? [];
+  const movementPagination = movementData?.pagination;
 
-  const addStockMutation = useAddStock()
-  const reduceStockMutation = useReduceStock()
-  const adjustStockMutation = useAdjustStock()
+  const addStockMutation = useAddStock();
+  const reduceStockMutation = useReduceStock();
+  const adjustStockMutation = useAdjustStock();
 
-  const [addDialogOpen, setAddDialogOpen] = useState(false)
-  const [reduceDialogOpen, setReduceDialogOpen] = useState(false)
-  const [adjustDialogOpen, setAdjustDialogOpen] = useState(false)
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [reduceDialogOpen, setReduceDialogOpen] = useState(false);
+  const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
 
   const handleApplyFilters = (event) => {
-    event.preventDefault()
-    setAppliedFilters(filterForm)
-    setPage(1)
-  }
+    event.preventDefault();
+    setAppliedFilters(filterForm);
+    setPage(1);
+  };
 
   const handleResetFilters = () => {
-    setFilterForm(defaultFilterState)
-    setAppliedFilters(defaultFilterState)
-    setPage(1)
-  }
+    setFilterForm(defaultFilterState);
+    setAppliedFilters(defaultFilterState);
+    setPage(1);
+  };
 
   const handleApplyMovementFilters = (event) => {
-    event.preventDefault()
-    setMovementFilters(movementFilterForm)
-    setMovementPage(1)
-  }
+    event.preventDefault();
+    setMovementFilters(movementFilterForm);
+    setMovementPage(1);
+  };
 
   const handleResetMovementFilters = () => {
-    setMovementFilterForm(defaultMovementFilters)
-    setMovementFilters(defaultMovementFilters)
-    setMovementPage(1)
-  }
+    setMovementFilterForm(defaultMovementFilters);
+    setMovementFilters(defaultMovementFilters);
+    setMovementPage(1);
+  };
 
   async function submitAddStock(values) {
-    const quantity = Number(values.quantity)
+    const quantity = Number(values.quantity);
     if (!quantity || quantity <= 0) {
-      toast.error("Quantity must be greater than zero")
-      return
+      toast.error("Quantity must be greater than zero");
+      return;
     }
     try {
       await addStockMutation.mutateAsync({
@@ -358,18 +493,18 @@ export default function StockPage() {
         quantity,
         reference: values.reference,
         notes: values.notes || undefined,
-      })
-      setAddDialogOpen(false)
+      });
+      setAddDialogOpen(false);
     } catch (error) {
       // mutation handles toast
     }
   }
 
   async function submitReduceStock(values) {
-    const quantity = Number(values.quantity)
+    const quantity = Number(values.quantity);
     if (!quantity || quantity <= 0) {
-      toast.error("Quantity must be greater than zero")
-      return
+      toast.error("Quantity must be greater than zero");
+      return;
     }
     try {
       await reduceStockMutation.mutateAsync({
@@ -377,18 +512,18 @@ export default function StockPage() {
         quantity,
         reference: values.reference,
         notes: values.notes || undefined,
-      })
-      setReduceDialogOpen(false)
+      });
+      setReduceDialogOpen(false);
     } catch (error) {
       // handled in hook toast
     }
   }
 
   async function submitAdjustStock(values) {
-    const newQuantity = Number(values.newQuantity)
+    const newQuantity = Number(values.newQuantity);
     if (newQuantity < 0) {
-      toast.error("New quantity cannot be negative")
-      return
+      toast.error("New quantity cannot be negative");
+      return;
     }
     try {
       await adjustStockMutation.mutateAsync({
@@ -396,8 +531,8 @@ export default function StockPage() {
         newQuantity,
         reference: values.reference,
         notes: values.notes || undefined,
-      })
-      setAdjustDialogOpen(false)
+      });
+      setAdjustDialogOpen(false);
     } catch (error) {
       // toast handled
     }
@@ -414,7 +549,12 @@ export default function StockPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{currency(totalStockValue)}</div>
+            <div className="text-2xl font-bold">
+              {totalStockValue.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </div>
           </CardContent>
         </Card>
 
@@ -425,7 +565,20 @@ export default function StockPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(totalStockItems)}</div>
+            <div className="text-2xl font-bold">
+              {formatNumber(totalStockItems)}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Products
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalProducts}</div>
           </CardContent>
         </Card>
 
@@ -436,18 +589,9 @@ export default function StockPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-600">{lowStockCount}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Products Tracked
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalProducts}</div>
+            <div className="text-2xl font-bold text-amber-600">
+              {lowStockCount}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -523,23 +667,78 @@ export default function StockPage() {
 
       {/* Unified Search Filter */}
       <div className="rounded-[4px] border border-border bg-card p-4">
-        <form onSubmit={handleApplyFilters} className="flex gap-4">
-          <div className="flex-1">
-            <Input
-              id="filter-search"
-              placeholder="Search by SKU, product name, or supplier..."
-              value={filterForm.search}
-              onChange={(event) =>
-                setFilterForm((prev) => ({ ...prev, search: event.target.value }))
-              }
-            />
+        <form onSubmit={handleApplyFilters} className="space-y-4">
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <Label
+                htmlFor="filter-search"
+                className="text-xs text-muted-foreground mb-1 block"
+              >
+                Search
+              </Label>
+              <Input
+                id="filter-search"
+                placeholder="Search by SKU, product name, or supplier..."
+                value={filterForm.search}
+                onChange={(event) =>
+                  setFilterForm((prev) => ({
+                    ...prev,
+                    search: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit">Apply</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResetFilters}
+              >
+                Reset
+              </Button>
+            </div>
           </div>
-          <Button type="submit">
-            Apply
-          </Button>
-          <Button type="button" variant="outline" onClick={handleResetFilters}>
-            Reset
-          </Button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label
+                htmlFor="filter-start-date"
+                className="text-xs text-muted-foreground mb-1 block"
+              >
+                Start Date
+              </Label>
+              <Input
+                id="filter-start-date"
+                type="date"
+                value={filterForm.startDate}
+                onChange={(event) =>
+                  setFilterForm((prev) => ({
+                    ...prev,
+                    startDate: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <Label
+                htmlFor="filter-end-date"
+                className="text-xs text-muted-foreground mb-1 block"
+              >
+                End Date
+              </Label>
+              <Input
+                id="filter-end-date"
+                type="date"
+                value={filterForm.endDate}
+                onChange={(event) =>
+                  setFilterForm((prev) => ({
+                    ...prev,
+                    endDate: event.target.value,
+                  }))
+                }
+              />
+            </div>
+          </div>
         </form>
       </div>
 
@@ -547,7 +746,10 @@ export default function StockPage() {
         <div className="flex items-center gap-2">
           <Boxes className="h-5 w-5 text-muted-foreground" />
           <div className="text-sm text-muted-foreground">
-            Inventory records: <span className="font-semibold text-foreground">{inventoryPagination?.totalItems ?? inventoryItems.length}</span>
+            Inventory records:{" "}
+            <span className="font-semibold text-foreground">
+              {inventoryPagination?.totalItems ?? inventoryItems.length}
+            </span>
           </div>
         </div>
       </div>
@@ -567,50 +769,69 @@ export default function StockPage() {
               <PaginationPrevious
                 href="#"
                 onClick={(event) => {
-                  event.preventDefault()
+                  event.preventDefault();
                   if ((inventoryPagination?.currentPage || 1) > 1) {
-                    setPage((prev) => Math.max(1, prev - 1))
+                    setPage((prev) => Math.max(1, prev - 1));
                   }
                 }}
                 aria-disabled={(inventoryPagination?.currentPage || 1) === 1}
-                className={(inventoryPagination?.currentPage || 1) === 1 ? "pointer-events-none opacity-50" : undefined}
+                className={
+                  (inventoryPagination?.currentPage || 1) === 1
+                    ? "pointer-events-none opacity-50"
+                    : undefined
+                }
               />
             </PaginationItem>
-            {Array.from({ length: inventoryPagination.totalPages }).map((_, index) => {
-              const pageNumber = index + 1
-              return (
-                <PaginationItem key={pageNumber}>
-                  <PaginationLink
-                    href="#"
-                    isActive={pageNumber === (inventoryPagination?.currentPage || 1)}
-                    onClick={(event) => {
-                      event.preventDefault()
-                      setPage(pageNumber)
-                    }}
-                  >
-                    {pageNumber}
-                  </PaginationLink>
-                </PaginationItem>
-              )
-            })}
+            {Array.from({ length: inventoryPagination.totalPages }).map(
+              (_, index) => {
+                const pageNumber = index + 1;
+                return (
+                  <PaginationItem key={pageNumber}>
+                    <PaginationLink
+                      href="#"
+                      isActive={
+                        pageNumber === (inventoryPagination?.currentPage || 1)
+                      }
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setPage(pageNumber);
+                      }}
+                    >
+                      {pageNumber}
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+              }
+            )}
             <PaginationItem>
               <PaginationNext
                 href="#"
                 onClick={(event) => {
-                  event.preventDefault()
-                  if ((inventoryPagination?.currentPage || 1) < (inventoryPagination?.totalPages || 1)) {
-                    setPage((prev) => prev + 1)
+                  event.preventDefault();
+                  if (
+                    (inventoryPagination?.currentPage || 1) <
+                    (inventoryPagination?.totalPages || 1)
+                  ) {
+                    setPage((prev) => prev + 1);
                   }
                 }}
-                aria-disabled={(inventoryPagination?.currentPage || 1) >= (inventoryPagination?.totalPages || 1)}
-                className={(inventoryPagination?.currentPage || 1) >= (inventoryPagination?.totalPages || 1) ? "pointer-events-none opacity-50" : undefined}
+                aria-disabled={
+                  (inventoryPagination?.currentPage || 1) >=
+                  (inventoryPagination?.totalPages || 1)
+                }
+                className={
+                  (inventoryPagination?.currentPage || 1) >=
+                  (inventoryPagination?.totalPages || 1)
+                    ? "pointer-events-none opacity-50"
+                    : undefined
+                }
               />
             </PaginationItem>
           </PaginationContent>
         </Pagination>
       )}
     </div>
-  )
+  );
 
   const movementsTab = (
     <div className="space-y-4">
@@ -623,85 +844,153 @@ export default function StockPage() {
             </div>
             {detailLoading ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading product details...
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading product
+                details...
               </div>
             ) : selectedInventory ? (
               <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
                 <div>
                   <p className="text-muted-foreground">Current Stock</p>
-                  <p className="text-lg font-semibold tabular-nums">{formatNumber(selectedInventory.currentStock)}</p>
+                  <p className="text-lg font-semibold tabular-nums">
+                    {formatNumber(selectedInventory.currentStock)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Available</p>
-                  <p className="text-lg font-semibold tabular-nums">{formatNumber(selectedInventory.availableStock)}</p>
+                  <p className="text-lg font-semibold tabular-nums">
+                    {formatNumber(selectedInventory.availableStock)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Reserved</p>
-                  <p className="text-lg font-semibold tabular-nums">{formatNumber(selectedInventory.reservedStock)}</p>
+                  <p className="text-lg font-semibold tabular-nums">
+                    {formatNumber(selectedInventory.reservedStock)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Last Updated</p>
-                  <p className="text-sm">{formatDateTime(selectedInventory.lastStockUpdate)}</p>
+                  <p className="text-sm">
+                    {formatDateTime(selectedInventory.lastStockUpdate)}
+                  </p>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Select a product to view its stock movements.</p>
+              <p className="text-sm text-muted-foreground">
+                Select a product to view its stock movements.
+              </p>
             )}
           </div>
 
           {/* Variant Breakdown - Only show if product has variants */}
-          {selectedInventory && selectedInventory.variantComposition && selectedInventory.variantComposition.length > 0 && (
-            <div className="w-full mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Variant Stock Breakdown</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-100 border-b-2 border-slate-300">
-                        <tr>
-                          <th className="px-3 py-2 text-left font-semibold text-slate-700">Color</th>
-                          <th className="px-3 py-2 text-left font-semibold text-slate-700">Size</th>
-                          <th className="px-3 py-2 text-right font-semibold text-slate-700">Quantity</th>
-                          <th className="px-3 py-2 text-right font-semibold text-slate-700">Reserved</th>
-                          <th className="px-3 py-2 text-right font-semibold text-slate-700">Available</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedInventory.variantComposition.map((variant, index) => {
-                          const available = variant.quantity - (variant.reservedQuantity || 0)
-                          return (
-                            <tr key={index} className={`border-b border-slate-200 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-                              <td className="px-3 py-2 font-medium text-slate-700">{variant.color}</td>
-                              <td className="px-3 py-2 text-slate-700">{variant.size}</td>
-                              <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatNumber(variant.quantity)}</td>
-                              <td className="px-3 py-2 text-right tabular-nums text-amber-600">{formatNumber(variant.reservedQuantity || 0)}</td>
-                              <td className="px-3 py-2 text-right tabular-nums font-semibold text-green-600">{formatNumber(available)}</td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                      <tfoot className="bg-slate-200 border-t-2 border-slate-300">
-                        <tr>
-                          <td colSpan="2" className="px-3 py-2 font-semibold text-slate-900">Total</td>
-                          <td className="px-3 py-2 text-right font-bold text-slate-900 tabular-nums">
-                            {formatNumber(selectedInventory.variantComposition.reduce((sum, v) => sum + v.quantity, 0))}
-                          </td>
-                          <td className="px-3 py-2 text-right font-bold text-amber-600 tabular-nums">
-                            {formatNumber(selectedInventory.variantComposition.reduce((sum, v) => sum + (v.reservedQuantity || 0), 0))}
-                          </td>
-                          <td className="px-3 py-2 text-right font-bold text-green-600 tabular-nums">
-                            {formatNumber(selectedInventory.variantComposition.reduce((sum, v) => sum + (v.quantity - (v.reservedQuantity || 0)), 0))}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+          {selectedInventory &&
+            selectedInventory.variantComposition &&
+            selectedInventory.variantComposition.length > 0 && (
+              <div className="w-full mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">
+                      Variant Stock Breakdown
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-100 border-b-2 border-slate-300">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-semibold text-slate-700">
+                              Color
+                            </th>
+                            <th className="px-3 py-2 text-left font-semibold text-slate-700">
+                              Size
+                            </th>
+                            <th className="px-3 py-2 text-right font-semibold text-slate-700">
+                              Quantity
+                            </th>
+                            <th className="px-3 py-2 text-right font-semibold text-slate-700">
+                              Reserved
+                            </th>
+                            <th className="px-3 py-2 text-right font-semibold text-slate-700">
+                              Available
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedInventory.variantComposition.map(
+                            (variant, index) => {
+                              const available =
+                                variant.quantity -
+                                (variant.reservedQuantity || 0);
+                              return (
+                                <tr
+                                  key={index}
+                                  className={`border-b border-slate-200 ${
+                                    index % 2 === 0 ? "bg-white" : "bg-slate-50"
+                                  }`}
+                                >
+                                  <td className="px-3 py-2 font-medium text-slate-700">
+                                    {variant.color}
+                                  </td>
+                                  <td className="px-3 py-2 text-slate-700">
+                                    {variant.size}
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                                    {formatNumber(variant.quantity)}
+                                  </td>
+                                  <td className="px-3 py-2 text-right tabular-nums text-amber-600">
+                                    {formatNumber(
+                                      variant.reservedQuantity || 0
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2 text-right tabular-nums font-semibold text-green-600">
+                                    {formatNumber(available)}
+                                  </td>
+                                </tr>
+                              );
+                            }
+                          )}
+                        </tbody>
+                        <tfoot className="bg-slate-200 border-t-2 border-slate-300">
+                          <tr>
+                            <td
+                              colSpan="2"
+                              className="px-3 py-2 font-semibold text-slate-900"
+                            >
+                              Total
+                            </td>
+                            <td className="px-3 py-2 text-right font-bold text-slate-900 tabular-nums">
+                              {formatNumber(
+                                selectedInventory.variantComposition.reduce(
+                                  (sum, v) => sum + v.quantity,
+                                  0
+                                )
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-right font-bold text-amber-600 tabular-nums">
+                              {formatNumber(
+                                selectedInventory.variantComposition.reduce(
+                                  (sum, v) => sum + (v.reservedQuantity || 0),
+                                  0
+                                )
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-right font-bold text-green-600 tabular-nums">
+                              {formatNumber(
+                                selectedInventory.variantComposition.reduce(
+                                  (sum, v) =>
+                                    sum +
+                                    (v.quantity - (v.reservedQuantity || 0)),
+                                  0
+                                )
+                              )}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
           <div className="w-full max-w-xs space-y-3">
             <Label className="text-sm font-medium">Filter movements</Label>
@@ -728,7 +1017,10 @@ export default function StockPage() {
                   type="date"
                   value={movementFilterForm.startDate}
                   onChange={(event) =>
-                    setMovementFilterForm((prev) => ({ ...prev, startDate: event.target.value }))
+                    setMovementFilterForm((prev) => ({
+                      ...prev,
+                      startDate: event.target.value,
+                    }))
                   }
                   disabled={!selectedProductId}
                 />
@@ -736,13 +1028,20 @@ export default function StockPage() {
                   type="date"
                   value={movementFilterForm.endDate}
                   onChange={(event) =>
-                    setMovementFilterForm((prev) => ({ ...prev, endDate: event.target.value }))
+                    setMovementFilterForm((prev) => ({
+                      ...prev,
+                      endDate: event.target.value,
+                    }))
                   }
                   disabled={!selectedProductId}
                 />
               </div>
               <div className="flex gap-2">
-                <Button type="submit" className="flex-1" disabled={!selectedProductId}>
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  disabled={!selectedProductId}
+                >
                   Apply
                 </Button>
                 <Button
@@ -776,54 +1075,71 @@ export default function StockPage() {
               <PaginationPrevious
                 href="#"
                 onClick={(event) => {
-                  event.preventDefault()
+                  event.preventDefault();
                   if ((movementPagination?.currentPage || 1) > 1) {
-                    setMovementPage((prev) => Math.max(1, prev - 1))
+                    setMovementPage((prev) => Math.max(1, prev - 1));
                   }
                 }}
                 aria-disabled={(movementPagination?.currentPage || 1) === 1}
-                className={(movementPagination?.currentPage || 1) === 1 ? "pointer-events-none opacity-50" : undefined}
+                className={
+                  (movementPagination?.currentPage || 1) === 1
+                    ? "pointer-events-none opacity-50"
+                    : undefined
+                }
               />
             </PaginationItem>
-            {Array.from({ length: movementPagination.totalPages }).map((_, index) => {
-              const pageNumber = index + 1
-              return (
-                <PaginationItem key={pageNumber}>
-                  <PaginationLink
-                    href="#"
-                    isActive={pageNumber === (movementPagination?.currentPage || 1)}
-                    onClick={(event) => {
-                      event.preventDefault()
-                      setMovementPage(pageNumber)
-                    }}
-                  >
-                    {pageNumber}
-                  </PaginationLink>
-                </PaginationItem>
-              )
-            })}
+            {Array.from({ length: movementPagination.totalPages }).map(
+              (_, index) => {
+                const pageNumber = index + 1;
+                return (
+                  <PaginationItem key={pageNumber}>
+                    <PaginationLink
+                      href="#"
+                      isActive={
+                        pageNumber === (movementPagination?.currentPage || 1)
+                      }
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setMovementPage(pageNumber);
+                      }}
+                    >
+                      {pageNumber}
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+              }
+            )}
             <PaginationItem>
               <PaginationNext
                 href="#"
                 onClick={(event) => {
-                  event.preventDefault()
-                  if ((movementPagination?.currentPage || 1) < (movementPagination?.totalPages || 1)) {
-                    setMovementPage((prev) => prev + 1)
+                  event.preventDefault();
+                  if (
+                    (movementPagination?.currentPage || 1) <
+                    (movementPagination?.totalPages || 1)
+                  ) {
+                    setMovementPage((prev) => prev + 1);
                   }
                 }}
-                aria-disabled={(movementPagination?.currentPage || 1) >= (movementPagination?.totalPages || 1)}
-                className={(movementPagination?.currentPage || 1) >= (movementPagination?.totalPages || 1) ? "pointer-events-none opacity-50" : undefined}
+                aria-disabled={
+                  (movementPagination?.currentPage || 1) >=
+                  (movementPagination?.totalPages || 1)
+                }
+                className={
+                  (movementPagination?.currentPage || 1) >=
+                  (movementPagination?.totalPages || 1)
+                    ? "pointer-events-none opacity-50"
+                    : undefined
+                }
               />
             </PaginationItem>
           </PaginationContent>
         </Pagination>
       )}
     </div>
-  )
+  );
 
-  const tabs = [
-    { label: "Inventory", content: inventoryTab },
-  ]
+  const tabs = [{ label: "Inventory", content: inventoryTab }];
 
   const addStockFields = [
     {
@@ -834,10 +1150,17 @@ export default function StockPage() {
       placeholder: "Select product",
       options: productOptions,
     },
-    { name: "quantity", label: "Quantity", type: "number", required: true, min: 1, step: 1 },
+    {
+      name: "quantity",
+      label: "Quantity",
+      type: "number",
+      required: true,
+      min: 1,
+      step: 1,
+    },
     { name: "reference", label: "Reference", required: true },
     { name: "notes", label: "Notes", type: "textarea" },
-  ]
+  ];
 
   const reduceStockFields = [
     {
@@ -848,10 +1171,17 @@ export default function StockPage() {
       placeholder: "Select product",
       options: productOptions,
     },
-    { name: "quantity", label: "Quantity", type: "number", required: true, min: 1, step: 1 },
+    {
+      name: "quantity",
+      label: "Quantity",
+      type: "number",
+      required: true,
+      min: 1,
+      step: 1,
+    },
     { name: "reference", label: "Reference", required: true },
     { name: "notes", label: "Notes", type: "textarea" },
-  ]
+  ];
 
   const adjustStockFields = [
     {
@@ -862,19 +1192,34 @@ export default function StockPage() {
       placeholder: "Select product",
       options: productOptions,
     },
-    { name: "newQuantity", label: "New Quantity", type: "number", required: true, min: 0, step: 1 },
+    {
+      name: "newQuantity",
+      label: "New Quantity",
+      type: "number",
+      required: true,
+      min: 0,
+      step: 1,
+    },
     { name: "reference", label: "Reference", required: true },
     { name: "notes", label: "Notes", type: "textarea" },
-  ]
+  ];
 
   return (
     <div className="mx-auto max-w-[1600px] p-4 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight">Inventory Control</h1>
-          <p className="text-sm text-muted-foreground">Monitor stock levels, movements, and adjustments</p>
+          <h1 className="text-lg font-semibold tracking-tight">
+            Inventory Control
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Monitor stock levels, movements, and adjustments
+          </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setAppliedFilters((prev) => ({ ...prev }))}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setAppliedFilters((prev) => ({ ...prev }))}
+        >
           <RefreshCcw className="mr-2 h-4 w-4" /> Refresh Data
         </Button>
       </div>
@@ -905,11 +1250,14 @@ export default function StockPage() {
         open={adjustDialogOpen}
         title="Adjust Stock"
         fields={adjustStockFields}
-        initialValues={{ product: selectedProductId, newQuantity: selectedInventory?.currentStock ?? 0 }}
+        initialValues={{
+          product: selectedProductId,
+          newQuantity: selectedInventory?.currentStock ?? 0,
+        }}
         onClose={() => setAdjustDialogOpen(false)}
         onSubmit={submitAdjustStock}
         loading={adjustStockMutation.isPending}
       />
     </div>
-  )
+  );
 }
