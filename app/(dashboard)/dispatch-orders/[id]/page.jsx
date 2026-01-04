@@ -70,6 +70,8 @@ import ProductImageGallery from "@/components/ui/ProductImageGallery";
 import PacketCompositionView from "@/components/ui/PacketCompositionView";
 import ArrayInput from "@/components/ui/ArrayInput";
 import PacketConfigurationModal from "@/components/modals/PacketConfigurationModal";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { SEASON_OPTIONS } from "@/lib/constants/seasons";
 
 // Helper to get image array from various sources
 const getImageArray = (item) => {
@@ -287,6 +289,11 @@ export default function DispatchOrderDetailPage({ params }) {
             ? item.size
             : item.size
               ? [item.size]
+              : [],
+          season: Array.isArray(item.season)
+            ? item.season
+            : item.season
+              ? [item.season]
               : [],
           images: item.productImage || item.product?.images || [],
           packets: item.packets || [],
@@ -866,6 +873,7 @@ export default function DispatchOrderDetailPage({ params }) {
           costPrice: parseFloat(itemData.costPrice),
           primaryColor: itemData.primaryColor,
           size: itemData.size,
+          season: itemData.season,
           productImage: itemData.images,
           packets: itemPackets,
           boxes: itemData.boxStr
@@ -981,6 +989,7 @@ export default function DispatchOrderDetailPage({ params }) {
           costPrice: parseFloat(itemData.costPrice),
           primaryColor: itemData.primaryColor,
           size: itemData.size,
+          season: itemData.season,
           productImage: itemData.images,
           packets: itemPackets, // Include edited packets
           boxes: itemData.boxStr
@@ -1974,6 +1983,47 @@ export default function DispatchOrderDetailPage({ params }) {
                                       <span
                                         key={idx}
                                         className="inline-block px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-[10px]"
+                                      >
+                                        {s}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground">
+                                    —
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-2 w-24 align-top">
+                            {isPending && !isRemoved ? (
+                              <div className="min-w-[120px]">
+                                <MultiSelect
+                                  options={SEASON_OPTIONS}
+                                  value={Array.isArray(itemData.season) ? itemData.season : []}
+                                  onChange={(seasons) =>
+                                    setEditedItems({
+                                      ...editedItems,
+                                      [item.index]: {
+                                        ...itemData,
+                                        season: seasons,
+                                      },
+                                    })
+                                  }
+                                  placeholder="Select seasons"
+                                  disabled={isRemoved}
+                                />
+                              </div>
+                            ) : (
+                              <div className="text-xs">
+                                {Array.isArray(item.season) &&
+                                  item.season.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {item.season.map((s, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="inline-block px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded text-[10px]"
                                       >
                                         {s}
                                       </span>
