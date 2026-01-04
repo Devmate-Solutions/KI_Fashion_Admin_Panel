@@ -239,9 +239,9 @@ export function middleware(request) {
     return response;
   }
   
-  // If authenticated user tries to access auth pages, redirect to home
+  // If authenticated user tries to access auth pages, redirect to dispatch-orders
   if (isAuthRoute) {
-    return NextResponse.redirect(new URL('/home', request.url));
+    return NextResponse.redirect(new URL('/dispatch-orders', request.url));
   }
 
   // ============================================
@@ -256,50 +256,29 @@ export function middleware(request) {
   if (routeConfig) {
     const decoded = decodeToken(token);
     
-    console.log('====== MIDDLEWARE DEBUG ======');
-    console.log('Pathname:', pathname);
-    console.log('Route Config:', routeConfig);
-    console.log('Decoded Token:', decoded);
-    
     if (!decoded) {
-      console.log('Token decoding failed - redirecting to login');
       return NextResponse.redirect(new URL('/login', request.url));
     }
 
     // Check role requirements
     if (routeConfig.roles) {
-      console.log('Required Roles:', routeConfig.roles);
-      console.log('User Role:', decoded.role);
-      
       const hasRequiredRole = hasRole(token, routeConfig.roles);
-      console.log('hasRole() returned:', hasRequiredRole);
       
       if (!hasRequiredRole) {
-        console.log('❌ Role check FAILED - redirecting to unauthorized');
         return NextResponse.redirect(new URL('/unauthorized', request.url));
       }
-      console.log('✅ Role check PASSED');
     }
 
     // Check permission requirements
     if (routeConfig.permissions) {
-      console.log('Required Permissions:', routeConfig.permissions);
-      console.log('User Permissions:', decoded.permissions);
-      
       const hasRequiredPermission = routeConfig.permissions.some(permission => 
         hasPermission(token, permission)
       );
       
-      console.log('Permission check result:', hasRequiredPermission);
-      
       if (!hasRequiredPermission) {
-        console.log('❌ Permission check FAILED - redirecting to unauthorized');
         return NextResponse.redirect(new URL('/unauthorized', request.url));
       }
-      console.log('✅ Permission check PASSED');
     }
-    
-    console.log('====== END DEBUG ======\n');
   }
 
   // ============================================

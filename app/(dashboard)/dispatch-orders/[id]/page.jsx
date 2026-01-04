@@ -682,15 +682,24 @@ export default function DispatchOrderDetailPage({ params }) {
       payments =
         (parseFloat(cashPayment) || 0) + (parseFloat(bankPayment) || 0);
     } else {
-      // For confirmed orders, calculate total payments from payment history and convert to supplier currency
-      const exchangeRate = dispatchOrder?.exchangeRate || 1;
-      // Calculate total payments from payment history (more accurate than paymentDetails)
-      const totalPaidEur =
-        paymentHistory?.reduce((sum, entry) => {
-          return sum + (entry.credit || 0);
-        }, 0) || 0;
-      // Convert from EUR to supplier currency
-      payments = totalPaidEur * exchangeRate;
+      // For confirmed orders, first try to use paymentDetails (cashPayment + bankPayment)
+      // This ensures consistency with what was shown before confirmation
+      if (dispatchOrder?.paymentDetails?.cashPayment !== undefined || 
+          dispatchOrder?.paymentDetails?.bankPayment !== undefined) {
+        payments = 
+          (parseFloat(dispatchOrder.paymentDetails.cashPayment) || 0) + 
+          (parseFloat(dispatchOrder.paymentDetails.bankPayment) || 0);
+      } else {
+        // Fallback to payment history if paymentDetails not available
+        const exchangeRate = dispatchOrder?.exchangeRate || 1;
+        // Calculate total payments from payment history and convert to supplier currency
+        const totalPaidEur =
+          paymentHistory?.reduce((sum, entry) => {
+            return sum + (entry.credit || 0);
+          }, 0) || 0;
+        // Convert from EUR to supplier currency
+        payments = totalPaidEur * exchangeRate;
+      }
     }
 
     // Remaining Balance
@@ -719,10 +728,10 @@ export default function DispatchOrderDetailPage({ params }) {
     paymentHistory,
   ]);
 
-  // Filter returnable items
+  // Filter returnable items - always show all items
   const returnableItems = itemsWithDetails.filter((item) => {
-    const remainingQty = item.quantity - item.totalReturned;
-    return showAllReturnItems || remainingQty > 0;
+    // Always show all items (removed checkbox option)
+    return true;
   });
 
   // Format currency
@@ -2519,26 +2528,6 @@ export default function DispatchOrderDetailPage({ params }) {
                             }
                           )}
                         </span>
-                        {dispatchOrder?.returnedItems &&
-                          dispatchOrder.returnedItems.length > 0 &&
-                          (() => {
-                            // Calculate original supplier payment amount
-                            let originalAmount = 0;
-                            dispatchOrder?.items?.forEach((item) => {
-                              const costPrice = parseFloat(item.costPrice) || 0;
-                              originalAmount += costPrice * item.quantity;
-                            });
-                            return (
-                              <span className="text-[10px] text-red-600 mt-0.5">
-                                (was{" "}
-                                {originalAmount.toLocaleString(undefined, {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })}{" "}
-                                before returns)
-                              </span>
-                            );
-                          })()}
                       </div>
                     </div>
                     {confirmOrderSupplierCurrency.discount > 0 && (
@@ -2557,20 +2546,6 @@ export default function DispatchOrderDetailPage({ params }) {
                               }
                             )}
                           </span>
-                          {dispatchOrder?.returnedItems &&
-                            dispatchOrder.returnedItems.length > 0 && (
-                              <span className="text-[10px] text-red-600 mt-0.5">
-                                (was{" "}
-                                {parseFloat(editedDiscount).toLocaleString(
-                                  undefined,
-                                  {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  }
-                                )}{" "}
-                                before returns)
-                              </span>
-                            )}
                         </div>
                       </div>
                     )}
@@ -2588,29 +2563,6 @@ export default function DispatchOrderDetailPage({ params }) {
                             }
                           )}
                         </span>
-                        {dispatchOrder?.returnedItems &&
-                          dispatchOrder.returnedItems.length > 0 &&
-                          (() => {
-                            // Calculate original final amount
-                            let originalAmount = 0;
-                            dispatchOrder?.items?.forEach((item) => {
-                              const costPrice = parseFloat(item.costPrice) || 0;
-                              originalAmount += costPrice * item.quantity;
-                            });
-                            const originalFinal =
-                              originalAmount -
-                              (dispatchOrder?.totalDiscount || 0);
-                            return (
-                              <span className="text-[10px] text-red-600 mt-0.5">
-                                (was{" "}
-                                {originalFinal.toLocaleString(undefined, {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })}{" "}
-                                before returns)
-                              </span>
-                            );
-                          })()}
                       </div>
                     </div>
                     <div className="flex items-center justify-between text-sm pt-2 border-t">
@@ -2634,7 +2586,7 @@ export default function DispatchOrderDetailPage({ params }) {
                           : "text-green-600"
                           }`}
                       >
-                        {confirmOrderSupplierCurrency.remainingBalance.toLocaleString(
+                        {Math.abs(confirmOrderSupplierCurrency.remainingBalance).toLocaleString(
                           undefined,
                           { minimumFractionDigits: 2, maximumFractionDigits: 2 }
                         )}
@@ -2794,8 +2746,10 @@ export default function DispatchOrderDetailPage({ params }) {
                       Remaining Balance
                     </Label>
                     {(() => {
+                      // Use the same calculation as Confirm Order section
+                      const calculatedRemaining = confirmOrderSupplierCurrency.remainingBalance;
                       const pendingAmount = parseFloat(paymentAmount) || 0;
-                      const previewRemaining = remainingBalance - pendingAmount;
+                      const previewRemaining = calculatedRemaining - pendingAmount;
                       const displayRemaining = previewRemaining;
                       const hasPreview = showPaymentForm && pendingAmount > 0;
                       return (
@@ -2806,13 +2760,13 @@ export default function DispatchOrderDetailPage({ params }) {
                               : "text-green-600"
                               }`}
                           >
-                            {displayRemaining.toLocaleString(undefined, {
+                            {Math.abs(displayRemaining).toLocaleString(undefined, {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             })}
                           </p>
                           {hasPreview &&
-                            previewRemaining !== remainingBalance && (
+                            previewRemaining !== calculatedRemaining && (
                               <p className="text-xs text-orange-500 mt-1"></p>
                             )}
                         </>
@@ -2854,7 +2808,7 @@ export default function DispatchOrderDetailPage({ params }) {
                     />
                     <p className="text-xs text-muted-foreground mt-1">
                       {remainingBalance > 0
-                        ? `Remaining Balance: ${currency(remainingBalance)}`
+                        ? `Remaining Balance: ${currency(Math.abs(remainingBalance))}`
                         : supplierDue > 0
                           ? `Fully paid. Outstanding Balance: ${currency(
                             supplierDue
@@ -3070,6 +3024,7 @@ export default function DispatchOrderDetailPage({ params }) {
                             <th className="p-2 text-left">By</th>
                             <th className="p-2 text-right">Value</th>
                             <th className="p-2 text-right">Items</th>
+                            <th className="p-2 text-right">Qty</th>
                             <th className="p-2 text-left">Details</th>
                           </tr>
                         </thead>
@@ -3089,10 +3044,39 @@ export default function DispatchOrderDetailPage({ params }) {
                                 {returnDoc.returnedBy?.name || "—"}
                               </td>
                               <td className="p-2 text-right font-medium">
-                                {currency(returnDoc.totalReturnValue || 0)}
+                                {(() => {
+                                  // Calculate return value correctly: sum of (costPrice * returnedQuantity) for each item
+                                  let calculatedValue = 0;
+                                  if (returnDoc.items && dispatchOrder?.items) {
+                                    returnDoc.items.forEach((returnItem) => {
+                                      const originalItem = dispatchOrder.items[returnItem.itemIndex];
+                                      if (originalItem) {
+                                        const costPrice = parseFloat(originalItem.costPrice) || 0;
+                                        const returnedQty = returnItem.returnedQuantity || 0;
+                                        calculatedValue += costPrice * returnedQty;
+                                      }
+                                    });
+                                  }
+                                  // Use calculated value if available, otherwise fallback to backend value
+                                  const value = calculatedValue > 0 ? calculatedValue : (returnDoc.totalReturnValue || 0);
+                                  // Format number without currency symbol
+                                  return value.toLocaleString(undefined, {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  });
+                                })()}
                               </td>
                               <td className="p-2 text-right">
                                 {returnDoc.items?.length || 0}
+                              </td>
+                              <td className="p-2 text-right font-medium">
+                                {(() => {
+                                  // Calculate total quantity of returned items
+                                  const totalQty = returnDoc.items?.reduce((sum, item) => {
+                                    return sum + (item.returnedQuantity || 0);
+                                  }, 0) || 0;
+                                  return totalQty;
+                                })()}
                               </td>
                               <td className="p-2">
                                 <Accordion type="single" collapsible>
@@ -3138,21 +3122,6 @@ export default function DispatchOrderDetailPage({ params }) {
                   <Package className="h-5 w-5 text-rose-600" />
                   Return Items
                 </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Label
-                    htmlFor="show-all-items"
-                    className="text-sm font-normal cursor-pointer"
-                  >
-                    Show all items
-                  </Label>
-                  <input
-                    id="show-all-items"
-                    type="checkbox"
-                    checked={showAllReturnItems}
-                    onChange={(e) => setShowAllReturnItems(e.target.checked)}
-                    className="cursor-pointer"
-                  />
-                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4 bg-white/40">
@@ -3341,59 +3310,78 @@ export default function DispatchOrderDetailPage({ params }) {
               {Object.values(returnQuantities).some(
                 (qty) => qty && parseFloat(qty) > 0
               ) && (
-                  <Card className="bg-gradient-to-r from-rose-200/60 to-pink-200/40 border-2 border-rose-400">
-                    <CardContent className="pt-4">
-                      <p className="text-sm font-semibold mb-3">Return Summary</p>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          {Object.entries(returnQuantities)
-                            .filter(([_, qty]) => qty && parseFloat(qty) > 0)
-                            .map(([itemIndex, qty]) => {
-                              const item = itemsWithDetails.find(
-                                (i) => i.index === parseInt(itemIndex)
-                              );
-                              return (
-                                <div
-                                  key={itemIndex}
-                                  className="flex items-center justify-between text-sm"
-                                >
-                                  <span className="text-muted-foreground truncate mr-2">
-                                    {item?.productName}:
-                                  </span>
-                                  <span className="font-semibold">{qty} qty</span>
-                                </div>
-                              );
-                            })}
+                  <Card className="bg-gradient-to-br from-rose-50/90 to-pink-50/70 border-2 border-rose-300/60 shadow-sm">
+                    <CardContent className="p-5">
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="h-8 w-8 rounded-lg bg-rose-100 flex items-center justify-center">
+                          <Package className="h-4 w-4 text-rose-600" />
                         </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              Total Items:
-                            </span>
-                            <span className="font-semibold">
+                        <h3 className="text-base font-bold text-rose-900">Return Summary</h3>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        {/* Items List */}
+                        <div className="bg-white/60 rounded-lg p-3 border border-rose-200/50">
+                          <p className="text-xs font-semibold text-rose-700 uppercase tracking-wide mb-2">Items to Return</p>
+                          <div className="space-y-2">
+                            {Object.entries(returnQuantities)
+                              .filter(([_, qty]) => qty && parseFloat(qty) > 0)
+                              .map(([itemIndex, qty]) => {
+                                const item = itemsWithDetails.find(
+                                  (i) => i.index === parseInt(itemIndex)
+                                );
+                                return (
+                                  <div
+                                    key={itemIndex}
+                                    className="flex items-center justify-between py-2 px-3 bg-white rounded-md border border-rose-100"
+                                  >
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                      <div className="h-2 w-2 rounded-full bg-rose-400 flex-shrink-0"></div>
+                                      <span className="text-sm font-medium text-slate-700 truncate">
+                                        {item?.productName || "Unknown Item"}
+                                      </span>
+                                    </div>
+                                    <Badge variant="outline" className="ml-2 bg-rose-50 border-rose-200 text-rose-700 font-semibold">
+                                      {qty} {parseFloat(qty) === 1 ? 'item' : 'items'}
+                                    </Badge>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+
+                        {/* Summary Stats */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-white/80 rounded-lg p-3 border border-rose-200/50">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Package className="h-3.5 w-3.5 text-rose-500" />
+                              <span className="text-xs font-medium text-slate-600">Total Items</span>
+                            </div>
+                            <p className="text-xl font-bold text-rose-700">
                               {
                                 Object.values(returnQuantities).filter(
                                   (qty) => qty && parseFloat(qty) > 0
                                 ).length
                               }
-                            </span>
+                            </p>
                           </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              Total Quantity:
-                            </span>
-                            <span className="font-semibold text-lg">
+                          <div className="bg-white/80 rounded-lg p-3 border border-rose-200/50">
+                            <div className="flex items-center gap-2 mb-1">
+                              <CheckCircle2 className="h-3.5 w-3.5 text-rose-500" />
+                              <span className="text-xs font-medium text-slate-600">Total Quantity</span>
+                            </div>
+                            <p className="text-xl font-bold text-rose-700">
                               {Object.values(returnQuantities).reduce(
                                 (sum, qty) => sum + (parseFloat(qty) || 0),
                                 0
                               )}
-                            </span>
+                            </p>
                           </div>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-                )}
+              )}
 
               <CardFooter className="flex items-center justify-end gap-4 pt-4 px-0">
                 <Button

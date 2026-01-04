@@ -23,10 +23,10 @@ import {
 } from "lucide-react"
 
 const items = [
-  { href: "/home", label: "Dashboard", icon: Home },
+  // { href: "/home", label: "Dashboard", icon: Home },
+  { href: "/dispatch-orders", label: "Dispatch Orders", icon: Truck },
   { href: "/stock", label: "Stock / Inventory", icon: Boxes },
   { href: "/buying", label: "Buying / Sourcing", icon: ShoppingBag },
-  { href: "/dispatch-orders", label: "Dispatch Orders", icon: Truck },
   { type: "separator", label: "Finance & Accounts" },
   // { href: "/cash-tracking", label: "Cash Tracking", icon: Wallet },
   { href: "/expenses", label: "Expenses", icon: FileText },
@@ -100,6 +100,7 @@ export default function Sidebar() {
               <li key={it.href}>
                 <Link
                   href={it.href}
+                  prefetch={true}
                   title={it.label}
                   aria-label={it.label}
                   className={`flex items-center gap-3 px-4 py-3 text-sm transition-all rounded-xl relative group

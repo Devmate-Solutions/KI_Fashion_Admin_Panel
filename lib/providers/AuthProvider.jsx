@@ -38,10 +38,10 @@ export function AuthProvider({ children }) {
       return;
     } 
     
-    // If authenticated and on login/register page, redirect to home
+    // If authenticated and on login/register page, redirect to dispatch-orders
     // Only redirect if we're actually on a public auth page
     if (isAuthenticated && isPublicPath) {
-      router.push('/home');
+      router.push('/dispatch-orders');
       return;
     }
     

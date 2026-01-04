@@ -11,7 +11,7 @@ export default function Page() {
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated) {
-        router.replace('/home');
+        router.replace('/dispatch-orders');
       } else {
         router.replace('/login');
       }

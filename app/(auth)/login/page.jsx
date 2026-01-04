@@ -67,7 +67,7 @@ function LoginFormInner() {
 
     try {
       await login(data.email, data.password);
-      router.push('/home');
+      router.push('/dispatch-orders');
     } catch (err) {
       console.error("Login error:", err); // Debug log
       setError(err.message || 'Login failed. Please check your credentials.');
