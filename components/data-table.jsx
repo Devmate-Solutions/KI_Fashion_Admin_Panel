@@ -6,29 +6,44 @@ function normalize(v) {
   return String(v ?? "").toLowerCase()
 }
 
-export default function DataTable({ 
-  title, 
-  columns, 
-  data, 
-  onAddNew, 
-  onEdit, 
-  onDelete, 
+export default function DataTable({
+  title,
+  columns,
+  data,
+  onAddNew,
+  onEdit,
+  onDelete,
   onRowClick,
   loading = false,
   hideActions = false,
   enableSearch = true,
   paginate = true,
   pageSize = 10,
+  manualPagination = false,
+  currentPage = 1,
+  totalPages = 1,
+  totalItems,
+  onPageChange,
+  onSearch,
 }) {
   const [query, setQuery] = useState("")
-  const [page, setPage] = useState(1)
+  const [internalPage, setInternalPage] = useState(1)
   const [sort, setSort] = useState({ key: null, dir: "asc" })
+
+  const page = manualPagination ? currentPage : internalPage
+  const setPage = manualPagination ? (onPageChange || (() => { })) : setInternalPage
 
   const filtered = useMemo(() => {
     // Ensure data and columns are arrays
     const safeData = Array.isArray(data) ? data : []
     const safeColumns = Array.isArray(columns) ? columns : []
-    
+
+    // Server-side filtering logic should be handled by parent if manualPagination is true
+    // But we still apply client-side filtering if user types in search box AND manualPagination is false?
+    // Usually if server-side pagination is on, server-side search is also used.
+    // For now, let's assume if manualPagination is true, 'data' is already filtered/paginated.
+    if (manualPagination) return safeData
+
     const q = normalize(query)
     const base = q
       ? safeData.filter((row) => safeColumns.some((c) => c.accessor && normalize(row[c.accessor]).includes(q)))
@@ -44,21 +59,25 @@ export default function DataTable({
       })
     }
     return base
-  }, [data, columns, query, sort])
+  }, [data, columns, query, sort, manualPagination])
 
   const effectivePageSize = paginate ? pageSize : filtered.length || 1
-  const pageCount = paginate ? Math.max(1, Math.ceil(filtered.length / effectivePageSize)) : 1
-  const start = paginate ? (page - 1) * effectivePageSize : 0
-  console.log("filtered data:", filtered)
-  const slice = paginate ? filtered?.slice(start, start + effectivePageSize) : filtered
+  const pageCount = manualPagination ? totalPages : (paginate ? Math.max(1, Math.ceil(filtered.length / effectivePageSize)) : 1)
+  const start = manualPagination ? 0 : (paginate ? (page - 1) * effectivePageSize : 0)
+  const slice = manualPagination ? filtered : (paginate ? filtered?.slice(start, start + effectivePageSize) : filtered)
 
   function toggleSort(key) {
-    setPage(1)
+    if (!manualPagination) setPage(1)
     setSort((cur) => {
       if (cur.key !== key) return { key, dir: "asc" }
       return { key, dir: cur.dir === "asc" ? "desc" : "asc" }
     })
   }
+
+  // Calculate stats for display
+  const displayStart = manualPagination ? (page - 1) * pageSize : start
+  const displayEnd = manualPagination ? displayStart + filtered.length : Math.min(start + effectivePageSize, filtered.length)
+  const displayTotal = manualPagination ? (totalItems || filtered.length) : filtered.length
 
   return (
     <div className="rounded-[4px] border border-border bg-card">
@@ -74,6 +93,7 @@ export default function DataTable({
               onChange={(e) => {
                 setPage(1)
                 setQuery(e.target.value)
+                if (onSearch) onSearch(e.target.value)
               }}
             />
           )}
@@ -133,8 +153,8 @@ export default function DataTable({
             </thead>
             <tbody className="[&>tr]:border-b [&>tr]:border-border">
               {Array.isArray(slice) && slice.map((row, idx) => (
-                <tr 
-                  key={row.id ?? idx} 
+                <tr
+                  key={row.id ?? idx}
                   className={`hover:bg-muted/30 ${onRowClick ? 'cursor-pointer' : ''}`}
                   onClick={() => onRowClick && onRowClick(row)}
                   data-row-id={row.rowId || row.id}
@@ -185,6 +205,34 @@ export default function DataTable({
           </table>
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {paginate && pageCount > 1 && (
+        <div className="flex items-center justify-between p-3 border-t border-border">
+          <div className="text-xs text-muted-foreground">
+            Showing {displayStart + 1} to {displayEnd} of {displayTotal} entries
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              className="px-2 py-1 text-xs border border-border rounded hover:bg-muted disabled:opacity-50"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              Previous
+            </button>
+            <span className="text-xs">
+              Page {page} of {pageCount}
+            </span>
+            <button
+              className="px-2 py-1 text-xs border border-border rounded hover:bg-muted disabled:opacity-50"
+              onClick={() => setPage(p => Math.min(pageCount, p + 1))}
+              disabled={page === pageCount}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

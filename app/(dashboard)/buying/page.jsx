@@ -47,8 +47,15 @@ function currency(n) {
 export default function BuyingPage() {
   const router = useRouter()
 
-  const { data: purchasesData, isLoading: purchasesLoading } = usePurchases()
+  const [page, setPage] = useState(1)
+
+  const { data: purchasesData, isLoading: purchasesLoading } = usePurchases({
+    page,
+    limit: 20,
+  })
   const buyingRows = purchasesData?.rows ?? []
+  const pagination = purchasesData?.pagination || {}
+
   const deliveryMetrics = purchasesData?.metrics ?? {
     total: buyingRows.length,
     pending: 0,
@@ -590,6 +597,7 @@ export default function BuyingPage() {
       </header>
 
       {/* Internal tabs using shared Tabs component */}
+      {/* {JSON.stringify(buyingRows)} */}
       <Tabs
         tabs={[
           {
@@ -603,6 +611,12 @@ export default function BuyingPage() {
                     data={buyingRows}
                     onAddNew={handleAddNew}
                     loading={purchasesLoading}
+                    manualPagination={true}
+                    currentPage={page}
+                    totalPages={pagination.totalPages || 1}
+                    totalItems={pagination.totalItems || 0}
+                    onPageChange={setPage}
+                    pageSize={20}
                   />
                 </div>
 

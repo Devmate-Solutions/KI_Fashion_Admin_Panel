@@ -74,15 +74,15 @@ export function AddBuyerForm({ open, onClose, onSubmit, loading = false }) {
 
   const validate = () => {
     const newErrors = {}
-    
+
     if (!formData.name?.trim()) {
       newErrors.name = 'Name is required'
     }
-    
+
     if (!formData.phone?.trim()) {
       newErrors.phone = 'Phone is required'
     }
-    
+
     if (!formData.email?.trim()) {
       newErrors.email = 'Email is required'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -132,9 +132,8 @@ export function AddBuyerForm({ open, onClose, onSubmit, loading = false }) {
                   value={formData.name}
                   onChange={(e) => handleChange('name', e.target.value)}
                   disabled={loading}
-                  className={`w-full px-3 py-2 border rounded-md bg-background disabled:opacity-50 ${
-                    errors.name ? 'border-red-500' : 'border-input'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md bg-background disabled:opacity-50 ${errors.name ? 'border-red-500' : 'border-input'
+                    }`}
                 />
                 {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
               </div>
@@ -149,9 +148,8 @@ export function AddBuyerForm({ open, onClose, onSubmit, loading = false }) {
                     value={formData.phoneAreaCode}
                     onChange={(e) => handleChange('phoneAreaCode', e.target.value)}
                     disabled={loading}
-                    className={`w-24 px-3 py-2 border rounded-md bg-background disabled:opacity-50 ${
-                      errors.phoneAreaCode ? 'border-red-500' : 'border-input'
-                    }`}
+                    className={`w-24 px-3 py-2 border rounded-md bg-background disabled:opacity-50 ${errors.phoneAreaCode ? 'border-red-500' : 'border-input'
+                      }`}
                     maxLength={5}
                   />
                   <input
@@ -160,9 +158,8 @@ export function AddBuyerForm({ open, onClose, onSubmit, loading = false }) {
                     value={formData.phone}
                     onChange={(e) => handleChange('phone', e.target.value)}
                     disabled={loading}
-                    className={`flex-1 px-3 py-2 border rounded-md bg-background disabled:opacity-50 ${
-                      errors.phone ? 'border-red-500' : 'border-input'
-                    }`}
+                    className={`flex-1 px-3 py-2 border rounded-md bg-background disabled:opacity-50 ${errors.phone ? 'border-red-500' : 'border-input'
+                      }`}
                   />
                 </div>
                 {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
@@ -179,9 +176,8 @@ export function AddBuyerForm({ open, onClose, onSubmit, loading = false }) {
                   value={formData.email}
                   onChange={(e) => handleChange('email', e.target.value)}
                   disabled={loading}
-                  className={`w-full px-3 py-2 border rounded-md bg-background disabled:opacity-50 ${
-                    errors.email ? 'border-red-500' : 'border-input'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md bg-background disabled:opacity-50 ${errors.email ? 'border-red-500' : 'border-input'
+                    }`}
                 />
                 {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
               </div>
@@ -236,7 +232,7 @@ export function AddBuyerForm({ open, onClose, onSubmit, loading = false }) {
             {/* Address Fields */}
             <div className="space-y-3">
               <h3 className="text-sm font-medium">Address</h3>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Street
@@ -246,9 +242,8 @@ export function AddBuyerForm({ open, onClose, onSubmit, loading = false }) {
                   value={formData.address.street}
                   onChange={(e) => handleAddressChange('street', e.target.value)}
                   disabled={loading}
-                  className={`w-full px-3 py-2 border rounded-md bg-background disabled:opacity-50 ${
-                    'border-input'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md bg-background disabled:opacity-50 ${'border-input'
+                    }`}
                 />
               </div>
 
@@ -412,15 +407,15 @@ export function EditBuyerForm({ open, buyer, onClose, onSubmit, loading = false 
 
   const validate = () => {
     const newErrors = {}
-    
+
     if (!formData.name?.trim()) {
       newErrors.name = 'Name is required'
     }
-    
+
     if (!formData.phone?.trim()) {
       newErrors.phone = 'Phone is required'
     }
-    
+
     if (!formData.email?.trim()) {
       newErrors.email = 'Email is required'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -460,7 +455,7 @@ export function EditBuyerForm({ open, buyer, onClose, onSubmit, loading = false 
             {/* Basic Info */}
             <div className="space-y-3">
               <h3 className="text-sm font-semibold border-b pb-1">Basic Information</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">
@@ -471,9 +466,8 @@ export function EditBuyerForm({ open, buyer, onClose, onSubmit, loading = false 
                     value={formData.name}
                     onChange={(e) => handleChange('name', e.target.value)}
                     disabled={loading}
-                    className={`w-full px-3 py-2 border rounded-md bg-background disabled:opacity-50 ${
-                      errors.name ? 'border-red-500' : 'border-input'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md bg-background disabled:opacity-50 ${errors.name ? 'border-red-500' : 'border-input'
+                      }`}
                   />
                   {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
                 </div>
@@ -494,7 +488,7 @@ export function EditBuyerForm({ open, buyer, onClose, onSubmit, loading = false 
             {/* Contact Info */}
             <div className="space-y-3">
               <h3 className="text-sm font-semibold border-b pb-1">Contact Information</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">
@@ -505,9 +499,8 @@ export function EditBuyerForm({ open, buyer, onClose, onSubmit, loading = false 
                     value={formData.email}
                     onChange={(e) => handleChange('email', e.target.value)}
                     disabled={loading}
-                    className={`w-full px-3 py-2 border rounded-md bg-background disabled:opacity-50 ${
-                      errors.email ? 'border-red-500' : 'border-input'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md bg-background disabled:opacity-50 ${errors.email ? 'border-red-500' : 'border-input'
+                      }`}
                   />
                   {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
                 </div>
@@ -522,9 +515,8 @@ export function EditBuyerForm({ open, buyer, onClose, onSubmit, loading = false 
                       value={formData.phoneAreaCode}
                       onChange={(e) => handleChange('phoneAreaCode', e.target.value)}
                       disabled={loading}
-                      className={`w-24 px-3 py-2 border rounded-md bg-background disabled:opacity-50 ${
-                        errors.phoneAreaCode ? 'border-red-500' : 'border-input'
-                      }`}
+                      className={`w-24 px-3 py-2 border rounded-md bg-background disabled:opacity-50 ${errors.phoneAreaCode ? 'border-red-500' : 'border-input'
+                        }`}
                       maxLength={5}
                     />
                     <input
@@ -533,9 +525,8 @@ export function EditBuyerForm({ open, buyer, onClose, onSubmit, loading = false 
                       value={formData.phone}
                       onChange={(e) => handleChange('phone', e.target.value)}
                       disabled={loading}
-                      className={`flex-1 px-3 py-2 border rounded-md bg-background disabled:opacity-50 ${
-                        errors.phone ? 'border-red-500' : 'border-input'
-                      }`}
+                      className={`flex-1 px-3 py-2 border rounded-md bg-background disabled:opacity-50 ${errors.phone ? 'border-red-500' : 'border-input'
+                        }`}
                     />
                   </div>
                   {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
@@ -603,7 +594,7 @@ export function EditBuyerForm({ open, buyer, onClose, onSubmit, loading = false 
             {/* Address */}
             <div className="space-y-3">
               <h3 className="text-sm font-semibold border-b pb-1">Address</h3>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-1">Street</label>
                 <input
@@ -667,7 +658,7 @@ export function EditBuyerForm({ open, buyer, onClose, onSubmit, loading = false 
             {/* Business Details */}
             <div className="space-y-3">
               <h3 className="text-sm font-semibold border-b pb-1">Business Details</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Tax Number</label>
@@ -741,7 +732,6 @@ export function EditBuyerForm({ open, buyer, onClose, onSubmit, loading = false 
                     }}
                     disabled={loading}
                     className="w-full px-3 py-2 border border-input rounded-md bg-background disabled:opacity-50"
-                  />
                     max="100"
                     step="0.01"
                   />
