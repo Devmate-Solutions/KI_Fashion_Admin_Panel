@@ -163,7 +163,7 @@ export default function BuyingPage() {
           const extractColors = (value) => {
             const extracted = []
             if (!value) return extracted
-            
+
             if (Array.isArray(value)) {
               value.forEach(color => {
                 if (color && typeof color === 'string' && color.trim()) {
@@ -187,32 +187,32 @@ export default function BuyingPage() {
             if (item.primaryColorDisplay) {
               extractColors(item.primaryColorDisplay).forEach(color => colors.add(color))
             }
-            
+
             // Check primaryColor (array or string) - FIXED: removed else if
             if (item.primaryColor) {
               extractColors(item.primaryColor).forEach(color => colors.add(color))
             }
-            
+
             // Check color field (alternative name)
             if (item.color) {
               extractColors(item.color).forEach(color => colors.add(color))
             }
-            
+
             // Check product.primaryColor if available
             if (item.product?.primaryColor) {
               extractColors(item.product.primaryColor).forEach(color => colors.add(color))
             }
-            
+
             // Check product.color if available
             if (item.product?.color) {
               extractColors(item.product.color).forEach(color => colors.add(color))
             }
-            
+
             // Check productType.primaryColor if available
             if (item.productType?.primaryColor) {
               extractColors(item.productType.primaryColor).forEach(color => colors.add(color))
             }
-            
+
             // Check packets composition for colors
             if (item.packets && Array.isArray(item.packets)) {
               item.packets.forEach(packet => {
@@ -348,31 +348,31 @@ export default function BuyingPage() {
           // Match Dispatch Orders approach: purchases are created from dispatch orders
           // so they should have totalBoxes at root level, same as dispatch orders
           let totalBoxes = row.totalBoxes
-          
+
           // If not at root, check other possible locations
           if (totalBoxes === undefined || totalBoxes === null) {
             totalBoxes = row.raw?.totalBoxes
           }
-          
+
           // Check dispatchOrder if populated
           if ((totalBoxes === undefined || totalBoxes === null) && row.dispatchOrder) {
             totalBoxes = row.dispatchOrder.totalBoxes
           }
-          
+
           // Check raw dispatchOrder
           if ((totalBoxes === undefined || totalBoxes === null) && row.raw?.dispatchOrder) {
             totalBoxes = row.raw.dispatchOrder.totalBoxes
           }
-          
+
           // Parse if string
           if (typeof totalBoxes === 'string') {
             const parsed = parseInt(totalBoxes)
             totalBoxes = isNaN(parsed) ? 0 : parsed
           }
-          
+
           // Default to 0 if still undefined/null (match Dispatch Orders behavior)
           totalBoxes = totalBoxes ?? 0
-          
+
           // Display exactly like Dispatch Orders: show the number (including 0)
           return <span className="tabular-nums text-sm font-medium">{totalBoxes}</span>
         },
@@ -567,6 +567,7 @@ export default function BuyingPage() {
             <h1 className="text-lg font-semibold">Buying</h1>
             <p className="text-sm text-muted-foreground">Manage supplier purchases and monitor payment status.</p>
           </div>
+          {/* {JSON.stringify(buyingRows)} */}
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-2 rounded-full border border-border px-3 py-1">
               <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
