@@ -606,7 +606,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
     const paid = Number(cash || 0) + Number(bank || 0)
     // Remaining balance = supplierPaymentTotal - discount - paid
-    const remaining = Math.max(0, supplierPaymentAfterDiscount - paid)
+    // Allow negative values to show overpayment (credit)
+    const remaining = supplierPaymentAfterDiscount - paid
     return {
       supplierPaymentTotal,
       grandTotal,
@@ -1845,10 +1846,18 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 className="text-lg"
               />
             </div>
-            <div className="flex justify-between items-center p-3 bg-amber-50 dark:bg-amber-950/30 rounded-md border-2 border-amber-200 dark:border-amber-900">
-              <span className="text-sm font-medium">Remaining Balance</span>
-              <span className="text-lg font-bold tabular-nums text-amber-700 dark:text-amber-400">
-                {totals.remaining.toFixed(2)}
+            <div className={`flex justify-between items-center p-3 rounded-md border-2 ${totals.remaining > 0
+                ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900"
+                : "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900"
+              }`}>
+              <span className="text-sm font-medium">
+                {totals.remaining >= 0 ? "Remaining Balance" : "Overpaid (Credit)"}
+              </span>
+              <span className={`text-lg font-bold tabular-nums ${totals.remaining > 0
+                  ? "text-amber-700 dark:text-amber-400"
+                  : "text-green-700 dark:text-green-400"
+                }`}>
+                {Math.abs(totals.remaining).toFixed(2)}
               </span>
             </div>
           </div>
