@@ -159,38 +159,103 @@ export default function BuyingPage() {
         render: (row) => {
           if (!row.items || row.items.length === 0) return <span className="text-muted-foreground">—</span>
 
-          // Collect unique colors from all items - primaryColor is an array per item
+          // Helper function to extract colors from a value (array, string, or object)
+          const extractColors = (value) => {
+            const extracted = []
+            if (!value) return extracted
+            
+            if (Array.isArray(value)) {
+              value.forEach(color => {
+                if (color && typeof color === 'string' && color.trim()) {
+                  extracted.push(color.trim())
+                } else if (color && typeof color === 'object' && color.name) {
+                  extracted.push(color.name.trim())
+                }
+              })
+            } else if (typeof value === 'string' && value.trim()) {
+              extracted.push(value.trim())
+            } else if (typeof value === 'object' && value.name) {
+              extracted.push(value.name.trim())
+            }
+            return extracted
+          }
+
+          // Collect unique colors from all items - check ALL possible sources
           const colors = new Set()
           row.items.forEach(item => {
-            if (item.primaryColorDisplay && Array.isArray(item.primaryColorDisplay)) {
-              item.primaryColorDisplay.forEach(color => {
-                if (color && color.trim()) colors.add(color.trim())
+            // Check primaryColorDisplay (array or string)
+            if (item.primaryColorDisplay) {
+              extractColors(item.primaryColorDisplay).forEach(color => colors.add(color))
+            }
+            
+            // Check primaryColor (array or string) - FIXED: removed else if
+            if (item.primaryColor) {
+              extractColors(item.primaryColor).forEach(color => colors.add(color))
+            }
+            
+            // Check color field (alternative name)
+            if (item.color) {
+              extractColors(item.color).forEach(color => colors.add(color))
+            }
+            
+            // Check product.primaryColor if available
+            if (item.product?.primaryColor) {
+              extractColors(item.product.primaryColor).forEach(color => colors.add(color))
+            }
+            
+            // Check product.color if available
+            if (item.product?.color) {
+              extractColors(item.product.color).forEach(color => colors.add(color))
+            }
+            
+            // Check productType.primaryColor if available
+            if (item.productType?.primaryColor) {
+              extractColors(item.productType.primaryColor).forEach(color => colors.add(color))
+            }
+            
+            // Check packets composition for colors
+            if (item.packets && Array.isArray(item.packets)) {
+              item.packets.forEach(packet => {
+                if (packet.composition && Array.isArray(packet.composition)) {
+                  packet.composition.forEach(comp => {
+                    if (comp.color) {
+                      extractColors(comp.color).forEach(color => colors.add(color))
+                    }
+                    if (comp.primaryColor) {
+                      extractColors(comp.primaryColor).forEach(color => colors.add(color))
+                    }
+                  })
+                }
               })
-            } else if (item.primaryColor && Array.isArray(item.primaryColor)) {
-              item.primaryColor.forEach(color => {
-                if (color && color.trim()) colors.add(color.trim())
-              })
-            } else if (item.primaryColor && typeof item.primaryColor === 'string') {
-              colors.add(item.primaryColor.trim())
             }
           })
 
           const colorArray = Array.from(colors).filter(Boolean)
           if (colorArray.length === 0) return <span className="text-muted-foreground">—</span>
 
-          const firstColor = colorArray[0]
-          const remainingColors = colorArray.slice(1)
+          // Show all colors (up to 3 visible, rest in tooltip)
+          const visibleColors = colorArray.slice(0, 3)
+          const remainingColors = colorArray.slice(3)
 
           return (
-            <div className="flex items-center gap-1">
-              <span className="text-sm font-medium">{firstColor}</span>
+            <div className="flex flex-wrap items-center gap-1 max-w-[200px]">
+              {visibleColors.map((color, idx) => (
+                <Badge
+                  key={idx}
+                  variant="outline"
+                  className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 border-blue-200"
+                >
+                  {color}
+                </Badge>
+              ))}
               {remainingColors.length > 0 && (
-                <span
-                  className="text-xs text-blue-600 cursor-help underline decoration-dotted font-medium"
+                <Badge
+                  variant="outline"
+                  className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 border-blue-200"
                   title={remainingColors.join(', ')}
                 >
                   +{remainingColors.length}
-                </span>
+                </Badge>
               )}
             </div>
           )
@@ -202,27 +267,29 @@ export default function BuyingPage() {
         render: (row) => {
           if (!row.items || row.items.length === 0) return <span className="text-muted-foreground">—</span>
 
-          // Collect unique sizes from all items' packets AND size arrays
+          // Collect unique sizes from all items - check ALL sources (packets, sizeArray, size field)
           const sizes = new Set()
           row.items.forEach(item => {
-            // First try to get sizes from packets (more detailed)
+            // Get sizes from packets (most detailed)
             if (item.packets && item.packets.length > 0) {
               item.packets.forEach(packet => {
                 if (packet.composition && packet.composition.length > 0) {
                   packet.composition.forEach(comp => {
-                    if (comp.size && comp.size.trim()) sizes.add(comp.size.trim())
+                    if (comp.size && comp.size.trim()) {
+                      sizes.add(comp.size.trim())
+                    }
                   })
                 }
               })
             }
-            // Also check sizeArray if no packets
-            if (sizes.size === 0 && item.sizeArray && Array.isArray(item.sizeArray)) {
+            // Also check sizeArray (don't skip if packets exist - collect from all sources)
+            if (item.sizeArray && Array.isArray(item.sizeArray)) {
               item.sizeArray.forEach(size => {
                 if (size && size.trim()) sizes.add(size.trim())
               })
             }
             // Fallback to size field
-            if (sizes.size === 0 && item.size) {
+            if (item.size) {
               if (Array.isArray(item.size)) {
                 item.size.forEach(s => {
                   if (s && s.trim()) sizes.add(s.trim())
@@ -231,24 +298,44 @@ export default function BuyingPage() {
                 sizes.add(item.size.trim())
               }
             }
+            // Check product.size if available
+            if (item.product?.size) {
+              if (Array.isArray(item.product.size)) {
+                item.product.size.forEach(s => {
+                  if (s && s.trim()) sizes.add(s.trim())
+                })
+              } else if (typeof item.product.size === 'string' && item.product.size.trim()) {
+                sizes.add(item.product.size.trim())
+              }
+            }
           })
 
           const sizeArray = Array.from(sizes).filter(Boolean)
           if (sizeArray.length === 0) return <span className="text-muted-foreground">—</span>
 
-          const firstSize = sizeArray[0]
-          const remainingSizes = sizeArray.slice(1)
+          // Show all sizes (up to 3 visible, rest in tooltip)
+          const visibleSizes = sizeArray.slice(0, 3)
+          const remainingSizes = sizeArray.slice(3)
 
           return (
-            <div className="flex items-center gap-1">
-              <span className="text-sm font-medium">{firstSize}</span>
+            <div className="flex flex-wrap items-center gap-1 max-w-[200px]">
+              {visibleSizes.map((size, idx) => (
+                <Badge
+                  key={idx}
+                  variant="outline"
+                  className="text-[10px] px-1.5 py-0.5 bg-green-50 text-green-700 border-green-200"
+                >
+                  {size}
+                </Badge>
+              ))}
               {remainingSizes.length > 0 && (
-                <span
-                  className="text-xs text-blue-600 cursor-help underline decoration-dotted font-medium"
+                <Badge
+                  variant="outline"
+                  className="text-[10px] px-1.5 py-0.5 bg-green-50 text-green-700 border-green-200"
                   title={remainingSizes.join(', ')}
                 >
                   +{remainingSizes.length}
-                </span>
+                </Badge>
               )}
             </div>
           )
@@ -258,8 +345,36 @@ export default function BuyingPage() {
         header: "Boxes",
         accessor: "totalBoxes",
         render: (row) => {
-          const totalBoxes = row.raw?.totalBoxes || 0;
-          return <span className="tabular-nums text-sm">{totalBoxes || "—"}</span>
+          // Match Dispatch Orders approach: purchases are created from dispatch orders
+          // so they should have totalBoxes at root level, same as dispatch orders
+          let totalBoxes = row.totalBoxes
+          
+          // If not at root, check other possible locations
+          if (totalBoxes === undefined || totalBoxes === null) {
+            totalBoxes = row.raw?.totalBoxes
+          }
+          
+          // Check dispatchOrder if populated
+          if ((totalBoxes === undefined || totalBoxes === null) && row.dispatchOrder) {
+            totalBoxes = row.dispatchOrder.totalBoxes
+          }
+          
+          // Check raw dispatchOrder
+          if ((totalBoxes === undefined || totalBoxes === null) && row.raw?.dispatchOrder) {
+            totalBoxes = row.raw.dispatchOrder.totalBoxes
+          }
+          
+          // Parse if string
+          if (typeof totalBoxes === 'string') {
+            const parsed = parseInt(totalBoxes)
+            totalBoxes = isNaN(parsed) ? 0 : parsed
+          }
+          
+          // Default to 0 if still undefined/null (match Dispatch Orders behavior)
+          totalBoxes = totalBoxes ?? 0
+          
+          // Display exactly like Dispatch Orders: show the number (including 0)
+          return <span className="tabular-nums text-sm font-medium">{totalBoxes}</span>
         },
       },
       {
@@ -279,30 +394,6 @@ export default function BuyingPage() {
             {row.supplierPaymentTotal != null ? row.supplierPaymentTotal.toFixed(2) : "—"}
           </span>
         ),
-      },
-      {
-        header: "Percentage",
-        accessor: "percentage",
-        render: (row) => (
-          <span className="tabular-nums text-sm">
-            {row.percentage != null ? `${row.percentage}%` : "—"}
-          </span>
-        ),
-      },
-      {
-        header: "Grand Total",
-        accessor: "grandTotal",
-        render: (row) => <span className="tabular-nums font-medium">{row.grandTotal.toFixed(2) || 0}</span>,
-      },
-      {
-        header: "Paid",
-        accessor: "totalPaid",
-        render: (row) => <span className="tabular-nums">{(row.totalPaid || 0).toFixed(2)}</span>,
-      },
-      {
-        header: "Remaining",
-        accessor: "remainingBalance",
-        render: (row) => <span className="tabular-nums">{(row.remainingBalance || 0).toFixed(2)}</span>,
       },
       {
         header: "Actions",
