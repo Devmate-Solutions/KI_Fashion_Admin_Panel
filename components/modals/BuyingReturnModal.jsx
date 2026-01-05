@@ -1,16 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Package, Trash2, Plus } from "lucide-react"
+import { Loader2, Package, Trash2 } from "lucide-react"
 import { suppliersAPI } from "@/lib/api/endpoints/suppliers"
 import { returnsAPI } from "@/lib/api/endpoints/returns"
+import { useCreateProductReturn } from "@/lib/hooks/useReturns"
 import toast from "react-hot-toast"
 
 export default function BuyingReturnModal({ open, onClose, onSuccess }) {
@@ -21,12 +22,14 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [selectedProducts, setSelectedProducts] = useState([])
   const [notes, setNotes] = useState("")
-  const [submitting, setSubmitting] = useState(false)
+
+  // Use mutation hook for return creation with cache invalidation
+  const createReturnMutation = useCreateProductReturn()
 
   // Load suppliers
   useEffect(() => {
     if (!open) return
-    
+
     const loadSuppliers = async () => {
       try {
         setLoadingSuppliers(true)
@@ -40,7 +43,7 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
         setLoadingSuppliers(false)
       }
     }
-    
+
     loadSuppliers()
   }, [open])
 
@@ -54,9 +57,9 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
     const loadProducts = async () => {
       try {
         setLoadingProducts(true)
-        const response = await returnsAPI.getProductsForReturn({ 
+        const response = await returnsAPI.getProductsForReturn({
           supplierId: selectedSupplierId,
-          search: "" 
+          search: ""
         })
         const productsList = response.data?.data || response.data || []
         setProducts(productsList)
@@ -72,6 +75,56 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
     loadProducts()
   }, [selectedSupplierId])
 
+  // Group products by Dispatch Order for the Select
+  const groupedProductOptions = useMemo(() => {
+    const groups = {}
+
+    products.forEach(product => {
+      if (!product.batches || product.batches.length === 0) return
+
+      product.batches.forEach(batch => {
+        // Create a unique key for the group (Dispatch Order)
+        const orderKey = batch.dispatchOrderId || 'unknown'
+
+        if (!groups[orderKey]) {
+          const dateStr = batch.confirmedAt ? new Date(batch.confirmedAt).toLocaleDateString() : 'Unknown Date'
+          groups[orderKey] = {
+            label: `Order: ${batch.orderNumber || 'Unknown'} (${dateStr})`,
+            options: [],
+            orderId: batch.dispatchOrderId
+          }
+        }
+
+        // Add product as an option within this group
+        groups[orderKey].options.push({
+          value: `${product._id}|${batch.batchId}`, // Composite ID: ProductID | BatchID
+          label: product.name,
+          description: `Code: ${product.productCode || product.sku} | Qty: ${batch.remainingQuantity} | Cost: ${batch.costPrice.toFixed(2)}`,
+          disabled: false,
+          // Store extra data for easier retrieval
+          data: {
+            product,
+            batch
+          }
+        })
+      })
+    })
+
+    return Object.values(groups)
+  }, [products])
+
+  // Filter options based on already selected products (Single Order Constraint)
+  const filteredGroups = useMemo(() => {
+    // If no products selected, show all groups
+    if (selectedProducts.length === 0) return groupedProductOptions
+
+    // If products selected, find the "locked" dispatch order ID
+    const lockedOrderId = selectedProducts[0].dispatchOrderId
+
+    // Only return the group matching the locked order
+    return groupedProductOptions.filter(group => group.orderId === lockedOrderId)
+  }, [groupedProductOptions, selectedProducts])
+
   // Reset form when modal closes
   useEffect(() => {
     if (!open) {
@@ -82,45 +135,66 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
     }
   }, [open])
 
-  const addProductToReturn = (productId) => {
+  // Reset selected products when supplier changes
+  useEffect(() => {
+    setSelectedProducts([])
+  }, [selectedSupplierId])
+
+  const addProductToReturn = (compositeId) => {
+    const [productId, batchId] = compositeId.split('|')
+
+    // Find the product and specific batch
     const product = products.find(p => p._id === productId)
     if (!product) return
 
-    if (selectedProducts.some(p => p.productId === productId)) {
-      toast.error("Product already added")
+    const batch = product.batches?.find(b => b.batchId === batchId)
+    if (!batch) return
+
+    if (selectedProducts.some(p => p.productId === productId && p.batchId === batchId)) {
+      toast.error("Item already added")
+      return
+    }
+
+    // Check if locking to a new order
+    if (selectedProducts.length > 0 && selectedProducts[0].dispatchOrderId !== batch.dispatchOrderId) {
+      toast.error("You can only return items from one Dispatch Order at a time.")
       return
     }
 
     setSelectedProducts(prev => [...prev, {
       productId: product._id,
+      batchId: batch.batchId,
+      dispatchOrderId: batch.dispatchOrderId,
+      orderNumber: batch.orderNumber, // Stored for display/reference
       productName: product.name,
       productCode: product.productCode || product.sku,
-      currentStock: product.currentStock || 0,
-      costPrice: product.averageCostPrice || 0,
+      currentStock: batch.remainingQuantity, // Max returnable is strictly batch quantity
+      costPrice: batch.costPrice, // Exact cost from batch
       quantity: 1,
       reason: ""
     }])
   }
 
-  const updateProduct = (productId, field, value) => {
+  const updateProduct = (productId, batchId, field, value) => {
     setSelectedProducts(prev => prev.map(p => {
-      if (p.productId !== productId) return p
-      
+      // Must match both product and batch
+      if (p.productId !== productId || p.batchId !== batchId) return p
+
       if (field === "quantity") {
         const numValue = Number(value)
         if (numValue > p.currentStock) {
-          toast.error(`Maximum ${p.currentStock} available`)
+          toast.error(`Maximum ${p.currentStock} available in this batch`)
           return p
         }
         if (numValue < 1) return p
       }
-      
+
       return { ...p, [field]: value }
     }))
   }
 
-  const removeProduct = (productId) => {
-    setSelectedProducts(prev => prev.filter(p => p.productId !== productId))
+  const removeProduct = (productId, batchId) => {
+    setSelectedProducts(prev => prev.filter(p => !(p.productId === productId && p.batchId === batchId)))
   }
 
   const calculateTotal = () => {
@@ -139,12 +213,11 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
     }
 
     try {
-      setSubmitting(true)
-
       const payload = {
         supplierId: selectedSupplierId,
         items: selectedProducts.map(p => ({
           productId: p.productId,
+          batchId: p.batchId, // Send batch ID for backend processing
           quantity: p.quantity,
           reason: p.reason || ""
         })),
@@ -154,16 +227,14 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
         notes: notes || `Product return - ${selectedProducts.length} item(s)`
       }
 
-      await returnsAPI.createProductReturn(payload)
-      
+      await createReturnMutation.mutateAsync(payload)
+
       toast.success("Return created successfully")
       if (onSuccess) onSuccess()
       onClose()
     } catch (error) {
       console.error("Error creating return:", error)
       toast.error(error.response?.data?.message || "Failed to create return")
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -178,53 +249,74 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Supplier Selection */}
+          {/* Supplier Selection - Standard Select */}
           <div className="space-y-2">
-            <Label htmlFor="supplier">Supplier *</Label>
-            <Select 
-              value={selectedSupplierId} 
+            <Label>Supplier *</Label>
+            <Select
+              value={selectedSupplierId}
               onValueChange={setSelectedSupplierId}
               disabled={loadingSuppliers}
             >
-              <SelectTrigger id="supplier">
-                <SelectValue placeholder="Select supplier..." />
+              <SelectTrigger>
+                <SelectValue placeholder={loadingSuppliers ? "Loading..." : "Select supplier..."} />
               </SelectTrigger>
               <SelectContent>
                 {suppliers.map(supplier => (
                   <SelectItem key={supplier._id} value={supplier._id}>
-                    {supplier.name || supplier.company}
-                    {supplier.contactPerson && ` (${supplier.contactPerson})`}
+                    {supplier.name || supplier.company || 'Unknown'}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Product Selection */}
+          {/* Product Selection - Grouped Select */}
           {selectedSupplierId && (
             <div className="space-y-2">
-              <Label htmlFor="product">Add Product</Label>
-              <Select onValueChange={addProductToReturn} disabled={loadingProducts}>
-                <SelectTrigger id="product">
-                  <SelectValue placeholder={loadingProducts ? "Loading products..." : "Select product to return..."} />
+              <Label>Add Product (Limited to Single Dispatch Order)</Label>
+              <Select
+                onValueChange={(value) => {
+                  if (value) addProductToReturn(value)
+                }}
+                disabled={loadingProducts}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={loadingProducts ? "Loading products..." : selectedProducts.length > 0 ? "Add another item from this order..." : "Select product..."} />
                 </SelectTrigger>
-                <SelectContent>
-                  {products.map(product => (
-                    <SelectItem 
-                      key={product._id} 
-                      value={product._id}
-                      disabled={selectedProducts.some(p => p.productId === product._id)}
-                    >
-                      <div className="flex justify-between items-center w-full">
-                        <span>{product.name} ({product.productCode || product.sku})</span>
-                        <span className="text-xs text-muted-foreground ml-4">
-                          Stock: {product.currentStock} | £{product.averageCostPrice?.toFixed(2) || "0.00"}
-                        </span>
-                      </div>
-                    </SelectItem>
+                <SelectContent className="max-h-[300px]">
+                  {products.length === 0 ? (
+                    <div className="p-2 text-sm text-muted-foreground text-center">No products found</div>
+                  ) : filteredGroups.map((group) => (
+                    <SelectGroup key={group.orderId}>
+                      <SelectLabel className="sticky top-0 bg-secondary/90 z-10 font-bold text-primary">
+                        {group.label}
+                      </SelectLabel>
+                      {group.options.map((option) => (
+                        <SelectItem
+                          key={option.value}
+                          value={option.value}
+                          disabled={selectedProducts.some(p =>
+                            p.productId === option.data.product._id &&
+                            p.batchId === option.data.batch.batchId
+                          )}
+                        >
+                          <div className="flex flex-col gap-1 text-left">
+                            <span className="font-medium">{option.label}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {option.description}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                   ))}
                 </SelectContent>
               </Select>
+              {selectedProducts.length > 0 && (
+                <p className="text-xs text-muted-foreground text-amber-600">
+                  * Restricted to Dispatch Order: {selectedProducts[0].orderNumber || 'Unknown'} (Clear table to change order)
+                </p>
+              )}
             </div>
           )}
 
@@ -244,7 +336,7 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
                 </thead>
                 <tbody>
                   {selectedProducts.map(product => (
-                    <tr key={product.productId} className="border-t">
+                    <tr key={`${product.productId}-${product.batchId}`} className="border-t">
                       <td className="p-2">
                         <div>
                           <div className="font-medium">{product.productName}</div>
@@ -263,24 +355,24 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
                           value={product.quantity}
                           onChange={(e) => {
                             const value = e.target.value;
-                            // Allow only numbers
+                            // Allow only numbers, default to 1 if empty to prevent NaN
                             const sanitized = value.replace(/[^0-9]/g, '');
-                            updateProduct(product.productId, "quantity", sanitized === "" ? "" : Number(sanitized));
+                            updateProduct(product.productId, product.batchId, "quantity", sanitized === "" ? 1 : Number(sanitized));
                           }}
                           className="h-8 text-right"
                         />
                       </td>
                       <td className="p-2 text-right font-medium">
-                        £{product.costPrice.toFixed(2)}
+                        {product.costPrice.toFixed(2)}
                       </td>
                       <td className="p-2 text-right font-semibold">
-                        £{(product.quantity * product.costPrice).toFixed(2)}
+                        {(product.quantity * product.costPrice).toFixed(2)}
                       </td>
                       <td className="p-2 text-center">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => removeProduct(product.productId)}
+                          onClick={() => removeProduct(product.productId, product.batchId)}
                           className="h-8 w-8 text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -295,7 +387,7 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
                       Total Return Value:
                     </td>
                     <td className="p-2 text-right text-lg font-bold">
-                      £{calculateTotal().toFixed(2)}
+                      {calculateTotal().toFixed(2)}
                     </td>
                     <td></td>
                   </tr>
@@ -320,7 +412,7 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
           {selectedProducts.length > 0 && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
               <p className="text-blue-800">
-                <strong>Note:</strong> The return value of £{calculateTotal().toFixed(2)} will be credited to the supplier's account (reducing your payable amount).
+                <strong>Note:</strong> The return value of {calculateTotal().toFixed(2)} will be credited to the supplier's account (reducing your payable amount).
               </p>
             </div>
           )}
@@ -330,15 +422,15 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
           <Button
             variant="outline"
             onClick={onClose}
-            disabled={submitting}
+            disabled={createReturnMutation.isPending}
           >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={submitting || selectedProducts.length === 0}
+            disabled={createReturnMutation.isPending || selectedProducts.length === 0}
           >
-            {submitting ? (
+            {createReturnMutation.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Processing...
