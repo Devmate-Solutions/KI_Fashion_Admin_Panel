@@ -7,7 +7,7 @@ import { UserMenu } from "./auth/UserMenu"
 import { useAuthStore } from '@/store/store';
 
 
-import { Bell, Search, Globe, ChevronDown } from "lucide-react"
+import { Search } from "lucide-react"
 
 export default function TopBar() {
     const { loadUser } = useAuthStore();
@@ -41,19 +41,7 @@ export default function TopBar() {
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="hidden sm:flex items-center gap-4 mr-2">
-              <button className="p-2 rounded-xl text-slate-400 hover:bg-slate-50 hover:text-slate-900 transition-all relative">
-                <Globe className="h-5 w-5" />
-              </button>
-              <button className="p-2 rounded-xl text-slate-400 hover:bg-slate-50 hover:text-slate-900 transition-all relative group">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-2 right-2.5 h-2 w-2 rounded-full bg-rose-500 border-2 border-white"></span>
-              </button>
-            </div>
-            
-            <div className="h-8 w-px bg-slate-100" aria-hidden />
-            
-            <div className="flex items-center gap-3 pl-2">
+            <div className="flex items-center gap-3">
               <UserMenu />
             </div>
           </div>

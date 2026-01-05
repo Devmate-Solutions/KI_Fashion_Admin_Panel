@@ -41,7 +41,7 @@ import { Package } from "lucide-react"
 // Currency util to match other tabs' formatting
 function currency(n) {
   const num = Number(n || 0)
-  return `£${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 export default function BuyingPage() {
