@@ -696,6 +696,12 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       return;
     }
 
+    // Validate box count
+    if (!totalBoxes || Number(totalBoxes) < 1) {
+      setError("Number of boxes must be at least 1");
+      return;
+    }
+
     // Validate that all rows have required fields
     // Product ID is optional if product name is provided (manual entry)
     const invalidRows = rows.filter(
@@ -1737,7 +1743,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                         updateRow(
                           row.id,
                           "costPrice",
-                          sanitized === "" ? "" : Number(sanitized)
+                          sanitized
                         );
                       }}
                       className="h-8 text-sm text-right tabular-nums"
@@ -1969,16 +1975,18 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   <td className="p-2">
                     <Input
                       type="text"
-                      inputMode="numeric"
+                      inputMode="decimal"
                       value={row.quantity}
                       onChange={(e) => {
                         const value = e.target.value;
-                        // Allow only numbers
-                        const sanitized = value.replace(/[^0-9]/g, "");
+                        // Allow only numbers and a single decimal point
+                        const sanitized = value
+                          .replace(/[^0-9.]/g, "")
+                          .replace(/(\..*)\./g, "$1");
                         updateRow(
                           row.id,
                           "quantity",
-                          sanitized === "" ? "" : Number(sanitized) || 0
+                          sanitized
                         );
                       }}
                       className="h-8 text-sm text-right tabular-nums"

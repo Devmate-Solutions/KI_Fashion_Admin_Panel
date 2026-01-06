@@ -416,19 +416,44 @@ export default function StockPage() {
 
   const inventoryItems = inventoryData?.items ?? [];
 
-  // Calculate summary statistics
-  const totalStockValue = inventoryItems.reduce(
+  // Apply client-side date filtering so the UI always respects the selected date range
+  const filteredInventoryItems = useMemo(() => {
+    if (!appliedFilters.startDate && !appliedFilters.endDate) {
+      return inventoryItems;
+    }
+
+    const start = appliedFilters.startDate
+      ? new Date(`${appliedFilters.startDate}T00:00:00`)
+      : null;
+    const end = appliedFilters.endDate
+      ? new Date(`${appliedFilters.endDate}T23:59:59.999`)
+      : null;
+
+    return inventoryItems.filter((item) => {
+      if (!item.lastStockUpdate) return false;
+      const itemDate = new Date(item.lastStockUpdate);
+      if (Number.isNaN(itemDate.getTime())) return false;
+
+      if (start && itemDate < start) return false;
+      if (end && itemDate > end) return false;
+
+      return true;
+    });
+  }, [inventoryItems, appliedFilters.startDate, appliedFilters.endDate]);
+
+  // Calculate summary statistics based on filtered items
+  const totalStockValue = filteredInventoryItems.reduce(
     (sum, item) => sum + (item.totalValue || 0),
     0
   );
-  const totalStockItems = inventoryItems.reduce(
+  const totalStockItems = filteredInventoryItems.reduce(
     (sum, item) => sum + (item.currentStock || 0),
     0
   );
-  const lowStockCount = inventoryItems.filter(
+  const lowStockCount = filteredInventoryItems.filter(
     (item) => item.lowStock || item.needsReorder
   ).length;
-  const totalProducts = inventoryItems.length;
+  const totalProducts = filteredInventoryItems.length;
 
   // Debug: Log first item to check image data
   React.useEffect(() => {
@@ -802,7 +827,7 @@ export default function StockPage() {
           <div className="text-sm text-muted-foreground">
             Inventory records:{" "}
             <span className="font-semibold text-foreground">
-              {inventoryPagination?.totalItems ?? inventoryItems.length}
+              {inventoryPagination?.totalItems ?? filteredInventoryItems.length}
             </span>
           </div>
         </div>
@@ -810,7 +835,7 @@ export default function StockPage() {
       <DataTable
         title="Inventory"
         columns={inventoryColumns}
-        data={inventoryItems}
+        data={filteredInventoryItems}
         loading={inventoryLoading || inventoryFetching}
         enableSearch={false}
         paginate={false}

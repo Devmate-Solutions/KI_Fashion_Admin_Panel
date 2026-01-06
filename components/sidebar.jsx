@@ -25,7 +25,7 @@ import {
 const items = [
   // { href: "/home", label: "Dashboard", icon: Home },
   { href: "/dispatch-orders", label: "Dispatch Orders", icon: Truck },
-  { href: "/stock", label: "Stock &Inventory", icon: Boxes },
+  { href: "/stock", label: "Stock & Inventory", icon: Boxes },
   { href: "/buying", label: "Buying & Sourcing", icon: ShoppingBag },
   { type: "separator", label: "Finance & Accounts" },
   // { href: "/cash-tracking", label: "Cash Tracking", icon: Wallet },
