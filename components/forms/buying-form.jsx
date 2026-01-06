@@ -350,6 +350,28 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
         const updated = { ...row, [field]: value };
 
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/e0660d90-406d-498c-9b9c-ed0297888613', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: 'debug-session',
+            runId: 'pre-fix',
+            hypothesisId: 'H3',
+            location: 'components/forms/buying-form.jsx:updateRow',
+            message: 'Row updated',
+            data: {
+              id,
+              field,
+              rawValue: value,
+              parsedCostPrice: Number(field === 'costPrice' ? value : row.costPrice || 0),
+              parsedQuantity: Number(field === 'quantity' ? value : row.quantity || 0),
+            },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion agent log
+
         // Auto-calculate supplier payment and landed price when cost price, exchange rate, or percentage changes
         const costPrice = Number(updated.costPrice || 0);
         const quantity = Number(updated.quantity || 0);
@@ -685,6 +707,31 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
   // Save purchase to backend (updated to use supplier user ID)
   const handleSave = async () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/e0660d90-406d-498c-9b9c-ed0297888613', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: 'debug-session',
+        runId: 'pre-fix',
+        hypothesisId: 'H1',
+        location: 'components/forms/buying-form.jsx:handleSave',
+        message: 'Handle save invoked',
+        data: {
+          supplierId,
+          rowsCount: rows.length,
+          totalBoxes,
+          totalsSnapshot: {
+            subtotal: totals.subtotal,
+            remaining: totals.remaining,
+            supplierPaymentAfterDiscount: totals.supplierPaymentAfterDiscount,
+          },
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion agent log
+
     // Validation
     if (!supplierId) {
       setError("Please select a supplier");
@@ -705,15 +752,22 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
     // Validate that all rows have required fields
     // Product ID is optional if product name is provided (manual entry)
     const invalidRows = rows.filter(
-      (row) =>
-        !row.productName ||
-        !row.productCode ||
-        !row.season ||
-        row.season.length === 0 ||
-        !row.costPrice ||
-        row.costPrice <= 0 ||
-        !row.quantity ||
-        row.quantity <= 0
+      (row) => {
+        const costPrice = Number(row.costPrice);
+        const quantity = Number(row.quantity);
+        return (
+          !row.productName ||
+          !row.productCode ||
+          !row.season ||
+          row.season.length === 0 ||
+          !row.costPrice ||
+          isNaN(costPrice) ||
+          costPrice <= 0 ||
+          !row.quantity ||
+          isNaN(quantity) ||
+          quantity <= 0
+        );
+      }
     );
 
     if (invalidRows.length > 0) {
@@ -1038,6 +1092,31 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         payload.logisticsCompany = logisticsCompanyId;
       }
 
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/e0660d90-406d-498c-9b9c-ed0297888613', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 'debug-session',
+          runId: 'pre-fix',
+          hypothesisId: 'H2',
+          location: 'components/forms/buying-form.jsx:handleSave:beforeCreate',
+          message: 'About to call purchasesAPI.create',
+          data: {
+            payloadSummary: {
+              supplier: payload.supplier,
+              itemsCount: Array.isArray(payload.items) ? payload.items.length : 0,
+              totalBoxes: payload.totalBoxes,
+              grandTotal: payload.grandTotal,
+              remainingBalance: payload.remainingBalance,
+              paymentStatus: payload.paymentStatus,
+            },
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion agent log
+
       const response = await purchasesAPI.create(payload);
 
       // Success! Call parent callback with response
@@ -1046,6 +1125,27 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       }
     } catch (err) {
       console.error("Error saving purchase:", err);
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/e0660d90-406d-498c-9b9c-ed0297888613', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 'debug-session',
+          runId: 'pre-fix',
+          hypothesisId: 'H4',
+          location: 'components/forms/buying-form.jsx:handleSave:catch',
+          message: 'Error during purchasesAPI.create',
+          data: {
+            name: err?.name,
+            message: err?.message,
+            responseStatus: err?.response?.status,
+            responseMessage: err?.response?.data?.message,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion agent log
 
       // Extract error message from API response
       const errorMessage =
@@ -1733,17 +1833,21 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                     <Input
                       type="text"
                       inputMode="decimal"
-                      value={row.costPrice}
+                      value={row.costPrice === 0 ? "" : String(row.costPrice || "")}
                       onChange={(e) => {
                         const value = e.target.value;
                         // Allow only numbers and one decimal point
-                        const sanitized = value
+                        let sanitized = value
                           .replace(/[^0-9.]/g, "")
                           .replace(/(\..*)\./g, "$1");
+                        // Prevent just "." from being stored (allow ".5" but not standalone ".")
+                        if (sanitized === ".") {
+                          sanitized = "";
+                        }
                         updateRow(
                           row.id,
                           "costPrice",
-                          sanitized
+                          sanitized === "" ? "" : sanitized
                         );
                       }}
                       className="h-8 text-sm text-right tabular-nums"
@@ -1976,17 +2080,21 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                     <Input
                       type="text"
                       inputMode="decimal"
-                      value={row.quantity}
+                      value={row.quantity === 0 ? "" : String(row.quantity || "")}
                       onChange={(e) => {
                         const value = e.target.value;
                         // Allow only numbers and a single decimal point
-                        const sanitized = value
+                        let sanitized = value
                           .replace(/[^0-9.]/g, "")
                           .replace(/(\..*)\./g, "$1");
+                        // Prevent just "." from being stored (allow ".5" but not standalone ".")
+                        if (sanitized === ".") {
+                          sanitized = "";
+                        }
                         updateRow(
                           row.id,
                           "quantity",
-                          sanitized
+                          sanitized === "" ? "" : sanitized
                         );
                       }}
                       className="h-8 text-sm text-right tabular-nums"
