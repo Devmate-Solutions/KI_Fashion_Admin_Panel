@@ -430,8 +430,16 @@ export default function StockPage() {
       : null;
 
     return inventoryItems.filter((item) => {
-      if (!item.lastStockUpdate) return false;
-      const itemDate = new Date(item.lastStockUpdate);
+      // Prefer explicit lastStockUpdate, but fall back to raw timestamps if needed
+      const dateSource =
+        item.lastStockUpdate ||
+        item.raw?.lastStockUpdate ||
+        item.raw?.updatedAt ||
+        item.raw?.createdAt;
+
+      if (!dateSource) return false;
+
+      const itemDate = new Date(dateSource);
       if (Number.isNaN(itemDate.getTime())) return false;
 
       if (start && itemDate < start) return false;

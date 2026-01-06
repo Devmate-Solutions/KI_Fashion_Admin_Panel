@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 
 function normalize(v) {
   return String(v ?? "").toLowerCase()
@@ -29,9 +29,15 @@ export default function DataTable({
   const [query, setQuery] = useState("")
   const [internalPage, setInternalPage] = useState(1)
   const [sort, setSort] = useState({ key: null, dir: "asc" })
+  const [pageInput, setPageInput] = useState("")
 
   const page = manualPagination ? currentPage : internalPage
   const setPage = manualPagination ? (onPageChange || (() => { })) : setInternalPage
+
+  // Clear page input when page changes externally
+  useEffect(() => {
+    setPageInput("")
+  }, [page])
 
   const filtered = useMemo(() => {
     // Ensure data and columns are arrays
@@ -85,17 +91,35 @@ export default function DataTable({
         <h3 className="text-sm font-medium">{title}</h3>
         <div className="flex items-center gap-2">
           {enableSearch && (
-            <input
-              type="search"
-              className="h-8 w-44 md:w-64 rounded-[4px] border border-input bg-background px-2 text-sm outline-none focus:ring-1 focus:ring-ring"
-              placeholder="Search..."
-              value={query}
-              onChange={(e) => {
-                setPage(1)
-                setQuery(e.target.value)
-                if (onSearch) onSearch(e.target.value)
-              }}
-            />
+            <div className="flex items-center gap-2">
+              <input
+                type="search"
+                className="h-8 w-44 md:w-64 rounded-[4px] border border-input bg-background px-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+                placeholder="Search..."
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                  // Don't trigger search on every keystroke - only update local state
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    setPage(1)
+                    if (onSearch) onSearch(query)
+                  }
+                }}
+              />
+              <button
+                className="h-8 rounded-[4px] bg-primary px-3 text-sm text-primary-foreground hover:opacity-90"
+                onClick={() => {
+                  setPage(1)
+                  if (onSearch) onSearch(query)
+                }}
+                title="Search"
+              >
+                Search
+              </button>
+            </div>
           )}
           {onAddNew && (
             <button
@@ -208,28 +232,148 @@ export default function DataTable({
 
       {/* Pagination Controls */}
       {paginate && pageCount > 1 && (
-        <div className="flex items-center justify-between p-3 border-t border-border">
+        <div className="flex items-center justify-between p-3 border-t border-border flex-wrap gap-3">
           <div className="text-xs text-muted-foreground">
             Showing {displayStart + 1} to {displayEnd} of {displayTotal} entries
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
-              className="px-2 py-1 text-xs border border-border rounded hover:bg-muted disabled:opacity-50"
+              className="px-2 py-1 text-xs border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => setPage(1)}
+              disabled={page === 1}
+              title="First page"
+            >
+              First
+            </button>
+            <button
+              className="px-2 py-1 text-xs border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
+              title="Previous page"
             >
               Previous
             </button>
-            <span className="text-xs">
-              Page {page} of {pageCount}
-            </span>
+            
+            {/* Page number buttons */}
+            <div className="flex items-center gap-1">
+              {(() => {
+                const pages = []
+                const maxVisible = 5
+                let startPage = Math.max(1, page - Math.floor(maxVisible / 2))
+                let endPage = Math.min(pageCount, startPage + maxVisible - 1)
+                
+                // Adjust start if we're near the end
+                if (endPage - startPage < maxVisible - 1) {
+                  startPage = Math.max(1, endPage - maxVisible + 1)
+                }
+                
+                // Show first page if not in range
+                if (startPage > 1) {
+                  pages.push(
+                    <button
+                      key={1}
+                      className={`px-2 py-1 text-xs border border-border rounded hover:bg-muted ${
+                        page === 1 ? 'bg-primary text-primary-foreground' : ''
+                      }`}
+                      onClick={() => setPage(1)}
+                    >
+                      1
+                    </button>
+                  )
+                  if (startPage > 2) {
+                    pages.push(<span key="ellipsis1" className="px-1 text-xs text-muted-foreground">...</span>)
+                  }
+                }
+                
+                // Show pages in range
+                for (let i = startPage; i <= endPage; i++) {
+                  pages.push(
+                    <button
+                      key={i}
+                      className={`px-2 py-1 text-xs border border-border rounded hover:bg-muted ${
+                        page === i ? 'bg-primary text-primary-foreground' : ''
+                      }`}
+                      onClick={() => setPage(i)}
+                    >
+                      {i}
+                    </button>
+                  )
+                }
+                
+                // Show last page if not in range
+                if (endPage < pageCount) {
+                  if (endPage < pageCount - 1) {
+                    pages.push(<span key="ellipsis2" className="px-1 text-xs text-muted-foreground">...</span>)
+                  }
+                  pages.push(
+                    <button
+                      key={pageCount}
+                      className={`px-2 py-1 text-xs border border-border rounded hover:bg-muted ${
+                        page === pageCount ? 'bg-primary text-primary-foreground' : ''
+                      }`}
+                      onClick={() => setPage(pageCount)}
+                    >
+                      {pageCount}
+                    </button>
+                  )
+                }
+                
+                return pages
+              })()}
+            </div>
+            
             <button
-              className="px-2 py-1 text-xs border border-border rounded hover:bg-muted disabled:opacity-50"
+              className="px-2 py-1 text-xs border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={() => setPage(p => Math.min(pageCount, p + 1))}
               disabled={page === pageCount}
+              title="Next page"
             >
               Next
             </button>
+            <button
+              className="px-2 py-1 text-xs border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => setPage(pageCount)}
+              disabled={page === pageCount}
+              title="Last page"
+            >
+              Last
+            </button>
+            
+            {/* Direct page jump input */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">Go to:</span>
+              <input
+                type="number"
+                min="1"
+                max={pageCount}
+                value={pageInput}
+                onChange={(e) => setPageInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const pageNum = parseInt(pageInput)
+                    if (pageNum >= 1 && pageNum <= pageCount) {
+                      setPage(pageNum)
+                      setPageInput("")
+                    }
+                  }
+                }}
+                className="w-12 h-7 px-1 text-xs text-center border border-border rounded focus:ring-1 focus:ring-ring outline-none"
+                placeholder={page.toString()}
+              />
+              <button
+                className="px-2 py-1 text-xs border border-border rounded hover:bg-muted"
+                onClick={() => {
+                  const pageNum = parseInt(pageInput)
+                  if (pageNum >= 1 && pageNum <= pageCount) {
+                    setPage(pageNum)
+                    setPageInput("")
+                  }
+                }}
+                title="Jump to page"
+              >
+                Go
+              </button>
+            </div>
           </div>
         </div>
       )}

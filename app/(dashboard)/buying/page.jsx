@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import Tabs from "@/components/tabs"
 import DataTable from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
@@ -48,13 +48,73 @@ export default function BuyingPage() {
   const router = useRouter()
 
   const [page, setPage] = useState(1)
+  const [searchQuery, setSearchQuery] = useState("")
 
+  // When searching, fetch more results for better client-side filtering
+  // When not searching, use normal pagination
   const { data: purchasesData, isLoading: purchasesLoading } = usePurchases({
-    page,
-    limit: 20,
+    page: searchQuery.trim() ? 1 : page, // Always start at page 1 when searching
+    limit: searchQuery.trim() ? 500 : 20, // Fetch more results when searching to enable client-side filtering
   })
-  const buyingRows = purchasesData?.rows ?? []
-  const pagination = purchasesData?.pagination || {}
+  
+  // Get all rows from API
+  const allBuyingRows = purchasesData?.rows ?? []
+  
+  // Apply client-side filtering by Supplier name and Product names
+  const buyingRows = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return allBuyingRows
+    }
+    
+    const query = searchQuery.trim().toLowerCase()
+    
+    return allBuyingRows.filter((row) => {
+      // Search by supplier name
+      const supplierMatch = row.supplierName?.toLowerCase().includes(query)
+      
+      // Search by product names (check all items in the purchase)
+      const productMatch = row.items?.some((item) => {
+        const productName = item.productName?.toLowerCase() || ""
+        const productCode = item.productCode?.toLowerCase() || ""
+        return productName.includes(query) || productCode.includes(query)
+      })
+      
+      return supplierMatch || productMatch
+    })
+  }, [allBuyingRows, searchQuery])
+  
+  // Calculate pagination - use filtered results when searching
+  const pagination = useMemo(() => {
+    if (!searchQuery.trim()) {
+      // No search - use API pagination
+      return purchasesData?.pagination || {}
+    }
+    
+    // Search active - calculate pagination from filtered results
+    const pageSize = 20
+    const totalFiltered = buyingRows.length
+    const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize))
+    const currentPageNum = Math.min(page, totalPages)
+    
+    return {
+      currentPage: currentPageNum,
+      totalPages,
+      totalItems: totalFiltered,
+      pageSize,
+    }
+  }, [buyingRows, searchQuery, page, purchasesData?.pagination])
+  
+  // Get paginated rows for display
+  const displayRows = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return buyingRows // API already paginated
+    }
+    
+    // Client-side pagination for filtered results
+    const pageSize = 20
+    const startIndex = ((pagination.currentPage || 1) - 1) * pageSize
+    return buyingRows.slice(startIndex, startIndex + pageSize)
+  }, [buyingRows, searchQuery, pagination.currentPage])
 
   const deliveryMetrics = purchasesData?.metrics ?? {
     total: buyingRows.length,
@@ -187,40 +247,27 @@ export default function BuyingPage() {
             return extracted
           }
 
-          // Collect unique colors from all items - check ALL possible sources
+          // Collect unique colors from all items - check ALL sources to get complete color list
+          // Match what's shown in detail page: aggregate all colors from item-level data
           const colors = new Set()
           row.items.forEach(item => {
-            // Check primaryColorDisplay (array or string)
-            if (item.primaryColorDisplay) {
-              extractColors(item.primaryColorDisplay).forEach(color => colors.add(color))
-            }
-
-            // Check primaryColor (array or string) - FIXED: removed else if
+            // Check ALL sources for each item to get complete color list
+            // PRIORITY 1: Check item.primaryColor (array or string) - this is what detail page uses
             if (item.primaryColor) {
               extractColors(item.primaryColor).forEach(color => colors.add(color))
             }
 
-            // Check color field (alternative name)
+            // PRIORITY 2: Also check primaryColorDisplay (may have additional colors)
+            if (item.primaryColorDisplay) {
+              extractColors(item.primaryColorDisplay).forEach(color => colors.add(color))
+            }
+
+            // PRIORITY 3: Also check color field (alternative name, may have additional colors)
             if (item.color) {
               extractColors(item.color).forEach(color => colors.add(color))
             }
 
-            // Check product.primaryColor if available
-            if (item.product?.primaryColor) {
-              extractColors(item.product.primaryColor).forEach(color => colors.add(color))
-            }
-
-            // Check product.color if available
-            if (item.product?.color) {
-              extractColors(item.product.color).forEach(color => colors.add(color))
-            }
-
-            // Check productType.primaryColor if available
-            if (item.productType?.primaryColor) {
-              extractColors(item.productType.primaryColor).forEach(color => colors.add(color))
-            }
-
-            // Check packets composition for colors
+            // PRIORITY 4: Check packets composition for additional colors (important for variant tracking)
             if (item.packets && Array.isArray(item.packets)) {
               item.packets.forEach(packet => {
                 if (packet.composition && Array.isArray(packet.composition)) {
@@ -235,6 +282,8 @@ export default function BuyingPage() {
                 }
               })
             }
+
+            // DO NOT fallback to product.primaryColor or product.color - item data should match detail page
           })
 
           const colorArray = Array.from(colors).filter(Boolean)
@@ -274,10 +323,30 @@ export default function BuyingPage() {
         render: (row) => {
           if (!row.items || row.items.length === 0) return <span className="text-muted-foreground">—</span>
 
-          // Collect unique sizes from all items - check ALL sources (packets, sizeArray, size field)
+          // Collect unique sizes from all items - check ALL sources to get complete size list
+          // Match what's shown in detail page: aggregate all sizes from item-level data
           const sizes = new Set()
           row.items.forEach(item => {
-            // Get sizes from packets (most detailed)
+            // Check ALL sources for each item to get complete size list
+            // PRIORITY 1: Check item.size (array or string) - this is what detail page uses
+            if (item.size) {
+              if (Array.isArray(item.size)) {
+                item.size.forEach(s => {
+                  if (s && s.trim()) sizes.add(s.trim())
+                })
+              } else if (typeof item.size === 'string' && item.size.trim()) {
+                sizes.add(item.size.trim())
+              }
+            }
+
+            // PRIORITY 2: Also check sizeArray (may have additional sizes)
+            if (item.sizeArray && Array.isArray(item.sizeArray)) {
+              item.sizeArray.forEach(size => {
+                if (size && size.trim()) sizes.add(size.trim())
+              })
+            }
+
+            // PRIORITY 3: Also check packets composition for additional sizes (important for variant tracking)
             if (item.packets && item.packets.length > 0) {
               item.packets.forEach(packet => {
                 if (packet.composition && packet.composition.length > 0) {
@@ -289,32 +358,8 @@ export default function BuyingPage() {
                 }
               })
             }
-            // Also check sizeArray (don't skip if packets exist - collect from all sources)
-            if (item.sizeArray && Array.isArray(item.sizeArray)) {
-              item.sizeArray.forEach(size => {
-                if (size && size.trim()) sizes.add(size.trim())
-              })
-            }
-            // Fallback to size field
-            if (item.size) {
-              if (Array.isArray(item.size)) {
-                item.size.forEach(s => {
-                  if (s && s.trim()) sizes.add(s.trim())
-                })
-              } else if (typeof item.size === 'string' && item.size.trim()) {
-                sizes.add(item.size.trim())
-              }
-            }
-            // Check product.size if available
-            if (item.product?.size) {
-              if (Array.isArray(item.product.size)) {
-                item.product.size.forEach(s => {
-                  if (s && s.trim()) sizes.add(s.trim())
-                })
-              } else if (typeof item.product.size === 'string' && item.product.size.trim()) {
-                sizes.add(item.product.size.trim())
-              }
-            }
+
+            // DO NOT fallback to product.size - item data should match detail page
           })
 
           const sizeArray = Array.from(sizes).filter(Boolean)
@@ -608,14 +653,20 @@ export default function BuyingPage() {
                   <DataTable
                     title="Buying"
                     columns={buyingColumns}
-                    data={buyingRows}
+                    data={displayRows}
                     onAddNew={handleAddNew}
                     loading={purchasesLoading}
                     manualPagination={true}
-                    currentPage={page}
+                    currentPage={pagination.currentPage || page || 1}
                     totalPages={pagination.totalPages || 1}
-                    totalItems={pagination.totalItems || 0}
-                    onPageChange={setPage}
+                    totalItems={pagination.totalItems || buyingRows.length}
+                    onPageChange={(newPage) => {
+                      setPage(newPage)
+                    }}
+                    onSearch={(query) => {
+                      setSearchQuery(query)
+                      setPage(1) // Reset to first page when searching
+                    }}
                     pageSize={20}
                   />
                 </div>

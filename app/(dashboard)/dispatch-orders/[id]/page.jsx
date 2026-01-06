@@ -274,8 +274,18 @@ export default function DispatchOrderDetailPage({ params }) {
       setItemVerifications(initialVerifications);
 
       // Initialize edited items with current values
+      // IMPORTANT: Only use season from item.season, NEVER from item.product.season
       const initialItems = {};
       dispatchOrder.items?.forEach((item, index) => {
+        // Extract season ONLY from item.season, explicitly ignore product.season
+        let itemSeason = [];
+        if (item.season !== undefined && item.season !== null) {
+          itemSeason = Array.isArray(item.season)
+            ? item.season.filter(s => s) // Filter out any null/undefined values
+            : [item.season].filter(s => s);
+        }
+        // Explicitly do NOT use item.product?.season as fallback
+        
         initialItems[index] = {
           productName: item.productName || "",
           productCode: item.productCode || "",
@@ -291,11 +301,7 @@ export default function DispatchOrderDetailPage({ params }) {
             : item.size
               ? [item.size]
               : [],
-          season: Array.isArray(item.season)
-            ? item.season
-            : item.season
-              ? [item.season]
-              : [],
+          season: itemSeason, // Use only the explicitly extracted season
           images: item.productImage || item.product?.images || [],
           packets: item.packets || [],
           useVariantTracking: item.useVariantTracking || false,
@@ -368,9 +374,18 @@ export default function DispatchOrderDetailPage({ params }) {
         : item.landedPrice ||
         (costPrice / currentExchangeRate) * (1 + currentPercentage / 100);
 
+      // Ensure season comes ONLY from itemData, never from product or fallback
+      // Normalize season to array format and ensure it's only what was actually saved
+      const itemSeason = Array.isArray(itemData.season)
+        ? itemData.season
+        : itemData.season
+          ? [itemData.season]
+          : [];
+
       return {
         ...item,
         ...itemData, // Include edited values
+        season: itemSeason, // Explicitly set season from itemData only
         index,
         originalIndex: index,
         totalReturned,
@@ -991,6 +1006,13 @@ export default function DispatchOrderDetailPage({ params }) {
           itemPackets = editedItems[idx].packets;
         }
 
+        // Ensure season comes ONLY from itemData, never from original item
+        const finalSeason = Array.isArray(itemData.season)
+          ? itemData.season.filter(s => s) // Filter out null/undefined
+          : itemData.season
+            ? [itemData.season].filter(s => s)
+            : [];
+        
         finalItems.push({
           ...item,
           productName: itemData.productName,
@@ -999,7 +1021,7 @@ export default function DispatchOrderDetailPage({ params }) {
           costPrice: parseFloat(itemData.costPrice),
           primaryColor: itemData.primaryColor,
           size: itemData.size,
-          season: itemData.season,
+          season: finalSeason, // Explicitly use only itemData.season, never fallback
           productImage: itemData.images,
           packets: itemPackets, // Include edited packets
           boxes: itemData.boxStr
@@ -2027,23 +2049,29 @@ export default function DispatchOrderDetailPage({ params }) {
                               </div>
                             ) : (
                               <div className="text-xs">
-                                {Array.isArray(item.season) &&
-                                  item.season.length > 0 ? (
-                                  <div className="flex flex-wrap gap-1">
-                                    {item.season.map((s, idx) => (
-                                      <span
-                                        key={idx}
-                                        className="inline-block px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded text-[10px]"
-                                      >
-                                        {s}
-                                      </span>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground">
-                                    —
-                                  </span>
-                                )}
+                                {(() => {
+                                  // Ensure we only display seasons that are actually in the item data
+                                  // Filter out any invalid or unexpected values
+                                  const validSeasons = Array.isArray(item.season)
+                                    ? item.season.filter(s => s && typeof s === 'string')
+                                    : [];
+                                  return validSeasons.length > 0 ? (
+                                    <div className="flex flex-wrap gap-1">
+                                      {validSeasons.map((s, idx) => (
+                                        <span
+                                          key={idx}
+                                          className="inline-block px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded text-[10px]"
+                                        >
+                                          {s}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground">
+                                      —
+                                    </span>
+                                  );
+                                })()}
                               </div>
                             )}
                           </td>

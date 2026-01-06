@@ -1403,11 +1403,13 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                         }
 
                         if (name.trim().length >= 2) {
+                          // Capture the name value at the time of lookup to prevent overwriting user input
+                          const lookupName = name.trim();
                           nameLookupTimeoutRefs.current[row.id] = setTimeout(
                             async () => {
                               try {
                                 const response = await productsAPI.search(
-                                  name.trim()
+                                  lookupName
                                 );
                                 const productsList =
                                   response.data?.data || response.data || [];
@@ -1417,11 +1419,13 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                                   productsList.find(
                                     (p) =>
                                       p.name?.toLowerCase() ===
-                                      name.trim().toLowerCase()
+                                      lookupName.toLowerCase()
                                   ) || productsList[0];
 
                                 if (product) {
                                   // Auto-populate product fields
+                                  // CRITICAL: Never overwrite user's manually entered name/code
+                                  // Only populate OTHER fields (costPrice, season, colors, sizes)
                                   const costPrice = Number(
                                     product.pricing?.costPrice ||
                                       product.costPrice ||
@@ -1429,65 +1433,76 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                                   );
 
                                   setRows((prev) =>
-                                    prev.map((r) =>
-                                      r.id === row.id
-                                        ? {
-                                            ...r,
-                                            productId:
-                                              product._id || product.id,
-                                            productName: product.name || name, // Use database name
-                                            productCode:
-                                              product.productCode ||
-                                              product.sku ||
-                                              r.productCode,
-                                            season: Array.isArray(
-                                              product.season
+                                    prev.map((r) => {
+                                      if (r.id !== row.id) return r;
+                                      
+                                      // Get current values from the row (user's current input)
+                                      const currentName = r.productName || "";
+                                      const currentCode = r.productCode || "";
+                                      
+                                      // Only auto-populate name/code if they're empty
+                                      // If user has typed something, NEVER overwrite it
+                                      const shouldUseProductName = !currentName || currentName.trim() === "";
+                                      const shouldUseProductCode = !currentCode || currentCode.trim() === "";
+                                      
+                                      return {
+                                        ...r,
+                                        productId: product._id || product.id,
+                                        // Preserve user's input - only use product.name if field is empty
+                                        productName: shouldUseProductName 
+                                          ? (product.name || lookupName)
+                                          : currentName, // Keep what user typed
+                                        // Preserve user's input - only use product code if field is empty
+                                        productCode: shouldUseProductCode
+                                          ? (product.productCode || product.sku || "")
+                                          : currentCode, // Keep what user typed
+                                        season: Array.isArray(
+                                          product.season
+                                        )
+                                          ? product.season
+                                          : product.season
+                                          ? [product.season]
+                                          : product.productType
+                                          ? Array.isArray(
+                                              product.productType
                                             )
-                                              ? product.season
-                                              : product.season
-                                              ? [product.season]
-                                              : product.productType
-                                              ? Array.isArray(
-                                                  product.productType
-                                                )
-                                                ? product.productType
-                                                : [product.productType]
-                                              : r.season || [],
-                                            costPrice: costPrice || r.costPrice,
-                                            primaryColor: Array.isArray(
-                                              product.primaryColor
-                                            )
-                                              ? product.primaryColor
-                                              : product.color ||
-                                                product.primaryColor
-                                              ? [
-                                                  product.color ||
-                                                    product.primaryColor,
-                                                ]
-                                              : r.primaryColor || [],
-                                            size: Array.isArray(product.size)
-                                              ? product.size
-                                              : product.size ||
-                                                product.dimension
-                                              ? [
-                                                  product.size ||
-                                                    product.dimension,
-                                                ]
-                                              : r.size || [],
-                                            photo:
-                                              product.images?.[0] ||
-                                              product.image ||
-                                              r.photo,
-                                            images: Array.isArray(
-                                              product.images
-                                            )
-                                              ? product.images
-                                              : product.image
-                                              ? [product.image]
-                                              : [],
-                                          }
-                                        : r
-                                    )
+                                            ? product.productType
+                                            : [product.productType]
+                                          : r.season || [],
+                                        costPrice: costPrice || r.costPrice,
+                                        primaryColor: Array.isArray(
+                                          product.primaryColor
+                                        )
+                                          ? product.primaryColor
+                                          : product.color ||
+                                            product.primaryColor
+                                          ? [
+                                              product.color ||
+                                                product.primaryColor,
+                                            ]
+                                          : r.primaryColor || [],
+                                        size: Array.isArray(product.size)
+                                          ? product.size
+                                          : product.size ||
+                                            product.dimension
+                                          ? [
+                                              product.size ||
+                                                product.dimension,
+                                            ]
+                                          : r.size || [],
+                                        photo:
+                                          product.images?.[0] ||
+                                          product.image ||
+                                          r.photo,
+                                        images: Array.isArray(
+                                          product.images
+                                        )
+                                          ? product.images
+                                          : product.image
+                                          ? [product.image]
+                                          : [],
+                                      };
+                                    })
                                   );
 
                                   // Store existing images in previews
@@ -1555,17 +1570,21 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                         }
 
                         if (code.trim().length >= 2) {
+                          // Capture the code value at the time of lookup to prevent overwriting user input
+                          const lookupCode = code.trim();
                           lookupTimeoutRefs.current[row.id] = setTimeout(
                             async () => {
                               try {
                                 const response = await productsAPI.lookupByCode(
-                                  code.trim()
+                                  lookupCode
                                 );
                                 const product =
                                   response.data?.data || response.data;
 
                                 if (product) {
                                   // Auto-populate product fields
+                                  // CRITICAL: Never overwrite user's manually entered name/code
+                                  // Only populate OTHER fields (costPrice, season, colors, sizes)
                                   const costPrice = Number(
                                     product.pricing?.costPrice ||
                                       product.costPrice ||
@@ -1573,66 +1592,76 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                                   );
 
                                   setRows((prev) =>
-                                    prev.map((r) =>
-                                      r.id === row.id
-                                        ? {
-                                            ...r,
-                                            productId:
-                                              product._id || product.id,
-                                            productName:
-                                              product.name || r.productName,
-                                            productCode:
-                                              product.productCode ||
-                                              product.sku ||
-                                              code,
-                                            season: Array.isArray(
-                                              product.season
+                                    prev.map((r) => {
+                                      if (r.id !== row.id) return r;
+                                      
+                                      // Get current values from the row (user's current input)
+                                      const currentName = r.productName || "";
+                                      const currentCode = r.productCode || "";
+                                      
+                                      // Only auto-populate name/code if they're empty
+                                      // If user has typed something, NEVER overwrite it
+                                      const shouldUseProductName = !currentName || currentName.trim() === "";
+                                      const shouldUseProductCode = !currentCode || currentCode.trim() === "";
+                                      
+                                      return {
+                                        ...r,
+                                        productId: product._id || product.id,
+                                        // Preserve user's input - only use product.name if field is empty
+                                        productName: shouldUseProductName
+                                          ? (product.name || currentName)
+                                          : currentName, // Keep what user typed
+                                        // Preserve user's input - only use product code if field is empty
+                                        productCode: shouldUseProductCode
+                                          ? (product.productCode || product.sku || lookupCode)
+                                          : currentCode, // Keep what user typed
+                                        season: Array.isArray(
+                                          product.season
+                                        )
+                                          ? product.season
+                                          : product.season
+                                          ? [product.season]
+                                          : product.productType
+                                          ? Array.isArray(
+                                              product.productType
                                             )
-                                              ? product.season
-                                              : product.season
-                                              ? [product.season]
-                                              : product.productType
-                                              ? Array.isArray(
-                                                  product.productType
-                                                )
-                                                ? product.productType
-                                                : [product.productType]
-                                              : r.season || [],
-                                            costPrice: costPrice || r.costPrice,
-                                            primaryColor: Array.isArray(
-                                              product.primaryColor
-                                            )
-                                              ? product.primaryColor
-                                              : product.color ||
-                                                product.primaryColor
-                                              ? [
-                                                  product.color ||
-                                                    product.primaryColor,
-                                                ]
-                                              : r.primaryColor || [],
-                                            size: Array.isArray(product.size)
-                                              ? product.size
-                                              : product.size ||
-                                                product.dimension
-                                              ? [
-                                                  product.size ||
-                                                    product.dimension,
-                                                ]
-                                              : r.size || [],
-                                            photo:
-                                              product.images?.[0] ||
-                                              product.image ||
-                                              r.photo,
-                                            images: Array.isArray(
-                                              product.images
-                                            )
-                                              ? product.images
-                                              : product.image
-                                              ? [product.image]
-                                              : [],
-                                          }
-                                        : r
-                                    )
+                                            ? product.productType
+                                            : [product.productType]
+                                          : r.season || [],
+                                        costPrice: costPrice || r.costPrice,
+                                        primaryColor: Array.isArray(
+                                          product.primaryColor
+                                        )
+                                          ? product.primaryColor
+                                          : product.color ||
+                                            product.primaryColor
+                                          ? [
+                                              product.color ||
+                                                product.primaryColor,
+                                            ]
+                                          : r.primaryColor || [],
+                                        size: Array.isArray(product.size)
+                                          ? product.size
+                                          : product.size ||
+                                            product.dimension
+                                          ? [
+                                              product.size ||
+                                                product.dimension,
+                                            ]
+                                          : r.size || [],
+                                        photo:
+                                          product.images?.[0] ||
+                                          product.image ||
+                                          r.photo,
+                                        images: Array.isArray(
+                                          product.images
+                                        )
+                                          ? product.images
+                                          : product.image
+                                          ? [product.image]
+                                          : [],
+                                      };
+                                    })
                                   );
 
                                   // Store existing images in previews
