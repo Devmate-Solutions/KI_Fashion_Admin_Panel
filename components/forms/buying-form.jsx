@@ -50,6 +50,18 @@ const getImageArray = (row) => {
   }
   return [];
 };
+
+/**
+ * Truncate a number to 2 decimal places (no rounding)
+ * Example: 14.554472 -> 14.55, 19.125456 -> 19.12, 13.337555 -> 13.33
+ * @param {number} value - The number to truncate
+ * @returns {number} The truncated number with at most 2 decimal places
+ */
+const truncateToTwoDecimals = (value) => {
+  if (typeof value !== 'number' || isNaN(value)) return 0;
+  return Math.floor(value * 100) / 100;
+};
+
 import { useSupplierUsers } from "@/lib/hooks/useSupplierUsers";
 
 // A multi-section buying form: supplier/metadata, products cart, and payment summary.
@@ -379,8 +391,9 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         const supplierPaymentTotal = supplierPaymentAmount * quantity;
 
         // Landed Price = (Cost Price / Exchange Rate) × (1 + Percentage/100) - for inventory valuation in base currency
-        const landedPrice = (costPrice / exRate) * (1 + percent / 100);
-        const landedTotal = landedPrice * quantity;
+        // Truncate to 2 decimal places (no rounding) for display consistency with backend
+        const landedPrice = truncateToTwoDecimals((costPrice / exRate) * (1 + percent / 100));
+        const landedTotal = truncateToTwoDecimals(landedPrice * quantity);
 
         updated.supplierPaymentAmount = supplierPaymentAmount;
         updated.supplierPaymentTotal = supplierPaymentTotal;
@@ -409,8 +422,9 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
           // Landed Price (for inventory valuation - WITH profit margin)
           // Formula: (cost price / exchange rate) × (1 + percentage/100)
-          const landedPrice = (costPrice / exRate) * (1 + percent / 100);
-          const landedTotal = landedPrice * quantity;
+          // Truncate to 2 decimal places (no rounding) for display consistency with backend
+          const landedPrice = truncateToTwoDecimals((costPrice / exRate) * (1 + percent / 100));
+          const landedTotal = truncateToTwoDecimals(landedPrice * quantity);
 
           return {
             ...row,
@@ -984,8 +998,9 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
           // Landed Price (for inventory valuation - WITH profit margin)
           // Formula: (cost price / exchange rate) × (1 + percentage/100)
-          const landedPrice = (costPrice / exRate) * (1 + percent / 100);
-          const landedTotal = landedPrice * quantity;
+          // Truncate to 2 decimal places (no rounding) for database storage
+          const landedPrice = truncateToTwoDecimals((costPrice / exRate) * (1 + percent / 100));
+          const landedTotal = truncateToTwoDecimals(landedPrice * quantity);
 
           // Build item payload according to manualEntryItemSchema
           // Allowed fields: product, productName, productCode, productType, costPrice, primaryColor, size, material, description, productImage, quantity, landedTotal
