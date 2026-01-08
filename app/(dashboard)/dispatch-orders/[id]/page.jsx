@@ -86,15 +86,11 @@ const getImageArray = (item) => {
   return [];
 };
 
-/**
- * Truncate a number to 2 decimal places (no rounding)
- * Example: 14.554472 -> 14.55, 19.125456 -> 19.12, 13.337555 -> 13.33
- * @param {number} value - The number to truncate
- * @returns {number} The truncated number with at most 2 decimal places
- */
-const truncateToTwoDecimals = (value) => {
-  if (typeof value !== 'number' || isNaN(value)) return 0;
-  return Math.floor(value * 100) / 100;
+const truncateToTwoDecimals = (num) => {
+  const val = typeof num === 'string' ? parseFloat(num) : num;
+  if (isNaN(val) || val === null || val === undefined) return 0;
+  // Use a small epsilon to handle floating point issues like 0.54 being 0.5399999999999999
+  return Math.trunc(val * 100 + 0.00000001) / 100;
 };
 
 const statusStyles = {
@@ -582,7 +578,7 @@ export default function DispatchOrderDetailPage({ params }) {
   // Total amount in EUR (what admin owes supplier after discount) - REACTIVE
   // For confirmed orders, this should reflect remaining value after returns
   const totalAmount = useMemo(() => {
-    return supplierPaymentBeforeDiscount - discountInEur;
+    return truncateToTwoDecimals(supplierPaymentBeforeDiscount - discountInEur);
   }, [supplierPaymentBeforeDiscount, discountInEur]);
 
   // Calculate remaining items count and total value after returns (for display)
@@ -618,7 +614,7 @@ export default function DispatchOrderDetailPage({ params }) {
           // Calculate item value using confirmed quantity
           const costPrice = parseFloat(item.costPrice) || 0;
           const landedPrice =
-            (costPrice / currentExchangeRate) * (1 + currentPercentage / 100);
+            truncateToTwoDecimals((costPrice / currentExchangeRate) * (1 + currentPercentage / 100));
           remainingValue += landedPrice * remainingQty;
         }
       });
@@ -757,7 +753,7 @@ export default function DispatchOrderDetailPage({ params }) {
 
   // Format currency
   function currency(n) {
-    const num = Number(n || 0);
+    const num = truncateToTwoDecimals(n);
     return `£${num.toLocaleString(undefined, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
@@ -1858,6 +1854,7 @@ export default function DispatchOrderDetailPage({ params }) {
                         editedCostPrice * editedQuantity;
                       const supplierPaymentAmount =
                         editedCostPrice / currentExchangeRate;
+<<<<<<< HEAD
                       // Landed Price = (Cost Price / Exchange Rate) × (1 + Percentage/100)
                       // Truncate to 2 decimal places for consistency
                       const landedPrice = truncateToTwoDecimals(
@@ -1866,6 +1863,12 @@ export default function DispatchOrderDetailPage({ params }) {
                       );
                       const itemTotal = truncateToTwoDecimals(truncateToTwoDecimals(supplierPaymentItemTotal / currentExchangeRate) * (currentPercentage / 100));
                       // const itemTotal = truncateToTwoDecimals(landedPrice * editedQuantity);
+=======
+                      const landedPrice =
+                        truncateToTwoDecimals((editedCostPrice / currentExchangeRate) *
+                          (1 + currentPercentage / 100));
+                      const itemTotal = truncateToTwoDecimals(landedPrice * editedQuantity);
+>>>>>>> 36fe451 (feat: truncate landed price instead of rounding)
 
                       return (
                         <tr
@@ -2361,68 +2364,668 @@ export default function DispatchOrderDetailPage({ params }) {
                             )}
                           </td>
                           <td className="p-2 text-right font-semibold text-slate-700 align-top">
-                            {supplierPaymentItemTotal?.toFixed(2) || "—"}
+                            {truncateToTwoDecimals(supplierPaymentItemTotal).toFixed(2) || "—"}
                             {!isPending && item.totalReturned > 0 && (
                               <div className="text-[9px] text-red-600 mt-0.5">
                                 (was{" "}
-                                {(
-                                  (item.costPrice || 0) * item.quantity
-                                ).toFixed(2)}{" "}
+                                {truncateToTwoDecimals((item.costPrice || 0) * item.quantity).toFixed(2)}{" "}
                                 before returns)
                               </div>
                             )}
                           </td>
                           <td className="p-2 text-right text-blue-700 align-top">
-                            {landedPrice || "— "}
-                          </td>
+<<<<<<< HEAD
+  { landedPrice || "— " }
+                          </td >
                           <td className="p-2 text-right font-medium text-blue-700 align-top">
                             {itemTotal || "—"}
-                            {!isPending && item.totalReturned > 0 && (
-                              <div className="text-[9px] text-red-600 mt-0.5">
-                                (was{" "}
-                                {(
-                                  ((item.costPrice || 0) /
-                                    currentExchangeRate) *
-                                  (1 + currentPercentage / 100) *
-                                  item.quantity
-                                )}{" "}
-                                before returns)
-                              </div>
-                            )}
-                          </td>
-                          {isPending && (
-                            <td className="p-2 text-center align-top">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  if (isRemoved) {
-                                    setItemsToRemove(
-                                      itemsToRemove.filter(
-                                        (i) => i !== item.index
-                                      )
-                                    );
-                                  } else {
-                                    setItemsToRemove([
-                                      ...itemsToRemove,
-                                      item.index,
-                                    ]);
-                                  }
-                                }}
-                                className="h-8 w-8 p-0"
-                              >
-                                <Trash2
-                                  className={`h-4 w-4 ${isRemoved
-                                    ? "text-green-600"
-                                    : "text-red-600"
-                                    }`}
-                                />
-                              </Button>
-                            </td>
-                          )}
-                        </tr>
+=======
+                            {truncateToTwoDecimals(landedPrice).toFixed(2) || "—"}
+    </td>
+    <td className="p-2 text-right font-medium text-blue-700 align-top">
+      {truncateToTwoDecimals(itemTotal).toFixed(2) || "—"}
+>>>>>>> 36fe451 (feat: truncate landed price instead of rounding)
+      {!isPending && item.totalReturned > 0 && (
+        <div className="text-[9px] text-red-600 mt-0.5">
+          (was{" "}
+          {truncateToTwoDecimals(
+            ((item.costPrice || 0) /
+              currentExchangeRate) *
+            (1 + currentPercentage / 100) *
+            item.quantity
+          )}{" "}
+          before returns)
+        </div>
+      )}
+    </td>
+  {
+    isPending && (
+      <td className="p-2 text-center align-top">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            if (isRemoved) {
+              setItemsToRemove(
+                itemsToRemove.filter(
+                  (i) => i !== item.index
+                )
+              );
+            } else {
+              setItemsToRemove([
+                ...itemsToRemove,
+                item.index,
+              ]);
+            }
+          }}
+          className="h-8 w-8 p-0"
+        >
+          <Trash2
+            className={`h-4 w-4 ${isRemoved
+              ? "text-green-600"
+              : "text-red-600"
+              }`}
+          />
+        </Button>
+      </td>
+    )
+  }
+                        </tr >
                       );
-                    })}
+})}
+                  </tbody >
+                </table >
+              </div >
+            </div >
+          </AccordionContent >
+        </AccordionItem >
+      </Accordion >
+
+  {/* Add New Item Section - Only for Pending Orders */ }
+
+{/* Tabs for Confirm Order and Return Items */ }
+<Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+  <TabsList className="grid w-full grid-cols-2">
+    <TabsTrigger value="confirm">Confirm Order</TabsTrigger>
+    <TabsTrigger value="return">Return Items</TabsTrigger>
+  </TabsList>
+
+  {/* Confirm Order Tab */}
+  <TabsContent value="confirm" className="space-y-4 mt-4">
+    {/* Confirm Form (for pending and pending-approval orders) */}
+    {isPending && (
+      <Card className="bg-gradient-to-br from-emerald-50/80 to-teal-50/60 border-2 border-emerald-200">
+        <CardHeader className="bg-emerald-100/50 border-b border-emerald-200">
+          <CardTitle className="flex items-center gap-2 text-emerald-900">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+            Confirm Dispatch Order
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 bg-white/40">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label
+                htmlFor="exchange-rate"
+                className="text-sm font-medium"
+              >
+                Exchange Rate <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="exchange-rate"
+                type="text"
+                inputMode="decimal"
+                value={exchangeRate}
+                onChange={(e) => setExchangeRate(e.target.value)}
+                className="h-10 text-base"
+                placeholder="1.00"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="percentage" className="text-sm font-medium">
+                Percentage (%) <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="percentage"
+                type="text"
+                inputMode="decimal"
+                min="0"
+                step="0.1"
+                value={percentage}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow only numbers and one decimal point
+                  const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                  setPercentage(sanitized);
+                }}
+                className="h-10 text-base"
+                placeholder="0"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label
+                htmlFor="cash-payment"
+                className="text-sm font-medium flex items-center gap-2"
+              >
+                <Banknote className="h-4 w-4 text-muted-foreground" />
+                Cash Payment
+              </Label>
+              <Input
+                id="cash-payment"
+                type="text"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={cashPayment}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow only numbers and one decimal point
+                  const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                  setCashPayment(sanitized);
+                }}
+                className="h-10 text-base"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="bank-payment"
+                className="text-sm font-medium flex items-center gap-2"
+              >
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                Bank Payment
+              </Label>
+              <Input
+                id="bank-payment"
+                type="text"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={bankPayment}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow only numbers and one decimal point
+                  const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                  setBankPayment(sanitized);
+                }}
+                className="h-10 text-base"
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+          <Card className="bg-gradient-to-r from-slate-50 to-slate-100/80 border-2 border-slate-300">
+            <CardContent className="pt-4 space-y-3">
+              {dispatchOrder?.returnedItems &&
+                dispatchOrder.returnedItems.length > 0 && (
+                  <div className="mb-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                    <span className="font-semibold">Note:</span> Values
+                    below reflect remaining quantities after returns.
+                  </div>
+                )}
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground font-medium">
+                  Supplier Payment Amount:
+                </span>
+                <div className="flex flex-col items-end">
+                  <span className="font-semibold">
+                    {truncateToTwoDecimals(confirmOrderSupplierCurrency.supplierPaymentAmount).toLocaleString(
+                      undefined,
+                      {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }
+                    )}
+                  </span>
+                </div>
+              </div>
+              {confirmOrderSupplierCurrency.discount > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground font-medium">
+                    Discount:
+                  </span>
+                  <div className="flex flex-col items-end">
+                    <span className="font-semibold text-green-600">
+                      -
+                      {truncateToTwoDecimals(confirmOrderSupplierCurrency.discount).toLocaleString(
+                        undefined,
+                        {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        }
+                      )}
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center justify-between text-sm pt-1 border-t">
+                <span className="text-muted-foreground font-medium">
+                  Final Amount:
+                </span>
+                <div className="flex flex-col items-end">
+                  <span className="font-semibold text-lg">
+                    {truncateToTwoDecimals(confirmOrderSupplierCurrency.finalAmount).toLocaleString(
+                      undefined,
+                      {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }
+                    )}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-sm pt-2 border-t">
+                <span className="text-muted-foreground font-medium">
+                  Payments:
+                </span>
+                <span className="font-semibold">
+                  {truncateToTwoDecimals(confirmOrderSupplierCurrency.payments).toLocaleString(
+                    undefined,
+                    { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm pt-2 border-t">
+                <span className="text-muted-foreground font-medium">
+                  Remaining Balance:
+                </span>
+                <span
+                  className={`font-semibold text-lg ${confirmOrderSupplierCurrency.remainingBalance > 0
+                    ? "text-red-600"
+                    : "text-green-600"
+                    }`}
+                >
+                  {truncateToTwoDecimals(Math.abs(confirmOrderSupplierCurrency.remainingBalance)).toLocaleString(
+                    undefined,
+                    { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                  )}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </CardContent>
+        <CardFooter className="flex justify-end gap-2 pt-2">
+          <Button
+            onClick={() => setShowDeleteDialog(true)}
+            disabled={
+              confirmMutation.isPending || deleteMutation.isPending
+            }
+            variant="destructive"
+            size="lg"
+            className="min-w-[160px]"
+          >
+            {deleteMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              <>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Order
+              </>
+            )}
+          </Button>
+          {/* Super-admin: Confirm Order button (for both pending and pending-approval) */}
+          {isSuperAdmin && (dispatchOrder?.status === 'pending' || dispatchOrder?.status === 'pending-approval') && (
+            <Button
+              onClick={() => {
+                console.log("Confirm button clicked");
+                handleConfirm();
+              }}
+              disabled={
+                confirmMutation.isPending ||
+                deleteMutation.isPending ||
+                !totalBoxesConfirmed
+              }
+              size="lg"
+              className="min-w-[160px]"
+              title={!totalBoxesConfirmed ? "Please confirm total boxes before confirming order" : ""}
+            >
+              {confirmMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Confirm Order
+                </>
+              )}
+            </Button>
+          )}
+          {/* Admin: Submit Approval button (for pending and pending-approval orders) */}
+          {isAdmin && (dispatchOrder?.status === 'pending' || dispatchOrder?.status === 'pending-approval') && (
+            <Button
+              onClick={() => {
+                console.log("Submit Approval button clicked");
+                handleSubmitApproval();
+              }}
+              disabled={
+                submitApprovalMutation.isPending ||
+                deleteMutation.isPending ||
+                !totalBoxesConfirmed
+              }
+              size="lg"
+              className="min-w-[160px]"
+              title={!totalBoxesConfirmed ? "Please confirm total boxes before submitting for approval" : ""}
+            >
+              {submitApprovalMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  {dispatchOrder?.status === 'pending-approval' ? 'Re-submit for Approval' : 'Submit Approval'}
+                </>
+              )}
+            </Button>
+          )}
+        </CardFooter>
+      </Card>
+    )}
+
+    {/* Payment Details (if confirmed) */}
+    {isConfirmed && (dispatchOrder.paymentDetails || dispatchOrder.computedPaymentDetails) && (
+      <Card className="bg-gradient-to-br from-amber-50/80 to-yellow-50/60 border-2 border-amber-200">
+        <CardHeader className="bg-amber-100/50 border-b border-amber-200">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-amber-900">
+              <DollarSign className="h-5 w-5 text-amber-600" />
+              Payment Details
+            </CardTitle>
+            {canAddPayment && !showPaymentForm && (
+              <Button size="sm" onClick={() => setShowPaymentForm(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Payment
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+
+        <CardContent className="bg-white/40">
+          {dispatchOrder?.returnedItems &&
+            dispatchOrder.returnedItems.length > 0 && (
+              <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                <span className="font-semibold">Note:</span> Payment
+                amounts reflect remaining quantities after returns.
+                {(() => {
+                  const totalReturned =
+                    dispatchOrder.returnedItems.reduce(
+                      (sum, r) => sum + (r.quantity || 0),
+                      0
+                    );
+                  return ` (${totalReturned} items returned)`;
+                })()}
+              </div>
+            )}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="flex items-center gap-2">
+              <Banknote className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <Label className="text-xs text-muted-foreground">
+                  Cash Payment
+                </Label>
+                <p className="font-medium text-sm">
+                  {(dispatchOrder.computedPaymentDetails?.cashPayment || 0)
+                    .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <Label className="text-xs text-muted-foreground">
+                  Bank Payment
+                </Label>
+                <p className="font-medium text-sm">
+                  {(dispatchOrder.computedPaymentDetails?.bankPayment || 0)
+                    .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">
+                Remaining Balance
+              </Label>
+              {(() => {
+                // Use the same calculation as Confirm Order section
+                const calculatedRemaining = confirmOrderSupplierCurrency.remainingBalance;
+                const pendingAmount = parseFloat(paymentAmount) || 0;
+                const previewRemaining = calculatedRemaining - pendingAmount;
+                const displayRemaining = previewRemaining;
+                const hasPreview = showPaymentForm && pendingAmount > 0;
+                return (
+                  <>
+                    <p
+                      className={`font-medium text-sm ${displayRemaining > 0
+                        ? "text-red-600"
+                        : "text-green-600"
+                        }`}
+                    >
+                      {Math.abs(displayRemaining).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </p>
+                    {hasPreview &&
+                      previewRemaining !== calculatedRemaining && (
+                        <p className="text-xs text-orange-500 mt-1"></p>
+                      )}
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )}
+
+    {/* Add Payment Form */}
+    {showPaymentForm && canAddPayment && (
+      <Card className="bg-gradient-to-br from-indigo-50/80 to-blue-50/60 border-2 border-indigo-200">
+        <CardHeader className="bg-indigo-100/50 border-b border-indigo-200">
+          <CardTitle className="text-indigo-900">Add Payment</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 bg-white/40">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="payment-amount">
+                Amount <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="payment-amount"
+                type="text"
+                inputMode="decimal"
+                step="0.01"
+                min="0.01"
+                value={paymentAmount}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow only numbers and one decimal point
+                  const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                  setPaymentAmount(sanitized);
+                }}
+                placeholder="Enter amount"
+                disabled={isSubmittingPayment}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {remainingBalance > 0
+                  ? `Remaining Balance: ${currency(Math.abs(remainingBalance))}`
+                  : supplierDue > 0
+                    ? `Fully paid. Outstanding Balance: ${currency(
+                      supplierDue
+                    )}`
+                    : "Fully paid"}
+              </p>
+              {supplierTotalBalance !== undefined && (
+                <p className="text-xs font-semibold text-indigo-700 mt-2 pt-2 border-t border-indigo-200">
+                  Supplier Total Balance:{" "}
+                  <span
+                    className={
+                      supplierTotalBalance > 0
+                        ? "text-green-600"
+                        : supplierTotalBalance < 0
+                          ? "text-red-600"
+                          : "text-slate-600"
+                    }
+                  >
+                    {supplierTotalBalance > 0 ? "+" : ""}
+                    {currency(Math.abs(supplierTotalBalance))}
+                  </span>
+                  {supplierTotalBalance > 0 && (
+                    <span className="text-green-600 ml-1">
+                      (Admin owes supplier)
+                    </span>
+                  )}
+                  {supplierTotalBalance < 0 && (
+                    <span className="text-red-600 ml-1">
+                      (Supplier owes admin)
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="payment-method">
+                Payment Method <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={paymentMethod}
+                onValueChange={setPaymentMethod}
+                disabled={isSubmittingPayment}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="bank">Bank Transfer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="payment-date">Date</Label>
+              <Input
+                id="payment-date"
+                type="date"
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+                disabled={isSubmittingPayment}
+                max={new Date().toISOString().split("T")[0]}
+              />
+            </div>
+            <div>
+              <Label htmlFor="payment-description">Description</Label>
+              <Input
+                id="payment-description"
+                value={paymentDescription}
+                onChange={(e) => setPaymentDescription(e.target.value)}
+                placeholder="Optional description"
+                disabled={isSubmittingPayment}
+              />
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter className="flex gap-2">
+          <Button
+            onClick={handleAddPayment}
+            disabled={
+              isSubmittingPayment ||
+              !paymentAmount ||
+              parseFloat(paymentAmount) <= 0
+            }
+          >
+            {isSubmittingPayment ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Recording...
+              </>
+            ) : (
+              "Record Payment"
+            )}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowPaymentForm(false);
+              setPaymentAmount("");
+              setPaymentMethod("cash");
+              setPaymentDate("");
+              setPaymentDescription("");
+            }}
+            disabled={isSubmittingPayment}
+          >
+            Cancel
+          </Button>
+        </CardFooter>
+      </Card>
+    )}
+
+    {/* Payment History - Collapsible */}
+    {isConfirmed && paymentHistory.length > 0 && (
+      <Accordion
+        type="single"
+        collapsible
+        className="border border-amber-200 rounded-lg bg-amber-50/30"
+      >
+        <AccordionItem value="payment-history" className="border-b-0">
+          <AccordionTrigger className="px-4 hover:no-underline bg-amber-50/50 rounded-t-lg">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-amber-600" />
+              <span className="font-semibold text-amber-900">
+                Payment History
+              </span>
+              <Badge
+                variant="outline"
+                className="ml-2 bg-amber-100 border-amber-300 text-amber-900"
+              >
+                {paymentHistory.length}
+              </Badge>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-0 pb-4 bg-white/60 rounded-b-lg">
+            <div className="border-t border-amber-200 mx-4 pt-4">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-amber-100/50 border-b-2 border-amber-200">
+                    <tr>
+                      <th className="p-2 text-left">Date</th>
+                      <th className="p-2 text-left">Method</th>
+                      <th className="p-2 text-right">Amount</th>
+                      <th className="p-2 text-left">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paymentHistory.map((payment, idx) => (
+                      <tr
+                        key={idx}
+                        className={`border-b border-amber-100 ${idx % 2 === 0 ? "bg-white" : "bg-amber-50/20"
+                          }`}
+                      >
+                        <td className="p-2">
+                          {new Date(payment.date).toLocaleDateString(
+                            "en-GB"
+                          )}
+                        </td>
+                        <td className="p-2">
+                          <Badge variant="outline">
+                            {payment.paymentMethod === "cash"
+                              ? "Cash"
+                              : "Bank"}
+                          </Badge>
+                        </td>
+                        <td className="p-2 text-right font-medium">
+                          {currency(payment.credit || 0)}
+                        </td>
+                        <td className="p-2 text-muted-foreground">
+                          {payment.description || "-"}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -2430,1095 +3033,502 @@ export default function DispatchOrderDetailPage({ params }) {
           </AccordionContent>
         </AccordionItem>
       </Accordion>
+    )}
+  </TabsContent>
 
-      {/* Add New Item Section - Only for Pending Orders */}
-
-      {/* Tabs for Confirm Order and Return Items */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="confirm">Confirm Order</TabsTrigger>
-          <TabsTrigger value="return">Return Items</TabsTrigger>
-        </TabsList>
-
-        {/* Confirm Order Tab */}
-        <TabsContent value="confirm" className="space-y-4 mt-4">
-          {/* Confirm Form (for pending and pending-approval orders) */}
-          {isPending && (
-            <Card className="bg-gradient-to-br from-emerald-50/80 to-teal-50/60 border-2 border-emerald-200">
-              <CardHeader className="bg-emerald-100/50 border-b border-emerald-200">
-                <CardTitle className="flex items-center gap-2 text-emerald-900">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                  Confirm Dispatch Order
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 bg-white/40">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="exchange-rate"
-                      className="text-sm font-medium"
-                    >
-                      Exchange Rate <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="exchange-rate"
-                      type="text"
-                      inputMode="decimal"
-                      value={exchangeRate}
-                      onChange={(e) => setExchangeRate(e.target.value)}
-                      className="h-10 text-base"
-                      placeholder="1.00"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="percentage" className="text-sm font-medium">
-                      Percentage (%) <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="percentage"
-                      type="text"
-                      inputMode="decimal"
-                      min="0"
-                      step="0.1"
-                      value={percentage}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        // Allow only numbers and one decimal point
-                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                        setPercentage(sanitized);
-                      }}
-                      className="h-10 text-base"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="cash-payment"
-                      className="text-sm font-medium flex items-center gap-2"
-                    >
-                      <Banknote className="h-4 w-4 text-muted-foreground" />
-                      Cash Payment
-                    </Label>
-                    <Input
-                      id="cash-payment"
-                      type="text"
-                      inputMode="decimal"
-                      min="0"
-                      step="0.01"
-                      value={cashPayment}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        // Allow only numbers and one decimal point
-                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                        setCashPayment(sanitized);
-                      }}
-                      className="h-10 text-base"
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="bank-payment"
-                      className="text-sm font-medium flex items-center gap-2"
-                    >
-                      <CreditCard className="h-4 w-4 text-muted-foreground" />
-                      Bank Payment
-                    </Label>
-                    <Input
-                      id="bank-payment"
-                      type="text"
-                      inputMode="decimal"
-                      min="0"
-                      step="0.01"
-                      value={bankPayment}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        // Allow only numbers and one decimal point
-                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                        setBankPayment(sanitized);
-                      }}
-                      className="h-10 text-base"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-                <Card className="bg-gradient-to-r from-slate-50 to-slate-100/80 border-2 border-slate-300">
-                  <CardContent className="pt-4 space-y-3">
-                    {dispatchOrder?.returnedItems &&
-                      dispatchOrder.returnedItems.length > 0 && (
-                        <div className="mb-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
-                          <span className="font-semibold">Note:</span> Values
-                          below reflect remaining quantities after returns.
-                        </div>
-                      )}
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground font-medium">
-                        Supplier Payment Amount:
-                      </span>
-                      <div className="flex flex-col items-end">
-                        <span className="font-semibold">
-                          {confirmOrderSupplierCurrency.supplierPaymentAmount.toLocaleString(
-                            undefined,
-                            {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            }
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                    {confirmOrderSupplierCurrency.discount > 0 && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground font-medium">
-                          Discount:
-                        </span>
-                        <div className="flex flex-col items-end">
-                          <span className="font-semibold text-green-600">
-                            -
-                            {confirmOrderSupplierCurrency.discount.toLocaleString(
-                              undefined,
-                              {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              }
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between text-sm pt-1 border-t">
-                      <span className="text-muted-foreground font-medium">
-                        Final Amount:
-                      </span>
-                      <div className="flex flex-col items-end">
-                        <span className="font-semibold text-lg">
-                          {confirmOrderSupplierCurrency.finalAmount.toLocaleString(
-                            undefined,
-                            {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            }
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-sm pt-2 border-t">
-                      <span className="text-muted-foreground font-medium">
-                        Payments:
-                      </span>
-                      <span className="font-semibold">
-                        {confirmOrderSupplierCurrency.payments.toLocaleString(
-                          undefined,
-                          { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm pt-2 border-t">
-                      <span className="text-muted-foreground font-medium">
-                        Remaining Balance:
-                      </span>
-                      <span
-                        className={`font-semibold text-lg ${confirmOrderSupplierCurrency.remainingBalance > 0
-                          ? "text-red-600"
-                          : "text-green-600"
+  {/* Return Items Tab */}
+  <TabsContent value="return" className="space-y-4 mt-4">
+    {/* Returns History - Compact Table */}
+    {dispatchOrder.returns && dispatchOrder.returns.length > 0 && (
+      <Accordion
+        type="single"
+        collapsible
+        className="border border-rose-200 rounded-lg bg-rose-50/30"
+      >
+        <AccordionItem value="return-history" className="border-b-0">
+          <AccordionTrigger className="px-4 hover:no-underline bg-rose-50/50 rounded-t-lg">
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4 text-rose-600" />
+              <span className="font-semibold text-rose-900">
+                Return History
+              </span>
+              <Badge
+                variant="outline"
+                className="ml-2 bg-rose-100 border-rose-300 text-rose-900"
+              >
+                {dispatchOrder.returns.length}
+              </Badge>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-0 pb-4 bg-white/60 rounded-b-lg">
+            <div className="border-t border-rose-200 mx-4 pt-4">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-rose-100/50 border-b-2 border-rose-200">
+                    <tr>
+                      <th className="p-2 text-left">Date</th>
+                      <th className="p-2 text-left">By</th>
+                      <th className="p-2 text-right">Value</th>
+                      <th className="p-2 text-right">Items</th>
+                      <th className="p-2 text-right">Qty</th>
+                      <th className="p-2 text-left">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dispatchOrder.returns.map((returnDoc, idx) => (
+                      <tr
+                        key={idx}
+                        className={`border-b border-rose-100 ${idx % 2 === 0 ? "bg-white" : "bg-rose-50/20"
                           }`}
                       >
-                        {Math.abs(confirmOrderSupplierCurrency.remainingBalance).toLocaleString(
-                          undefined,
-                          { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                        )}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </CardContent>
-              <CardFooter className="flex justify-end gap-2 pt-2">
-                <Button
-                  onClick={() => setShowDeleteDialog(true)}
-                  disabled={
-                    confirmMutation.isPending || deleteMutation.isPending
-                  }
-                  variant="destructive"
-                  size="lg"
-                  className="min-w-[160px]"
-                >
-                  {deleteMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete Order
-                    </>
-                  )}
-                </Button>
-                {/* Super-admin: Confirm Order button (for both pending and pending-approval) */}
-                {isSuperAdmin && (dispatchOrder?.status === 'pending' || dispatchOrder?.status === 'pending-approval') && (
-                  <Button
-                    onClick={() => {
-                      console.log("Confirm button clicked");
-                      handleConfirm();
-                    }}
-                    disabled={
-                      confirmMutation.isPending ||
-                      deleteMutation.isPending ||
-                      !totalBoxesConfirmed
-                    }
-                    size="lg"
-                    className="min-w-[160px]"
-                    title={!totalBoxesConfirmed ? "Please confirm total boxes before confirming order" : ""}
-                  >
-                    {confirmMutation.isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Confirm Order
-                      </>
-                    )}
-                  </Button>
-                )}
-                {/* Admin: Submit Approval button (for pending and pending-approval orders) */}
-                {isAdmin && (dispatchOrder?.status === 'pending' || dispatchOrder?.status === 'pending-approval') && (
-                  <Button
-                    onClick={() => {
-                      console.log("Submit Approval button clicked");
-                      handleSubmitApproval();
-                    }}
-                    disabled={
-                      submitApprovalMutation.isPending ||
-                      deleteMutation.isPending ||
-                      !totalBoxesConfirmed
-                    }
-                    size="lg"
-                    className="min-w-[160px]"
-                    title={!totalBoxesConfirmed ? "Please confirm total boxes before submitting for approval" : ""}
-                  >
-                    {submitApprovalMutation.isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        {dispatchOrder?.status === 'pending-approval' ? 'Re-submit for Approval' : 'Submit Approval'}
-                      </>
-                    )}
-                  </Button>
-                )}
-              </CardFooter>
-            </Card>
-          )}
-
-          {/* Payment Details (if confirmed) */}
-          {isConfirmed && (dispatchOrder.paymentDetails || dispatchOrder.computedPaymentDetails) && (
-            <Card className="bg-gradient-to-br from-amber-50/80 to-yellow-50/60 border-2 border-amber-200">
-              <CardHeader className="bg-amber-100/50 border-b border-amber-200">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-amber-900">
-                    <DollarSign className="h-5 w-5 text-amber-600" />
-                    Payment Details
-                  </CardTitle>
-                  {canAddPayment && !showPaymentForm && (
-                    <Button size="sm" onClick={() => setShowPaymentForm(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Payment
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-
-              <CardContent className="bg-white/40">
-                {dispatchOrder?.returnedItems &&
-                  dispatchOrder.returnedItems.length > 0 && (
-                    <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
-                      <span className="font-semibold">Note:</span> Payment
-                      amounts reflect remaining quantities after returns.
-                      {(() => {
-                        const totalReturned =
-                          dispatchOrder.returnedItems.reduce(
-                            (sum, r) => sum + (r.quantity || 0),
-                            0
-                          );
-                        return ` (${totalReturned} items returned)`;
-                      })()}
-                    </div>
-                  )}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="flex items-center gap-2">
-                    <Banknote className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <Label className="text-xs text-muted-foreground">
-                        Cash Payment
-                      </Label>
-                      <p className="font-medium text-sm">
-                        {(dispatchOrder.computedPaymentDetails?.cashPayment || 0)
-                          .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <Label className="text-xs text-muted-foreground">
-                        Bank Payment
-                      </Label>
-                      <p className="font-medium text-sm">
-                        {(dispatchOrder.computedPaymentDetails?.bankPayment || 0)
-                          .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">
-                      Remaining Balance
-                    </Label>
-                    {(() => {
-                      // Use the same calculation as Confirm Order section
-                      const calculatedRemaining = confirmOrderSupplierCurrency.remainingBalance;
-                      const pendingAmount = parseFloat(paymentAmount) || 0;
-                      const previewRemaining = calculatedRemaining - pendingAmount;
-                      const displayRemaining = previewRemaining;
-                      const hasPreview = showPaymentForm && pendingAmount > 0;
-                      return (
-                        <>
-                          <p
-                            className={`font-medium text-sm ${displayRemaining > 0
-                              ? "text-red-600"
-                              : "text-green-600"
-                              }`}
-                          >
-                            {Math.abs(displayRemaining).toLocaleString(undefined, {
+                        <td className="p-2">
+                          {new Date(
+                            returnDoc.returnedAt
+                          ).toLocaleDateString("en-GB")}
+                        </td>
+                        <td className="p-2 text-muted-foreground">
+                          {returnDoc.returnedBy?.name || "—"}
+                        </td>
+                        <td className="p-2 text-right font-medium">
+                          {(() => {
+                            // Calculate return value correctly: sum of (costPrice * returnedQuantity) for each item
+                            let calculatedValue = 0;
+                            if (returnDoc.items && dispatchOrder?.items) {
+                              returnDoc.items.forEach((returnItem) => {
+                                const originalItem = dispatchOrder.items[returnItem.itemIndex];
+                                if (originalItem) {
+                                  const costPrice = parseFloat(originalItem.costPrice) || 0;
+                                  const returnedQty = returnItem.returnedQuantity || 0;
+                                  calculatedValue += costPrice * returnedQty;
+                                }
+                              });
+                            }
+                            // Use calculated value if available, otherwise fallback to backend value
+                            const value = calculatedValue > 0 ? calculatedValue : (returnDoc.totalReturnValue || 0);
+                            // Format number without currency symbol
+                            return value.toLocaleString(undefined, {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
-                            })}
-                          </p>
-                          {hasPreview &&
-                            previewRemaining !== calculatedRemaining && (
-                              <p className="text-xs text-orange-500 mt-1"></p>
-                            )}
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                            });
+                          })()}
+                        </td>
+                        <td className="p-2 text-right">
+                          {returnDoc.items?.length || 0}
+                        </td>
+                        <td className="p-2 text-right font-medium">
+                          {(() => {
+                            // Calculate total quantity of returned items
+                            const totalQty = returnDoc.items?.reduce((sum, item) => {
+                              return sum + (item.returnedQuantity || 0);
+                            }, 0) || 0;
+                            return totalQty;
+                          })()}
+                        </td>
+                        <td className="p-2">
+                          <Accordion type="single" collapsible>
+                            <AccordionItem
+                              value={`return-details-${idx}`}
+                              className="border-0"
+                            >
+                              <AccordionTrigger className="py-1 text-xs hover:no-underline">
+                                View details
+                              </AccordionTrigger>
+                              <AccordionContent className="pb-2">
+                                <div className="space-y-1 text-xs text-muted-foreground">
+                                  {returnDoc.items?.map(
+                                    (item, itemIdx) => (
+                                      <div key={itemIdx}>
+                                        Item {item.itemIndex}:{" "}
+                                        {item.returnedQuantity} qty -{" "}
+                                        {item.reason || "No reason"}
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              </AccordionContent>
+                            </AccordionItem>
+                          </Accordion>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    )}
 
-          {/* Add Payment Form */}
-          {showPaymentForm && canAddPayment && (
-            <Card className="bg-gradient-to-br from-indigo-50/80 to-blue-50/60 border-2 border-indigo-200">
-              <CardHeader className="bg-indigo-100/50 border-b border-indigo-200">
-                <CardTitle className="text-indigo-900">Add Payment</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 bg-white/40">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="payment-amount">
-                      Amount <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="payment-amount"
-                      type="text"
-                      inputMode="decimal"
-                      step="0.01"
-                      min="0.01"
-                      value={paymentAmount}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        // Allow only numbers and one decimal point
-                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                        setPaymentAmount(sanitized);
-                      }}
-                      placeholder="Enter amount"
-                      disabled={isSubmittingPayment}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {remainingBalance > 0
-                        ? `Remaining Balance: ${currency(Math.abs(remainingBalance))}`
-                        : supplierDue > 0
-                          ? `Fully paid. Outstanding Balance: ${currency(
-                            supplierDue
-                          )}`
-                          : "Fully paid"}
-                    </p>
-                    {supplierTotalBalance !== undefined && (
-                      <p className="text-xs font-semibold text-indigo-700 mt-2 pt-2 border-t border-indigo-200">
-                        Supplier Total Balance:{" "}
-                        <span
-                          className={
-                            supplierTotalBalance > 0
-                              ? "text-green-600"
-                              : supplierTotalBalance < 0
-                                ? "text-red-600"
-                                : "text-slate-600"
-                          }
-                        >
-                          {supplierTotalBalance > 0 ? "+" : ""}
-                          {currency(Math.abs(supplierTotalBalance))}
+    {/* Return Form */}
+    <Card className="bg-gradient-to-br from-rose-50/80 to-pink-50/60 border-2 border-rose-200">
+      <CardHeader className="bg-rose-100/50 border-b border-rose-200">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-rose-900">
+            <Package className="h-5 w-5 text-rose-600" />
+            Return Items
+          </CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 bg-white/40">
+        {returnableItems.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>No items available to return</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-rose-100/50 border-b-2 border-rose-200">
+                <tr>
+                  <th className="p-2 text-left">Image</th>
+                  <th className="p-2 text-left">Product</th>
+                  <th className="p-2 text-left">Code</th>
+                  <th className="p-2 text-center">Remaining</th>
+                  <th className="p-2 text-center">Return Qty</th>
+                  <th className="p-2 text-left">Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                {returnableItems.map((item, idx) => {
+                  const remainingQty = item.quantity - item.totalReturned;
+                  const hasReturnQty =
+                    returnQuantities[item.index] &&
+                    parseFloat(returnQuantities[item.index]) > 0;
+
+                  return (
+                    <tr
+                      key={item.index}
+                      className={`border-b border-rose-100 transition-colors ${hasReturnQty
+                        ? "bg-rose-200/40"
+                        : idx % 2 === 0
+                          ? "bg-white"
+                          : "bg-rose-50/20"
+                        }`}
+                    >
+                      <td className="p-2">
+                        <ProductImageGallery
+                          images={getImageArray(item)}
+                          alt={item.productName || "Product"}
+                          size="sm"
+                          maxVisible={3}
+                          showCount={true}
+                        />
+                      </td>
+                      <td className="p-2">
+                        <div>
+                          <div className="font-medium">
+                            {item.productName}
+                          </div>
+                          {item.primaryColor && (
+                            <div className="text-xs text-muted-foreground">
+                              Color: {item.primaryColor}
+                            </div>
+                          )}
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Original: {item.quantity} • Returned:{" "}
+                            <span className="text-red-600">
+                              {item.totalReturned}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-2">
+                        <span className="font-mono text-xs">
+                          {item.productCode}
                         </span>
-                        {supplierTotalBalance > 0 && (
-                          <span className="text-green-600 ml-1">
-                            (Admin owes supplier)
-                          </span>
-                        )}
-                        {supplierTotalBalance < 0 && (
-                          <span className="text-red-600 ml-1">
-                            (Supplier owes admin)
-                          </span>
+                      </td>
+                      <td className="p-2 text-center">
+                        <span
+                          className={`font-semibold ${remainingQty === 0
+                            ? "text-muted-foreground"
+                            : ""
+                            }`}
+                        >
+                          {remainingQty}
+                        </span>
+                      </td>
+                      <td className="p-2 text-center">
+                        <div className="flex justify-center">
+                          <Input
+                            id={`return-qty-${item.index}`}
+                            type="text"
+                            inputMode="numeric"
+                            max={remainingQty}
+                            step="1"
+                            value={returnQuantities[item.index] || ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              // Allow only numbers
+                              const sanitized = val.replace(/[^0-9]/g, '');
+                              if (
+                                sanitized === "" ||
+                                (parseFloat(sanitized) >= 0 &&
+                                  parseFloat(sanitized) <= remainingQty)
+                              ) {
+                                setReturnQuantities({
+                                  ...returnQuantities,
+                                  [item.index]: val,
+                                });
+                              }
+                            }}
+                            placeholder="0"
+                            className="h-8 text-sm w-20 text-center"
+                            disabled={remainingQty === 0}
+                          />
+                        </div>
+                      </td>
+                      <td className="p-2">
+                        <div className="flex gap-2">
+                          <Select
+                            value={returnReasons[item.index] || ""}
+                            onValueChange={(value) =>
+                              setReturnReasons({
+                                ...returnReasons,
+                                [item.index]: value,
+                              })
+                            }
+                            disabled={remainingQty === 0}
+                          >
+                            <SelectTrigger className="h-8 text-sm w-32">
+                              <SelectValue placeholder="Select reason" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {PRESET_RETURN_REASONS.map((reason) => (
+                                <SelectItem key={reason} value={reason}>
+                                  {reason}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {returnReasons[item.index] &&
+                            returnReasons[item.index] === "Other" && (
+                              <Input
+                                id={`return-reason-custom-${item.index}`}
+                                value={
+                                  returnReasons[`${item.index}-custom`] ||
+                                  ""
+                                }
+                                onChange={(e) =>
+                                  setReturnReasons({
+                                    ...returnReasons,
+                                    [`${item.index}-custom`]:
+                                      e.target.value,
+                                  })
+                                }
+                                placeholder="Specify reason"
+                                className="h-8 text-sm flex-1"
+                                disabled={remainingQty === 0}
+                              />
+                            )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+
+      <div className="border-t pt-4 space-y-4 px-6 pb-6">
+        <div>
+          <Label
+            htmlFor="return-notes"
+            className="text-sm font-semibold mb-2 block"
+          >
+            Additional Notes{" "}
+            <span className="text-muted-foreground font-normal text-xs">
+              (Optional)
+            </span>
+          </Label>
+          <Textarea
+            id="return-notes"
+            value={returnNotes}
+            onChange={(e) => setReturnNotes(e.target.value)}
+            placeholder="Any additional information about this return..."
+            className="min-h-[80px] text-sm"
+            rows={3}
+          />
+        </div>
+
+        {/* Return Summary */}
+        {Object.values(returnQuantities).some(
+          (qty) => qty && parseFloat(qty) > 0
+        ) && (
+            <Card className="bg-gradient-to-br from-rose-50/90 to-pink-50/70 border-2 border-rose-300/60 shadow-sm">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-8 w-8 rounded-lg bg-rose-100 flex items-center justify-center">
+                    <Package className="h-4 w-4 text-rose-600" />
+                  </div>
+                  <h3 className="text-base font-bold text-rose-900">Return Summary</h3>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Items List */}
+                  <div className="bg-white/60 rounded-lg p-3 border border-rose-200/50">
+                    <p className="text-xs font-semibold text-rose-700 uppercase tracking-wide mb-2">Items to Return</p>
+                    <div className="space-y-2">
+                      {Object.entries(returnQuantities)
+                        .filter(([_, qty]) => qty && parseFloat(qty) > 0)
+                        .map(([itemIndex, qty]) => {
+                          const item = itemsWithDetails.find(
+                            (i) => i.index === parseInt(itemIndex)
+                          );
+                          return (
+                            <div
+                              key={itemIndex}
+                              className="flex items-center justify-between py-2 px-3 bg-white rounded-md border border-rose-100"
+                            >
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <div className="h-2 w-2 rounded-full bg-rose-400 flex-shrink-0"></div>
+                                <span className="text-sm font-medium text-slate-700 truncate">
+                                  {item?.productName || "Unknown Item"}
+                                </span>
+                              </div>
+                              <Badge variant="outline" className="ml-2 bg-rose-50 border-rose-200 text-rose-700 font-semibold">
+                                {qty} {parseFloat(qty) === 1 ? 'item' : 'items'}
+                              </Badge>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+
+                  {/* Summary Stats */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white/80 rounded-lg p-3 border border-rose-200/50">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Package className="h-3.5 w-3.5 text-rose-500" />
+                        <span className="text-xs font-medium text-slate-600">Total Items</span>
+                      </div>
+                      <p className="text-xl font-bold text-rose-700">
+                        {
+                          Object.values(returnQuantities).filter(
+                            (qty) => qty && parseFloat(qty) > 0
+                          ).length
+                        }
+                      </p>
+                    </div>
+                    <div className="bg-white/80 rounded-lg p-3 border border-rose-200/50">
+                      <div className="flex items-center gap-2 mb-1">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-rose-500" />
+                        <span className="text-xs font-medium text-slate-600">Total Quantity</span>
+                      </div>
+                      <p className="text-xl font-bold text-rose-700">
+                        {Object.values(returnQuantities).reduce(
+                          (sum, qty) => sum + (parseFloat(qty) || 0),
+                          0
                         )}
                       </p>
-                    )}
-                  </div>
-                  <div>
-                    <Label htmlFor="payment-method">
-                      Payment Method <span className="text-red-500">*</span>
-                    </Label>
-                    <Select
-                      value={paymentMethod}
-                      onValueChange={setPaymentMethod}
-                      disabled={isSubmittingPayment}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="bank">Bank Transfer</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="payment-date">Date</Label>
-                    <Input
-                      id="payment-date"
-                      type="date"
-                      value={paymentDate}
-                      onChange={(e) => setPaymentDate(e.target.value)}
-                      disabled={isSubmittingPayment}
-                      max={new Date().toISOString().split("T")[0]}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="payment-description">Description</Label>
-                    <Input
-                      id="payment-description"
-                      value={paymentDescription}
-                      onChange={(e) => setPaymentDescription(e.target.value)}
-                      placeholder="Optional description"
-                      disabled={isSubmittingPayment}
-                    />
+                    </div>
                   </div>
                 </div>
               </CardContent>
-              <CardFooter className="flex gap-2">
-                <Button
-                  onClick={handleAddPayment}
-                  disabled={
-                    isSubmittingPayment ||
-                    !paymentAmount ||
-                    parseFloat(paymentAmount) <= 0
-                  }
-                >
-                  {isSubmittingPayment ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Recording...
-                    </>
-                  ) : (
-                    "Record Payment"
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowPaymentForm(false);
-                    setPaymentAmount("");
-                    setPaymentMethod("cash");
-                    setPaymentDate("");
-                    setPaymentDescription("");
-                  }}
-                  disabled={isSubmittingPayment}
-                >
-                  Cancel
-                </Button>
-              </CardFooter>
             </Card>
           )}
 
-          {/* Payment History - Collapsible */}
-          {isConfirmed && paymentHistory.length > 0 && (
-            <Accordion
-              type="single"
-              collapsible
-              className="border border-amber-200 rounded-lg bg-amber-50/30"
-            >
-              <AccordionItem value="payment-history" className="border-b-0">
-                <AccordionTrigger className="px-4 hover:no-underline bg-amber-50/50 rounded-t-lg">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-amber-600" />
-                    <span className="font-semibold text-amber-900">
-                      Payment History
-                    </span>
-                    <Badge
-                      variant="outline"
-                      className="ml-2 bg-amber-100 border-amber-300 text-amber-900"
-                    >
-                      {paymentHistory.length}
-                    </Badge>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-0 pb-4 bg-white/60 rounded-b-lg">
-                  <div className="border-t border-amber-200 mx-4 pt-4">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-amber-100/50 border-b-2 border-amber-200">
-                          <tr>
-                            <th className="p-2 text-left">Date</th>
-                            <th className="p-2 text-left">Method</th>
-                            <th className="p-2 text-right">Amount</th>
-                            <th className="p-2 text-left">Description</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {paymentHistory.map((payment, idx) => (
-                            <tr
-                              key={idx}
-                              className={`border-b border-amber-100 ${idx % 2 === 0 ? "bg-white" : "bg-amber-50/20"
-                                }`}
-                            >
-                              <td className="p-2">
-                                {new Date(payment.date).toLocaleDateString(
-                                  "en-GB"
-                                )}
-                              </td>
-                              <td className="p-2">
-                                <Badge variant="outline">
-                                  {payment.paymentMethod === "cash"
-                                    ? "Cash"
-                                    : "Bank"}
-                                </Badge>
-                              </td>
-                              <td className="p-2 text-right font-medium">
-                                {currency(payment.credit || 0)}
-                              </td>
-                              <td className="p-2 text-muted-foreground">
-                                {payment.description || "-"}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          )}
-        </TabsContent>
+        <CardFooter className="flex items-center justify-end gap-4 pt-4 px-0">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => {
+              setReturnQuantities({});
+              setReturnReasons({});
+              setReturnNotes("");
+            }}
+            disabled={returnMutation.isPending}
+            className="min-w-[120px]"
+          >
+            <XCircle className="h-4 w-4 mr-2" />
+            Clear Form
+          </Button>
+          <Button
+            onClick={handleReturn}
+            disabled={
+              returnMutation.isPending ||
+              Object.values(returnQuantities).every(
+                (qty) => !qty || parseFloat(qty) <= 0
+              )
+            }
+            size="lg"
+            className="min-w-[160px]"
+          >
+            {returnMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Submit Return
+              </>
+            )}
+          </Button>
+        </CardFooter>
+      </div>
+    </Card>
+  </TabsContent>
+</Tabs>
 
-        {/* Return Items Tab */}
-        <TabsContent value="return" className="space-y-4 mt-4">
-          {/* Returns History - Compact Table */}
-          {dispatchOrder.returns && dispatchOrder.returns.length > 0 && (
-            <Accordion
-              type="single"
-              collapsible
-              className="border border-rose-200 rounded-lg bg-rose-50/30"
-            >
-              <AccordionItem value="return-history" className="border-b-0">
-                <AccordionTrigger className="px-4 hover:no-underline bg-rose-50/50 rounded-t-lg">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-rose-600" />
-                    <span className="font-semibold text-rose-900">
-                      Return History
-                    </span>
-                    <Badge
-                      variant="outline"
-                      className="ml-2 bg-rose-100 border-rose-300 text-rose-900"
-                    >
-                      {dispatchOrder.returns.length}
-                    </Badge>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-0 pb-4 bg-white/60 rounded-b-lg">
-                  <div className="border-t border-rose-200 mx-4 pt-4">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-rose-100/50 border-b-2 border-rose-200">
-                          <tr>
-                            <th className="p-2 text-left">Date</th>
-                            <th className="p-2 text-left">By</th>
-                            <th className="p-2 text-right">Value</th>
-                            <th className="p-2 text-right">Items</th>
-                            <th className="p-2 text-right">Qty</th>
-                            <th className="p-2 text-left">Details</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {dispatchOrder.returns.map((returnDoc, idx) => (
-                            <tr
-                              key={idx}
-                              className={`border-b border-rose-100 ${idx % 2 === 0 ? "bg-white" : "bg-rose-50/20"
-                                }`}
-                            >
-                              <td className="p-2">
-                                {new Date(
-                                  returnDoc.returnedAt
-                                ).toLocaleDateString("en-GB")}
-                              </td>
-                              <td className="p-2 text-muted-foreground">
-                                {returnDoc.returnedBy?.name || "—"}
-                              </td>
-                              <td className="p-2 text-right font-medium">
-                                {(() => {
-                                  // Calculate return value correctly: sum of (costPrice * returnedQuantity) for each item
-                                  let calculatedValue = 0;
-                                  if (returnDoc.items && dispatchOrder?.items) {
-                                    returnDoc.items.forEach((returnItem) => {
-                                      const originalItem = dispatchOrder.items[returnItem.itemIndex];
-                                      if (originalItem) {
-                                        const costPrice = parseFloat(originalItem.costPrice) || 0;
-                                        const returnedQty = returnItem.returnedQuantity || 0;
-                                        calculatedValue += costPrice * returnedQty;
-                                      }
-                                    });
-                                  }
-                                  // Use calculated value if available, otherwise fallback to backend value
-                                  const value = calculatedValue > 0 ? calculatedValue : (returnDoc.totalReturnValue || 0);
-                                  // Format number without currency symbol
-                                  return value.toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  });
-                                })()}
-                              </td>
-                              <td className="p-2 text-right">
-                                {returnDoc.items?.length || 0}
-                              </td>
-                              <td className="p-2 text-right font-medium">
-                                {(() => {
-                                  // Calculate total quantity of returned items
-                                  const totalQty = returnDoc.items?.reduce((sum, item) => {
-                                    return sum + (item.returnedQuantity || 0);
-                                  }, 0) || 0;
-                                  return totalQty;
-                                })()}
-                              </td>
-                              <td className="p-2">
-                                <Accordion type="single" collapsible>
-                                  <AccordionItem
-                                    value={`return-details-${idx}`}
-                                    className="border-0"
-                                  >
-                                    <AccordionTrigger className="py-1 text-xs hover:no-underline">
-                                      View details
-                                    </AccordionTrigger>
-                                    <AccordionContent className="pb-2">
-                                      <div className="space-y-1 text-xs text-muted-foreground">
-                                        {returnDoc.items?.map(
-                                          (item, itemIdx) => (
-                                            <div key={itemIdx}>
-                                              Item {item.itemIndex}:{" "}
-                                              {item.returnedQuantity} qty -{" "}
-                                              {item.reason || "No reason"}
-                                            </div>
-                                          )
-                                        )}
-                                      </div>
-                                    </AccordionContent>
-                                  </AccordionItem>
-                                </Accordion>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          )}
+{/* Packet Configuration Modal */ }
+<PacketConfigurationModal
+  isOpen={packetDialogOpen}
+  onClose={() => {
+    setPacketDialogOpen(false);
+    setSelectedItemForPackets(null);
+  }}
+  onSave={handlePacketsSave}
+  item={selectedItemForPackets}
+  items={packetConfigItems}
+  activeItemId={selectedItemForPackets?.modalItemId}
+  initialPackets={selectedItemForPackets?.packets || []}
+/>
 
-          {/* Return Form */}
-          <Card className="bg-gradient-to-br from-rose-50/80 to-pink-50/60 border-2 border-rose-200">
-            <CardHeader className="bg-rose-100/50 border-b border-rose-200">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-rose-900">
-                  <Package className="h-5 w-5 text-rose-600" />
-                  Return Items
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4 bg-white/40">
-              {returnableItems.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No items available to return</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-rose-100/50 border-b-2 border-rose-200">
-                      <tr>
-                        <th className="p-2 text-left">Image</th>
-                        <th className="p-2 text-left">Product</th>
-                        <th className="p-2 text-left">Code</th>
-                        <th className="p-2 text-center">Remaining</th>
-                        <th className="p-2 text-center">Return Qty</th>
-                        <th className="p-2 text-left">Reason</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {returnableItems.map((item, idx) => {
-                        const remainingQty = item.quantity - item.totalReturned;
-                        const hasReturnQty =
-                          returnQuantities[item.index] &&
-                          parseFloat(returnQuantities[item.index]) > 0;
-
-                        return (
-                          <tr
-                            key={item.index}
-                            className={`border-b border-rose-100 transition-colors ${hasReturnQty
-                              ? "bg-rose-200/40"
-                              : idx % 2 === 0
-                                ? "bg-white"
-                                : "bg-rose-50/20"
-                              }`}
-                          >
-                            <td className="p-2">
-                              <ProductImageGallery
-                                images={getImageArray(item)}
-                                alt={item.productName || "Product"}
-                                size="sm"
-                                maxVisible={3}
-                                showCount={true}
-                              />
-                            </td>
-                            <td className="p-2">
-                              <div>
-                                <div className="font-medium">
-                                  {item.productName}
-                                </div>
-                                {item.primaryColor && (
-                                  <div className="text-xs text-muted-foreground">
-                                    Color: {item.primaryColor}
-                                  </div>
-                                )}
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  Original: {item.quantity} • Returned:{" "}
-                                  <span className="text-red-600">
-                                    {item.totalReturned}
-                                  </span>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="p-2">
-                              <span className="font-mono text-xs">
-                                {item.productCode}
-                              </span>
-                            </td>
-                            <td className="p-2 text-center">
-                              <span
-                                className={`font-semibold ${remainingQty === 0
-                                  ? "text-muted-foreground"
-                                  : ""
-                                  }`}
-                              >
-                                {remainingQty}
-                              </span>
-                            </td>
-                            <td className="p-2 text-center">
-                              <div className="flex justify-center">
-                                <Input
-                                  id={`return-qty-${item.index}`}
-                                  type="text"
-                                  inputMode="numeric"
-                                  max={remainingQty}
-                                  step="1"
-                                  value={returnQuantities[item.index] || ""}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    // Allow only numbers
-                                    const sanitized = val.replace(/[^0-9]/g, '');
-                                    if (
-                                      sanitized === "" ||
-                                      (parseFloat(sanitized) >= 0 &&
-                                        parseFloat(sanitized) <= remainingQty)
-                                    ) {
-                                      setReturnQuantities({
-                                        ...returnQuantities,
-                                        [item.index]: val,
-                                      });
-                                    }
-                                  }}
-                                  placeholder="0"
-                                  className="h-8 text-sm w-20 text-center"
-                                  disabled={remainingQty === 0}
-                                />
-                              </div>
-                            </td>
-                            <td className="p-2">
-                              <div className="flex gap-2">
-                                <Select
-                                  value={returnReasons[item.index] || ""}
-                                  onValueChange={(value) =>
-                                    setReturnReasons({
-                                      ...returnReasons,
-                                      [item.index]: value,
-                                    })
-                                  }
-                                  disabled={remainingQty === 0}
-                                >
-                                  <SelectTrigger className="h-8 text-sm w-32">
-                                    <SelectValue placeholder="Select reason" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {PRESET_RETURN_REASONS.map((reason) => (
-                                      <SelectItem key={reason} value={reason}>
-                                        {reason}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                {returnReasons[item.index] &&
-                                  returnReasons[item.index] === "Other" && (
-                                    <Input
-                                      id={`return-reason-custom-${item.index}`}
-                                      value={
-                                        returnReasons[`${item.index}-custom`] ||
-                                        ""
-                                      }
-                                      onChange={(e) =>
-                                        setReturnReasons({
-                                          ...returnReasons,
-                                          [`${item.index}-custom`]:
-                                            e.target.value,
-                                        })
-                                      }
-                                      placeholder="Specify reason"
-                                      className="h-8 text-sm flex-1"
-                                      disabled={remainingQty === 0}
-                                    />
-                                  )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-
-            <div className="border-t pt-4 space-y-4 px-6 pb-6">
-              <div>
-                <Label
-                  htmlFor="return-notes"
-                  className="text-sm font-semibold mb-2 block"
-                >
-                  Additional Notes{" "}
-                  <span className="text-muted-foreground font-normal text-xs">
-                    (Optional)
-                  </span>
-                </Label>
-                <Textarea
-                  id="return-notes"
-                  value={returnNotes}
-                  onChange={(e) => setReturnNotes(e.target.value)}
-                  placeholder="Any additional information about this return..."
-                  className="min-h-[80px] text-sm"
-                  rows={3}
-                />
-              </div>
-
-              {/* Return Summary */}
-              {Object.values(returnQuantities).some(
-                (qty) => qty && parseFloat(qty) > 0
-              ) && (
-                  <Card className="bg-gradient-to-br from-rose-50/90 to-pink-50/70 border-2 border-rose-300/60 shadow-sm">
-                    <CardContent className="p-5">
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="h-8 w-8 rounded-lg bg-rose-100 flex items-center justify-center">
-                          <Package className="h-4 w-4 text-rose-600" />
-                        </div>
-                        <h3 className="text-base font-bold text-rose-900">Return Summary</h3>
-                      </div>
-
-                      <div className="space-y-4">
-                        {/* Items List */}
-                        <div className="bg-white/60 rounded-lg p-3 border border-rose-200/50">
-                          <p className="text-xs font-semibold text-rose-700 uppercase tracking-wide mb-2">Items to Return</p>
-                          <div className="space-y-2">
-                            {Object.entries(returnQuantities)
-                              .filter(([_, qty]) => qty && parseFloat(qty) > 0)
-                              .map(([itemIndex, qty]) => {
-                                const item = itemsWithDetails.find(
-                                  (i) => i.index === parseInt(itemIndex)
-                                );
-                                return (
-                                  <div
-                                    key={itemIndex}
-                                    className="flex items-center justify-between py-2 px-3 bg-white rounded-md border border-rose-100"
-                                  >
-                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                      <div className="h-2 w-2 rounded-full bg-rose-400 flex-shrink-0"></div>
-                                      <span className="text-sm font-medium text-slate-700 truncate">
-                                        {item?.productName || "Unknown Item"}
-                                      </span>
-                                    </div>
-                                    <Badge variant="outline" className="ml-2 bg-rose-50 border-rose-200 text-rose-700 font-semibold">
-                                      {qty} {parseFloat(qty) === 1 ? 'item' : 'items'}
-                                    </Badge>
-                                  </div>
-                                );
-                              })}
-                          </div>
-                        </div>
-
-                        {/* Summary Stats */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-white/80 rounded-lg p-3 border border-rose-200/50">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Package className="h-3.5 w-3.5 text-rose-500" />
-                              <span className="text-xs font-medium text-slate-600">Total Items</span>
-                            </div>
-                            <p className="text-xl font-bold text-rose-700">
-                              {
-                                Object.values(returnQuantities).filter(
-                                  (qty) => qty && parseFloat(qty) > 0
-                                ).length
-                              }
-                            </p>
-                          </div>
-                          <div className="bg-white/80 rounded-lg p-3 border border-rose-200/50">
-                            <div className="flex items-center gap-2 mb-1">
-                              <CheckCircle2 className="h-3.5 w-3.5 text-rose-500" />
-                              <span className="text-xs font-medium text-slate-600">Total Quantity</span>
-                            </div>
-                            <p className="text-xl font-bold text-rose-700">
-                              {Object.values(returnQuantities).reduce(
-                                (sum, qty) => sum + (parseFloat(qty) || 0),
-                                0
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-              <CardFooter className="flex items-center justify-end gap-4 pt-4 px-0">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => {
-                    setReturnQuantities({});
-                    setReturnReasons({});
-                    setReturnNotes("");
-                  }}
-                  disabled={returnMutation.isPending}
-                  className="min-w-[120px]"
-                >
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Clear Form
-                </Button>
-                <Button
-                  onClick={handleReturn}
-                  disabled={
-                    returnMutation.isPending ||
-                    Object.values(returnQuantities).every(
-                      (qty) => !qty || parseFloat(qty) <= 0
-                    )
-                  }
-                  size="lg"
-                  className="min-w-[160px]"
-                >
-                  {returnMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Submit Return
-                    </>
-                  )}
-                </Button>
-              </CardFooter>
-            </div>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Packet Configuration Modal */}
-      <PacketConfigurationModal
-        isOpen={packetDialogOpen}
-        onClose={() => {
-          setPacketDialogOpen(false);
-          setSelectedItemForPackets(null);
-        }}
-        onSave={handlePacketsSave}
-        item={selectedItemForPackets}
-        items={packetConfigItems}
-        activeItemId={selectedItemForPackets?.modalItemId}
-        initialPackets={selectedItemForPackets?.packets || []}
-      />
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-red-600" />
-              Delete Dispatch Order
-            </DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete dispatch order{" "}
-              <strong>{dispatchOrder?.orderNumber}</strong>? This action cannot
-              be undone and will permanently remove this order from the system.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteDialog(false)}
-              disabled={deleteMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Order
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+{/* Delete Confirmation Dialog */ }
+<Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle className="flex items-center gap-2">
+        <AlertCircle className="h-5 w-5 text-red-600" />
+        Delete Dispatch Order
+      </DialogTitle>
+      <DialogDescription>
+        Are you sure you want to delete dispatch order{" "}
+        <strong>{dispatchOrder?.orderNumber}</strong>? This action cannot
+        be undone and will permanently remove this order from the system.
+      </DialogDescription>
+    </DialogHeader>
+    <DialogFooter>
+      <Button
+        variant="outline"
+        onClick={() => setShowDeleteDialog(false)}
+        disabled={deleteMutation.isPending}
+      >
+        Cancel
+      </Button>
+      <Button
+        variant="destructive"
+        onClick={handleDelete}
+        disabled={deleteMutation.isPending}
+      >
+        {deleteMutation.isPending ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Deleting...
+          </>
+        ) : (
+          <>
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete Order
+          </>
+        )}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+    </div >
   );
 }
