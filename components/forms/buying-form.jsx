@@ -66,10 +66,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
   const [suppliers, setSuppliers] = useState(() =>
     Array.isArray(initialSuppliers)
       ? initialSuppliers.map((s) => ({
-          id: s?._id || s?.id,
-          name: s?.name,
-          _original: s,
-        }))
+        id: s?._id || s?.id,
+        name: s?.name,
+        _original: s,
+      }))
       : []
   );
   const [supplierId, setSupplierId] = useState("");
@@ -85,17 +85,12 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
   const [isLoadingLogisticsCompanies, setIsLoadingLogisticsCompanies] =
     useState(false);
   const [logisticsCompanyId, setLogisticsCompanyId] = useState("");
+  const [enableLogisticsTracking, setEnableLogisticsTracking] = useState(false);
 
   // Products tied to selected supplier (removed automatic fetching)
   const [products, setProducts] = useState([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [productsError, setProductsError] = useState(null);
-
-  // Product code lookup state (no status indicators)
-  const lookupTimeoutRefs = useRef({}); // Track debounce timeouts per row
-
-  // Product name lookup state (no status indicators)
-  const nameLookupTimeoutRefs = useRef({}); // Track debounce timeouts per row
 
   // Metadata fields (removed tc and TC_OPTIONS)
   const [invoiceDate, setInvoiceDate] = useState(
@@ -369,7 +364,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
             },
             timestamp: Date.now(),
           }),
-        }).catch(() => {});
+        }).catch(() => { });
         // #endregion agent log
 
         // Auto-calculate supplier payment and landed price when cost price, exchange rate, or percentage changes
@@ -467,8 +462,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       const currentArray = Array.isArray(row[fieldName])
         ? row[fieldName]
         : row[fieldName]
-        ? [row[fieldName]]
-        : [];
+          ? [row[fieldName]]
+          : [];
 
       if (trimmedValue && !currentArray.includes(trimmedValue)) {
         updateRow(rowId, fieldName, [...currentArray, trimmedValue]);
@@ -729,7 +724,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         },
         timestamp: Date.now(),
       }),
-    }).catch(() => {});
+    }).catch(() => { });
     // #endregion agent log
 
     // Validation
@@ -743,9 +738,9 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       return;
     }
 
-    // Validate box count
-    if (!totalBoxes || Number(totalBoxes) < 1) {
-      setError("Number of boxes must be at least 1");
+    // Validate box count only if logistics tracking is enabled
+    if (enableLogisticsTracking && (!totalBoxes || Number(totalBoxes) < 1)) {
+      setError("Number of boxes must be at least 1 when logistics tracking is enabled");
       return;
     }
 
@@ -786,8 +781,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         totals.supplierPaymentAfterDiscount <= 0 || totals.remaining <= 0
           ? "paid"
           : totalPaid > 0
-          ? "partial"
-          : "pending";
+            ? "partial"
+            : "pending";
 
       // Find the selected supplier
       const selectedSupplier = suppliers.find(
@@ -865,16 +860,16 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   Array.isArray(row.size) && row.size.length > 0
                     ? row.size.join(", ")
                     : typeof row.size === "string"
-                    ? row.size
-                    : undefined,
+                      ? row.size
+                      : undefined,
                 specifications: {
                   color:
                     Array.isArray(row.primaryColor) &&
-                    row.primaryColor.length > 0
+                      row.primaryColor.length > 0
                       ? row.primaryColor.join(", ")
                       : typeof row.primaryColor === "string"
-                      ? row.primaryColor
-                      : undefined,
+                        ? row.primaryColor
+                        : undefined,
                 },
                 pricing: {
                   costPrice: Number(row.costPrice || 0),
@@ -1080,16 +1075,20 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         remainingBalance: Math.max(0, totals.remaining), // Ensure >= 0 (negative values indicate overpayment/credit)
         paymentStatus,
         paymentTerms: "net30", // Default payment terms
-        notes: `Exchange Rate: ${exchangeRate}, Percentage: ${percentage}%. Manual entry - ${
-          selectedSupplier?.name || "Supplier"
-        }`,
+        notes: `Exchange Rate: ${exchangeRate}, Percentage: ${percentage}%. Manual entry - ${selectedSupplier?.name || "Supplier"
+          }`,
         items: itemsWithProducts,
         totalBoxes: Number(totalBoxes || 0),
       };
 
-      // Add logistics company if selected
-      if (logisticsCompanyId) {
+      // Add logistics company if enabled and selected
+      if (enableLogisticsTracking && logisticsCompanyId) {
         payload.logisticsCompany = logisticsCompanyId;
+      } else {
+        // If logistics tracking is not enabled, don't send boxes either
+        if (!enableLogisticsTracking) {
+          payload.totalBoxes = 0;
+        }
       }
 
       // #region agent log
@@ -1114,7 +1113,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           },
           timestamp: Date.now(),
         }),
-      }).catch(() => {});
+      }).catch(() => { });
       // #endregion agent log
 
       const response = await purchasesAPI.create(payload);
@@ -1144,7 +1143,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           },
           timestamp: Date.now(),
         }),
-      }).catch(() => {});
+      }).catch(() => { });
       // #endregion agent log
 
       // Extract error message from API response
@@ -1292,34 +1291,56 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="logistics-company">
-              Logistics Company <small>(Optional)</small>
-            </Label>
-            <Select
-              value={logisticsCompanyId || undefined}
-              onValueChange={(value) => setLogisticsCompanyId(value || "")}
-              disabled={isLoadingLogisticsCompanies}
-            >
-              <SelectTrigger id="logistics-company">
-                <SelectValue
-                  placeholder={
-                    isLoadingLogisticsCompanies
-                      ? "Loading..."
-                      : "Select company .."
+            <div className="flex items-center space-x-2 mb-2">
+              <input
+                type="checkbox"
+                id="enable-logistics"
+                checked={enableLogisticsTracking}
+                onChange={(e) => {
+                  setEnableLogisticsTracking(e.target.checked);
+                  if (!e.target.checked) {
+                    setLogisticsCompanyId("");
+                    setTotalBoxes(0);
                   }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {logisticsCompanies.map((company) => (
-                  <SelectItem
-                    key={company._id || company.id}
-                    value={String(company._id || company.id)}
-                  >
-                    {company.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                }}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <Label htmlFor="enable-logistics" className="text-sm font-medium cursor-pointer">
+                Enable Logistics Tracking
+              </Label>
+            </div>
+            {enableLogisticsTracking && (
+              <>
+                <Label htmlFor="logistics-company">
+                  Logistics Company
+                </Label>
+                <Select
+                  value={logisticsCompanyId || undefined}
+                  onValueChange={(value) => setLogisticsCompanyId(value || "")}
+                  disabled={isLoadingLogisticsCompanies}
+                >
+                  <SelectTrigger id="logistics-company">
+                    <SelectValue
+                      placeholder={
+                        isLoadingLogisticsCompanies
+                          ? "Loading..."
+                          : "Select company .."
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {logisticsCompanies.map((company) => (
+                      <SelectItem
+                        key={company._id || company.id}
+                        value={String(company._id || company.id)}
+                      >
+                        {company.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -1394,162 +1415,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                     <Input
                       value={row.productName}
                       onChange={(e) => {
-                        const name = e.target.value;
-                        updateRow(row.id, "productName", name);
-
-                        // Debounced product name lookup (silent)
-                        if (nameLookupTimeoutRefs.current[row.id]) {
-                          clearTimeout(nameLookupTimeoutRefs.current[row.id]);
-                        }
-
-                        if (name.trim().length >= 2) {
-                          // Capture the name value at the time of lookup to prevent overwriting user input
-                          const lookupName = name.trim();
-                          nameLookupTimeoutRefs.current[row.id] = setTimeout(
-                            async () => {
-                              try {
-                                const response = await productsAPI.search(
-                                  lookupName
-                                );
-                                const productsList =
-                                  response.data?.data || response.data || [];
-
-                                // Find exact match first, then partial match
-                                let product =
-                                  productsList.find(
-                                    (p) =>
-                                      p.name?.toLowerCase() ===
-                                      lookupName.toLowerCase()
-                                  ) || productsList[0];
-
-                                if (product) {
-                                  // Auto-populate product fields
-                                  // CRITICAL: Never overwrite user's manually entered name/code
-                                  // Only populate OTHER fields (costPrice, season, colors, sizes)
-                                  const costPrice = Number(
-                                    product.pricing?.costPrice ||
-                                      product.costPrice ||
-                                      0
-                                  );
-
-                                  setRows((prev) =>
-                                    prev.map((r) => {
-                                      if (r.id !== row.id) return r;
-                                      
-                                      // Get current values from the row (user's current input)
-                                      const currentName = r.productName || "";
-                                      const currentCode = r.productCode || "";
-                                      
-                                      // Only auto-populate name/code if they're empty
-                                      // If user has typed something, NEVER overwrite it
-                                      const shouldUseProductName = !currentName || currentName.trim() === "";
-                                      const shouldUseProductCode = !currentCode || currentCode.trim() === "";
-                                      
-                                      return {
-                                        ...r,
-                                        productId: product._id || product.id,
-                                        // Preserve user's input - only use product.name if field is empty
-                                        productName: shouldUseProductName 
-                                          ? (product.name || lookupName)
-                                          : currentName, // Keep what user typed
-                                        // Preserve user's input - only use product code if field is empty
-                                        productCode: shouldUseProductCode
-                                          ? (product.productCode || product.sku || "")
-                                          : currentCode, // Keep what user typed
-                                        season: Array.isArray(
-                                          product.season
-                                        )
-                                          ? product.season
-                                          : product.season
-                                          ? [product.season]
-                                          : product.productType
-                                          ? Array.isArray(
-                                              product.productType
-                                            )
-                                            ? product.productType
-                                            : [product.productType]
-                                          : r.season || [],
-                                        costPrice: costPrice || r.costPrice,
-                                        primaryColor: Array.isArray(
-                                          product.primaryColor
-                                        )
-                                          ? product.primaryColor
-                                          : product.color ||
-                                            product.primaryColor
-                                          ? [
-                                              product.color ||
-                                                product.primaryColor,
-                                            ]
-                                          : r.primaryColor || [],
-                                        size: Array.isArray(product.size)
-                                          ? product.size
-                                          : product.size ||
-                                            product.dimension
-                                          ? [
-                                              product.size ||
-                                                product.dimension,
-                                            ]
-                                          : r.size || [],
-                                        photo:
-                                          product.images?.[0] ||
-                                          product.image ||
-                                          r.photo,
-                                        images: Array.isArray(
-                                          product.images
-                                        )
-                                          ? product.images
-                                          : product.image
-                                          ? [product.image]
-                                          : [],
-                                      };
-                                    })
-                                  );
-
-                                  // Store existing images in previews
-                                  if (
-                                    product.images &&
-                                    Array.isArray(product.images) &&
-                                    product.images.length > 0
-                                  ) {
-                                    const existingPreviews = {};
-                                    product.images.forEach((url, idx) => {
-                                      if (
-                                        url &&
-                                        typeof url === "string" &&
-                                        url.trim() !== ""
-                                      ) {
-                                        existingPreviews[`existing-${idx}`] =
-                                          url.trim();
-                                      }
-                                    });
-                                    setImagePreviews((prev) => ({
-                                      ...prev,
-                                      [row.id]: {
-                                        ...(prev[row.id] || {}),
-                                        ...existingPreviews,
-                                      },
-                                    }));
-                                  }
-                                }
-                              } catch (err) {
-                                console.error(
-                                  "Product name lookup error:",
-                                  err
-                                );
-                              }
-                            },
-                            500
-                          ); // 500ms debounce
-                        } else {
-                          // Clear product ID if name is cleared
-                          if (name.trim().length === 0) {
-                            setRows((prev) =>
-                              prev.map((r) =>
-                                r.id === row.id ? { ...r, productId: "" } : r
-                              )
-                            );
-                          }
-                        }
+                        updateRow(row.id, "productName", e.target.value);
                       }}
                       placeholder="Enter product name"
                       className="h-8 text-sm"
@@ -1561,146 +1427,9 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                     <Input
                       value={row.productCode}
                       onChange={(e) => {
-                        const code = e.target.value;
-                        updateRow(row.id, "productCode", code);
-
-                        // Debounced product lookup (silent)
-                        if (lookupTimeoutRefs.current[row.id]) {
-                          clearTimeout(lookupTimeoutRefs.current[row.id]);
-                        }
-
-                        if (code.trim().length >= 2) {
-                          // Capture the code value at the time of lookup to prevent overwriting user input
-                          const lookupCode = code.trim();
-                          lookupTimeoutRefs.current[row.id] = setTimeout(
-                            async () => {
-                              try {
-                                const response = await productsAPI.lookupByCode(
-                                  lookupCode
-                                );
-                                const product =
-                                  response.data?.data || response.data;
-
-                                if (product) {
-                                  // Auto-populate product fields
-                                  // CRITICAL: Never overwrite user's manually entered name/code
-                                  // Only populate OTHER fields (costPrice, season, colors, sizes)
-                                  const costPrice = Number(
-                                    product.pricing?.costPrice ||
-                                      product.costPrice ||
-                                      0
-                                  );
-
-                                  setRows((prev) =>
-                                    prev.map((r) => {
-                                      if (r.id !== row.id) return r;
-                                      
-                                      // Get current values from the row (user's current input)
-                                      const currentName = r.productName || "";
-                                      const currentCode = r.productCode || "";
-                                      
-                                      // Only auto-populate name/code if they're empty
-                                      // If user has typed something, NEVER overwrite it
-                                      const shouldUseProductName = !currentName || currentName.trim() === "";
-                                      const shouldUseProductCode = !currentCode || currentCode.trim() === "";
-                                      
-                                      return {
-                                        ...r,
-                                        productId: product._id || product.id,
-                                        // Preserve user's input - only use product.name if field is empty
-                                        productName: shouldUseProductName
-                                          ? (product.name || currentName)
-                                          : currentName, // Keep what user typed
-                                        // Preserve user's input - only use product code if field is empty
-                                        productCode: shouldUseProductCode
-                                          ? (product.productCode || product.sku || lookupCode)
-                                          : currentCode, // Keep what user typed
-                                        season: Array.isArray(
-                                          product.season
-                                        )
-                                          ? product.season
-                                          : product.season
-                                          ? [product.season]
-                                          : product.productType
-                                          ? Array.isArray(
-                                              product.productType
-                                            )
-                                            ? product.productType
-                                            : [product.productType]
-                                          : r.season || [],
-                                        costPrice: costPrice || r.costPrice,
-                                        primaryColor: Array.isArray(
-                                          product.primaryColor
-                                        )
-                                          ? product.primaryColor
-                                          : product.color ||
-                                            product.primaryColor
-                                          ? [
-                                              product.color ||
-                                                product.primaryColor,
-                                            ]
-                                          : r.primaryColor || [],
-                                        size: Array.isArray(product.size)
-                                          ? product.size
-                                          : product.size ||
-                                            product.dimension
-                                          ? [
-                                              product.size ||
-                                                product.dimension,
-                                            ]
-                                          : r.size || [],
-                                        photo:
-                                          product.images?.[0] ||
-                                          product.image ||
-                                          r.photo,
-                                        images: Array.isArray(
-                                          product.images
-                                        )
-                                          ? product.images
-                                          : product.image
-                                          ? [product.image]
-                                          : [],
-                                      };
-                                    })
-                                  );
-
-                                  // Store existing images in previews
-                                  if (
-                                    product.images &&
-                                    Array.isArray(product.images) &&
-                                    product.images.length > 0
-                                  ) {
-                                    const existingPreviews = {};
-                                    product.images.forEach((url, idx) => {
-                                      if (
-                                        url &&
-                                        typeof url === "string" &&
-                                        url.trim() !== ""
-                                      ) {
-                                        existingPreviews[`existing-${idx}`] =
-                                          url.trim();
-                                      }
-                                    });
-                                    setImagePreviews((prev) => ({
-                                      ...prev,
-                                      [row.id]: {
-                                        ...(prev[row.id] || {}),
-                                        ...existingPreviews,
-                                      },
-                                    }));
-                                  }
-                                }
-                              } catch (err) {
-                                // Don't log 404 errors as they're expected when product doesn't exist
-                                if (err.response?.status !== 404) {
-                                  console.error("Product lookup error:", err);
-                                }
-                              }
-                            },
-                            500
-                          ); // 500ms debounce
-                        }
+                        updateRow(row.id, "productCode", e.target.value);
                       }}
+                      placeholder="Enter product code"
                       className="h-8 text-sm"
                     />
                   </td>
@@ -1742,10 +1471,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                           .filter((img) => img !== null),
                         ...(existingImageKeys.length === 0
                           ? getImageArray(row).map((url, idx) => ({
-                              id: `fallback-${idx}`,
-                              url,
-                              isExisting: true,
-                            }))
+                            id: `fallback-${idx}`,
+                            url,
+                            isExisting: true,
+                          }))
                           : []),
                         ...newFiles.map((file) => {
                           const fileId = getFileId(file);
@@ -2181,8 +1910,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         )}
       </section>
 
-      {/* Box Management Section */}
-      {rows.length > 0 && (
+      {/* Box Management Section - Only shown when logistics tracking is enabled */}
+      {rows.length > 0 && enableLogisticsTracking && (
         <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
           <h2 className="text-base font-semibold mb-4">Box Management</h2>
           <div className="space-y-4">
@@ -2362,11 +2091,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               />
             </div>
             <div
-              className={`flex justify-between items-center p-3 rounded-md border-2 ${
-                totals.remaining > 0
-                  ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900"
-                  : "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900"
-              }`}
+              className={`flex justify-between items-center p-3 rounded-md border-2 ${totals.remaining > 0
+                ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900"
+                : "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900"
+                }`}
             >
               <span className="text-sm font-medium">
                 {totals.remaining >= 0
@@ -2374,11 +2102,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   : "Overpaid (Credit)"}
               </span>
               <span
-                className={`text-lg font-bold tabular-nums ${
-                  totals.remaining > 0
-                    ? "text-amber-700 dark:text-amber-400"
-                    : "text-green-700 dark:text-green-400"
-                }`}
+                className={`text-lg font-bold tabular-nums ${totals.remaining > 0
+                  ? "text-amber-700 dark:text-amber-400"
+                  : "text-green-700 dark:text-green-400"
+                  }`}
               >
                 {Math.abs(totals.remaining).toFixed(2)}
               </span>
@@ -2403,6 +2130,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               onClick={() => {
                 setRows([]);
                 setTotalBoxes(0);
+                setEnableLogisticsTracking(false);
+                setLogisticsCompanyId("");
                 setDiscount(0);
                 setCash(0);
                 setBank(0);
@@ -2633,9 +2362,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               maxImages={20}
               showAddButton={true}
               emptyMessage="No images"
-              title={`Product Images - ${
-                row?.productName || row?.productCode || "Product"
-              }`}
+              title={`Product Images - ${row?.productName || row?.productCode || "Product"
+                }`}
             />
           );
         })()}
@@ -2658,13 +2386,13 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
             primaryColor: Array.isArray(packetModalProduct.primaryColor)
               ? packetModalProduct.primaryColor
               : packetModalProduct.primaryColor
-              ? [packetModalProduct.primaryColor]
-              : [],
+                ? [packetModalProduct.primaryColor]
+                : [],
             size: Array.isArray(packetModalProduct.size)
               ? packetModalProduct.size
               : packetModalProduct.size
-              ? [packetModalProduct.size]
-              : [],
+                ? [packetModalProduct.size]
+                : [],
             id: String(packetModalProduct.id),
             packets: productPackets[packetModalProduct.id]?.packets || [],
             index: packetModalProduct.index,

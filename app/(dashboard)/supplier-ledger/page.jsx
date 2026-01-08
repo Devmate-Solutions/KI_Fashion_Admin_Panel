@@ -790,7 +790,7 @@ export default function SupplierLedgerPage() {
       })
     }
 
-    return filteredEntries.map(entry => {
+    const mappedItems = filteredEntries.map(entry => {
       const supplier = entry.entityId || {}
       let typeLabel = entry.transactionType || '-'
 
@@ -848,19 +848,19 @@ export default function SupplierLedgerPage() {
       return {
         id: entry._id || entry.id,
         date: entry.date || entry.createdAt,
+        createdAt: entry.createdAt,
         supplier: supplier.name || supplier.company || 'Unknown Supplier',
         supplierId: supplier._id || supplier.id,
         type: typeLabel,
         transactionType: entry.transactionType || entry.type,
         description: entry.description || entry.notes || '-',
-        debit: entry.debit || 0,
-        debit: entry.debit || 0,
-        credit: entry.credit || 0,
+        debit: Number(entry.debit) || 0,
+        credit: Number(entry.credit) || 0,
         cashPaid,
         bankPaid,
         returnAmount,
         discount: discountAmount,
-        balance: entry.balance || 0,
+        balance: 0, // Will be calculated below
         reference: readableReference,
         referenceId: (entry.referenceId && typeof entry.referenceId === 'object' && entry.referenceId._id)
           ? entry.referenceId._id.toString()
@@ -871,6 +871,23 @@ export default function SupplierLedgerPage() {
         raw: entry
       }
     })
+
+    // Sort by createdAt ASCENDING (oldest first) for running balance calculation
+    mappedItems.sort((a, b) => {
+      const createdAtA = new Date(a.createdAt || a.date || 0).getTime()
+      const createdAtB = new Date(b.createdAt || b.date || 0).getTime()
+      return createdAtA - createdAtB
+    })
+
+    // Calculate running balance client-side (debit increases, credit decreases)
+    let runningBalance = 0
+    for (const entry of mappedItems) {
+      runningBalance = runningBalance + entry.debit - entry.credit
+      entry.balance = runningBalance
+    }
+
+    // Reverse to show newest first
+    return mappedItems.reverse()
   }, [allLedgerData, ledgerFilterBy])
 
   // Use totalBalance from API (calculated by BalanceService using aggregation)
@@ -1144,6 +1161,7 @@ export default function SupplierLedgerPage() {
                 enableSearch={true}
                 paginate={true}
                 pageSize={50}
+                disableSorting={true}
               />
             </div>
           </>

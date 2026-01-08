@@ -25,6 +25,7 @@ export default function DataTable({
   totalItems,
   onPageChange,
   onSearch,
+  disableSorting = false, // New prop to disable column sorting
 }) {
   const [query, setQuery] = useState("")
   const [internalPage, setInternalPage] = useState(1)
@@ -73,6 +74,7 @@ export default function DataTable({
   const slice = manualPagination ? filtered : (paginate ? filtered?.slice(start, start + effectivePageSize) : filtered)
 
   function toggleSort(key) {
+    if (disableSorting) return // Early return if sorting is disabled
     if (!manualPagination) setPage(1)
     setSort((cur) => {
       if (cur.key !== key) return { key, dir: "asc" }
@@ -158,18 +160,22 @@ export default function DataTable({
               <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left [&>th]:font-medium [&>th]:text-xs [&>th]:text-muted-foreground border-b border-border">
                 {Array.isArray(columns) && columns.map((c) => (
                   <th key={c.accessor || c.header}>
-                    <button
-                      onClick={() => c.accessor && toggleSort(c.accessor)}
-                      className="flex items-center gap-1"
-                      title={c.accessor ? "Sort" : undefined}
-                    >
-                      <span>{c.header}</span>
-                      {sort.key === c.accessor ? (
-                        <span aria-hidden className="text-[10px]">
-                          {sort.dir === "asc" ? "▲" : "▼"}
-                        </span>
-                      ) : null}
-                    </button>
+                    {disableSorting ? (
+                      <span className="flex items-center gap-1">{c.header}</span>
+                    ) : (
+                      <button
+                        onClick={() => c.accessor && toggleSort(c.accessor)}
+                        className="flex items-center gap-1"
+                        title={c.accessor ? "Sort" : undefined}
+                      >
+                        <span>{c.header}</span>
+                        {sort.key === c.accessor ? (
+                          <span aria-hidden className="text-[10px]">
+                            {sort.dir === "asc" ? "▲" : "▼"}
+                          </span>
+                        ) : null}
+                      </button>
+                    )}
                   </th>
                 ))}
                 {!hideActions && (onEdit || onDelete) && <th className="w-32">Actions</th>}
@@ -253,7 +259,7 @@ export default function DataTable({
             >
               Previous
             </button>
-            
+
             {/* Page number buttons */}
             <div className="flex items-center gap-1">
               {(() => {
@@ -261,20 +267,19 @@ export default function DataTable({
                 const maxVisible = 5
                 let startPage = Math.max(1, page - Math.floor(maxVisible / 2))
                 let endPage = Math.min(pageCount, startPage + maxVisible - 1)
-                
+
                 // Adjust start if we're near the end
                 if (endPage - startPage < maxVisible - 1) {
                   startPage = Math.max(1, endPage - maxVisible + 1)
                 }
-                
+
                 // Show first page if not in range
                 if (startPage > 1) {
                   pages.push(
                     <button
                       key={1}
-                      className={`px-2 py-1 text-xs border border-border rounded hover:bg-muted ${
-                        page === 1 ? 'bg-primary text-primary-foreground' : ''
-                      }`}
+                      className={`px-2 py-1 text-xs border border-border rounded hover:bg-muted ${page === 1 ? 'bg-primary text-primary-foreground' : ''
+                        }`}
                       onClick={() => setPage(1)}
                     >
                       1
@@ -284,22 +289,21 @@ export default function DataTable({
                     pages.push(<span key="ellipsis1" className="px-1 text-xs text-muted-foreground">...</span>)
                   }
                 }
-                
+
                 // Show pages in range
                 for (let i = startPage; i <= endPage; i++) {
                   pages.push(
                     <button
                       key={i}
-                      className={`px-2 py-1 text-xs border border-border rounded hover:bg-muted ${
-                        page === i ? 'bg-primary text-primary-foreground' : ''
-                      }`}
+                      className={`px-2 py-1 text-xs border border-border rounded hover:bg-muted ${page === i ? 'bg-primary text-primary-foreground' : ''
+                        }`}
                       onClick={() => setPage(i)}
                     >
                       {i}
                     </button>
                   )
                 }
-                
+
                 // Show last page if not in range
                 if (endPage < pageCount) {
                   if (endPage < pageCount - 1) {
@@ -308,20 +312,19 @@ export default function DataTable({
                   pages.push(
                     <button
                       key={pageCount}
-                      className={`px-2 py-1 text-xs border border-border rounded hover:bg-muted ${
-                        page === pageCount ? 'bg-primary text-primary-foreground' : ''
-                      }`}
+                      className={`px-2 py-1 text-xs border border-border rounded hover:bg-muted ${page === pageCount ? 'bg-primary text-primary-foreground' : ''
+                        }`}
                       onClick={() => setPage(pageCount)}
                     >
                       {pageCount}
                     </button>
                   )
                 }
-                
+
                 return pages
               })()}
             </div>
-            
+
             <button
               className="px-2 py-1 text-xs border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={() => setPage(p => Math.min(pageCount, p + 1))}
@@ -338,7 +341,7 @@ export default function DataTable({
             >
               Last
             </button>
-            
+
             {/* Direct page jump input */}
             <div className="flex items-center gap-1">
               <span className="text-xs text-muted-foreground">Go to:</span>

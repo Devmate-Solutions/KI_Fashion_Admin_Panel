@@ -285,7 +285,7 @@ export default function DispatchOrderDetailPage({ params }) {
             : [item.season].filter(s => s);
         }
         // Explicitly do NOT use item.product?.season as fallback
-        
+
         initialItems[index] = {
           productName: item.productName || "",
           productCode: item.productCode || "",
@@ -698,23 +698,14 @@ export default function DispatchOrderDetailPage({ params }) {
       payments =
         (parseFloat(cashPayment) || 0) + (parseFloat(bankPayment) || 0);
     } else {
-      // For confirmed orders, first try to use paymentDetails (cashPayment + bankPayment)
-      // This ensures consistency with what was shown before confirmation
-      if (dispatchOrder?.paymentDetails?.cashPayment !== undefined || 
-          dispatchOrder?.paymentDetails?.bankPayment !== undefined) {
-        payments = 
-          (parseFloat(dispatchOrder.paymentDetails.cashPayment) || 0) + 
-          (parseFloat(dispatchOrder.paymentDetails.bankPayment) || 0);
+      // For confirmed orders, use computedPaymentDetails from the backend (ledger aggregation)
+      if (dispatchOrder?.computedPaymentDetails?.totalPaid !== undefined) {
+        payments = dispatchOrder.computedPaymentDetails.totalPaid || 0;
       } else {
-        // Fallback to payment history if paymentDetails not available
-        const exchangeRate = dispatchOrder?.exchangeRate || 1;
-        // Calculate total payments from payment history and convert to supplier currency
-        const totalPaidEur =
-          paymentHistory?.reduce((sum, entry) => {
-            return sum + (entry.credit || 0);
-          }, 0) || 0;
-        // Convert from EUR to supplier currency
-        payments = totalPaidEur * exchangeRate;
+        // Fallback to payment history if computedPaymentDetails not available
+        payments = paymentHistory?.reduce((sum, entry) => {
+          return sum + (entry.credit || 0);
+        }, 0) || 0;
       }
     }
 
@@ -739,6 +730,7 @@ export default function DispatchOrderDetailPage({ params }) {
     dispatchOrder?.totalDiscount,
     dispatchOrder?.exchangeRate,
     dispatchOrder?.paymentDetails,
+    dispatchOrder?.computedPaymentDetails,
     cashPayment,
     bankPayment,
     paymentHistory,
@@ -1012,7 +1004,7 @@ export default function DispatchOrderDetailPage({ params }) {
           : itemData.season
             ? [itemData.season].filter(s => s)
             : [];
-        
+
         finalItems.push({
           ...item,
           productName: itemData.productName,
@@ -1703,15 +1695,14 @@ export default function DispatchOrderDetailPage({ params }) {
                   </div>
                 </>
               )}
-              {isConfirmed && dispatchOrder.paymentDetails && (
+              {isConfirmed && dispatchOrder.computedPaymentDetails && (
                 <>
                   <div>
                     <Label className="text-xs text-muted-foreground">
                       Cash Payment
                     </Label>
                     <p className="font-medium text-sm">
-                      {dispatchOrder.paymentDetails.cashPayment}
-                      {/* {paymentAmountsInSupplierCurrency.cashPayment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} */}
+                      {(dispatchOrder.computedPaymentDetails.cashPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
                   <div>
@@ -1719,8 +1710,7 @@ export default function DispatchOrderDetailPage({ params }) {
                       Bank Payment
                     </Label>
                     <p className="font-medium text-sm">
-                      {dispatchOrder.paymentDetails.bankPayment}
-                      {/* {paymentAmountsInSupplierCurrency.bankPayment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} */}
+                      {(dispatchOrder.computedPaymentDetails.bankPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
                 </>
@@ -2709,7 +2699,7 @@ export default function DispatchOrderDetailPage({ params }) {
           )}
 
           {/* Payment Details (if confirmed) */}
-          {isConfirmed && dispatchOrder.paymentDetails && (
+          {isConfirmed && (dispatchOrder.paymentDetails || dispatchOrder.computedPaymentDetails) && (
             <Card className="bg-gradient-to-br from-amber-50/80 to-yellow-50/60 border-2 border-amber-200">
               <CardHeader className="bg-amber-100/50 border-b border-amber-200">
                 <div className="flex items-center justify-between">
@@ -2725,6 +2715,7 @@ export default function DispatchOrderDetailPage({ params }) {
                   )}
                 </div>
               </CardHeader>
+
               <CardContent className="bg-white/40">
                 {dispatchOrder?.returnedItems &&
                   dispatchOrder.returnedItems.length > 0 && (
@@ -2749,10 +2740,8 @@ export default function DispatchOrderDetailPage({ params }) {
                         Cash Payment
                       </Label>
                       <p className="font-medium text-sm">
-                        {dispatchOrder.paymentDetails.cashPayment.toLocaleString(
-                          undefined,
-                          { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                        )}
+                        {(dispatchOrder.computedPaymentDetails?.cashPayment || 0)
+                          .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     </div>
                   </div>
@@ -2763,10 +2752,8 @@ export default function DispatchOrderDetailPage({ params }) {
                         Bank Payment
                       </Label>
                       <p className="font-medium text-sm">
-                        {dispatchOrder.paymentDetails.bankPayment.toLocaleString(
-                          undefined,
-                          { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                        )}
+                        {(dispatchOrder.computedPaymentDetails?.bankPayment || 0)
+                          .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     </div>
                   </div>
@@ -3347,7 +3334,7 @@ export default function DispatchOrderDetailPage({ params }) {
                         </div>
                         <h3 className="text-base font-bold text-rose-900">Return Summary</h3>
                       </div>
-                      
+
                       <div className="space-y-4">
                         {/* Items List */}
                         <div className="bg-white/60 rounded-lg p-3 border border-rose-200/50">
@@ -3410,7 +3397,7 @@ export default function DispatchOrderDetailPage({ params }) {
                       </div>
                     </CardContent>
                   </Card>
-              )}
+                )}
 
               <CardFooter className="flex items-center justify-end gap-4 pt-4 px-0">
                 <Button
