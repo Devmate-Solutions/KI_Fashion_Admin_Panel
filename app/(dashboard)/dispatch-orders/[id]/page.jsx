@@ -1864,7 +1864,8 @@ export default function DispatchOrderDetailPage({ params }) {
                         (editedCostPrice / currentExchangeRate) *
                         (1 + currentPercentage / 100)
                       );
-                      const itemTotal = truncateToTwoDecimals(supplierPaymentItemTotal / currentExchangeRate) * (1 + currentPercentage / 100);
+                      const itemTotal = truncateToTwoDecimals(truncateToTwoDecimals(supplierPaymentItemTotal / currentExchangeRate) * (currentPercentage / 100));
+                      // const itemTotal = truncateToTwoDecimals(landedPrice * editedQuantity);
 
                       return (
                         <tr
@@ -2360,7 +2361,7 @@ export default function DispatchOrderDetailPage({ params }) {
                             )}
                           </td>
                           <td className="p-2 text-right font-semibold text-slate-700 align-top">
-                            {supplierPaymentItemTotal?.toFixed(2) || "—"} x
+                            {supplierPaymentItemTotal?.toFixed(2) || "—"}
                             {!isPending && item.totalReturned > 0 && (
                               <div className="text-[9px] text-red-600 mt-0.5">
                                 (was{" "}
@@ -2372,10 +2373,10 @@ export default function DispatchOrderDetailPage({ params }) {
                             )}
                           </td>
                           <td className="p-2 text-right text-blue-700 align-top">
-                            {landedPrice || "— "} y
+                            {landedPrice || "— "}
                           </td>
                           <td className="p-2 text-right font-medium text-blue-700 align-top">
-                            {itemTotal || "—"} z
+                            {itemTotal || "—"}
                             {!isPending && item.totalReturned > 0 && (
                               <div className="text-[9px] text-red-600 mt-0.5">
                                 (was{" "}
