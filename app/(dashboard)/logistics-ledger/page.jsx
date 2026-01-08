@@ -127,7 +127,7 @@ export default function LogisticsLedgerPage() {
 
   const { data: paymentHistoryData, isLoading: paymentHistoryLoading } = useAllLogisticsLedgers(paymentHistoryParams)
 
-  // Transform all ledger entries for Tab 1 display
+  // Transform all ledger entries for Tab 1 display with client-side running balance
   const allLedgerTransactions = useMemo(() => {
     // Debug logging
     if (ledgerCompanyFilter === 'all') {
@@ -156,7 +156,8 @@ export default function LogisticsLedgerPage() {
       }
     }
 
-    return filteredEntries.map(entry => {
+    // Transform entries first
+    const transformedEntries = filteredEntries.map(entry => {
       const company = entry.entityId || {}
       let typeLabel = entry.transactionType || '-'
 
@@ -193,7 +194,7 @@ export default function LogisticsLedgerPage() {
         description: entry.description || entry.notes || '-',
         debit: entry.debit || 0,
         credit: entry.credit || 0,
-        balance: entry.balance || 0,
+        balance: entry.balance || 0, // Original stored balance (for reference)
         reference: readableReference,
         referenceId: (entry.referenceId && typeof entry.referenceId === 'object' && entry.referenceId._id)
           ? entry.referenceId._id.toString()
@@ -202,10 +203,30 @@ export default function LogisticsLedgerPage() {
         paymentMethod: entry.paymentMethod || null,
         paymentDetails: entry.paymentDetails || null,
         boxRate: company.rates?.boxRate || null,
+        createdAt: entry.createdAt, // For secondary sorting
         raw: entry
       }
     })
-  }, [allLedgerData, ledgerTypeFilter])
+
+    // Sort by date ascending, then by createdAt for entries with same date
+    const sortedAsc = [...transformedEntries].sort((a, b) => {
+      const dateDiff = new Date(a.date) - new Date(b.date)
+      if (dateDiff !== 0) return dateDiff
+      // If dates are equal, use createdAt as tiebreaker
+      return new Date(a.createdAt) - new Date(b.createdAt)
+    })
+
+    // Calculate client-side running balance
+    // Debit = charge (increases what admin owes), Credit = payment (decreases what admin owes)
+    let runningBalance = 0
+    const withRunningBalance = sortedAsc.map(entry => {
+      runningBalance += (entry.debit || 0) - (entry.credit || 0)
+      return { ...entry, runningBalance }
+    })
+
+    // Reverse back for display (newest first)
+    return withRunningBalance.reverse()
+  }, [allLedgerData, ledgerTypeFilter, ledgerCompanyFilter])
 
   // Transform payment history for Tab 3
   const paymentHistoryTransactions = useMemo(() => {
@@ -367,8 +388,17 @@ export default function LogisticsLedgerPage() {
       },
       {
         header: "Balance",
-        accessor: "balance",
-        render: (row) => <span className="tabular-nums font-bold">{formatNumber(row.balance)}</span>
+        accessor: "runningBalance",
+        render: (row) => {
+          const balance = row.runningBalance ?? row.balance ?? 0
+          // Positive = admin owes logistics (red), Negative = credit/overpaid (green)
+          const isCredit = balance < 0
+          return (
+            <span className={`tabular-nums font-bold ${isCredit ? 'text-green-600' : balance > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+              {isCredit ? `-${formatNumber(Math.abs(balance))}` : formatNumber(balance)}
+            </span>
+          )
+        }
       }
     ],
     []
@@ -410,22 +440,36 @@ export default function LogisticsLedgerPage() {
         )
       },
       {
-        header: "Paid Amount",
-        accessor: "totalPaid",
+        header: "Cash Paid",
+        accessor: "cashPaid",
         render: (row) => (
-          <span className="tabular-nums text-green-600 font-medium">
-            {formatNumber(row.totalPaid || 0)}
+          <span className={`tabular-nums font-medium ${(row.cashPaid || 0) > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+            {(row.cashPaid || 0) > 0 ? formatNumber(row.cashPaid) : '-'}
+          </span>
+        )
+      },
+      {
+        header: "Bank Paid",
+        accessor: "bankPaid",
+        render: (row) => (
+          <span className={`tabular-nums font-medium ${(row.bankPaid || 0) > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+            {(row.bankPaid || 0) > 0 ? formatNumber(row.bankPaid) : '-'}
           </span>
         )
       },
       {
         header: "Remaining",
         accessor: "amount",
-        render: (row) => (
-          <span className={`tabular-nums font-semibold ${(row.amount || 0) > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
-            {formatNumber(row.amount || 0)}
-          </span>
-        )
+        render: (row) => {
+          const remaining = row.amount || 0
+          // Positive = still owed (red), Negative = overpaid/credit (green)
+          const isCredit = remaining < 0
+          return (
+            <span className={`tabular-nums font-semibold ${isCredit ? 'text-green-600' : remaining > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+              {isCredit ? `-${formatNumber(Math.abs(remaining))}` : formatNumber(remaining)}
+            </span>
+          )
+        }
       },
       // {
       //   header: "Payment Type",
@@ -635,26 +679,15 @@ export default function LogisticsLedgerPage() {
         throw new Error('Company not found')
       }
 
-      const paymentPayload = {
-        type: 'logistics',
-        entityId: selectedCompanyId,
-        entityModel: 'LogisticsCompany',
-        transactionType: 'payment',
-        debit: 0,
-        credit: amount,
-        date: paymentForm.date ? new Date(paymentForm.date) : new Date(),
-        description: paymentForm.description || `Payment - ${paymentForm.method}`,
+      // Use the distribute payment API to properly link payments to orders
+      await ledgerAPI.distributeLogisticsPayment(selectedCompanyId, {
+        amount: amount,
         paymentMethod: paymentForm.method,
-        paymentDetails: {
-          cashPayment: paymentForm.method === 'cash' ? amount : 0,
-          bankPayment: paymentForm.method === 'bank' ? amount : 0,
-          remainingBalance: 0
-        }
-      }
+        date: paymentForm.date ? new Date(paymentForm.date) : new Date(),
+        description: paymentForm.description || `Payment - ${paymentForm.method}`
+      })
 
-      await ledgerAPI.createEntry(paymentPayload)
-
-      toast.success('Payment recorded successfully')
+      toast.success('Payment distributed successfully')
 
       setPaymentForm({ amount: '', date: '', description: '', method: 'cash' })
       setIsDialogOpen(false)
