@@ -1864,7 +1864,7 @@ export default function DispatchOrderDetailPage({ params }) {
                         (editedCostPrice / currentExchangeRate) *
                         (1 + currentPercentage / 100)
                       );
-                      const itemTotal = truncateToTwoDecimals(supplierPaymentItemTotal / currentExchangeRate);
+                      const itemTotal = truncateToTwoDecimals(supplierPaymentItemTotal / currentExchangeRate) * (1 + currentPercentage / 100);
 
                       return (
                         <tr
