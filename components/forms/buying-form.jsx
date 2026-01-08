@@ -854,6 +854,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               const productData = {
                 name: row.productName.trim(),
                 sku: (row.productCode || `AUTO-${Date.now()}`).toUpperCase(),
+                supplier: supplierId, // Required by Product model
                 season: normalizeSeasonArray(row.season || []),
                 category: "General", // Default category, can be updated later
                 size:
