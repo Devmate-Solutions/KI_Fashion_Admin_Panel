@@ -86,6 +86,17 @@ const getImageArray = (item) => {
   return [];
 };
 
+/**
+ * Truncate a number to 2 decimal places (no rounding)
+ * Example: 14.554472 -> 14.55, 19.125456 -> 19.12, 13.337555 -> 13.33
+ * @param {number} value - The number to truncate
+ * @returns {number} The truncated number with at most 2 decimal places
+ */
+const truncateToTwoDecimals = (value) => {
+  if (typeof value !== 'number' || isNaN(value)) return 0;
+  return Math.floor(value * 100) / 100;
+};
+
 const statusStyles = {
   pending: "bg-sky-500/15 text-sky-600 border-sky-200",
   "pending-approval": "bg-amber-500/15 text-amber-600 border-amber-200",
@@ -370,9 +381,9 @@ export default function DispatchOrderDetailPage({ params }) {
         : item.supplierPaymentAmount || costPrice / currentExchangeRate;
 
       const landedPrice = isPending
-        ? (costPrice / currentExchangeRate) * (1 + currentPercentage / 100)
+        ? truncateToTwoDecimals((costPrice / currentExchangeRate) * (1 + currentPercentage / 100))
         : item.landedPrice ||
-        (costPrice / currentExchangeRate) * (1 + currentPercentage / 100);
+        truncateToTwoDecimals((costPrice / currentExchangeRate) * (1 + currentPercentage / 100));
 
       // Ensure season comes ONLY from itemData, never from product or fallback
       // Normalize season to array format and ensure it's only what was actually saved
@@ -393,7 +404,7 @@ export default function DispatchOrderDetailPage({ params }) {
         supplierPaymentAmount,
         supplierPaymentItemTotal: costPrice * quantity,
         landedPrice,
-        itemTotal: landedPrice * quantity,
+        itemTotal: truncateToTwoDecimals(landedPrice * quantity),
         isNew: false,
         isRemoved: itemsToRemove.includes(index)
       };
@@ -406,7 +417,7 @@ export default function DispatchOrderDetailPage({ params }) {
         const costPrice = parseFloat(item.costPrice) || 0;
         const quantity = parseFloat(item.quantity) || 0;
         const supplierPaymentAmount = costPrice / currentExchangeRate;
-        const landedPrice = (costPrice / currentExchangeRate) * (1 + currentPercentage / 100);
+        const landedPrice = truncateToTwoDecimals((costPrice / currentExchangeRate) * (1 + currentPercentage / 100));
 
         return {
           ...item,
@@ -417,7 +428,7 @@ export default function DispatchOrderDetailPage({ params }) {
           supplierPaymentAmount,
           supplierPaymentItemTotal: costPrice * quantity,
           landedPrice,
-          itemTotal: landedPrice * quantity,
+          itemTotal: truncateToTwoDecimals(landedPrice * quantity),
           isNew: true,
           isRemoved: false,
           productImage: item.images || item.productImage || [] // Mapping field name
@@ -490,21 +501,23 @@ export default function DispatchOrderDetailPage({ params }) {
       const costPrice = parseFloat(itemData.costPrice) || 0;
       // ALWAYS use confirmedQty (which accounts for returns) for financial totals
       const quantity = item.confirmedQty || 0;
-      const landedPrice =
-        (costPrice / currentExchangeRate) * (1 + currentPercentage / 100);
-      total += landedPrice * quantity;
+      const landedPrice = truncateToTwoDecimals(
+        (costPrice / currentExchangeRate) * (1 + currentPercentage / 100)
+      );
+      total += truncateToTwoDecimals(landedPrice * quantity);
     });
 
     // Add new items
     newItems.forEach((item) => {
       const costPrice = parseFloat(item.costPrice) || 0;
       const quantity = parseFloat(item.quantity) || 0;
-      const landedPrice =
-        (costPrice / currentExchangeRate) * (1 + currentPercentage / 100);
-      total += landedPrice * quantity;
+      const landedPrice = truncateToTwoDecimals(
+        (costPrice / currentExchangeRate) * (1 + currentPercentage / 100)
+      );
+      total += truncateToTwoDecimals(landedPrice * quantity);
     });
 
-    return total;
+    return truncateToTwoDecimals(total);
   }, [
     activeItemsWithDetails,
     editedItems,
@@ -1835,17 +1848,23 @@ export default function DispatchOrderDetailPage({ params }) {
                       // ALWAYS use the remaining quantity (original/edited minus returns) for financial calculations
                       // item.confirmedQty already contains the remaining amount (original - returned)
                       const editedQuantity = item.confirmedQty ?? 0;
-                      const editedCostPrice =
-                        parseFloat(itemData.costPrice) || 0;
+                      // Get cost price from editedItems first (user edits), then from original item
+                      // Make sure we're getting the actual cost price, not any other numeric value
+                      const editedCostPrice = editedItems[item.index]?.costPrice !== undefined
+                        ? parseFloat(editedItems[item.index].costPrice) || 0
+                        : parseFloat(item.costPrice) || 0;
                       // All financial calculations MUST use editedQuantity (which is confirmedQty)
                       const supplierPaymentItemTotal =
                         editedCostPrice * editedQuantity;
                       const supplierPaymentAmount =
                         editedCostPrice / currentExchangeRate;
-                      const landedPrice =
+                      // Landed Price = (Cost Price / Exchange Rate) × (1 + Percentage/100)
+                      // Truncate to 2 decimal places for consistency
+                      const landedPrice = truncateToTwoDecimals(
                         (editedCostPrice / currentExchangeRate) *
-                        (1 + currentPercentage / 100);
-                      const itemTotal = landedPrice * editedQuantity;
+                        (1 + currentPercentage / 100)
+                      );
+                      const itemTotal = truncateToTwoDecimals(supplierPaymentItemTotal / currentExchangeRate);
 
                       return (
                         <tr
@@ -2341,7 +2360,7 @@ export default function DispatchOrderDetailPage({ params }) {
                             )}
                           </td>
                           <td className="p-2 text-right font-semibold text-slate-700 align-top">
-                            {supplierPaymentItemTotal?.toFixed(2) || "—"}
+                            {supplierPaymentItemTotal?.toFixed(2) || "—"} x
                             {!isPending && item.totalReturned > 0 && (
                               <div className="text-[9px] text-red-600 mt-0.5">
                                 (was{" "}
@@ -2353,10 +2372,10 @@ export default function DispatchOrderDetailPage({ params }) {
                             )}
                           </td>
                           <td className="p-2 text-right text-blue-700 align-top">
-                            {landedPrice?.toFixed(2) || "—"}
+                            {landedPrice || "— "} y
                           </td>
                           <td className="p-2 text-right font-medium text-blue-700 align-top">
-                            {itemTotal?.toFixed(2) || "—"}
+                            {itemTotal || "—"} z
                             {!isPending && item.totalReturned > 0 && (
                               <div className="text-[9px] text-red-600 mt-0.5">
                                 (was{" "}
@@ -2365,7 +2384,7 @@ export default function DispatchOrderDetailPage({ params }) {
                                     currentExchangeRate) *
                                   (1 + currentPercentage / 100) *
                                   item.quantity
-                                ).toFixed(2)}{" "}
+                                )}{" "}
                                 before returns)
                               </div>
                             )}
