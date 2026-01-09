@@ -921,7 +921,7 @@ export default function SupplierLedgerPage() {
     })
 
     // Get the latest balance for each supplier
-    for (const entry of sortedEntries) {
+    for (const entry of allLedgerTransactions) {
       const supplierId = entry.supplierId?.toString() || entry.raw?.entityId?.toString() || entry.raw?.entityId?._id?.toString()
       if (supplierId && balanceMap[supplierId] === undefined) {
         balanceMap[supplierId] = entry.balance || 0
