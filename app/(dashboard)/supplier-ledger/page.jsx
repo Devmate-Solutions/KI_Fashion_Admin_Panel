@@ -890,13 +890,17 @@ export default function SupplierLedgerPage() {
     return mappedItems.reverse()
   }, [allLedgerData, ledgerFilterBy])
 
-  // Use totalBalance from API (calculated by BalanceService using aggregation)
-  // This is the SSOT - calculates SUM(debit - credit) for all suppliers or a specific supplier
+  // Use client-side calculated running balance (same as table's top row)
+  // This ensures the summary card matches the Balance column of the first row in the table
   const calculatedTotalBalance = useMemo(() => {
-    // Always use the API's totalBalance which is calculated correctly via aggregation
-    // This is more accurate than calculating from entry balances
+    // Get the balance from the first entry (newest after sorting/reversing)
+    // This represents the current running balance
+    if (allLedgerTransactions.length > 0) {
+      return allLedgerTransactions[0].balance || 0
+    }
+    // Fallback to backend totalBalance for empty data case
     return allLedgerData?.totalBalance || 0
-  }, [allLedgerData])
+  }, [allLedgerTransactions, allLedgerData])
 
   // Create a map of supplier balances from allLedgerTransactions (same source as calculatedTotalBalance)
   // This ensures the modal uses the exact same balance calculation as the parent page

@@ -307,13 +307,31 @@ export default function LogisticsLedgerPage() {
     return { total, cash, bank, countThisMonth }
   }, [paymentHistoryTransactions])
 
+  // Use client-side calculated running balance (same as table's top row)
+  // This ensures the summary card matches the Balance column of the first row in the table
+  const calculatedTotalBalance = useMemo(() => {
+    // Get the balance from the first entry (newest after sorting/reversing)
+    // This represents the current running balance
+    if (allLedgerTransactions.length > 0) {
+      return allLedgerTransactions[0].runningBalance || 0
+    }
+    // Fallback to backend totalBalance for empty data case
+    return allLedgerData?.totalBalance || 0
+  }, [allLedgerTransactions, allLedgerData])
+
   // Ledger table columns for Tab 1
   const allLedgerColumns = useMemo(
     () => [
       {
         header: "Date",
         accessor: "date",
-        render: (row) => row.date ? new Date(row.date).toLocaleDateString('en-GB') : "-"
+        render: (row) => {
+          if (!row.date) return "-";
+          const d = new Date(row.date);
+          const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+          const date = d.toLocaleDateString('en-GB');
+          return `${time} ${date}`;
+        }
       },
       {
         header: "Company",
@@ -410,7 +428,13 @@ export default function LogisticsLedgerPage() {
       {
         header: "Date",
         accessor: "date",
-        render: (row) => row.date ? new Date(row.date).toLocaleDateString('en-GB') : "-"
+        render: (row) => {
+          if (!row.date) return "-";
+          const d = new Date(row.date);
+          const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+          const date = d.toLocaleDateString('en-GB');
+          return `${time} ${date}`;
+        }
       }
     ]
 
@@ -534,7 +558,13 @@ export default function LogisticsLedgerPage() {
       {
         header: "Date",
         accessor: "date",
-        render: (row) => row.date ? new Date(row.date).toLocaleDateString('en-GB') : "-"
+        render: (row) => {
+          if (!row.date) return "-";
+          const d = new Date(row.date);
+          const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+          const date = d.toLocaleDateString('en-GB');
+          return `${time} ${date}`;
+        }
       }
     ]
 
@@ -796,8 +826,8 @@ export default function LogisticsLedgerPage() {
                 <p className="text-sm text-muted-foreground">
                   {ledgerCompanyFilter === 'all' ? 'Total Balance (All Companies)' : 'Company Balance'}
                 </p>
-                <p className={`text-2xl font-bold ${(allLedgerData?.totalBalance || 0) >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {(allLedgerData?.totalBalance || 0) > 0 ? '-' : ''}{currency(Math.abs(allLedgerData?.totalBalance || 0))}
+                <p className={`text-2xl font-bold ${calculatedTotalBalance >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {calculatedTotalBalance > 0 ? '-' : ''}{currency(Math.abs(calculatedTotalBalance))}
                 </p>
               </div>
             </div>
