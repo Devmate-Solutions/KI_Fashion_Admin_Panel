@@ -908,17 +908,17 @@ export default function SupplierLedgerPage() {
     }
 
     // Sort by date descending to get latest entries first
-    const sortedEntries = [...allLedgerTransactions].sort((a, b) => {
-      const dateA = new Date(a.date || a.raw?.date || 0)
-      const dateB = new Date(b.date || b.raw?.date || 0)
-      if (dateA.getTime() !== dateB.getTime()) {
-        return dateB.getTime() - dateA.getTime()
-      }
-      // If dates are equal, sort by createdAt
-      const createdAtA = new Date(a.raw?.createdAt || 0)
-      const createdAtB = new Date(b.raw?.createdAt || 0)
-      return createdAtB.getTime() - createdAtA.getTime()
-    })
+    // const sortedEntries = [...allLedgerTransactions].sort((a, b) => {
+    //   const dateA = new Date(a.date || a.raw?.date || 0)
+    //   const dateB = new Date(b.date || b.raw?.date || 0)
+    //   if (dateA.getTime() !== dateB.getTime()) {
+    //     return dateB.getTime() - dateA.getTime()
+    //   }
+    //   // If dates are equal, sort by createdAt
+    //   const createdAtA = new Date(a.raw?.createdAt || 0)
+    //   const createdAtB = new Date(b.raw?.createdAt || 0)
+    //   return createdAtB.getTime() - createdAtA.getTime()
+    // })
 
     // Get the latest balance for each supplier
     for (const entry of allLedgerTransactions) {
