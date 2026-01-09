@@ -893,6 +893,7 @@ export default function SupplierLedgerPage() {
   // Use totalBalance from API (calculated by BalanceService using aggregation)
   // This is the SSOT - calculates SUM(debit - credit) for all suppliers or a specific supplier
   const calculatedTotalBalance = useMemo(() => {
+    console.log('All Ledger Data for Total Balance:', allLedgerData)
     // Always use the API's totalBalance which is calculated correctly via aggregation
     // This is more accurate than calculating from entry balances
     return allLedgerData?.totalBalance || 0
