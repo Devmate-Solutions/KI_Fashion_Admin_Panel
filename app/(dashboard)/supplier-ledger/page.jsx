@@ -32,6 +32,18 @@ function currency(n) {
   return `£${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
+
+
+function formatDateTime(_date) {
+  const dateTime = _date.createdAt || _date.date;
+  if (!dateTime) return "-";
+  const d = new Date(dateTime);
+  const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const date = d.toLocaleDateString('en-GB');
+  return `${date} ${time}`;
+  // return new Date(_date).toLocaleDateString('en-GB');
+} 
+
 export default function SupplierLedgerPage() {
   const [selectedSupplierId, setSelectedSupplierId] = useState("all") // Default to "all" for Tab 2
   const [selectedDispatchOrderId, setSelectedDispatchOrderId] = useState("none")
@@ -502,7 +514,7 @@ export default function SupplierLedgerPage() {
       {
         header: "Date",
         accessor: "date",
-        render: (row) => row.date ? new Date(row.date).toLocaleDateString('en-GB') : "-"
+        render: (row) => formatDateTime(row)
       }
     ]
 
@@ -575,7 +587,7 @@ export default function SupplierLedgerPage() {
       {
         header: "Date",
         accessor: "date",
-        render: (row) => row.date ? new Date(row.date).toLocaleDateString('en-GB') : "-"
+        render: (row) => formatDateTime(row)
       }
     ]
 
@@ -692,7 +704,7 @@ export default function SupplierLedgerPage() {
       {
         header: "Date",
         accessor: "date",
-        render: (row) => row.date ? new Date(row.date).toLocaleDateString('en-GB') : "-"
+        render: (row) => formatDateTime(row)
       },
       {
         header: "Supplier Name",
@@ -1003,7 +1015,7 @@ export default function SupplierLedgerPage() {
       {
         header: "Date",
         accessor: "date",
-        render: (row) => row.date ? new Date(row.date).toLocaleDateString('en-GB') : "-"
+        render: (row) => formatDateTime(row)
       },
       {
         header: "Supplier",

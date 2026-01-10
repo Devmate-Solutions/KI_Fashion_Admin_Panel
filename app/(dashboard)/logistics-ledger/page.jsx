@@ -142,7 +142,8 @@ export default function LogisticsLedgerPage() {
 
     let filteredEntries = allLedgerData.entries.filter(entry =>
       entry.transactionType === 'charge' ||
-      entry.transactionType === 'payment'
+      entry.transactionType === 'payment' ||
+      entry.transactionType === 'adjustment'
     )
 
     // Apply type filter
@@ -171,6 +172,8 @@ export default function LogisticsLedgerPage() {
         }
       } else if (entry.transactionType === 'charge') {
         typeLabel = 'Logistics Charge'
+      } else if (entry.transactionType === 'adjustment') {
+        typeLabel = 'Debit Adjustment'
       }
 
       let readableReference = '-'
@@ -208,12 +211,11 @@ export default function LogisticsLedgerPage() {
       }
     })
 
-    // Sort by date ascending, then by createdAt for entries with same date
+    // Sort by createdAt ASCENDING (oldest first) for running balance calculation
     const sortedAsc = [...transformedEntries].sort((a, b) => {
-      const dateDiff = new Date(a.date) - new Date(b.date)
-      if (dateDiff !== 0) return dateDiff
-      // If dates are equal, use createdAt as tiebreaker
-      return new Date(a.createdAt) - new Date(b.createdAt)
+      const createdAtA = new Date(a.createdAt || a.date || 0).getTime()
+      const createdAtB = new Date(b.createdAt || b.date || 0).getTime()
+      return createdAtA - createdAtB
     })
 
     // Calculate client-side running balance
@@ -275,6 +277,7 @@ export default function LogisticsLedgerPage() {
       return {
         id: entry._id || entry.id,
         date: entry.date || entry.createdAt,
+        createdAt: entry.createdAt, // Include createdAt for time component
         companyName,
         companyId: company._id || company.id,
         reference,
@@ -326,11 +329,13 @@ export default function LogisticsLedgerPage() {
         header: "Date",
         accessor: "date",
         render: (row) => {
-          if (!row.date) return "-";
-          const d = new Date(row.date);
-          const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+          // Use createdAt for time component if available, otherwise use date
+          const dateTime = row.createdAt || row.date;
+          if (!dateTime) return "-";
+          const d = new Date(dateTime);
+          const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true });
           const date = d.toLocaleDateString('en-GB');
-          return `${time} ${date}`;
+          return `${date} ${time}`;
         }
       },
       {
@@ -429,11 +434,13 @@ export default function LogisticsLedgerPage() {
         header: "Date",
         accessor: "date",
         render: (row) => {
-          if (!row.date) return "-";
-          const d = new Date(row.date);
-          const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+          // Use createdAt for time component if available, otherwise use date
+          const dateTime = row.createdAt || row.date;
+          if (!dateTime) return "-";
+          const d = new Date(dateTime);
+          const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true });
           const date = d.toLocaleDateString('en-GB');
-          return `${time} ${date}`;
+          return `${date} ${time}`;
         }
       }
     ]
@@ -559,11 +566,13 @@ export default function LogisticsLedgerPage() {
         header: "Date",
         accessor: "date",
         render: (row) => {
-          if (!row.date) return "-";
-          const d = new Date(row.date);
-          const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+          // Use createdAt for time component if available, otherwise use date
+          const dateTime = row.createdAt || row.date;
+          if (!dateTime) return "-";
+          const d = new Date(dateTime);
+          const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true });
           const date = d.toLocaleDateString('en-GB');
-          return `${time} ${date}`;
+          return `${date} ${time}`;
         }
       }
     ]
@@ -840,6 +849,7 @@ export default function LogisticsLedgerPage() {
                 enableSearch={true}
                 paginate={true}
                 pageSize={50}
+                disableSorting={true}
               />
             </div>
           </>

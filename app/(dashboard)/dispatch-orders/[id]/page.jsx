@@ -70,6 +70,7 @@ import ProductImageGallery from "@/components/ui/ProductImageGallery";
 import PacketCompositionView from "@/components/ui/PacketCompositionView";
 import ArrayInput from "@/components/ui/ArrayInput";
 import PacketConfigurationModal from "@/components/modals/PacketConfigurationModal";
+import StandaloneSupplierPaymentModal from "@/components/modals/StandaloneSupplierPaymentModal";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { SEASON_OPTIONS } from "@/lib/constants/seasons";
 
@@ -117,7 +118,7 @@ export default function DispatchOrderDetailPage({ params }) {
   const isAdmin = user?.role === 'admin';
 
   const [activeTab, setActiveTab] = useState("confirm");
-  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [returnQuantities, setReturnQuantities] = useState({});
   const [returnReasons, setReturnReasons] = useState({});
   const [cashPayment, setCashPayment] = useState("0");
@@ -125,11 +126,6 @@ export default function DispatchOrderDetailPage({ params }) {
   const [exchangeRate, setExchangeRate] = useState("1.0");
   const [percentage, setPercentage] = useState("0");
   const [returnNotes, setReturnNotes] = useState("");
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [paymentDate, setPaymentDate] = useState("");
-  const [paymentDescription, setPaymentDescription] = useState("");
-  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const [showAllReturnItems, setShowAllReturnItems] = useState(false);
 
   // Editable order fields state (supplier is NOT editable)
@@ -208,42 +204,6 @@ export default function DispatchOrderDetailPage({ params }) {
   const isPending = dispatchOrder?.status === "pending" || dispatchOrder?.status === "pending-approval";
   const canEdit = isPending; // Both pending and pending-approval can be edited
 
-  // Fetch supplier's total balance (for Add Payment form)
-  const { data: supplierLedgerData } = useQuery({
-    queryKey: ["supplier-total-balance", dispatchOrder?.supplier?._id],
-    queryFn: async () => {
-      if (!dispatchOrder || !dispatchOrder.supplier?._id) return null;
-      try {
-        const response = await ledgerAPI.getSupplierLedger(
-          dispatchOrder.supplier._id,
-          { limit: 1000 }
-        );
-        const backendResponse = response?.data || response;
-        const ledgerData = backendResponse?.data || backendResponse;
-        return {
-          totalRemainingBalance: ledgerData?.totalRemainingBalance || 0,
-          totalOutstandingBalance: ledgerData?.totalOutstandingBalance || 0,
-        };
-      } catch (error) {
-        console.error("Error fetching supplier total balance:", error);
-        return null;
-      }
-    },
-    enabled:
-      !!dispatchOrder &&
-      !!dispatchOrder.supplier?._id &&
-      showPaymentForm &&
-      isConfirmed,
-  });
-
-  // Calculate supplier's total balance
-  const supplierTotalBalance = useMemo(() => {
-    if (!supplierLedgerData) return 0;
-    return (
-      (supplierLedgerData.totalRemainingBalance || 0) -
-      (supplierLedgerData.totalOutstandingBalance || 0)
-    );
-  }, [supplierLedgerData]);
 
   // Initialize exchange rate and percentage from dispatch order or defaults
   useEffect(() => {
@@ -1133,89 +1093,6 @@ export default function DispatchOrderDetailPage({ params }) {
     isAdmin,
   ]);
 
-  const handleAddPayment = async () => {
-    const amount = parseFloat(paymentAmount);
-    if (!amount || amount <= 0) {
-      toast.error("Please enter a valid amount");
-      return;
-    }
-
-    if (!paymentMethod || !["cash", "bank"].includes(paymentMethod)) {
-      toast.error("Please select a valid payment method");
-      return;
-    }
-
-    setIsSubmittingPayment(true);
-
-    try {
-      // Calculate outstanding balance (supplier due) if payment exceeds remaining balance
-      const newRemainingBalance = remainingBalance - amount;
-      const outstandingBalance =
-        newRemainingBalance < 0 ? Math.abs(newRemainingBalance) : 0;
-      const finalRemainingBalance =
-        newRemainingBalance > 0 ? newRemainingBalance : 0;
-
-      await ledgerAPI.createEntry({
-        type: "supplier",
-        entityId: dispatchOrder.supplier._id,
-        entityModel: "Supplier",
-        transactionType: "payment",
-        referenceId: dispatchOrderId,
-        referenceModel: "DispatchOrder",
-        debit: 0,
-        credit: amount,
-        date: paymentDate ? new Date(paymentDate) : new Date(),
-        description:
-          paymentDescription ||
-          `Payment for Dispatch Order ${dispatchOrder.orderNumber} - ${paymentMethod}`,
-        paymentMethod: paymentMethod,
-        paymentDetails: {
-          cashPayment: paymentMethod === "cash" ? amount : 0,
-          bankPayment: paymentMethod === "bank" ? amount : 0,
-          remainingBalance: finalRemainingBalance,
-          outstandingBalance: outstandingBalance, // Supplier owes us this amount
-        },
-      });
-
-      toast.success("Payment recorded successfully");
-
-      // Reset form
-      setPaymentAmount("");
-      setPaymentMethod("cash");
-      setPaymentDate("");
-      setPaymentDescription("");
-      setShowPaymentForm(false);
-
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries(["dispatch-order", dispatchOrderId]);
-      queryClient.invalidateQueries([
-        "dispatch-order-payments",
-        dispatchOrderId,
-      ]);
-      queryClient.invalidateQueries(["dispatch-orders"]);
-      queryClient.invalidateQueries(["unpaid-dispatch-orders"]);
-    } catch (error) {
-      console.error("Error creating payment:", error);
-      console.error("Error response:", error.response?.data);
-      console.error("Payment payload sent:", {
-        amount,
-        remainingBalance,
-        outstandingBalance,
-        finalRemainingBalance,
-      });
-
-      // Show detailed error message
-      const errorMessage =
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        error.message ||
-        "Failed to record payment";
-
-      toast.error(errorMessage);
-    } finally {
-      setIsSubmittingPayment(false);
-    }
-  };
 
   const handleReturn = async () => {
     // Validate return quantities
@@ -2719,8 +2596,8 @@ export default function DispatchOrderDetailPage({ params }) {
                     <DollarSign className="h-5 w-5 text-amber-600" />
                     Payment Details
                   </CardTitle>
-                  {canAddPayment && !showPaymentForm && (
-                    <Button size="sm" onClick={() => setShowPaymentForm(true)}>
+                  {canAddPayment && !showPaymentModal && (
+                    <Button size="sm" onClick={() => setShowPaymentModal(true)}>
                       <Plus className="h-4 w-4 mr-2" />
                       Add Payment
                     </Button>
@@ -2776,28 +2653,18 @@ export default function DispatchOrderDetailPage({ params }) {
                     {(() => {
                       // Use the same calculation as Confirm Order section
                       const calculatedRemaining = confirmOrderSupplierCurrency.remainingBalance;
-                      const pendingAmount = parseFloat(paymentAmount) || 0;
-                      const previewRemaining = calculatedRemaining - pendingAmount;
-                      const displayRemaining = previewRemaining;
-                      const hasPreview = showPaymentForm && pendingAmount > 0;
                       return (
-                        <>
-                          <p
-                            className={`font-medium text-sm ${displayRemaining > 0
-                              ? "text-red-600"
-                              : "text-green-600"
-                              }`}
-                          >
-                            {Math.abs(displayRemaining).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </p>
-                          {hasPreview &&
-                            previewRemaining !== calculatedRemaining && (
-                              <p className="text-xs text-orange-500 mt-1"></p>
-                            )}
-                        </>
+                        <p
+                          className={`font-medium text-sm ${calculatedRemaining > 0
+                            ? "text-red-600"
+                            : "text-green-600"
+                            }`}
+                        >
+                          {Math.abs(calculatedRemaining).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </p>
                       );
                     })()}
                   </div>
@@ -2806,145 +2673,25 @@ export default function DispatchOrderDetailPage({ params }) {
             </Card>
           )}
 
-          {/* Add Payment Form */}
-          {showPaymentForm && canAddPayment && (
-            <Card className="bg-gradient-to-br from-indigo-50/80 to-blue-50/60 border-2 border-indigo-200">
-              <CardHeader className="bg-indigo-100/50 border-b border-indigo-200">
-                <CardTitle className="text-indigo-900">Add Payment</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 bg-white/40">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="payment-amount">
-                      Amount <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="payment-amount"
-                      type="text"
-                      inputMode="decimal"
-                      step="0.01"
-                      min="0.01"
-                      value={paymentAmount}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        // Allow only numbers and one decimal point
-                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                        setPaymentAmount(sanitized);
-                      }}
-                      placeholder="Enter amount"
-                      disabled={isSubmittingPayment}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {remainingBalance > 0
-                        ? `Remaining Balance: ${currency(Math.abs(remainingBalance))}`
-                        : supplierDue > 0
-                          ? `Fully paid. Outstanding Balance: ${currency(
-                            supplierDue
-                          )}`
-                          : "Fully paid"}
-                    </p>
-                    {supplierTotalBalance !== undefined && (
-                      <p className="text-xs font-semibold text-indigo-700 mt-2 pt-2 border-t border-indigo-200">
-                        Supplier Total Balance:{" "}
-                        <span
-                          className={
-                            supplierTotalBalance > 0
-                              ? "text-green-600"
-                              : supplierTotalBalance < 0
-                                ? "text-red-600"
-                                : "text-slate-600"
-                          }
-                        >
-                          {supplierTotalBalance > 0 ? "+" : ""}
-                          {currency(Math.abs(supplierTotalBalance))}
-                        </span>
-                        {supplierTotalBalance > 0 && (
-                          <span className="text-green-600 ml-1">
-                            (Admin owes supplier)
-                          </span>
-                        )}
-                        {supplierTotalBalance < 0 && (
-                          <span className="text-red-600 ml-1">
-                            (Supplier owes admin)
-                          </span>
-                        )}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <Label htmlFor="payment-method">
-                      Payment Method <span className="text-red-500">*</span>
-                    </Label>
-                    <Select
-                      value={paymentMethod}
-                      onValueChange={setPaymentMethod}
-                      disabled={isSubmittingPayment}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="bank">Bank Transfer</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="payment-date">Date</Label>
-                    <Input
-                      id="payment-date"
-                      type="date"
-                      value={paymentDate}
-                      onChange={(e) => setPaymentDate(e.target.value)}
-                      disabled={isSubmittingPayment}
-                      max={new Date().toISOString().split("T")[0]}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="payment-description">Description</Label>
-                    <Input
-                      id="payment-description"
-                      value={paymentDescription}
-                      onChange={(e) => setPaymentDescription(e.target.value)}
-                      placeholder="Optional description"
-                      disabled={isSubmittingPayment}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex gap-2">
-                <Button
-                  onClick={handleAddPayment}
-                  disabled={
-                    isSubmittingPayment ||
-                    !paymentAmount ||
-                    parseFloat(paymentAmount) <= 0
-                  }
-                >
-                  {isSubmittingPayment ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Recording...
-                    </>
-                  ) : (
-                    "Record Payment"
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowPaymentForm(false);
-                    setPaymentAmount("");
-                    setPaymentMethod("cash");
-                    setPaymentDate("");
-                    setPaymentDescription("");
-                  }}
-                  disabled={isSubmittingPayment}
-                >
-                  Cancel
-                </Button>
-              </CardFooter>
-            </Card>
+          {/* Standalone Supplier Payment Modal */}
+          {isConfirmed && dispatchOrder?.supplier && (
+            <StandaloneSupplierPaymentModal
+              open={showPaymentModal}
+              onClose={() => setShowPaymentModal(false)}
+              entityId={dispatchOrder.supplier._id}
+              entityName={dispatchOrder.supplier.name || dispatchOrder.supplier.company}
+              onSuccess={() => {
+                // Invalidate queries to refresh data
+                queryClient.invalidateQueries({ queryKey: ["dispatch-order", dispatchOrderId] });
+                queryClient.invalidateQueries({ queryKey: ["dispatch-order-payments", dispatchOrderId] });
+                queryClient.invalidateQueries({ queryKey: ["dispatch-orders"] });
+                queryClient.invalidateQueries({ queryKey: ["unpaid-dispatch-orders"] });
+                queryClient.invalidateQueries({ queryKey: ["pending-balances"] });
+                queryClient.invalidateQueries({ queryKey: ["ledger", "supplier"] });
+                queryClient.invalidateQueries({ queryKey: ["ledger"] });
+                queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+              }}
+            />
           )}
 
           {/* Payment History - Collapsible */}

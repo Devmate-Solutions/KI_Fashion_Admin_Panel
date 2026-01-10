@@ -41,9 +41,11 @@ export default function LogisticsPaymentModal({
   const searchInputRef = useRef(null)
   const dropdownRef = useRef(null)
 
+  const [transactionType, setTransactionType] = useState('credit')
   const [form, setForm] = useState({
     cashAmount: '',
     bankAmount: '',
+    debitAmount: '',
     date: '',
     notes: ''
   })
@@ -71,7 +73,8 @@ export default function LogisticsPaymentModal({
   // Reset form when modal opens/closes
   useEffect(() => {
     if (!open) {
-      setForm({ cashAmount: '', bankAmount: '', date: '', notes: '' })
+      setForm({ cashAmount: '', bankAmount: '', debitAmount: '', date: '', notes: '' })
+      setTransactionType('credit')
       setSearchQuery('')
       setShowSuggestions(false)
       if (!initialEntityId) {
@@ -111,7 +114,8 @@ export default function LogisticsPaymentModal({
 
   const cashAmount = parseFloat(form.cashAmount) || 0
   const bankAmount = parseFloat(form.bankAmount) || 0
-  const totalPayment = cashAmount + bankAmount
+  const debitAmount = parseFloat(form.debitAmount) || 0
+  const totalCreditPayment = cashAmount + bankAmount
 
   // Get entity details based on selection
   const selectedEntity = entities.find(e => (e._id || e.id) === selectedEntityId)
@@ -119,14 +123,18 @@ export default function LogisticsPaymentModal({
   const entityId = selectedEntityId || initialEntityId
 
   // Use the fetched detailed balance if available, otherwise fallback to entity balance or initialBalance
-  const totalBalance = companyDetail?.outstandingBalance !== undefined
-    ? companyDetail.outstandingBalance
-    : (selectedEntity?.balance
-      ? Math.abs(selectedEntity.balance)
-      : initialBalance)
+  // Only calculate balance if a company is selected
+  const totalBalance = entityId && entityId !== 'all'
+    ? (companyDetail?.outstandingBalance !== undefined
+      ? companyDetail.outstandingBalance
+      : (selectedEntity?.balance
+        ? Math.abs(selectedEntity.balance)
+        : initialBalance))
+    : 0
 
   const handleClose = () => {
-    setForm({ cashAmount: '', bankAmount: '', date: '', notes: '' })
+    setForm({ cashAmount: '', bankAmount: '', debitAmount: '', date: '', notes: '' })
+    setTransactionType('credit')
     setSearchQuery('')
     setShowSuggestions(false)
     if (!initialEntityId) {
@@ -148,41 +156,63 @@ export default function LogisticsPaymentModal({
       return
     }
 
-    if (totalPayment <= 0) {
-      toast.error('Please enter a payment amount')
+    if (!form.date) {
+      toast.error('Please select a date')
       return
+    }
+
+    if (transactionType === 'credit') {
+      if (totalCreditPayment <= 0) {
+        toast.error('Please enter a payment amount')
+        return
+      }
+    } else {
+      if (debitAmount <= 0) {
+        toast.error('Please enter a charge amount')
+        return
+      }
     }
 
     setIsSubmitting(true)
 
     try {
-      const paymentPromises = []
-
-      if (cashAmount > 0) {
-        paymentPromises.push(
-          ledgerAPI.distributeLogisticsPayment(entityId, {
+      if (transactionType === 'credit') {
+        // Credit transactions (payments)
+        // Process sequentially to avoid race conditions with pending charges
+        // Cash payment is processed first, then bank payment sees updated balances
+        if (cashAmount > 0) {
+          await ledgerAPI.distributeLogisticsPayment(entityId, {
             amount: cashAmount,
             paymentMethod: 'cash',
-            date: form.date || new Date().toISOString(),
+            date: form.date,
             description: form.notes || `Cash payment to ${entityName}`
           })
-        )
-      }
+        }
 
-      if (bankAmount > 0) {
-        paymentPromises.push(
-          ledgerAPI.distributeLogisticsPayment(entityId, {
+        if (bankAmount > 0) {
+          await ledgerAPI.distributeLogisticsPayment(entityId, {
             amount: bankAmount,
             paymentMethod: 'bank',
-            date: form.date || new Date().toISOString(),
+            date: form.date,
             description: form.notes || `Bank payment to ${entityName}`
           })
-        )
+        }
+
+        toast.success(`Payment of ${currency(totalCreditPayment)} recorded successfully`)
+      } else {
+        // Debit transactions (charges/adjustments)
+        await ledgerAPI.createEntry({
+          type: 'logistics',
+          entityId: entityId,
+          entityModel: 'LogisticsCompany',
+          transactionType: 'adjustment',
+          debit: debitAmount,
+          date: form.date,
+          description: form.notes || `Debit adjustment for ${entityName}`
+        })
+
+        toast.success(`Charge of ${currency(debitAmount)} recorded successfully`)
       }
-
-      await Promise.all(paymentPromises)
-
-      toast.success(`Payment of ${currency(totalPayment)} recorded successfully`)
 
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['pending-balances-logistics'] })
@@ -193,8 +223,8 @@ export default function LogisticsPaymentModal({
       handleClose()
       onSuccess?.()
     } catch (error) {
-      console.error('Error creating payment:', error)
-      toast.error(error.response?.data?.message || error.message || 'Failed to record payment')
+      console.error('Error creating transaction:', error)
+      toast.error(error.response?.data?.message || error.message || 'Failed to record transaction')
     } finally {
       setIsSubmitting(false)
     }
@@ -208,11 +238,44 @@ export default function LogisticsPaymentModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Truck className="h-5 w-5" />
-            Add Logistics Payment
+            {transactionType === 'credit' ? 'Add Logistics Payment' : 'Add Logistics Charge'}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Transaction Type Selector */}
+          <div className="space-y-2">
+            <Label>Transaction Type</Label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  value="credit"
+                  checked={transactionType === 'credit'}
+                  onChange={(e) => {
+                    setTransactionType('credit')
+                    setForm({ ...form, debitAmount: '' })
+                  }}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm">Credit (Payment to Company)</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  value="debit"
+                  checked={transactionType === 'debit'}
+                  onChange={(e) => {
+                    setTransactionType('debit')
+                    setForm({ ...form, cashAmount: '', bankAmount: '' })
+                  }}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm">Debit (Charge/Adjustment)</span>
+              </label>
+            </div>
+          </div>
+
           {/* Entity Selector - Text Search Input */}
           {showEntitySelector && (
             <div className="space-y-2">
@@ -279,106 +342,144 @@ export default function LogisticsPaymentModal({
                 <Label className="text-xs text-muted-foreground">Logistics Company</Label>
                 <p className="font-semibold">{entityName || 'Not selected'}</p>
               </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Total Outstanding (GBP)</Label>
-                <p className="font-semibold text-lg text-red-600">
-                  {isLoadingBalance ? (
-                    <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
-                  ) : (
-                    currency(totalBalance)
-                  )}
-                </p>
-              </div>
+              {transactionType === 'credit' && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Total Outstanding (GBP)</Label>
+                  <p className="font-semibold text-lg text-red-600">
+                    {isLoadingBalance ? (
+                      <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                    ) : entityId && entityId !== 'all' ? (
+                      currency(totalBalance)
+                    ) : (
+                      '-'
+                    )}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Cash Amount */}
-          <div className="space-y-2">
-            <Label htmlFor="cashAmount" className="flex items-center gap-2">
-              <Banknote className="h-4 w-4 text-green-600" />
-              Cash Amount (£)
-            </Label>
-            <Input
-              id="cashAmount"
-              type="text"
-              inputMode="decimal"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              value={form.cashAmount}
-              onChange={(e) => {
-                const value = e.target.value;
-                // Allow only numbers and one decimal point
-                const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                setForm({ ...form, cashAmount: sanitized });
-              }}
-              className="text-right"
-            />
-          </div>
-
-          {/* Bank Amount */}
-          <div className="space-y-2">
-            <Label htmlFor="bankAmount" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-blue-600" />
-              Bank Amount (£)
-            </Label>
-            <Input
-              id="bankAmount"
-              type="text"
-              inputMode="decimal"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              value={form.bankAmount}
-              onChange={(e) => {
-                const value = e.target.value;
-                // Allow only numbers and one decimal point
-                const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                setForm({ ...form, bankAmount: sanitized });
-              }}
-              className="text-right"
-            />
-          </div>
-
-          {/* Total Payment Display */}
-          {totalPayment > 0 && (
-            <div className={`rounded-lg border p-3 ${totalPayment > totalBalance && totalBalance > 0 ? 'bg-amber-50 border-amber-200' : 'bg-green-50'}`}>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Total Payment:</span>
-                <span className="text-lg font-bold text-green-700">{currency(totalPayment)}</span>
+          {/* Credit Form Fields */}
+          {transactionType === 'credit' && (
+            <>
+              {/* Cash Amount */}
+              <div className="space-y-2">
+                <Label htmlFor="cashAmount" className="flex items-center gap-2">
+                  <Banknote className="h-4 w-4 text-green-600" />
+                  Cash Amount (£)
+                </Label>
+                <Input
+                  id="cashAmount"
+                  type="text"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={form.cashAmount}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow only numbers and one decimal point
+                    const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                    setForm({ ...form, cashAmount: sanitized });
+                  }}
+                  className="text-right"
+                />
               </div>
-              {totalBalance > 0 && totalPayment <= totalBalance && (
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-xs text-muted-foreground">Remaining after payment:</span>
-                  <span className="text-sm font-medium">{currency(totalBalance - totalPayment)}</span>
+
+              {/* Bank Amount */}
+              <div className="space-y-2">
+                <Label htmlFor="bankAmount" className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-blue-600" />
+                  Bank Amount (£)
+                </Label>
+                <Input
+                  id="bankAmount"
+                  type="text"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={form.bankAmount}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow only numbers and one decimal point
+                    const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                    setForm({ ...form, bankAmount: sanitized });
+                  }}
+                  className="text-right"
+                />
+              </div>
+
+              {/* Total Payment Display */}
+              {totalCreditPayment > 0 && (
+                <div className={`rounded-lg border p-3 ${totalCreditPayment > totalBalance && totalBalance > 0 ? 'bg-amber-50 border-amber-200' : 'bg-green-50'}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Total Payment:</span>
+                    <span className="text-lg font-bold text-green-700">{currency(totalCreditPayment)}</span>
+                  </div>
+                  {totalBalance > 0 && totalCreditPayment <= totalBalance && (
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-xs text-muted-foreground">Remaining after payment:</span>
+                      <span className="text-sm font-medium">{currency(totalBalance - totalCreditPayment)}</span>
+                    </div>
+                  )}
+                  {totalBalance > 0 && totalCreditPayment > totalBalance && (
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-xs text-amber-700 font-medium">Credit to Company:</span>
+                      <span className="text-sm font-bold text-amber-700">{currency(totalCreditPayment - totalBalance)}</span>
+                    </div>
+                  )}
                 </div>
               )}
-              {totalBalance > 0 && totalPayment > totalBalance && (
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-xs text-amber-700 font-medium">Credit to Company:</span>
-                  <span className="text-sm font-bold text-amber-700">{currency(totalPayment - totalBalance)}</span>
-                </div>
-              )}
+            </>
+          )}
+
+          {/* Debit Form Fields */}
+          {transactionType === 'debit' && (
+            <div className="space-y-2">
+              <Label htmlFor="debitAmount" className="flex items-center gap-2">
+                <Banknote className="h-4 w-4 text-red-600" />
+                Charge Amount (£)
+              </Label>
+              <Input
+                id="debitAmount"
+                type="text"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={form.debitAmount}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow only numbers and one decimal point
+                  const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                  setForm({ ...form, debitAmount: sanitized });
+                }}
+                className="text-right"
+              />
             </div>
           )}
 
-          {/* Date (optional) */}
+          {/* Date (mandatory) */}
           <div className="space-y-2">
-            <Label htmlFor="date">Date (optional)</Label>
+            <Label htmlFor="date">
+              Date <span className="text-red-500">*</span>
+            </Label>
             <Input
               id="date"
               type="date"
+              required
               value={form.date}
               onChange={(e) => setForm({ ...form, date: e.target.value })}
             />
           </div>
 
-          {/* Notes (optional) */}
+          {/* Notes */}
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes (optional)</Label>
+            <Label htmlFor="notes">Notes</Label>
             <Textarea
               id="notes"
-              placeholder="Add any notes about this payment..."
+              placeholder={transactionType === 'credit' ? "Add any notes about this payment..." : "Add any notes about this charge..."}
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               rows={2}
@@ -392,8 +493,14 @@ export default function LogisticsPaymentModal({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isSubmitting || totalPayment <= 0 || !entityId}
-            className="bg-green-600 hover:bg-green-700"
+            disabled={
+              isSubmitting ||
+              !entityId ||
+              !form.date ||
+              (transactionType === 'credit' && totalCreditPayment <= 0) ||
+              (transactionType === 'debit' && debitAmount <= 0)
+            }
+            className={transactionType === 'credit' ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
           >
             {isSubmitting ? (
               <>
@@ -401,7 +508,7 @@ export default function LogisticsPaymentModal({
                 Processing...
               </>
             ) : (
-              'Submit Payment'
+              transactionType === 'credit' ? 'Submit Payment' : 'Submit Charge'
             )}
           </Button>
         </DialogFooter>

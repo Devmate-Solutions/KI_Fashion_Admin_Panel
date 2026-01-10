@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,8 @@ import { Loader2, CreditCard, Banknote, Wallet } from "lucide-react"
 import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { useQueryClient } from "@tanstack/react-query"
 import toast from "react-hot-toast"
+import { useAllSuppliers } from "@/lib/hooks/useSuppliers"
+import { useAllSupplierLedgers } from "@/lib/hooks/useLedger"
 
 // Supplier amount format (no currency symbol - each supplier has own currency)
 function formatAmount(n) {
@@ -18,23 +20,19 @@ function formatAmount(n) {
 }
 
 /**
- * SupplierPaymentModal
- * Modal for recording payments (credit) and charges (debit) to suppliers
+ * StandaloneSupplierPaymentModal
+ * Independent modal for recording payments (credit) and charges (debit) to suppliers
+ * Fetches all required data internally (suppliers, ledger entries, balances)
  * Supports both cash and bank payments for credit transactions
  * Simplified form for debit transactions (single amount + notes)
  */
-export default function SupplierPaymentModal({
+export default function StandaloneSupplierPaymentModal({
     open,
     onClose,
     entityId: initialEntityId,
     entityName: initialEntityName,
-    totalBalance: initialBalance = 0,
-    ledgerBalance: parentLedgerBalance,
-    ledgerBalanceSupplierId: parentLedgerBalanceSupplierId,
-    supplierBalanceMap = {},
-    entities = [],
+    totalBalance: initialBalance = 0, // Optional fallback
     onSuccess,
-    allLedgerData
 }) {
     const queryClient = useQueryClient()
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -51,6 +49,79 @@ export default function SupplierPaymentModal({
         date: '',
         notes: ''
     })
+
+    // Fetch suppliers internally
+    const { data: allSuppliers = [], isLoading: suppliersLoading } = useAllSuppliers({ 
+        limit: 100 
+    })
+
+    // Fetch all ledger entries internally
+    const { data: allLedgerData, isLoading: ledgerLoading } = useAllSupplierLedgers({ 
+        limit: 1000 
+    })
+
+    // Calculate supplier balance map internally
+    const supplierBalanceMap = useMemo(() => {
+        const balanceMap = {}
+
+        // Step 1: Calculate per-supplier balances from raw ledger entries
+        if (allLedgerData?.entries && allLedgerData.entries.length > 0) {
+            // Filter to only include purchase, payment, and return entries
+            const relevantEntries = allLedgerData.entries.filter(entry =>
+                entry.transactionType === 'purchase' ||
+                entry.transactionType === 'payment' ||
+                entry.transactionType === 'return'
+            )
+
+            // Group entries by supplier and calculate individual running balances
+            const supplierEntriesMap = {}
+
+            for (const entry of relevantEntries) {
+                const supplier = entry.entityId || {}
+                const supplierId = supplier._id?.toString() || supplier.id?.toString() || entry.entityId?.toString()
+
+                if (!supplierId) continue
+
+                if (!supplierEntriesMap[supplierId]) {
+                    supplierEntriesMap[supplierId] = []
+                }
+                supplierEntriesMap[supplierId].push(entry)
+            }
+
+            // Calculate running balance for each supplier
+            for (const [supplierId, entries] of Object.entries(supplierEntriesMap)) {
+                // Sort by createdAt ascending (oldest first)
+                entries.sort((a, b) => {
+                    const createdAtA = new Date(a.createdAt || a.date || 0).getTime()
+                    const createdAtB = new Date(b.createdAt || b.date || 0).getTime()
+                    return createdAtA - createdAtB
+                })
+
+                // Calculate running balance (debit increases, credit decreases)
+                let runningBalance = 0
+                for (const entry of entries) {
+                    runningBalance = runningBalance + (Number(entry.debit) || 0) - (Number(entry.credit) || 0)
+                }
+
+                balanceMap[supplierId] = runningBalance
+            }
+        }
+
+        // Step 2: Fill in missing suppliers from allSuppliers
+        // This ensures ALL suppliers have a balance, even if they have no ledger entries
+        if (allSuppliers && allSuppliers.length > 0) {
+            for (const supplier of allSuppliers) {
+                const supplierId = String(supplier._id || supplier.id)
+                // Only add if not already in map (ledger data takes priority)
+                if (balanceMap[supplierId] === undefined) {
+                    // Use the balance from the supplier object (from API)
+                    balanceMap[supplierId] = supplier.balance || 0
+                }
+            }
+        }
+
+        return balanceMap
+    }, [allLedgerData, allSuppliers])
 
     // Set default date to today when modal opens
     useEffect(() => {
@@ -82,7 +153,7 @@ export default function SupplierPaymentModal({
 
     // Filter entities based on search query
     const filteredEntities = searchQuery.trim()
-        ? entities.filter((entity) => {
+        ? allSuppliers.filter((entity) => {
             const entityName = (entity.name || '').toLowerCase()
             const entityCompany = (entity.company || '').toLowerCase()
             const query = searchQuery.toLowerCase()
@@ -114,35 +185,37 @@ export default function SupplierPaymentModal({
     const debitAmount = parseFloat(form.debitAmount) || 0
     const totalCreditPayment = cashAmount + bankAmount
 
-    // Get entity details based on selection (already using entities from parent)
-    const selectedEntity = entities.find(e => (e._id || e.id) === selectedEntityId || String(e.id) === selectedEntityId)
+    // Get entity details based on selection (using fetched allSuppliers)
+    const selectedEntity = allSuppliers.find(e => (e._id || e.id) === selectedEntityId || String(e.id) === selectedEntityId)
     const entityName = selectedEntity?.name || selectedEntity?.company || initialEntityName || ''
     const entityId = selectedEntityId || initialEntityId
 
     // Calculate totalBalance with priority:
-    // 1. supplierBalanceMap (from allLedgerTransactions - same as parent page)
-    // 2. parentLedgerBalance (if for current supplier)
-    // 3. selectedEntity.balance (from entities array)
-    // 4. initialBalance (fallback)
+    // 1. supplierBalanceMap (from calculated balances)
+    // 2. selectedEntity.balance (from allSuppliers array)
+    // 3. initialBalance (fallback)
+    const totalBalance = useMemo(() => {
+        if (!selectedEntityId) {
+            return Math.abs(initialBalance || 0)
+        }
 
-    // Priority 1: Use balance from supplierBalanceMap (same calculation as parent page)
-    const balanceFromMap = selectedEntityId ? supplierBalanceMap[String(selectedEntityId)] : null
+        // Priority 1: Use balance from supplierBalanceMap
+        const balanceFromMap = supplierBalanceMap[String(selectedEntityId)]
+        if (balanceFromMap !== undefined && balanceFromMap !== null) {
+            return Math.abs(balanceFromMap)
+        }
 
-    // Priority 2: Use parentLedgerBalance if it's for the currently selected supplier
-    const shouldUseParentBalance = parentLedgerBalanceSupplierId &&
-        selectedEntityId &&
-        String(parentLedgerBalanceSupplierId) === String(selectedEntityId) &&
-        parentLedgerBalance !== undefined &&
-        parentLedgerBalance !== null &&
-        balanceFromMap === undefined
+        // Priority 2: Use selectedEntity.balance from allSuppliers
+        if (selectedEntity?.balance !== undefined && selectedEntity?.balance !== null) {
+            return Math.abs(selectedEntity.balance)
+        }
 
-    const totalBalance = balanceFromMap !== undefined && balanceFromMap !== null
-        ? Math.abs(balanceFromMap)
-        : (shouldUseParentBalance
-            ? Math.abs(parentLedgerBalance)
-            : (selectedEntity?.balance !== undefined && selectedEntity?.balance !== null
-                ? Math.abs(selectedEntity.balance)
-                : Math.abs(initialBalance || 0)))
+        // Priority 3: initialBalance fallback
+        return Math.abs(initialBalance || 0)
+    }, [selectedEntityId, supplierBalanceMap, selectedEntity, initialBalance])
+
+    const isLoading = suppliersLoading || ledgerLoading
+
     const handleClose = () => {
         setForm({ cashAmount: '', bankAmount: '', debitAmount: '', date: '', notes: '' })
         setTransactionType('credit')
@@ -242,8 +315,8 @@ export default function SupplierPaymentModal({
         }
     }
 
-    // Always show selector if we have entities, unless entityId is pre-set
-    const showEntitySelector = entities.length > 0
+    // Always show selector if we have suppliers, unless entityId is pre-set
+    const showEntitySelector = allSuppliers.length > 0
 
 
     return (
@@ -255,46 +328,17 @@ export default function SupplierPaymentModal({
                         {transactionType === 'credit' ? 'Add Supplier Payment' : 'Add Supplier Charge'}
                     </DialogTitle>
                 </DialogHeader>
-                <div>
-                    {/* {JSON.stringify(entities)} */}
-                </div>
                 <div className="space-y-4 py-4">
-                    {/* Transaction Type Selector */}
-                    {/* <div className="space-y-2">
-                        <Label>Transaction Type</Label>
-                        <div className="flex gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    value="credit"
-                                    checked={transactionType === 'credit'}
-                                    onChange={(e) => {
-                                        setTransactionType('credit')
-                                        setForm({ ...form, debitAmount: '' })
-                                    }}
-                                    className="w-4 h-4"
-                                />
-                                <span className="text-sm">Credit (Payment to Supplier)</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    value="debit"
-                                    checked={transactionType === 'debit'}
-                                    onChange={(e) => {
-                                        setTransactionType('debit')
-                                        setForm({ ...form, cashAmount: '', bankAmount: '' })
-                                    }}
-                                    className="w-4 h-4"
-                                />
-                                <span className="text-sm">Debit (Charge/Adjustment)</span>
-                            </label>
+                    {/* Loading State */}
+                    {isLoading && (
+                        <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
+                            <span className="text-sm text-muted-foreground">Loading suppliers and ledger data...</span>
                         </div>
-                    </div> */}
-                    {/* {JSON.stringify(entities)} */}
+                    )}
 
                     {/* Entity Selector - Text Search Input */}
-                    {showEntitySelector && (
+                    {!isLoading && showEntitySelector && (
                         <div className="space-y-2">
                             <Label htmlFor="entity-search">Select Supplier</Label>
                             <div className="relative">
@@ -314,6 +358,7 @@ export default function SupplierPaymentModal({
                                             setShowSuggestions(true)
                                         }
                                     }}
+                                    disabled={isSubmitting}
                                 />
                                 {showSuggestions && filteredEntities.length > 0 && (
                                     <div
@@ -354,23 +399,25 @@ export default function SupplierPaymentModal({
                     )}
 
                     {/* Entity Info */}
-                    <div className="rounded-lg border bg-muted/30 p-4">
-                        <div className="space-y-2">
-                            <div>
-                                <Label className="text-xs text-muted-foreground">Supplier</Label>
-                                <p className="font-semibold">{entityName || 'Not selected'}</p>
-                            </div>
-                            {transactionType === 'credit' && (
+                    {!isLoading && (
+                        <div className="rounded-lg border bg-muted/30 p-4">
+                            <div className="space-y-2">
                                 <div>
-                                    <Label className="text-xs text-muted-foreground">Total Outstanding</Label>
-                                    <p className="font-semibold text-lg text-red-600">{formatAmount(totalBalance)}</p>
+                                    <Label className="text-xs text-muted-foreground">Supplier</Label>
+                                    <p className="font-semibold">{entityName || 'Not selected'}</p>
                                 </div>
-                            )}
+                                {transactionType === 'credit' && (
+                                    <div>
+                                        <Label className="text-xs text-muted-foreground">Total Outstanding</Label>
+                                        <p className="font-semibold text-lg text-red-600">{formatAmount(totalBalance)}</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Credit Form Fields */}
-                    {transactionType === 'credit' && (
+                    {!isLoading && transactionType === 'credit' && (
                         <>
                             {/* Cash Amount */}
                             <div className="space-y-2">
@@ -392,6 +439,7 @@ export default function SupplierPaymentModal({
                                         setForm({ ...form, cashAmount: sanitized });
                                     }}
                                     className="text-right"
+                                    disabled={isSubmitting}
                                 />
                             </div>
 
@@ -415,6 +463,7 @@ export default function SupplierPaymentModal({
                                         setForm({ ...form, bankAmount: sanitized });
                                     }}
                                     className="text-right"
+                                    disabled={isSubmitting}
                                 />
                             </div>
 
@@ -442,65 +491,47 @@ export default function SupplierPaymentModal({
                         </>
                     )}
 
-                    {/* Debit Form Fields - Simplified */}
-                    {/* {transactionType === 'debit' && (
+                    {/* Date (mandatory) */}
+                    {!isLoading && (
                         <div className="space-y-2">
-                            <Label htmlFor="debitAmount" className="flex items-center gap-2">
-                                <Banknote className="h-4 w-4 text-red-600" />
-                                Charge Amount
+                            <Label htmlFor="date">
+                                Date <span className="text-red-500">*</span>
                             </Label>
                             <Input
-                                id="debitAmount"
-                                type="text"
-                                inputMode="decimal"
-                                min="0"
-                                step="0.01"
-                                placeholder="0.00"
-                                value={form.debitAmount}
-                                onChange={(e) => {
-                                    const value = e.target.value;
-                                    const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                                    setForm({ ...form, debitAmount: sanitized });
-                                }}
-                                className="text-right"
+                                id="date"
+                                type="date"
+                                required
+                                value={form.date}
+                                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                                disabled={isSubmitting}
                             />
                         </div>
-                    )} */}
-
-                    {/* Date (mandatory) */}
-                    <div className="space-y-2">
-                        <Label htmlFor="date">
-                            Date <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                            id="date"
-                            type="date"
-                            required
-                            value={form.date}
-                            onChange={(e) => setForm({ ...form, date: e.target.value })}
-                        />
-                    </div>
+                    )}
 
                     {/* Notes */}
-                    <div className="space-y-2">
-                        <Label htmlFor="notes">Notes</Label>
-                        <Textarea
-                            id="notes"
-                            placeholder={transactionType === 'credit' ? "Add any notes about this payment..." : "Add any notes about this charge..."}
-                            value={form.notes}
-                            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                            rows={2}
-                        />
-                    </div>
+                    {!isLoading && (
+                        <div className="space-y-2">
+                            <Label htmlFor="notes">Notes</Label>
+                            <Textarea
+                                id="notes"
+                                placeholder={transactionType === 'credit' ? "Add any notes about this payment..." : "Add any notes about this charge..."}
+                                value={form.notes}
+                                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                                rows={2}
+                                disabled={isSubmitting}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
+                    <Button variant="outline" onClick={handleClose} disabled={isSubmitting || isLoading}>
                         Cancel
                     </Button>
                     <Button
                         onClick={handleSubmit}
                         disabled={
+                            isLoading ||
                             isSubmitting ||
                             !entityId ||
                             !form.date ||
@@ -523,3 +554,4 @@ export default function SupplierPaymentModal({
         </Dialog>
     )
 }
+
