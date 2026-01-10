@@ -902,38 +902,73 @@ export default function SupplierLedgerPage() {
     return allLedgerData?.totalBalance || 0
   }, [allLedgerTransactions, allLedgerData])
 
-  // Create a map of supplier balances from allLedgerTransactions (same source as calculatedTotalBalance)
-  // This ensures the modal uses the exact same balance calculation as the parent page
+  // This calculates per-supplier running balances for use in the payment modal
+  // IMPORTANT: We must calculate each supplier's balance independently, not use the global running balance
   const supplierBalanceMap = useMemo(() => {
     const balanceMap = {}
 
-    if (!allLedgerTransactions || allLedgerTransactions.length === 0) {
-      return balanceMap
+    // Step 1: Calculate per-supplier balances from raw ledger entries
+    // We need the raw entries from allLedgerData, not allLedgerTransactions which has global running balance
+    if (allLedgerData?.entries && allLedgerData.entries.length > 0) {
+      // Filter to only include purchase, payment, and return entries
+      const relevantEntries = allLedgerData.entries.filter(entry =>
+        entry.transactionType === 'purchase' ||
+        entry.transactionType === 'payment' ||
+        entry.transactionType === 'return'
+      )
+
+      // Group entries by supplier and calculate individual running balances
+      const supplierEntriesMap = {}
+
+      for (const entry of relevantEntries) {
+        const supplier = entry.entityId || {}
+        const supplierId = supplier._id?.toString() || supplier.id?.toString() || entry.entityId?.toString()
+
+        if (!supplierId) continue
+
+        if (!supplierEntriesMap[supplierId]) {
+          supplierEntriesMap[supplierId] = []
+        }
+        supplierEntriesMap[supplierId].push(entry)
+      }
+
+      // Calculate running balance for each supplier
+      for (const [supplierId, entries] of Object.entries(supplierEntriesMap)) {
+        // Sort by createdAt ascending (oldest first)
+        entries.sort((a, b) => {
+          const createdAtA = new Date(a.createdAt || a.date || 0).getTime()
+          const createdAtB = new Date(b.createdAt || b.date || 0).getTime()
+          return createdAtA - createdAtB
+        })
+
+        // Calculate running balance (debit increases, credit decreases)
+        let runningBalance = 0
+        for (const entry of entries) {
+          runningBalance = runningBalance + (Number(entry.debit) || 0) - (Number(entry.credit) || 0)
+        }
+
+        balanceMap[supplierId] = runningBalance
+      }
     }
 
-    // Sort by date descending to get latest entries first
-    const sortedEntries = [...allLedgerTransactions].sort((a, b) => {
-      const dateA = new Date(a.date || a.raw?.date || 0)
-      const dateB = new Date(b.date || b.raw?.date || 0)
-      if (dateA.getTime() !== dateB.getTime()) {
-        return dateB.getTime() - dateA.getTime()
-      }
-      // If dates are equal, sort by createdAt
-      const createdAtA = new Date(a.raw?.createdAt || 0)
-      const createdAtB = new Date(b.raw?.createdAt || 0)
-      return createdAtB.getTime() - createdAtA.getTime()
-    })
-
-    // Get the latest balance for each supplier
-    for (const entry of sortedEntries) {
-      const supplierId = entry.supplierId?.toString() || entry.raw?.entityId?.toString() || entry.raw?.entityId?._id?.toString()
-      if (supplierId && balanceMap[supplierId] === undefined) {
-        balanceMap[supplierId] = entry.balance || 0
+    // Step 2: Fill in missing suppliers from dropdownSuppliers
+    // This ensures ALL suppliers have a balance, even if they have no ledger entries
+    if (dropdownSuppliers && dropdownSuppliers.length > 0) {
+      for (const supplier of dropdownSuppliers) {
+        const supplierId = String(supplier._id || supplier.id)
+        // Only add if not already in map (ledger data takes priority)
+        if (balanceMap[supplierId] === undefined) {
+          // Use the balance from the supplier object (from API)
+          balanceMap[supplierId] = supplier.balance || 0
+        }
       }
     }
+
+    console.log('📊 Complete Supplier Balance Map:', balanceMap)
+    console.log('📊 dropdownSuppliers sample:', dropdownSuppliers?.[0])
 
     return balanceMap
-  }, [allLedgerTransactions])
+  }, [allLedgerData, dropdownSuppliers])
 
   // Calculate balance for modal - use the same calculation as calculatedTotalBalance
   const balanceForModal = useMemo(() => {
@@ -1844,14 +1879,16 @@ export default function SupplierLedgerPage() {
         onTabChange={setActiveTab}
       />
 
-      {/* Supplier Payment Modal */}
       <SupplierPaymentModal
         open={universalPaymentOpen}
         onClose={() => setUniversalPaymentOpen(false)}
         entityId={selectedSupplierId !== 'all' ? selectedSupplierId : ''}
+        allLedgerData={allLedgerData}
         entityName={
           selectedSupplierId !== 'all'
-            ? (dropdownSuppliers.find(s => String(s.id) === selectedSupplierId)?.name || 'Supplier')
+            ? (dropdownSuppliers.find(s => String(s.id) === selectedSupplierId)?.name ||
+              dropdownSuppliers.find(s => String(s.id) === selectedSupplierId)?.company ||
+              'Supplier')
             : ''
         }
         totalBalance={

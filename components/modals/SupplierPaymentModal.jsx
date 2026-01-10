@@ -33,7 +33,8 @@ export default function SupplierPaymentModal({
     ledgerBalanceSupplierId: parentLedgerBalanceSupplierId,
     supplierBalanceMap = {},
     entities = [],
-    onSuccess
+    onSuccess,
+    allLedgerData
 }) {
     const queryClient = useQueryClient()
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -262,10 +263,12 @@ export default function SupplierPaymentModal({
                         {transactionType === 'credit' ? 'Add Supplier Payment' : 'Add Supplier Charge'}
                     </DialogTitle>
                 </DialogHeader>
-
+                <div>
+                    {/* {JSON.stringify(entities)} */}
+                </div>
                 <div className="space-y-4 py-4">
                     {/* Transaction Type Selector */}
-                    <div className="space-y-2">
+                    {/* <div className="space-y-2">
                         <Label>Transaction Type</Label>
                         <div className="flex gap-4">
                             <label className="flex items-center gap-2 cursor-pointer">
@@ -295,7 +298,7 @@ export default function SupplierPaymentModal({
                                 <span className="text-sm">Debit (Charge/Adjustment)</span>
                             </label>
                         </div>
-                    </div>
+                    </div> */}
                     {/* {JSON.stringify(entities)} */}
 
                     {/* Entity Selector - Text Search Input */}
@@ -448,7 +451,7 @@ export default function SupplierPaymentModal({
                     )}
 
                     {/* Debit Form Fields - Simplified */}
-                    {transactionType === 'debit' && (
+                    {/* {transactionType === 'debit' && (
                         <div className="space-y-2">
                             <Label htmlFor="debitAmount" className="flex items-center gap-2">
                                 <Banknote className="h-4 w-4 text-red-600" />
@@ -470,7 +473,7 @@ export default function SupplierPaymentModal({
                                 className="text-right"
                             />
                         </div>
-                    )}
+                    )} */}
 
                     {/* Date (mandatory) */}
                     <div className="space-y-2">
