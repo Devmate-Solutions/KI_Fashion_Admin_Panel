@@ -363,7 +363,10 @@ export default function SupplierPaymentModal({
                             {transactionType === 'credit' && (
                                 <div>
                                     <Label className="text-xs text-muted-foreground">Total Outstanding</Label>
-                                    <p className="font-semibold text-lg text-red-600">{formatAmount(totalBalance)}</p>
+                                    <p className={`text-lg font-bold ${(totalBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {formatAmount(totalBalance)}
+                                    </p>
+
                                 </div>
                             )}
                         </div>

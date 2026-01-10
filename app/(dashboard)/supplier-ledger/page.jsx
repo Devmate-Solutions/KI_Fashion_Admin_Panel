@@ -880,6 +880,7 @@ export default function SupplierLedgerPage() {
         referenceModel: entry.referenceModel || '-',
         paymentMethod: entry.paymentMethod || null,
         paymentDetails: entry.paymentDetails || null,
+        entryNumber: entry.entryNumber || '-',
         raw: entry
       }
     })
@@ -1022,6 +1023,13 @@ export default function SupplierLedgerPage() {
         accessor: "supplier",
         render: (row) => (
           <span className="font-medium">{row.supplier}</span>
+        )
+      },
+      {
+        header: "Entry Number",
+        accessor: "entryNumber",
+        render: (row) => (
+          <span className="font-medium">{row.entryNumber}</span>
         )
       },
       {
@@ -1198,7 +1206,7 @@ export default function SupplierLedgerPage() {
                 <p className="text-sm text-muted-foreground">
                   {ledgerSupplierFilter === 'all' ? 'Total Balance (All Suppliers)' : 'Supplier Balance'}
                 </p>
-                <p className={`text-2xl font-bold ${(calculatedTotalBalance || 0) >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                <p className={`text-2xl font-bold ${(calculatedTotalBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {formatNumber(Math.abs(calculatedTotalBalance || 0))}
                 </p>
               </div>
