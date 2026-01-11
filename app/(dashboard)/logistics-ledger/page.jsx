@@ -152,6 +152,8 @@ export default function LogisticsLedgerPage() {
         filteredEntries = filteredEntries.filter(e => e.transactionType === 'payment' && e.paymentMethod === 'cash')
       } else if (ledgerTypeFilter === 'bank') {
         filteredEntries = filteredEntries.filter(e => e.transactionType === 'payment' && e.paymentMethod === 'bank')
+      } else if (ledgerTypeFilter === 'adjustment') {
+        filteredEntries = filteredEntries.filter(e => e.transactionType === 'adjustment')
       }
     }
 
@@ -773,6 +775,7 @@ export default function LogisticsLedgerPage() {
                     <SelectItem value="charge">Logistics Charges</SelectItem>
                     <SelectItem value="cash">Payments - Cash</SelectItem>
                     <SelectItem value="bank">Payments - Bank</SelectItem>
+                    <SelectItem value="adjustment">Debit Adjustment</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

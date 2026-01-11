@@ -1113,7 +1113,7 @@ export default function SupplierLedgerPage() {
         render: (row) => (
           row.referenceId ? (
             <Link
-              href={`/dispatch-orders/${row.referenceId}`}
+              href={`/dispatch-orders/${row.raw.referenceModel === 'Return' ? row.raw.referenceId.dispatchOrderId : row.referenceId}`}
               className="font-medium text-blue-600 hover:underline"
             >
               {row.reference || '-'}

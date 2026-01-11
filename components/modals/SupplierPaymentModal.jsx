@@ -14,7 +14,9 @@ import toast from "react-hot-toast"
 // Supplier amount format (no currency symbol - each supplier has own currency)
 function formatAmount(n) {
     const num = Number(n || 0)
-    return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+    // return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    return num.toFixed(2)
 }
 
 /**
@@ -137,12 +139,12 @@ export default function SupplierPaymentModal({
         balanceFromMap === undefined
 
     const totalBalance = balanceFromMap !== undefined && balanceFromMap !== null
-        ? Math.abs(balanceFromMap)
+        ? balanceFromMap
         : (shouldUseParentBalance
-            ? Math.abs(parentLedgerBalance)
+            ? parentLedgerBalance
             : (selectedEntity?.balance !== undefined && selectedEntity?.balance !== null
-                ? Math.abs(selectedEntity.balance)
-                : Math.abs(initialBalance || 0)))
+                ? selectedEntity.balance
+                : initialBalance))
     const handleClose = () => {
         setForm({ cashAmount: '', bankAmount: '', debitAmount: '', date: '', notes: '' })
         setTransactionType('credit')
@@ -363,8 +365,18 @@ export default function SupplierPaymentModal({
                             {transactionType === 'credit' && (
                                 <div>
                                     <Label className="text-xs text-muted-foreground">Total Outstanding</Label>
-                                    <p className={`text-lg font-bold ${(totalBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                        {formatAmount(totalBalance)}
+                                    <p className={`text-lg font-bold ${(() => {
+                                        // Check original balance before Math.abs to determine color
+                                        const originalBalance = balanceFromMap !== undefined && balanceFromMap !== null
+                                            ? balanceFromMap
+                                            : (shouldUseParentBalance
+                                                ? parentLedgerBalance
+                                                : (selectedEntity?.balance !== undefined && selectedEntity?.balance !== null
+                                                    ? selectedEntity.balance
+                                                    : initialBalance || 0));
+                                        return originalBalance > 0 ? 'text-red-600' : 'text-green-600';
+                                    })()}`}>
+                                        {formatAmount(totalBalance)} 
                                     </p>
 
                                 </div>
