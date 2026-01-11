@@ -1271,10 +1271,10 @@ export default function LogisticsLedgerPage() {
       label: "Ledger",
       content: ledgerTabContent,
     },
-    {
-      label: "Pending Payments",
-      content: pendingPaymentsContent,
-    },
+    // {
+    //   label: "Pending Payments",
+    //   content: pendingPaymentsContent,
+    // },
     {
       label: "Payment History",
       content: paymentHistoryTabContent,
@@ -1324,8 +1324,9 @@ export default function LogisticsLedgerPage() {
             ? (allCompanies.find(c => (c._id || c.id) === selectedCompanyId)?.name || 'Company')
             : ''
         }
-        totalBalance={Math.abs(allLedgerData?.totalBalance || 0)}
+        totalBalance={(calculatedTotalBalance || 0)}
         entities={allCompanies}
+        data={allLedgerTransactions}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['pending-balances-logistics'] })
           queryClient.invalidateQueries({ queryKey: ['ledger', 'logistics'] })

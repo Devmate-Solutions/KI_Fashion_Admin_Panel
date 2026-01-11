@@ -11,6 +11,8 @@ import { Loader2, CreditCard, Banknote, Truck } from "lucide-react"
 import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { useQueryClient } from "@tanstack/react-query"
 import { useLogisticsPayableDetail } from "@/lib/hooks/useLogisticsPayables"
+import { useLogisticsLedger } from "@/lib/hooks/useLedger"
+import { useMemo } from "react"
 import toast from "react-hot-toast"
 
 // Logistics currency format (GBP - Pounds)
@@ -60,8 +62,14 @@ export default function LogisticsPaymentModal({
     }
   }, [open])
 
-  // Fetch detailed balance for the selected company
-  const { data: companyDetail, isLoading: isLoadingBalance } = useLogisticsPayableDetail(
+  // Fetch ledger data for the selected company (this gives us the accurate balance)
+  const { data: ledgerData, isLoading: isLoadingLedger } = useLogisticsLedger(
+    selectedEntityId && selectedEntityId !== 'all' ? selectedEntityId : null,
+    { limit: 1000 }
+  )
+
+  // Fetch detailed balance for the selected company (for reference only, not used for balance calculation)
+  const { data: companyDetail, isLoading: isLoadingPayableDetail } = useLogisticsPayableDetail(
     selectedEntityId && selectedEntityId !== 'all' ? selectedEntityId : null
   )
 
@@ -126,15 +134,58 @@ export default function LogisticsPaymentModal({
   const entityName = selectedEntity?.name || selectedEntity?.company || initialEntityName || ''
   const entityId = selectedEntityId || initialEntityId
 
-  // Use the fetched detailed balance if available, otherwise fallback to entity balance or initialBalance
+  // Calculate balance from ledger entries using the same method as the main page
+  // This matches the running balance calculation used in the logistics ledger page
+  const ledgerBalance = useMemo(() => {
+    if (!ledgerData?.entries || ledgerData.entries.length === 0) {
+      return null  // Return null to indicate no data available
+    }
+    
+    // Filter entries to only include relevant transaction types (same as main page)
+    const filteredEntries = ledgerData.entries.filter(entry =>
+      entry.transactionType === 'charge' ||
+      entry.transactionType === 'payment' ||
+      entry.transactionType === 'adjustment'
+    )
+    
+    if (filteredEntries.length === 0) {
+      return null
+    }
+    
+    // Sort by createdAt ASCENDING (oldest first) for running balance calculation (same as main page)
+    const sortedAsc = [...filteredEntries].sort((a, b) => {
+      const createdAtA = new Date(a.createdAt || a.date || 0).getTime()
+      const createdAtB = new Date(b.createdAt || b.date || 0).getTime()
+      return createdAtA - createdAtB
+    })
+    
+    // Calculate running balance (same method as main page)
+    // Debit = charge (increases what admin owes), Credit = payment (decreases what admin owes)
+    let runningBalance = 0
+    for (const entry of sortedAsc) {
+      runningBalance += (Number(entry.debit) || 0) - (Number(entry.credit) || 0)
+    }
+    
+    return runningBalance
+  }, [ledgerData])
+
+  // Calculate total balance: prioritize calculated balance from ledger entries (matches main page)
+  // Fallback to initialBalance prop, then other sources
   // Only calculate balance if a company is selected
   const totalBalance = entityId && entityId !== 'all'
-    ? (companyDetail?.outstandingBalance !== undefined
-      ? companyDetail.outstandingBalance
-      : (selectedEntity?.balance
-        ? Math.abs(selectedEntity.balance)
-        : initialBalance))
+    ? (ledgerBalance !== null
+      ? ledgerBalance  // Use calculated balance from ledger entries (matches main page calculation)
+      : (initialBalance !== undefined && initialBalance !== null
+        ? initialBalance  // Fallback to balance from main page prop
+        : (companyDetail?.outstandingBalance !== undefined
+          ? companyDetail.outstandingBalance
+          : (selectedEntity?.balance !== undefined
+            ? Math.abs(selectedEntity.balance)
+            : 0))))
     : 0
+
+  // Combined loading state
+  const isLoadingBalance = isLoadingLedger || isLoadingPayableDetail
 
   const handleClose = () => {
     setForm({ cashAmount: '', bankAmount: '', debitAmount: '', date: '', notes: '' })
@@ -380,15 +431,21 @@ export default function LogisticsPaymentModal({
               </div>
               {transactionType === 'credit' && (
                 <div>
-                  <Label className="text-xs text-muted-foreground">Total Outstanding (GBP)</Label>
-                  <p className="font-semibold text-lg text-red-600">
+                  <Label className="text-xs text-muted-foreground">Total Balance (GBP)</Label>
+                  <p className={`font-semibold text-lg ${totalBalance > 0 ? 'text-red-600' : totalBalance < 0 ? 'text-green-600' : 'text-slate-600'}`}>
                     {isLoadingBalance ? (
                       <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
                     ) : entityId && entityId !== 'all' ? (
-                      currency(totalBalance)
+                      <span>
+                        {totalBalance < 0 && '-'}
+                        {currency(Math.abs(totalBalance))}
+                      </span>
                     ) : (
                       '-'
                     )}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {totalBalance > 0 ? 'Admin owes company' : totalBalance < 0 ? 'Company owes admin (credit)' : 'No balance'}
                   </p>
                 </div>
               )}

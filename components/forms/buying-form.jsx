@@ -36,6 +36,8 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { SEASON_OPTIONS, normalizeSeasonArray } from "@/lib/constants/seasons";
 import ImageGallery from "@/components/ui/ImageGallery";
 import PacketConfigurationModal from "@/components/modals/PacketConfigurationModal";
+import BritishDatePicker from "@/components/BritishDatePicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 // Helper to get image array from various sources
 const getImageArray = (row) => {
@@ -1211,12 +1213,9 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="space-y-2">
             <Label htmlFor="invoice-date">Invoice Date</Label>
-            <Input
-              id="invoice-date"
-              type="date"
-              value={invoiceDate}
-              onChange={(e) => setInvoiceDate(e.target.value)}
-            />
+            <BritishDatePicker value={new Date(invoiceDate)} onChange={(date) => setInvoiceDate(date)} />
+            {/* <DatePicker selected={invoiceDate} onChange={(date) => setInvoiceDate(date)} /> */}
+            
           </div>
 
           <div className="space-y-2">
