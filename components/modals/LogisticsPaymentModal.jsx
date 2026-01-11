@@ -35,6 +35,8 @@ export default function LogisticsPaymentModal({
 }) {
   const queryClient = useQueryClient()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [apiResponses, setApiResponses] = useState([])
+  const [showDebugInfo, setShowDebugInfo] = useState(false)
   const [selectedEntityId, setSelectedEntityId] = useState(initialEntityId || '')
   const [searchQuery, setSearchQuery] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -77,6 +79,8 @@ export default function LogisticsPaymentModal({
       setTransactionType('credit')
       setSearchQuery('')
       setShowSuggestions(false)
+      setApiResponses([])
+      setShowDebugInfo(false)
       if (!initialEntityId) {
         setSelectedEntityId('')
       }
@@ -137,6 +141,8 @@ export default function LogisticsPaymentModal({
     setTransactionType('credit')
     setSearchQuery('')
     setShowSuggestions(false)
+    setApiResponses([])
+    setShowDebugInfo(false)
     if (!initialEntityId) {
       setSelectedEntityId('')
     }
@@ -174,6 +180,8 @@ export default function LogisticsPaymentModal({
     }
 
     setIsSubmitting(true)
+    setApiResponses([])
+    setShowDebugInfo(true)
 
     try {
       if (transactionType === 'credit') {
@@ -181,27 +189,37 @@ export default function LogisticsPaymentModal({
         // Process sequentially to avoid race conditions with pending charges
         // Cash payment is processed first, then bank payment sees updated balances
         if (cashAmount > 0) {
-          await ledgerAPI.distributeLogisticsPayment(entityId, {
+          const cashResponse = await ledgerAPI.distributeLogisticsPayment(entityId, {
             amount: cashAmount,
             paymentMethod: 'cash',
             date: form.date,
             description: form.notes || `Cash payment to ${entityName}`
           })
+          setApiResponses(prev => [...prev, {
+            type: 'Cash Payment',
+            response: cashResponse,
+            timestamp: new Date().toISOString()
+          }])
         }
 
         if (bankAmount > 0) {
-          await ledgerAPI.distributeLogisticsPayment(entityId, {
+          const bankResponse = await ledgerAPI.distributeLogisticsPayment(entityId, {
             amount: bankAmount,
             paymentMethod: 'bank',
             date: form.date,
             description: form.notes || `Bank payment to ${entityName}`
           })
+          setApiResponses(prev => [...prev, {
+            type: 'Bank Payment',
+            response: bankResponse,
+            timestamp: new Date().toISOString()
+          }])
         }
 
         toast.success(`Payment of ${currency(totalCreditPayment)} recorded successfully`)
       } else {
         // Debit transactions (charges/adjustments)
-        await ledgerAPI.createEntry({
+        const debitResponse = await ledgerAPI.createEntry({
           type: 'logistics',
           entityId: entityId,
           entityModel: 'LogisticsCompany',
@@ -210,6 +228,12 @@ export default function LogisticsPaymentModal({
           date: form.date,
           description: form.notes || `Debit adjustment for ${entityName}`
         })
+        
+        setApiResponses(prev => [...prev, {
+          type: 'Debit Adjustment',
+          response: debitResponse,
+          timestamp: new Date().toISOString()
+        }])
 
         toast.success(`Charge of ${currency(debitAmount)} recorded successfully`)
       }
@@ -220,10 +244,22 @@ export default function LogisticsPaymentModal({
       queryClient.invalidateQueries({ queryKey: ['ledger'] })
       queryClient.invalidateQueries({ queryKey: ['logistics-companies'] })
 
-      handleClose()
-      onSuccess?.()
+      // Don't close immediately - let user see the debug info
+      // handleClose()
+      // onSuccess?.()
     } catch (error) {
       console.error('Error creating transaction:', error)
+      setApiResponses(prev => [...prev, {
+        type: 'Error',
+        response: {
+          error: true,
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          stack: error.stack
+        },
+        timestamp: new Date().toISOString()
+      }])
       toast.error(error.response?.data?.message || error.message || 'Failed to record transaction')
     } finally {
       setIsSubmitting(false)
@@ -234,7 +270,7 @@ export default function LogisticsPaymentModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Truck className="h-5 w-5" />
@@ -485,6 +521,7 @@ export default function LogisticsPaymentModal({
               rows={2}
             />
           </div>
+
         </div>
 
         <DialogFooter>

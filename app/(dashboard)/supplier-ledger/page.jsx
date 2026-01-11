@@ -45,7 +45,7 @@ function formatDateTime(_date) {
 } 
 
 export default function SupplierLedgerPage() {
-  const [selectedSupplierId, setSelectedSupplierId] = useState("all") // Default to "all" for Tab 2
+  const [selectedSupplierId, setSelectedSupplierId] = useState("") // Default to empty - require supplier selection
   const [selectedDispatchOrderId, setSelectedDispatchOrderId] = useState("none")
   const [activeTab, setActiveTab] = useState(0) // Track active tab
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -64,7 +64,7 @@ export default function SupplierLedgerPage() {
   const [universalPaymentOpen, setUniversalPaymentOpen] = useState(false)
 
   // Filter for Tab 1 - Supplier Ledger
-  const [ledgerSupplierFilter, setLedgerSupplierFilter] = useState("all")
+  const [ledgerSupplierFilter, setLedgerSupplierFilter] = useState("")
   const [ledgerFilterBy, setLedgerFilterBy] = useState("all")
 
   // Filters for Tab 2 (Pending Payments)
@@ -74,7 +74,7 @@ export default function SupplierLedgerPage() {
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all")
 
   // Filters for Tab 3 (Payment History)
-  const [paymentHistorySupplier, setPaymentHistorySupplier] = useState("all")
+  const [paymentHistorySupplier, setPaymentHistorySupplier] = useState("")
   const [paymentHistoryDateFrom, setPaymentHistoryDateFrom] = useState("")
   const [paymentHistoryDateTo, setPaymentHistoryDateTo] = useState("")
   const [paymentHistoryMethodFilter, setPaymentHistoryMethodFilter] = useState("all")
@@ -91,26 +91,25 @@ export default function SupplierLedgerPage() {
   const suppliers = suppliersWithUsers
   const dropdownSuppliers = allSuppliers
 
-  // Fetch all supplier ledger entries for Tab 1 (with optional supplier filter)
+  // Fetch supplier ledger entries for Tab 1 (only when a supplier is selected)
   const ledgerFilterParams = useMemo(() => {
-    const params = { limit: 100 }
-    if (ledgerSupplierFilter && ledgerSupplierFilter !== 'all') {
-      params.supplierId = ledgerSupplierFilter
+    if (!ledgerSupplierFilter || ledgerSupplierFilter === 'all') {
+      return null // Don't fetch if no supplier selected
     }
-    return params
+    return { supplierId: ledgerSupplierFilter, limit: 100 }
   }, [ledgerSupplierFilter])
 
-  const { data: allLedgerData, isLoading: allLedgerLoading } = useAllSupplierLedgers(ledgerFilterParams)
+  const { data: allLedgerData, isLoading: allLedgerLoading } = useAllSupplierLedgers(ledgerFilterParams || {})
 
   // Fetch selected supplier details and transactions for Tab 2
   const { data: supplierDetails, isLoading: supplierDetailsLoading } = useSupplier(
     selectedSupplierId && selectedSupplierId !== 'all' ? selectedSupplierId : ''
   )
 
-  // Fetch ledger entries for the selected supplier in Tab 2, or all suppliers if "all" is selected
+  // Fetch ledger entries for the selected supplier in Tab 2 (only when a supplier is selected)
   const paymentLedgerParams = useMemo(() => {
-    if (selectedSupplierId === 'all' || !selectedSupplierId) {
-      return { limit: 100 } // Fetch payment entries (reduced from 1000 for better performance)
+    if (!selectedSupplierId || selectedSupplierId === 'all') {
+      return null // Don't fetch if no supplier selected
     }
     return { supplierId: selectedSupplierId }
   }, [selectedSupplierId])
@@ -119,10 +118,10 @@ export default function SupplierLedgerPage() {
     selectedSupplierId && selectedSupplierId !== 'all' ? selectedSupplierId : ''
   )
 
-  // Fetch all payment entries when "all" is selected
-  const shouldFetchAllPayments = selectedSupplierId === 'all'
+  // Don't fetch all payment entries - require supplier selection
+  const shouldFetchAllPayments = false
   const { data: allPaymentLedgerData, isLoading: allPaymentLedgerLoading } = useAllSupplierLedgers(
-    shouldFetchAllPayments ? paymentLedgerParams : {}
+    shouldFetchAllPayments ? (paymentLedgerParams || {}) : {}
   )
 
   // Fetch unpaid dispatch orders for selected supplier
@@ -142,7 +141,7 @@ export default function SupplierLedgerPage() {
     return unpaidDispatchOrders.find(order => order._id === selectedDispatchOrderId)
   }, [selectedDispatchOrderId, unpaidDispatchOrders])
 
-  // Fetch pending balances
+  // Fetch pending balances (only when a specific supplier is selected)
   const { data: pendingBalancesData, isLoading: pendingBalancesLoading, error: pendingBalancesError } = useQuery({
     queryKey: ['pending-balances', selectedSupplierId],
     queryFn: async () => {
@@ -158,22 +157,52 @@ export default function SupplierLedgerPage() {
         throw error
       }
     },
-    enabled: activeTab === 1 // Only fetch when Tab 2 is active
+    enabled: activeTab === 1 && !!selectedSupplierId && selectedSupplierId !== 'all' // Only fetch when Tab 2 is active AND supplier selected
   })
 
   const pendingBalances = pendingBalancesData?.balances || []
   const pendingTotals = pendingBalancesData?.totals || { cashPending: 0, bankPending: 0, totalPending: 0, totalPaid: 0 }
 
-  // Fetch payment history for Tab 3
+  // Map pending balances with entry numbers from ledger data
+  const pendingBalancesWithEntryNumbers = useMemo(() => {
+    const entries = allLedgerData?.entries || ledgerData?.entries || []
+    
+    // Create a map: referenceId -> entryNumber for purchase entries
+    const purchaseEntryMap = new Map()
+    entries.forEach(entry => {
+      if (entry.transactionType === 'purchase' && entry.referenceId) {
+        const refId = typeof entry.referenceId === 'object' && entry.referenceId !== null
+          ? entry.referenceId._id?.toString() || entry.referenceId.toString()
+          : entry.referenceId.toString()
+        purchaseEntryMap.set(refId, entry.entryNumber || '-')
+      }
+    })
+
+    return pendingBalances.map(balance => {
+      // Normalize referenceId for matching
+      const refIdOrId = balance.referenceId || balance.id
+      const balanceRefId = refIdOrId
+        ? (typeof refIdOrId === 'object' && refIdOrId !== null
+            ? refIdOrId._id?.toString() || refIdOrId.toString()
+            : refIdOrId.toString())
+        : null
+      
+      return {
+        ...balance,
+        entryNumber: balanceRefId ? (purchaseEntryMap.get(balanceRefId) || '-') : '-'
+      }
+    })
+  }, [pendingBalances, allLedgerData, ledgerData])
+
+  // Fetch payment history for Tab 3 (only when a supplier is selected)
   const paymentHistoryParams = useMemo(() => {
-    const params = { limit: 100 }
-    if (paymentHistorySupplier && paymentHistorySupplier !== 'all') {
-      params.supplierId = paymentHistorySupplier
+    if (!paymentHistorySupplier || paymentHistorySupplier === 'all') {
+      return null // Don't fetch if no supplier selected
     }
-    return params
+    return { supplierId: paymentHistorySupplier, limit: 100 }
   }, [paymentHistorySupplier])
 
-  const { data: paymentHistoryData, isLoading: paymentHistoryLoading } = useAllSupplierLedgers(paymentHistoryParams)
+  const { data: paymentHistoryData, isLoading: paymentHistoryLoading } = useAllSupplierLedgers(paymentHistoryParams || {})
 
   // Calculate totals from displayed rows (matching Total Balances logic)
   const calculatedCashPending = pendingBalances.reduce((sum, balance) => {
@@ -185,14 +214,6 @@ export default function SupplierLedgerPage() {
   }, 0)
 
   const calculatedTotalPending = calculatedCashPending + calculatedBankPending
-
-  // Calculate total pending from the actual remaining amounts in pendingBalances
-  // This matches what's shown in the "Remaining" column of the table
-  const calculatedTotalPendingFromRemaining = useMemo(() => {
-    return pendingBalances.reduce((sum, balance) => {
-      return sum + (balance.amount || 0)
-    }, 0)
-  }, [pendingBalances])
 
   // Calculate outstanding balance for selected supplier from pendingBalances
   const calculatedOutstandingBalance = useMemo(() => {
@@ -266,6 +287,7 @@ export default function SupplierLedgerPage() {
         amount: entry.credit || 0,
         madeBy,
         notes: entry.description || entry.remarks || '-',
+        entryNumber: entry.entryNumber || '-',
         raw: entry
       }
     })
@@ -518,16 +540,14 @@ export default function SupplierLedgerPage() {
       }
     ]
 
-    // Add Supplier column only when viewing all suppliers
-    if (paymentHistorySupplier === 'all') {
-      columns.push({
-        header: "Supplier",
-        accessor: "supplierName",
-        render: (row) => <span className="font-medium">{row.supplierName || '-'}</span>
-      })
-    }
-
     columns.push(
+      {
+        header: "Entry Number",
+        accessor: "entryNumber",
+        render: (row) => (
+          <span className="font-medium">{row.entryNumber || '-'}</span>
+        )
+      },
       {
         header: "Order Reference",
         accessor: "reference",
@@ -579,7 +599,7 @@ export default function SupplierLedgerPage() {
     )
 
     return columns
-  }, [paymentHistorySupplier])
+  }, [])
 
   // Pending Balance Columns
   const pendingBalanceColumns = useMemo(() => {
@@ -591,16 +611,14 @@ export default function SupplierLedgerPage() {
       }
     ]
 
-    // Add Supplier column only when viewing all suppliers
-    if (selectedSupplierId === 'all') {
-      columns.push({
-        header: "Supplier",
-        accessor: "supplierName",
-        render: (row) => <span className="font-medium">{row.supplierName || '-'}</span>
-      })
-    }
-
     columns.push(
+      {
+        header: "Entry Number",
+        accessor: "entryNumber",
+        render: (row) => (
+          <span className="font-medium">{row.entryNumber || '-'}</span>
+        )
+      },
       {
         header: "Reference",
         accessor: "reference",
@@ -697,7 +715,7 @@ export default function SupplierLedgerPage() {
     )
 
     return columns
-  }, [selectedSupplierId, isMarkingAsPaid])
+  }, [isMarkingAsPaid])
 
   const transactionColumns = useMemo(
     () => [
@@ -836,7 +854,29 @@ export default function SupplierLedgerPage() {
       let readableReference = '-'
       if (entry.referenceId) {
         if (typeof entry.referenceId === 'object' && entry.referenceId !== null) {
-          readableReference = entry.referenceId.orderNumber || entry.referenceId.purchaseNumber || entry.referenceId._id || '-'
+          // For returns, handle specially
+          if (entry.referenceModel === 'Return' || entry.transactionType === 'return') {
+            // Try orderNumber first (from associated dispatch order)
+            if (entry.referenceId.orderNumber) {
+              readableReference = entry.referenceId.orderNumber
+            } else {
+              // Try to extract order number from description
+              const description = entry.description || entry.notes || ''
+              // Pattern: "Return from Dispatch Order DO-1234" or "Order: DO-1234"
+              const orderMatch = description.match(/(?:Order|Dispatch Order):?\s*([A-Z0-9-]+)/i) || 
+                               description.match(/Dispatch Order\s+([A-Z0-9-]+)/i)
+              if (orderMatch && orderMatch[1]) {
+                readableReference = orderMatch[1]
+              } else {
+                // Format return ID as RET-{last6chars} for readability
+                const returnId = entry.referenceId._id?.toString() || entry.referenceId.toString()
+                readableReference = returnId ? `RET-${returnId.slice(-6).toUpperCase()}` : '-'
+              }
+            }
+          } else {
+            // For non-returns, use standard logic
+            readableReference = entry.referenceId.orderNumber || entry.referenceId.purchaseNumber || entry.referenceId._id || '-'
+          }
         } else {
           readableReference = entry.referenceId.toString()
         }
@@ -983,6 +1023,34 @@ export default function SupplierLedgerPage() {
     return balanceMap
   }, [allLedgerData, dropdownSuppliers])
 
+  // Calculate total pending from ledger data (accounts for excess payments not tied to orders)
+  // Use ledger balance when positive (includes excess payments), fallback to sum of pending rows
+  const calculatedTotalPendingFromRemaining = useMemo(() => {
+    // If viewing all suppliers, use the total balance from all ledger transactions
+    if (selectedSupplierId === 'all') {
+      const ledgerBalance = calculatedTotalBalance
+      if (ledgerBalance > 0) {
+        return ledgerBalance
+      }
+      // Fallback to sum of pending rows for edge cases
+      return pendingBalances.reduce((sum, balance) => sum + (balance.amount || 0), 0)
+    }
+
+    // If viewing a specific supplier, use that supplier's balance from ledger data
+    const supplierBalance = supplierBalanceMap[String(selectedSupplierId)]
+    if (supplierBalance !== undefined && supplierBalance !== null && supplierBalance > 0) {
+      return supplierBalance
+    }
+
+    // Fallback: try ledgerData.currentBalance
+    if (ledgerData?.currentBalance !== undefined && ledgerData.currentBalance !== null && ledgerData.currentBalance > 0) {
+      return ledgerData.currentBalance
+    }
+
+    // Final fallback: sum of pending rows (which should be 0 or negative if excess payments exist)
+    return pendingBalances.reduce((sum, balance) => sum + (balance.amount || 0), 0)
+  }, [selectedSupplierId, calculatedTotalBalance, supplierBalanceMap, ledgerData?.currentBalance, pendingBalances])
+
   // Calculate balance for modal - use the same calculation as calculatedTotalBalance
   const balanceForModal = useMemo(() => {
     if (selectedSupplierId === 'all' || !selectedSupplierId) {
@@ -1126,27 +1194,26 @@ export default function SupplierLedgerPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="font-semibold text-lg">Complete Ledger History</h2>
-            <p className="text-sm text-muted-foreground mt-1">All purchases and payments - complete accounting record</p>
+            <p className="text-sm text-muted-foreground mt-1">Select a supplier to view their complete accounting record</p>
           </div>
           <div className="flex items-center gap-4">
             <div className="w-[250px]">
-              <Label htmlFor="ledger-supplier-filter" className="mb-2 block">Filter by Supplier</Label>
+              <Label htmlFor="ledger-supplier-filter" className="mb-2 block">Select Supplier</Label>
               <Select
                 value={ledgerSupplierFilter}
                 onValueChange={(value) => {
                   setLedgerSupplierFilter(value)
                   // If a specific supplier is selected, also update Tab 2 selection
-                  if (value !== 'all') {
+                  if (value && value !== 'all') {
                     setSelectedSupplierId(value)
                   }
                 }}
                 disabled={allSuppliersLoading}
               >
                 <SelectTrigger id="ledger-supplier-filter">
-                  <SelectValue placeholder="All Suppliers" />
+                  <SelectValue placeholder="Select a supplier..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Suppliers</SelectItem>
                   {dropdownSuppliers.map((supplier) => (
                     <SelectItem key={supplier.id} value={String(supplier.id)}>
                       {supplier.name} {supplier.company ? `(${supplier.company})` : ''}
@@ -1155,45 +1222,47 @@ export default function SupplierLedgerPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="w-[200px]">
-              <Label htmlFor="ledger-filter-by" className="mb-2 block">Filter By</Label>
-              <Select
-                value={ledgerFilterBy}
-                onValueChange={setLedgerFilterBy}
-              >
-                <SelectTrigger id="ledger-filter-by">
-                  <SelectValue placeholder="All" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="bank">Bank</SelectItem>
-                  <SelectItem value="discount">Discount</SelectItem>
-                  <SelectItem value="return">Return</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {ledgerSupplierFilter && ledgerSupplierFilter !== 'all' && (
+              <div className="w-[200px]">
+                <Label htmlFor="ledger-filter-by" className="mb-2 block">Filter By</Label>
+                <Select
+                  value={ledgerFilterBy}
+                  onValueChange={setLedgerFilterBy}
+                >
+                  <SelectTrigger id="ledger-filter-by">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="bank">Bank</SelectItem>
+                    <SelectItem value="discount">Discount</SelectItem>
+                    <SelectItem value="return">Return</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </div>
 
-        {allLedgerLoading ? (
+        {!ledgerSupplierFilter || ledgerSupplierFilter === 'all' ? (
+          <div className="p-12 text-center text-muted-foreground">
+            <div className="mb-4">
+              <svg className="mx-auto h-12 w-12 text-muted-foreground/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+            <p className="text-lg font-medium">Select a supplier to view ledger</p>
+            <p className="text-sm mt-1">Choose a supplier from the dropdown above to see their complete transaction history</p>
+          </div>
+        ) : allLedgerLoading ? (
           <div className="p-12 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             <span className="ml-2 text-muted-foreground">Loading ledger entries...</span>
           </div>
         ) : allLedgerTransactions.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
-            <p>No ledger entries found</p>
-            {ledgerSupplierFilter !== 'all' && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={() => setLedgerSupplierFilter('all')}
-              >
-                Show All Suppliers
-              </Button>
-            )}
+            <p>No ledger entries found for this supplier</p>
           </div>
         ) : (
           <>
@@ -1203,16 +1272,15 @@ export default function SupplierLedgerPage() {
                 <p className="text-2xl font-bold">{allLedgerTransactions.length}</p>
               </div>
               <div className="bg-muted/30 rounded-lg p-6 space-y-1">
-                <p className="text-sm text-muted-foreground">
-                  {ledgerSupplierFilter === 'all' ? 'Total Balance (All Suppliers)' : 'Supplier Balance'}
-                </p>
-                <p className={`text-2xl font-bold ${(calculatedTotalBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatNumber(Math.abs(calculatedTotalBalance || 0))}
+                <p className="text-sm text-muted-foreground">Supplier Balance</p>
+                <p className={`text-2xl font-bold ${(calculatedTotalBalance || 0) <= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatNumber(calculatedTotalBalance)}
                 </p>
               </div>
             </div>
 
             <div className="bg-white rounded-lg border">
+              {/* {JSON.stringify(allLedgerTransactions)} */}
               <DataTable
                 columns={allLedgerColumns}
                 data={allLedgerTransactions}
@@ -1403,7 +1471,6 @@ export default function SupplierLedgerPage() {
               <SelectValue placeholder="Choose a supplier..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Suppliers</SelectItem>
               {allSuppliersLoading ? (
                 <SelectItem value="loading" disabled>Loading suppliers...</SelectItem>
               ) : dropdownSuppliers.length === 0 ? (
@@ -1418,46 +1485,29 @@ export default function SupplierLedgerPage() {
             </SelectContent>
           </Select>
         </div>
-        {/* {supplierDetails && selectedSupplierId !== 'all' && (
-          <div className="text-right">
-            <p className="text-sm text-muted-foreground">Remaining Balance</p>
-            <p className={`text-2xl font-bold ${supplierDetails.balance >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-              {formatNumber(Math.abs(supplierDetails.balance || 0))} {supplierDetails.balance >= 0 ? 'DR' : 'CR'}
-            </p>
-          </div>
-        )} */}
-        {/* {selectedSupplierId === 'all' && allPaymentLedgerData && (
-          <div className="text-right">
-            <p className="text-sm text-muted-foreground">Total Balance (All Suppliers)</p>
-            <p className={`text-2xl font-bold ${(allPaymentLedgerData.totalBalance || 0) >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-              {currency(Math.abs(allPaymentLedgerData.totalBalance || 0))} {(allPaymentLedgerData.totalBalance || 0) >= 0 ? 'DR' : 'CR'}
-            </p>
-          </div>
-        )} */}
       </div>
-
-
     </div>
   )
 
   const paymentDetails = (
     <>
-      {/* {JSON.stringify(pendingBalances)} */}
-      {/* Stats Cards - Total Paid and Total Pending */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Paid</h3>
-          <div className="text-2xl font-bold text-green-600">
-            {formatNumber(pendingTotals.totalPaid || 0)}
+      {/* Stats Cards - Total Paid and Total Pending (only show when supplier selected) */}
+      {selectedSupplierId && selectedSupplierId !== 'all' && (
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="bg-white rounded-lg border p-6">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Paid</h3>
+            <div className="text-2xl font-bold text-green-600">
+              {formatNumber(pendingTotals.totalPaid || 0)}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg border p-6">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Pending</h3>
+            <div className="text-2xl font-bold text-red-600">
+              {formatNumber(Math.abs(calculatedTotalPendingFromRemaining || 0))}
+            </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Pending</h3>
-          <div className="text-2xl font-bold text-red-600">
-            {formatNumber(Math.abs(calculatedTotalPendingFromRemaining || 0))}
-          </div>
-        </div>
-      </div>
+      )}
 
       <div className="bg-white rounded-lg border">
         <div className="p-4 border-b">
@@ -1470,8 +1520,18 @@ export default function SupplierLedgerPage() {
         </div>
       </div>
 
-      {/* Pending Balances View - Always shown */}
-      {pendingBalancesLoading ? (
+      {/* Pending Balances View - Only shown when supplier is selected */}
+      {!selectedSupplierId || selectedSupplierId === 'all' ? (
+        <div className="bg-white rounded-lg border p-12 text-center text-muted-foreground mt-4">
+          <div className="mb-4">
+            <svg className="mx-auto h-12 w-12 text-muted-foreground/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </div>
+          <p className="text-lg font-medium">Select a supplier to view pending payments</p>
+          <p className="text-sm mt-1">Choose a supplier from the dropdown above to see their pending payment details</p>
+        </div>
+      ) : pendingBalancesLoading ? (
         <div className="bg-white rounded-lg border p-8 flex items-center justify-center mt-4">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           <span className="ml-2 text-muted-foreground">Loading pending balances...</span>
@@ -1483,12 +1543,12 @@ export default function SupplierLedgerPage() {
         </div>
       ) : pendingBalances.length === 0 ? (
         <div className="bg-white rounded-lg border p-8 text-center text-muted-foreground mt-4">
-          <p>No pending balances found.</p>
-          <p className="text-xs mt-2">Make sure you have confirmed dispatch orders or purchases with remaining balances.</p>
+          <p>No pending balances found for this supplier.</p>
+          <p className="text-xs mt-2">This supplier has no confirmed dispatch orders or purchases with remaining balances.</p>
         </div>
       ) : (
         <div className="bg-white rounded-lg border mt-4">
-          <DataTable columns={pendingBalanceColumns} data={pendingBalances} hideActions />
+          <DataTable columns={pendingBalanceColumns} data={pendingBalancesWithEntryNumbers} hideActions />
         </div>
       )}
 
@@ -1581,40 +1641,42 @@ export default function SupplierLedgerPage() {
 
   const paymentHistoryTabContent = (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Payments</h3>
-          <div className="text-2xl font-bold text-green-600">
-            {formatNumber(paymentSummary.total)}
+      {/* Summary Cards - Only show when supplier is selected */}
+      {paymentHistorySupplier && paymentHistorySupplier !== 'all' && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-lg border p-6">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Payments</h3>
+            <div className="text-2xl font-bold text-green-600">
+              {formatNumber(paymentSummary.total)}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg border p-6">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Cash Payments</h3>
+            <div className="text-2xl font-bold">
+              {formatNumber(paymentSummary.cash)}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg border p-6">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Bank Payments</h3>
+            <div className="text-2xl font-bold">
+              {formatNumber(paymentSummary.bank)}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg border p-6">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Payments This Month</h3>
+            <div className="text-2xl font-bold">
+              {paymentSummary.countThisMonth}
+            </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">Cash Payments</h3>
-          <div className="text-2xl font-bold">
-            {formatNumber(paymentSummary.cash)}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">Bank Payments</h3>
-          <div className="text-2xl font-bold">
-            {formatNumber(paymentSummary.bank)}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">Payments This Month</h3>
-          <div className="text-2xl font-bold">
-            {paymentSummary.countThisMonth}
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Filters and Add Payment Button */}
       <div className="bg-white rounded-lg border p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="font-semibold text-lg">Payment History</h2>
-            <p className="text-sm text-muted-foreground mt-1">All payments made to suppliers</p>
+            <p className="text-sm text-muted-foreground mt-1">Select a supplier to view their payment history</p>
           </div>
           {paymentHistorySupplier && paymentHistorySupplier !== 'all' && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -1753,7 +1815,7 @@ export default function SupplierLedgerPage() {
         {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div>
-            <Label htmlFor="payment-history-supplier">Supplier</Label>
+            <Label htmlFor="payment-history-supplier">Select Supplier</Label>
             <Select
               value={paymentHistorySupplier}
               onValueChange={(value) => {
@@ -1764,10 +1826,9 @@ export default function SupplierLedgerPage() {
               disabled={allSuppliersLoading}
             >
               <SelectTrigger id="payment-history-supplier">
-                <SelectValue placeholder="All Suppliers" />
+                <SelectValue placeholder="Select a supplier..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Suppliers</SelectItem>
                 {dropdownSuppliers.map((supplier) => (
                   <SelectItem key={supplier.id} value={String(supplier.id)}>
                     {supplier.name} {supplier.company ? `(${supplier.company})` : ''}
@@ -1816,21 +1877,30 @@ export default function SupplierLedgerPage() {
         </div>
 
         {/* Payment History Table */}
-        {paymentHistoryLoading ? (
+        {!paymentHistorySupplier || paymentHistorySupplier === 'all' ? (
+          <div className="p-12 text-center text-muted-foreground">
+            <div className="mb-4">
+              <svg className="mx-auto h-12 w-12 text-muted-foreground/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+            </div>
+            <p className="text-lg font-medium">Select a supplier to view payment history</p>
+            <p className="text-sm mt-1">Choose a supplier from the dropdown above to see their payment records</p>
+          </div>
+        ) : paymentHistoryLoading ? (
           <div className="p-12 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             <span className="ml-2 text-muted-foreground">Loading payment history...</span>
           </div>
         ) : paymentHistoryTransactions.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
-            <p>No payment history found</p>
-            {(paymentHistorySupplier !== 'all' || paymentHistoryDateFrom || paymentHistoryDateTo || paymentHistoryMethodFilter !== 'all') && (
+            <p>No payment history found for this supplier</p>
+            {(paymentHistoryDateFrom || paymentHistoryDateTo || paymentHistoryMethodFilter !== 'all') && (
               <Button
                 variant="outline"
                 size="sm"
                 className="mt-4"
                 onClick={() => {
-                  setPaymentHistorySupplier('all')
                   setPaymentHistoryDateFrom('')
                   setPaymentHistoryDateTo('')
                   setPaymentHistoryMethodFilter('all')

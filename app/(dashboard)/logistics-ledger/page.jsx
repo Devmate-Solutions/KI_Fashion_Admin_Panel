@@ -31,7 +31,7 @@ function currency(n) {
 }
 
 export default function LogisticsLedgerPage() {
-  const [selectedCompanyId, setSelectedCompanyId] = useState("all")
+  const [selectedCompanyId, setSelectedCompanyId] = useState("") // Default to empty - require company selection
   const [activeTab, setActiveTab] = useState(0)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false)
@@ -49,11 +49,11 @@ export default function LogisticsLedgerPage() {
   const [universalPaymentOpen, setUniversalPaymentOpen] = useState(false)
 
   // Filters for Tab 1 - Ledger
-  const [ledgerCompanyFilter, setLedgerCompanyFilter] = useState("all")
+  const [ledgerCompanyFilter, setLedgerCompanyFilter] = useState("") // Default to empty - require company selection
   const [ledgerTypeFilter, setLedgerTypeFilter] = useState("all")
 
   // Filters for Tab 3 (Payment History)
-  const [paymentHistoryCompany, setPaymentHistoryCompany] = useState("all")
+  const [paymentHistoryCompany, setPaymentHistoryCompany] = useState("") // Default to empty - require company selection
   const [paymentHistoryDateFrom, setPaymentHistoryDateFrom] = useState("")
   const [paymentHistoryDateTo, setPaymentHistoryDateTo] = useState("")
   const [paymentHistoryMethodFilter, setPaymentHistoryMethodFilter] = useState("all")
@@ -77,23 +77,22 @@ export default function LogisticsLedgerPage() {
     },
   })
 
-  // Fetch all logistics ledger entries for Tab 1 (with optional company filter)
+  // Fetch logistics ledger entries for Tab 1 (only when a company is selected)
   const ledgerFilterParams = useMemo(() => {
-    const params = { limit: 100 }
-    if (ledgerCompanyFilter && ledgerCompanyFilter !== 'all') {
-      params.logisticsCompanyId = ledgerCompanyFilter
+    if (!ledgerCompanyFilter || ledgerCompanyFilter === 'all') {
+      return null // Don't fetch if no company selected
     }
-    return params
+    return { logisticsCompanyId: ledgerCompanyFilter, limit: 100 }
   }, [ledgerCompanyFilter])
 
-  const { data: allLedgerData, isLoading: allLedgerLoading, error: allLedgerError } = useAllLogisticsLedgers(ledgerFilterParams)
+  const { data: allLedgerData, isLoading: allLedgerLoading, error: allLedgerError } = useAllLogisticsLedgers(ledgerFilterParams || {})
 
   // Fetch ledger entries for selected company in Tab 2
   const { data: ledgerData, isLoading: ledgerLoading } = useLogisticsLedger(
     selectedCompanyId && selectedCompanyId !== 'all' ? selectedCompanyId : ''
   )
 
-  // Fetch pending balances
+  // Fetch pending balances (only when a specific company is selected)
   const { data: pendingBalancesData, isLoading: pendingBalancesLoading, error: pendingBalancesError } = useQuery({
     queryKey: ['pending-balances-logistics', selectedCompanyId],
     queryFn: async () => {
@@ -110,22 +109,21 @@ export default function LogisticsLedgerPage() {
         throw error
       }
     },
-    enabled: activeTab === 1
+    enabled: activeTab === 1 && !!selectedCompanyId && selectedCompanyId !== 'all' // Only fetch when Tab 2 is active AND company selected
   })
 
   const pendingBalances = pendingBalancesData?.balances || []
   const pendingTotals = pendingBalancesData?.totals || { cashPending: 0, bankPending: 0, totalPending: 0, totalPaid: 0 }
 
-  // Fetch payment history for Tab 3
+  // Fetch payment history for Tab 3 (only when a company is selected)
   const paymentHistoryParams = useMemo(() => {
-    const params = { limit: 100 }
-    if (paymentHistoryCompany && paymentHistoryCompany !== 'all') {
-      params.logisticsCompanyId = paymentHistoryCompany
+    if (!paymentHistoryCompany || paymentHistoryCompany === 'all') {
+      return null // Don't fetch if no company selected
     }
-    return params
+    return { logisticsCompanyId: paymentHistoryCompany, limit: 100 }
   }, [paymentHistoryCompany])
 
-  const { data: paymentHistoryData, isLoading: paymentHistoryLoading } = useAllLogisticsLedgers(paymentHistoryParams)
+  const { data: paymentHistoryData, isLoading: paymentHistoryLoading } = useAllLogisticsLedgers(paymentHistoryParams || {})
 
   // Transform all ledger entries for Tab 1 display with client-side running balance
   const allLedgerTransactions = useMemo(() => {
@@ -445,14 +443,6 @@ export default function LogisticsLedgerPage() {
       }
     ]
 
-    if (selectedCompanyId === 'all') {
-      columns.push({
-        header: "Company",
-        accessor: "companyName",
-        render: (row) => <span className="font-medium">{row.companyName || '-'}</span>
-      })
-    }
-
     columns.push(
       {
         header: "Reference",
@@ -557,7 +547,7 @@ export default function LogisticsLedgerPage() {
     )
 
     return columns
-  }, [selectedCompanyId, isMarkingAsPaid])
+  }, [isMarkingAsPaid])
 
   // Payment History Columns for Tab 3
   const paymentHistoryColumns = useMemo(() => {
@@ -576,14 +566,6 @@ export default function LogisticsLedgerPage() {
         }
       }
     ]
-
-    if (paymentHistoryCompany === 'all') {
-      columns.push({
-        header: "Company",
-        accessor: "companyName",
-        render: (row) => <span className="font-medium">{row.companyName || '-'}</span>
-      })
-    }
 
     columns.push(
       {
@@ -630,7 +612,7 @@ export default function LogisticsLedgerPage() {
     )
 
     return columns
-  }, [paymentHistoryCompany])
+  }, [])
 
   const handleMarkAsPaid = (balance) => {
     setMarkAsPaidForm({
@@ -749,43 +731,25 @@ export default function LogisticsLedgerPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="font-semibold text-lg">Complete Ledger History</h2>
-            <p className="text-sm text-muted-foreground mt-1">All charges and payments - complete accounting record</p>
+            <p className="text-sm text-muted-foreground mt-1">Select a company to view their complete accounting record</p>
           </div>
           <div className="flex items-center gap-4">
-            <div className="w-[200px]">
-              <Label htmlFor="ledger-type-filter" className="mb-2 block">Filter by Type</Label>
-              <Select
-                value={ledgerTypeFilter}
-                onValueChange={setLedgerTypeFilter}
-              >
-                <SelectTrigger id="ledger-type-filter">
-                  <SelectValue placeholder="All Transactions" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Transactions</SelectItem>
-                  <SelectItem value="charge">Logistics Charges</SelectItem>
-                  <SelectItem value="cash">Payments - Cash</SelectItem>
-                  <SelectItem value="bank">Payments - Bank</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <div className="w-[250px]">
-              <Label htmlFor="ledger-company-filter" className="mb-2 block">Filter by Company</Label>
+              <Label htmlFor="ledger-company-filter" className="mb-2 block">Select Company</Label>
               <Select
                 value={ledgerCompanyFilter}
                 onValueChange={(value) => {
                   setLedgerCompanyFilter(value)
-                  if (value !== 'all') {
+                  if (value && value !== 'all') {
                     setSelectedCompanyId(value)
                   }
                 }}
                 disabled={allCompaniesLoading}
               >
                 <SelectTrigger id="ledger-company-filter">
-                  <SelectValue placeholder="All Companies" />
+                  <SelectValue placeholder="Select a company..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Companies</SelectItem>
                   {allCompanies.map((company) => (
                     <SelectItem key={company._id || company.id} value={company._id || company.id}>
                       {company.name}
@@ -794,10 +758,39 @@ export default function LogisticsLedgerPage() {
                 </SelectContent>
               </Select>
             </div>
+            {ledgerCompanyFilter && ledgerCompanyFilter !== 'all' && (
+              <div className="w-[200px]">
+                <Label htmlFor="ledger-type-filter" className="mb-2 block">Filter by Type</Label>
+                <Select
+                  value={ledgerTypeFilter}
+                  onValueChange={setLedgerTypeFilter}
+                >
+                  <SelectTrigger id="ledger-type-filter">
+                    <SelectValue placeholder="All Transactions" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Transactions</SelectItem>
+                    <SelectItem value="charge">Logistics Charges</SelectItem>
+                    <SelectItem value="cash">Payments - Cash</SelectItem>
+                    <SelectItem value="bank">Payments - Bank</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </div>
 
-        {allLedgerLoading ? (
+        {!ledgerCompanyFilter || ledgerCompanyFilter === 'all' ? (
+          <div className="p-12 text-center text-muted-foreground">
+            <div className="mb-4">
+              <svg className="mx-auto h-12 w-12 text-muted-foreground/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+            </div>
+            <p className="text-lg font-medium">Select a company to view ledger</p>
+            <p className="text-sm mt-1">Choose a logistics company from the dropdown above to see their complete transaction history</p>
+          </div>
+        ) : allLedgerLoading ? (
           <div className="p-12 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             <span className="ml-2 text-muted-foreground">Loading ledger entries...</span>
@@ -809,20 +802,7 @@ export default function LogisticsLedgerPage() {
           </div>
         ) : allLedgerTransactions.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
-            <p>No ledger entries found</p>
-            {ledgerCompanyFilter !== 'all' && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={() => setLedgerCompanyFilter('all')}
-              >
-                Show All Companies
-              </Button>
-            )}
-            {ledgerCompanyFilter === 'all' && (
-              <p className="text-xs mt-2">Try selecting a specific company to see their entries</p>
-            )}
+            <p>No ledger entries found for this company</p>
           </div>
         ) : (
           <>
@@ -832,9 +812,7 @@ export default function LogisticsLedgerPage() {
                 <p className="text-2xl font-bold">{allLedgerTransactions.length}</p>
               </div>
               <div className="bg-muted/30 rounded-lg p-6 space-y-1">
-                <p className="text-sm text-muted-foreground">
-                  {ledgerCompanyFilter === 'all' ? 'Total Balance (All Companies)' : 'Company Balance'}
-                </p>
+                <p className="text-sm text-muted-foreground">Company Balance</p>
                 <p className={`text-2xl font-bold ${calculatedTotalBalance >= 0 ? 'text-red-600' : 'text-green-600'}`}>
                   {calculatedTotalBalance > 0 ? '-' : ''}{currency(Math.abs(calculatedTotalBalance))}
                 </p>
@@ -875,7 +853,6 @@ export default function LogisticsLedgerPage() {
               <SelectValue placeholder="Choose a company..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Companies</SelectItem>
               {allCompaniesLoading ? (
                 <SelectItem value="loading" disabled>Loading companies...</SelectItem>
               ) : allCompanies.length === 0 ? (
@@ -896,28 +873,28 @@ export default function LogisticsLedgerPage() {
 
   const pendingPaymentsContent = (
     <>
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Paid</h3>
-          <div className="text-2xl font-bold text-green-600">
-            {formatNumber(pendingTotals.totalPaid || 0)}
+      {/* Stats Cards - Only show when company is selected */}
+      {selectedCompanyId && selectedCompanyId !== 'all' && (
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="bg-white rounded-lg border p-6">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Paid</h3>
+            <div className="text-2xl font-bold text-green-600">
+              {formatNumber(pendingTotals.totalPaid || 0)}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg border p-6">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Pending</h3>
+            <div className="text-2xl font-bold text-red-600">
+              {formatNumber(pendingTotals.totalPending || 0)}
+            </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Pending</h3>
-          <div className="text-2xl font-bold text-red-600">
-            {/* {JSON.stringify(pendingTotals)} */}
-            {formatNumber(pendingTotals.totalPending || 0)}
-
-            {/* {(allLedgerData?.totalBalance || 0) > 0 ? '- ' : ''}{currency(Math.abs(allLedgerData?.totalBalance || 0))} */}
-          </div>
-        </div>
-      </div>
+      )}
 
       <div className="bg-white rounded-lg border">
         <div className="p-4 border-b">
           <h2 className="font-semibold">Pending Payments - Action Center</h2>
-          <p className="text-sm text-muted-foreground mt-1">Orders that need payment</p>
+          <p className="text-sm text-muted-foreground mt-1">Select a company to view orders that need payment</p>
         </div>
 
         <div className="p-4 space-y-4">
@@ -925,7 +902,18 @@ export default function LogisticsLedgerPage() {
         </div>
       </div>
 
-      {pendingBalancesLoading ? (
+      {/* Pending Balances View - Only shown when company is selected */}
+      {!selectedCompanyId || selectedCompanyId === 'all' ? (
+        <div className="bg-white rounded-lg border p-12 text-center text-muted-foreground mt-4">
+          <div className="mb-4">
+            <svg className="mx-auto h-12 w-12 text-muted-foreground/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </div>
+          <p className="text-lg font-medium">Select a company to view pending payments</p>
+          <p className="text-sm mt-1">Choose a logistics company from the dropdown above to see their pending payment details</p>
+        </div>
+      ) : pendingBalancesLoading ? (
         <div className="bg-white rounded-lg border p-8 flex items-center justify-center mt-4">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           <span className="ml-2 text-muted-foreground">Loading pending balances...</span>
@@ -937,8 +925,8 @@ export default function LogisticsLedgerPage() {
         </div>
       ) : pendingBalances.length === 0 ? (
         <div className="bg-white rounded-lg border p-8 text-center text-muted-foreground mt-4">
-          <p>No pending balances found.</p>
-          <p className="text-xs mt-2">Make sure you have confirmed dispatch orders with logistics companies.</p>
+          <p>No pending balances found for this company.</p>
+          <p className="text-xs mt-2">This company has no confirmed dispatch orders with remaining balances.</p>
         </div>
       ) : (
         <div className="bg-white rounded-lg border mt-4">
@@ -1036,40 +1024,42 @@ export default function LogisticsLedgerPage() {
   // TAB 3: Payment History Content
   const paymentHistoryTabContent = (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Payments</h3>
-          <div className="text-2xl font-bold text-green-600">
-            {formatNumber(paymentSummary.total)}
+      {/* Summary Cards - Only show when company is selected */}
+      {paymentHistoryCompany && paymentHistoryCompany !== 'all' && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-lg border p-6">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Payments</h3>
+            <div className="text-2xl font-bold text-green-600">
+              {formatNumber(paymentSummary.total)}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg border p-6">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Cash Payments</h3>
+            <div className="text-2xl font-bold">
+              {formatNumber(paymentSummary.cash)}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg border p-6">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Bank Payments</h3>
+            <div className="text-2xl font-bold">
+              {formatNumber(paymentSummary.bank)}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg border p-6">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Payments This Month</h3>
+            <div className="text-2xl font-bold">
+              {paymentSummary.countThisMonth}
+            </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">Cash Payments</h3>
-          <div className="text-2xl font-bold">
-            {formatNumber(paymentSummary.cash)}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">Bank Payments</h3>
-          <div className="text-2xl font-bold">
-            {formatNumber(paymentSummary.bank)}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">Payments This Month</h3>
-          <div className="text-2xl font-bold">
-            {paymentSummary.countThisMonth}
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Filters and Add Payment Button */}
       <div className="bg-white rounded-lg border p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="font-semibold text-lg">Payment History</h2>
-            <p className="text-sm text-muted-foreground mt-1">All payments made to logistics companies</p>
+            <p className="text-sm text-muted-foreground mt-1">Select a company to view their payment history</p>
           </div>
           {paymentHistoryCompany && paymentHistoryCompany !== 'all' && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -1163,7 +1153,7 @@ export default function LogisticsLedgerPage() {
         {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div>
-            <Label htmlFor="payment-history-company">Company</Label>
+            <Label htmlFor="payment-history-company">Select Company</Label>
             <Select
               value={paymentHistoryCompany}
               onValueChange={(value) => {
@@ -1173,10 +1163,9 @@ export default function LogisticsLedgerPage() {
               disabled={allCompaniesLoading}
             >
               <SelectTrigger id="payment-history-company">
-                <SelectValue placeholder="All Companies" />
+                <SelectValue placeholder="Select a company..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Companies</SelectItem>
                 {allCompanies.map((company) => (
                   <SelectItem key={company._id || company.id} value={company._id || company.id}>
                     {company.name}
@@ -1225,21 +1214,30 @@ export default function LogisticsLedgerPage() {
         </div>
 
         {/* Payment History Table */}
-        {paymentHistoryLoading ? (
+        {!paymentHistoryCompany || paymentHistoryCompany === 'all' ? (
+          <div className="p-12 text-center text-muted-foreground">
+            <div className="mb-4">
+              <svg className="mx-auto h-12 w-12 text-muted-foreground/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+            </div>
+            <p className="text-lg font-medium">Select a company to view payment history</p>
+            <p className="text-sm mt-1">Choose a logistics company from the dropdown above to see their payment records</p>
+          </div>
+        ) : paymentHistoryLoading ? (
           <div className="p-12 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             <span className="ml-2 text-muted-foreground">Loading payment history...</span>
           </div>
         ) : paymentHistoryTransactions.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
-            <p>No payment history found</p>
-            {(paymentHistoryCompany !== 'all' || paymentHistoryDateFrom || paymentHistoryDateTo || paymentHistoryMethodFilter !== 'all') && (
+            <p>No payment history found for this company</p>
+            {(paymentHistoryDateFrom || paymentHistoryDateTo || paymentHistoryMethodFilter !== 'all') && (
               <Button
                 variant="outline"
                 size="sm"
                 className="mt-4"
                 onClick={() => {
-                  setPaymentHistoryCompany('all')
                   setPaymentHistoryDateFrom('')
                   setPaymentHistoryDateTo('')
                   setPaymentHistoryMethodFilter('all')
