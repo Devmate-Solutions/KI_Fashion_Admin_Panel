@@ -766,6 +766,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       (row) => {
         const costPrice = Number(row.costPrice);
         const quantity = Number(row.quantity);
+        // Quantity must be a positive integer (no decimals)
+        const isValidInteger = !isNaN(quantity) && 
+                                quantity > 0 && 
+                                Number.isInteger(quantity);
         return (
           !row.productName ||
           !row.productCode ||
@@ -775,8 +779,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           isNaN(costPrice) ||
           costPrice <= 0 ||
           !row.quantity ||
-          isNaN(quantity) ||
-          quantity <= 0
+          !isValidInteger
         );
       }
     );
@@ -992,6 +995,11 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           const exRate = Number(exchangeRate || 1);
           const percent = Number(percentage || 0);
           const quantity = Number(row.quantity);
+          
+          // Validate quantity is a positive integer (no decimals allowed)
+          if (!row.quantity || isNaN(quantity) || quantity <= 0 || !Number.isInteger(quantity)) {
+            throw new Error(`Invalid quantity for product: ${row.productName || row.productCode || 'Unknown'}. Quantity must be a positive integer (whole number).`);
+          }
 
           // Supplier Payment Amount (what admin pays supplier - NO exchange rate, NO profit margin)
           // Formula: costPrice × quantity (in supplier currency)
@@ -1008,7 +1016,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           // Allowed fields: product, productName, productCode, productType, costPrice, primaryColor, size, material, description, productImage, quantity, landedTotal
           const itemPayload = {
             product: productId,
-            quantity: quantity,
+            quantity: Math.floor(quantity), // Ensure it's an integer
             landedTotal: landedTotal,
           };
 
@@ -1852,23 +1860,24 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   <td className="p-2">
                     <Input
                       type="text"
-                      inputMode="decimal"
+                      inputMode="numeric"
                       value={row.quantity === 0 ? "" : String(row.quantity || "")}
                       onChange={(e) => {
                         const value = e.target.value;
-                        // Allow only numbers and a single decimal point
-                        let sanitized = value
-                          .replace(/[^0-9.]/g, "")
-                          .replace(/(\..*)\./g, "$1");
-                        // Prevent just "." from being stored (allow ".5" but not standalone ".")
-                        if (sanitized === ".") {
-                          sanitized = "";
+                        // Allow only positive integers (no decimals, no negative)
+                        let sanitized = value.replace(/[^0-9]/g, "");
+                        // Remove leading zeros (but allow single zero)
+                        if (sanitized.length > 1 && sanitized[0] === '0') {
+                          sanitized = sanitized.replace(/^0+/, '') || '0';
                         }
-                        updateRow(
-                          row.id,
-                          "quantity",
-                          sanitized === "" ? "" : sanitized
-                        );
+                        // Only update if it's a valid positive integer or empty (to allow clearing)
+                        if (sanitized === "" || (!isNaN(Number(sanitized)) && Number(sanitized) > 0 && Number.isInteger(Number(sanitized)))) {
+                          updateRow(
+                            row.id,
+                            "quantity",
+                            sanitized === "" ? "" : sanitized
+                          );
+                        }
                       }}
                       className="h-8 text-sm text-right tabular-nums"
                     />

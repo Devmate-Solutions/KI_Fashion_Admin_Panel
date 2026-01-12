@@ -1623,7 +1623,7 @@ export default function DispatchOrderDetailPage({ params }) {
               <div className="text-sm text-purple-700 font-medium">
                 {isPending && !dispatchOrder?.returnedItems?.length ? (
                   <>
-                    {remainingItemsSummary.rows} items • {currency(totalAmount)}
+                    {/* {remainingItemsSummary.rows} items • {currency(totalAmount)} */}
                   </>
                 ) : (
                   <>

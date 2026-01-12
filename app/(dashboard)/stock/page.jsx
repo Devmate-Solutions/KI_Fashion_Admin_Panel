@@ -37,7 +37,6 @@ import { Boxes, Loader2, MoveRight, RefreshCcw } from "lucide-react";
 import ProductImageGallery from "@/components/ui/ProductImageGallery";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const LIST_LIMIT = 20;
 const MOVEMENT_LIMIT = 20;
 
 function formatNumber(value) {
@@ -350,8 +349,11 @@ function currency(n) {
   })}`;
 }
 
+const PAGE_SIZE_OPTIONS = [10, 20, 25, 50, 100];
+
 export default function StockPage() {
   const [page, setPage] = useState(1);
+  const [pageLimit, setPageLimit] = useState(20);
   const [movementPage, setMovementPage] = useState(1);
   const [selectedProductId, setSelectedProductId] = useState("");
 
@@ -382,7 +384,7 @@ export default function StockPage() {
   const inventoryParams = useMemo(() => {
     const params = {
       page,
-      limit: LIST_LIMIT,
+      limit: pageLimit,
     };
 
     if (appliedFilters.search?.trim()) {
@@ -406,7 +408,7 @@ export default function StockPage() {
     }
 
     return params;
-  }, [page, appliedFilters]);
+  }, [page, pageLimit, appliedFilters]);
 
   const {
     data: inventoryData,
@@ -839,6 +841,101 @@ export default function StockPage() {
             </span>
           </div>
         </div>
+        {/* Pagination Controls */}
+        {inventoryPagination && (inventoryPagination.totalItems > 0) && (
+          <div className="flex items-center gap-4">
+            {/* Page Size Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Show</span>
+              <Select
+                value={String(pageLimit)}
+                onValueChange={(value) => {
+                  setPageLimit(Number(value));
+                  setPage(1); // Reset to first page when changing limit
+                }}
+              >
+                <SelectTrigger className="w-[70px] h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-muted-foreground">per page</span>
+            </div>
+            {/* Page Navigation */}
+            <Pagination className="w-auto mx-0">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      if ((inventoryPagination?.currentPage || 1) > 1) {
+                        setPage((prev) => Math.max(1, prev - 1));
+                      }
+                    }}
+                    aria-disabled={(inventoryPagination?.currentPage || 1) === 1}
+                    className={
+                      (inventoryPagination?.currentPage || 1) === 1
+                        ? "pointer-events-none opacity-50"
+                        : undefined
+                    }
+                  />
+                </PaginationItem>
+                {Array.from({ length: inventoryPagination.totalPages || 1 }).map(
+                  (_, index) => {
+                    const pageNumber = index + 1;
+                    return (
+                      <PaginationItem key={pageNumber}>
+                        <PaginationLink
+                          href="#"
+                          isActive={
+                            pageNumber === (inventoryPagination?.currentPage || 1)
+                          }
+                          onClick={(event) => {
+                            event.preventDefault();
+                            setPage(pageNumber);
+                          }}
+                        >
+                          {pageNumber}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  }
+                )}
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      if (
+                        (inventoryPagination?.currentPage || 1) <
+                        (inventoryPagination?.totalPages || 1)
+                      ) {
+                        setPage((prev) => prev + 1);
+                      }
+                    }}
+                    aria-disabled={
+                      (inventoryPagination?.currentPage || 1) >=
+                      (inventoryPagination?.totalPages || 1)
+                    }
+                    className={
+                      (inventoryPagination?.currentPage || 1) >=
+                        (inventoryPagination?.totalPages || 1)
+                        ? "pointer-events-none opacity-50"
+                        : undefined
+                    }
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
       </div>
       <DataTable
         title="Inventory"
@@ -848,75 +945,6 @@ export default function StockPage() {
         enableSearch={false}
         paginate={false}
       />
-
-      {inventoryPagination?.totalPages > 1 && (
-        <Pagination className="pt-2">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                href="#"
-                onClick={(event) => {
-                  event.preventDefault();
-                  if ((inventoryPagination?.currentPage || 1) > 1) {
-                    setPage((prev) => Math.max(1, prev - 1));
-                  }
-                }}
-                aria-disabled={(inventoryPagination?.currentPage || 1) === 1}
-                className={
-                  (inventoryPagination?.currentPage || 1) === 1
-                    ? "pointer-events-none opacity-50"
-                    : undefined
-                }
-              />
-            </PaginationItem>
-            {Array.from({ length: inventoryPagination.totalPages }).map(
-              (_, index) => {
-                const pageNumber = index + 1;
-                return (
-                  <PaginationItem key={pageNumber}>
-                    <PaginationLink
-                      href="#"
-                      isActive={
-                        pageNumber === (inventoryPagination?.currentPage || 1)
-                      }
-                      onClick={(event) => {
-                        event.preventDefault();
-                        setPage(pageNumber);
-                      }}
-                    >
-                      {pageNumber}
-                    </PaginationLink>
-                  </PaginationItem>
-                );
-              }
-            )}
-            <PaginationItem>
-              <PaginationNext
-                href="#"
-                onClick={(event) => {
-                  event.preventDefault();
-                  if (
-                    (inventoryPagination?.currentPage || 1) <
-                    (inventoryPagination?.totalPages || 1)
-                  ) {
-                    setPage((prev) => prev + 1);
-                  }
-                }}
-                aria-disabled={
-                  (inventoryPagination?.currentPage || 1) >=
-                  (inventoryPagination?.totalPages || 1)
-                }
-                className={
-                  (inventoryPagination?.currentPage || 1) >=
-                    (inventoryPagination?.totalPages || 1)
-                    ? "pointer-events-none opacity-50"
-                    : undefined
-                }
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      )}
     </div>
   );
 

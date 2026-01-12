@@ -675,40 +675,40 @@ export default function BuyingPage() {
               </div>
             ),
           },
-          {
-            label: "Buying Return",
-            content: (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold">Return History</h2>
-                  <Button
-                    onClick={() => setShowReturnModal(true)}
-                    className="bg-rose-600 hover:bg-rose-700"
-                  >
-                    <Package className="h-4 w-4 mr-2" />
-                    Create Product Return
-                  </Button>
-                </div>
-                <DataTable
-                  title="Return History"
-                  columns={buyingReturnColumns}
-                  data={buyingReturnRows}
-                  loading={returnsLoading}
-                />
+          // {
+          //   label: "Buying Return",
+          //   content: (
+          //     <div className="space-y-4">
+          //       <div className="flex items-center justify-between mb-4">
+          //         <h2 className="text-lg font-semibold">Return History</h2>
+          //         <Button
+          //           onClick={() => setShowReturnModal(true)}
+          //           className="bg-rose-600 hover:bg-rose-700"
+          //         >
+          //           <Package className="h-4 w-4 mr-2" />
+          //           Create Product Return
+          //         </Button>
+          //       </div>
+          //       <DataTable
+          //         title="Return History"
+          //         columns={buyingReturnColumns}
+          //         data={buyingReturnRows}
+          //         loading={returnsLoading}
+          //       />
 
-                <details className="rounded-[4px] border border-border bg-card p-3">
-                  <summary className="cursor-pointer text-sm">Legacy reference: Buying Return</summary>
-                  <div className="mt-3 overflow-hidden rounded-[4px] border border-border">
-                    <img
-                      src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Buying_%20Buying%20Return-DuuycgQyN5UwFOCHTkGDA2GMvr8nAv.png"
-                      alt="Legacy Buying Return screen"
-                      className="h-auto w-full"
-                    />
-                  </div>
-                </details>
-              </div>
-            ),
-          },
+          //       <details className="rounded-[4px] border border-border bg-card p-3">
+          //         <summary className="cursor-pointer text-sm">Legacy reference: Buying Return</summary>
+          //         <div className="mt-3 overflow-hidden rounded-[4px] border border-border">
+          //           <img
+          //             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Buying_%20Buying%20Return-DuuycgQyN5UwFOCHTkGDA2GMvr8nAv.png"
+          //             alt="Legacy Buying Return screen"
+          //             className="h-auto w-full"
+          //           />
+          //         </div>
+          //       </details>
+          //     </div>
+          //   ),
+          // },
         ]}
       />
 

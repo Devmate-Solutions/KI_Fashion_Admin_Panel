@@ -369,6 +369,15 @@ export default function LogisticsLedgerPage() {
         )
       },
       {
+        header: "Notes",
+        accessor: "description",
+        render: (row) => (
+          <span className="font-medium block max-w-[250px] truncate" title={row.description || ''}>
+          {row.description || '-'}
+        </span>
+        )
+      },
+      {
         header: "Boxes",
         accessor: "boxes",
         render: (row) => {
@@ -817,7 +826,7 @@ export default function LogisticsLedgerPage() {
               <div className="bg-muted/30 rounded-lg p-6 space-y-1">
                 <p className="text-sm text-muted-foreground">Company Balance</p>
                 <p className={`text-2xl font-bold ${calculatedTotalBalance >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {calculatedTotalBalance > 0 ? '-' : ''}{currency(Math.abs(calculatedTotalBalance))}
+                  {calculatedTotalBalance < 0 ? '-' : ''}{currency(Math.abs(calculatedTotalBalance))}
                 </p>
               </div>
             </div>
@@ -1064,93 +1073,7 @@ export default function LogisticsLedgerPage() {
             <h2 className="font-semibold text-lg">Payment History</h2>
             <p className="text-sm text-muted-foreground mt-1">Select a company to view their payment history</p>
           </div>
-          {paymentHistoryCompany && paymentHistoryCompany !== 'all' && (
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Payment
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Payment</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="amount">Payment Amount <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="amount"
-                      type="text"
-                      inputMode="decimal"
-                      step="0.01"
-                      min="0.01"
-                      value={paymentForm.amount}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        // Allow only numbers and one decimal point
-                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                        setPaymentForm({ ...paymentForm, amount: sanitized });
-                      }}
-                      placeholder="Enter payment amount"
-                      disabled={isSubmittingPayment}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="date">Date</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={paymentForm.date}
-                      onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
-                      disabled={isSubmittingPayment}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="method">Payment Method <span className="text-red-500">*</span></Label>
-                    <Select
-                      value={paymentForm.method}
-                      onValueChange={(value) => setPaymentForm({ ...paymentForm, method: value })}
-                      disabled={isSubmittingPayment}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select method" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="bank">Bank Transfer</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      value={paymentForm.description}
-                      onChange={(e) => setPaymentForm({ ...paymentForm, description: e.target.value })}
-                      placeholder="Enter description (optional)"
-                      disabled={isSubmittingPayment}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmittingPayment}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleAddPayment} disabled={isSubmittingPayment}>
-                    {isSubmittingPayment ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Recording...
-                      </>
-                    ) : (
-                      'Record Payment'
-                    )}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
+         
         </div>
 
         {/* Filters */}

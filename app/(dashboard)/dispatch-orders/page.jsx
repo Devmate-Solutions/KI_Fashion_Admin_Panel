@@ -94,15 +94,15 @@ export default function DispatchOrdersPage() {
 
         // For confirmed orders, use confirmedQuantities if available
         let remainingQuantity = totalQuantity
-        if (row.status === 'confirmed' && row.confirmedQuantities && Array.isArray(row.confirmedQuantities)) {
-          // Sum confirmed quantities
-          remainingQuantity = row.confirmedQuantities.reduce((sum, cq) => {
-            return sum + (cq.quantity || 0)
-          }, 0)
-        } else if (totalReturned > 0) {
-          // For other statuses, subtract returned items
-          remainingQuantity = totalQuantity - totalReturned
-        }
+        // if (row.status === 'confirmed' ) {
+        //   // Sum confirmed quantities
+        //   remainingQuantity = row.confirmedQuantities.reduce((sum, cq) => {
+        //     return sum + (cq.quantity || 0)
+        //   }, 0)
+        // } else if (totalReturned > 0) {
+        //   // For other statuses, subtract returned items
+        // }
+        remainingQuantity = totalQuantity - totalReturned
 
         return (
           <div className="flex flex-col">
@@ -156,7 +156,6 @@ export default function DispatchOrdersPage() {
           </p>
         </div>
       </div>
-
       <DataTable
         columns={columns}
         data={dispatchOrders}
