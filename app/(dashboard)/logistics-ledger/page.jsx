@@ -173,7 +173,7 @@ export default function LogisticsLedgerPage() {
       } else if (entry.transactionType === 'charge') {
         typeLabel = 'Logistics Charge'
       } else if (entry.transactionType === 'adjustment') {
-        typeLabel = 'Debit Adjustment'
+        typeLabel = 'Debit'
       }
 
       let readableReference = '-'

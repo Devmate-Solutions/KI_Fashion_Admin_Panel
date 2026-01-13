@@ -253,7 +253,7 @@ const inventoryColumns = [
     ),
   },
   {
-    header: "Avg Cost",
+    header: "Landed Cost",
     accessor: "averageCostPrice",
     render: (row) => (
       <span className="tabular-nums">

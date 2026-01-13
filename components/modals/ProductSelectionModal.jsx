@@ -48,29 +48,34 @@ export default function ProductSelectionModal({ open, onClose, products = [], on
                 ),
             },
             {
+                header: "Supplier",
+                accessor: "supplier",
+                render: (row) => {
+                    const supplier = row._original?.supplier
+                    const supplierName = supplier?.name || supplier?.companyName || row._original?.supplierName || "-"
+                    return (
+                        <span className="text-sm text-muted-foreground">{supplierName}</span>
+                    )
+                },
+            },
+            {
                 header: "Stock",
                 accessor: "stock",
                 render: (row) => {
-                    // Try to get stock from inventoryInfo if available (from lookup), or fallback to row data
-                    // The products passed from sale-form might not have full inventory info unless enriched
-                    // But sale-form fetches products using productsAPI.getAll which usually returns inventory stats
-                    // Let's inspect the `products` structure in sale-form.jsx again.
-                    // It maps: productCode, color, size, defaultPrice.
-                    // It doesn't seem to explicitly map 'stock' or 'inventory'.
-                    // I might need to rely on what's available or fetching.
-                    // However, for the purpose of "Select Product", just showing what we have is good.
-                    // If we can't show stock, we can skip it or show a placeholder.
-                    // Actually, sale-form.jsx products array is:
-                    // { id, name, productCode, color, size, images, pricing, defaultPrice, _original }
-                    // The _original object contains the full product data.
-                    // Let's assume _original.inventory.availableStock or similar exists.
-
                     const inventory = row._original?.inventory || {}
-                    const stock = inventory.availableStock !== undefined ? inventory.availableStock : (inventory.currentStock || 0)
+                    const availableStock = inventory.availableStock !== undefined 
+                        ? inventory.availableStock 
+                        : inventory.currentStock !== undefined 
+                        ? inventory.currentStock 
+                        : row._original?.stock !== undefined
+                        ? row._original.stock
+                        : row._original?.quantity !== undefined
+                        ? row._original.quantity
+                        : 0
 
                     return (
-                        <span className={`tabular-nums font-medium ${stock > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {stock}
+                        <span className={`tabular-nums font-medium ${availableStock > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {availableStock}
                         </span>
                     )
                 },

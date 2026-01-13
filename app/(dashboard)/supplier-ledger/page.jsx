@@ -1082,6 +1082,13 @@ export default function SupplierLedgerPage() {
   const allLedgerColumns = useMemo(
     () => [
       {
+        header: "Entry Number",
+        accessor: "entryNumber",
+        render: (row) => (
+          <span className="font-medium">{row.entryNumber}</span>
+        )
+      },
+      {
         header: "Date",
         accessor: "date",
         render: (row) => formatDateTime(row)
@@ -1091,13 +1098,6 @@ export default function SupplierLedgerPage() {
         accessor: "supplier",
         render: (row) => (
           <span className="font-medium">{row.supplier}</span>
-        )
-      },
-      {
-        header: "Entry Number",
-        accessor: "entryNumber",
-        render: (row) => (
-          <span className="font-medium">{row.entryNumber}</span>
         )
       },
       {
@@ -1274,7 +1274,7 @@ export default function SupplierLedgerPage() {
               <div className="bg-muted/30 rounded-lg p-6 space-y-1">
                 <p className="text-sm text-muted-foreground">Supplier Balance</p>
                 <p className={`text-2xl font-bold ${(calculatedTotalBalance || 0) <= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatNumber(calculatedTotalBalance)}
+                  {(calculatedTotalBalance || 0) > 0 ? '-' : '+'}{formatNumber(Math.abs(calculatedTotalBalance || 0))}
                 </p>
               </div>
             </div>

@@ -57,8 +57,39 @@ export default function BuyingPage() {
     limit: searchQuery.trim() ? 500 : 20, // Fetch more results when searching to enable client-side filtering
   })
   
-  // Get all rows from API
-  const allBuyingRows = purchasesData?.rows ?? []
+  // Get all rows from API and flatten items into individual rows
+  const allBuyingRows = useMemo(() => {
+    const purchases = purchasesData?.rows ?? []
+    const flattened = []
+    
+    purchases.forEach(purchase => {
+      if (purchase.items && purchase.items.length > 0) {
+        purchase.items.forEach((item, itemIndex) => {
+          flattened.push({
+            ...purchase,
+            // Keep original purchase data but add item-specific fields
+            currentItem: item,
+            itemIndex,
+            // Override fields to show item-level data
+            productName: item.productName,
+            productCode: item.productCode,
+            quantity: item.quantity,
+            landedPrice: item.landedPrice,
+            primaryColor: item.primaryColor,
+            size: item.size,
+            productImage: item.productImage,
+            // Generate unique ID for the row
+            rowId: `${purchase.id}_item_${itemIndex}`
+          })
+        })
+      } else {
+        // Keep purchase without items as-is
+        flattened.push(purchase)
+      }
+    })
+    
+    return flattened
+  }, [purchasesData?.rows])
   
   // Apply client-side filtering by Supplier name and Product names
   const buyingRows = useMemo(() => {
@@ -72,12 +103,10 @@ export default function BuyingPage() {
       // Search by supplier name
       const supplierMatch = row.supplierName?.toLowerCase().includes(query)
       
-      // Search by product names (check all items in the purchase)
-      const productMatch = row.items?.some((item) => {
-        const productName = item.productName?.toLowerCase() || ""
-        const productCode = item.productCode?.toLowerCase() || ""
-        return productName.includes(query) || productCode.includes(query)
-      })
+      // Search by product name/code (now at row level)
+      const productName = row.productName?.toLowerCase() || ""
+      const productCode = row.productCode?.toLowerCase() || ""
+      const productMatch = productName.includes(query) || productCode.includes(query)
       
       return supplierMatch || productMatch
     })
@@ -146,6 +175,7 @@ export default function BuyingPage() {
         header: "Buying ID",
         accessor: "purchaseNumber",
         render: (row) => (
+          
           <div className="flex flex-col">
             {/* <span className="font-medium text-sm">
               {row.purchaseNumber || "—"}
@@ -185,37 +215,28 @@ export default function BuyingPage() {
         header: "Products",
         accessor: "productsSearch",
         render: (row) => (
-          <div className="flex flex-col gap-2">
-            {row.items && row.items.length > 0 ? (
+          <div className="flex items-center gap-3">
+            {row.currentItem ? (
               <>
-                {row.items.slice(0, 3).map((item) => (
-                  <div key={item.id} className="flex items-center gap-3">
-                    <ProductImageGallery
-                      images={getImageArray(item)}
-                      alt={item.productName || item.productCode || "Product"}
-                      size="sm"
-                      maxVisible={1}
-                      showCount={true}
-                    />
-                    <div className="text-xs leading-tight">
-                      <div className="font-semibold text-sm">{item.productName || "—"}</div>
-                      <div className="text-muted-foreground">{item.productCode || "—"}</div>
-                      {item.quantity && (
-                        <div className="text-muted-foreground/70">
-                          Qty: {item.quantity}
-                        </div>
-                      )}
+                <ProductImageGallery
+                  images={getImageArray(row.currentItem)}
+                  alt={row.productName || row.productCode || "Product"}
+                  size="sm"
+                  maxVisible={1}
+                  showCount={true}
+                />
+                <div className="text-xs leading-tight">
+                  <div className="font-semibold text-sm">{row.productName || "—"}</div>
+                  <div className="text-muted-foreground">{row.productCode || "—"}</div>
+                  {row.quantity && (
+                    <div className="text-muted-foreground/70">
+                      Qty: {row.quantity}
                     </div>
-                  </div>
-                ))}
-                {row.items.length > 3 && (
-                  <span className="text-[11px] text-muted-foreground">
-                    +{row.items.length - 3} more item{row.items.length - 3 === 1 ? "" : "s"}
-                  </span>
-                )}
+                  )}
+                </div>
               </>
             ) : (
-              <span className="text-muted-foreground">No products</span>
+              <span className="text-muted-foreground">No product</span>
             )}
           </div>
         ),
@@ -224,7 +245,9 @@ export default function BuyingPage() {
         header: "Colors",
         accessor: "colors",
         render: (row) => {
-          if (!row.items || row.items.length === 0) return <span className="text-muted-foreground">—</span>
+          if (!row.currentItem) return <span className="text-muted-foreground">—</span>
+
+          const item = row.currentItem
 
           // Helper function to extract colors from a value (array, string, or object)
           const extractColors = (value) => {
@@ -247,44 +270,36 @@ export default function BuyingPage() {
             return extracted
           }
 
-          // Collect unique colors from all items - check ALL sources to get complete color list
-          // Match what's shown in detail page: aggregate all colors from item-level data
+          // Collect colors from the item
           const colors = new Set()
-          row.items.forEach(item => {
-            // Check ALL sources for each item to get complete color list
-            // PRIORITY 1: Check item.primaryColor (array or string) - this is what detail page uses
-            if (item.primaryColor) {
-              extractColors(item.primaryColor).forEach(color => colors.add(color))
-            }
+          
+          if (item.primaryColor) {
+            extractColors(item.primaryColor).forEach(color => colors.add(color))
+          }
 
-            // PRIORITY 2: Also check primaryColorDisplay (may have additional colors)
-            if (item.primaryColorDisplay) {
-              extractColors(item.primaryColorDisplay).forEach(color => colors.add(color))
-            }
+          if (item.primaryColorDisplay) {
+            extractColors(item.primaryColorDisplay).forEach(color => colors.add(color))
+          }
 
-            // PRIORITY 3: Also check color field (alternative name, may have additional colors)
-            if (item.color) {
-              extractColors(item.color).forEach(color => colors.add(color))
-            }
+          if (item.color) {
+            extractColors(item.color).forEach(color => colors.add(color))
+          }
 
-            // PRIORITY 4: Check packets composition for additional colors (important for variant tracking)
-            if (item.packets && Array.isArray(item.packets)) {
-              item.packets.forEach(packet => {
-                if (packet.composition && Array.isArray(packet.composition)) {
-                  packet.composition.forEach(comp => {
-                    if (comp.color) {
-                      extractColors(comp.color).forEach(color => colors.add(color))
-                    }
-                    if (comp.primaryColor) {
-                      extractColors(comp.primaryColor).forEach(color => colors.add(color))
-                    }
-                  })
-                }
-              })
-            }
-
-            // DO NOT fallback to product.primaryColor or product.color - item data should match detail page
-          })
+          // Check packets composition for additional colors
+          if (item.packets && Array.isArray(item.packets)) {
+            item.packets.forEach(packet => {
+              if (packet.composition && Array.isArray(packet.composition)) {
+                packet.composition.forEach(comp => {
+                  if (comp.color) {
+                    extractColors(comp.color).forEach(color => colors.add(color))
+                  }
+                  if (comp.primaryColor) {
+                    extractColors(comp.primaryColor).forEach(color => colors.add(color))
+                  }
+                })
+              }
+            })
+          }
 
           const colorArray = Array.from(colors).filter(Boolean)
           if (colorArray.length === 0) return <span className="text-muted-foreground">—</span>
@@ -429,21 +444,30 @@ export default function BuyingPage() {
           return <span className="tabular-nums text-sm font-medium">{totalBoxes}</span>
         },
       },
+      // {
+      //   header: "Ex. Rate",
+      //   accessor: "exchangeRate",
+      //   render: (row) => (
+      //     <span className="tabular-nums text-sm">
+      //       {row.exchangeRate ? row.exchangeRate.toFixed(2) : "—"}
+      //     </span>
+      //   ),
+      // },
+      // {
+      //   header: "Supplier Amount",
+      //   accessor: "supplierPaymentTotal",
+      //   render: (row) => (
+      //     <span className="tabular-nums font-medium text-sm">
+      //       {row.supplierPaymentTotal != null ? row.supplierPaymentTotal.toFixed(2) : "—"}
+      //     </span>
+      //   ),
+      // },
       {
-        header: "Ex. Rate",
-        accessor: "exchangeRate",
-        render: (row) => (
-          <span className="tabular-nums text-sm">
-            {row.exchangeRate ? row.exchangeRate.toFixed(2) : "—"}
-          </span>
-        ),
-      },
-      {
-        header: "Supplier Amount",
-        accessor: "supplierPaymentTotal",
+        header: "Landed Price",
+        accessor: "landedPrice",
         render: (row) => (
           <span className="tabular-nums font-medium text-sm">
-            {row.supplierPaymentTotal != null ? row.supplierPaymentTotal.toFixed(2) : "—"}
+            {row?.landedPrice != null ? row?.landedPrice.toFixed(2) : "—"}
           </span>
         ),
       },

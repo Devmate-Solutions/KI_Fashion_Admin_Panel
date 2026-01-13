@@ -46,6 +46,7 @@ export default function SaleForm({ onSave }) {
   const [isLoadingBuyers, setIsLoadingBuyers] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState(null)
+  const [customerSearch, setCustomerSearch] = useState("")
 
   // Buyers (from API)
   const [buyers, setBuyers] = useState([])
@@ -53,6 +54,8 @@ export default function SaleForm({ onSave }) {
   const [isManualCustomer, setIsManualCustomer] = useState(false)
   const [showAddBuyer, setShowAddBuyer] = useState(false)
   const [newBuyerName, setNewBuyerName] = useState("")
+  const [newBuyerCompany, setNewBuyerCompany] = useState("")
+  const [newBuyerEmail, setNewBuyerEmail] = useState("")
   const [newBuyerPhone, setNewBuyerPhone] = useState("")
   const [newBuyerPhoneAreaCode, setNewBuyerPhoneAreaCode] = useState("")
   const [isCreatingBuyer, setIsCreatingBuyer] = useState(false)
@@ -82,7 +85,6 @@ export default function SaleForm({ onSave }) {
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [productsError, setProductsError] = useState(null)
 
-
   // Product code lookup state
   const lookupTimeoutRefs = useRef({})
 
@@ -91,7 +93,7 @@ export default function SaleForm({ onSave }) {
 
   // Metadata fields
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split("T")[0])
-  const [saleType, setSaleType] = useState("retail")
+  const [saleType, setSaleType] = useState("wholesale")
 
   // Cart rows
   const [rows, setRows] = useState([])
@@ -209,24 +211,27 @@ export default function SaleForm({ onSave }) {
       setError('Please enter buyer name')
       return
     }
-
     if (!newBuyerPhone.trim()) {
       setError('Please enter buyer phone')
       return
     }
-
+    // Optionally validate email format if provided
+    if (newBuyerEmail && !/^\S+@\S+\.\S+$/.test(newBuyerEmail)) {
+      setError('Please enter a valid email address')
+      return
+    }
     try {
       setIsCreatingBuyer(true)
       setError(null)
-
-      const response = await buyersAPI.create({
+      const payload = {
         name: newBuyerName.trim(),
         phone: newBuyerPhone.trim(),
-        phoneAreaCode: newBuyerPhoneAreaCode.trim() || undefined
-      })
-
+        phoneAreaCode: newBuyerPhoneAreaCode.trim() || undefined,
+        company: newBuyerCompany.trim() || undefined,
+        email: newBuyerEmail.trim() || undefined
+      }
+      const response = await buyersAPI.create(payload)
       const newBuyer = response.data?.data || response.data
-
       if (newBuyer) {
         const normalizedBuyer = {
           id: newBuyer._id || newBuyer.id,
@@ -237,12 +242,14 @@ export default function SaleForm({ onSave }) {
           buyerId: newBuyer._id || newBuyer.id,
           _original: newBuyer
         }
-
         setBuyers(prev => [...prev, normalizedBuyer])
         setBuyerId(String(normalizedBuyer.id))
         setIsManualCustomer(false)
         setNewBuyerName("")
+        setNewBuyerCompany("")
+        setNewBuyerEmail("")
         setNewBuyerPhone("")
+        setNewBuyerPhoneAreaCode("")
         setShowAddBuyer(false)
       }
     } catch (err) {
@@ -585,31 +592,53 @@ export default function SaleForm({ onSave }) {
             <Label htmlFor="buyer">Customer / Distributor</Label>
             <div className="flex flex-col gap-2">
               <div className="flex gap-2">
-                <Select
-                  value={isManualCustomer ? "manual" : (buyerId || undefined)}
-                  onValueChange={(value) => {
-                    if (value === "manual") {
-                      setIsManualCustomer(true)
-                      setBuyerId("")
-                    } else {
-                      setIsManualCustomer(false)
-                      setBuyerId(value)
-                    }
-                  }}
-                  disabled={isLoadingBuyers}
-                >
-                  <SelectTrigger id="buyer" className="flex-1">
-                    <SelectValue placeholder={isLoadingBuyers ? "Loading..." : "Select customer..."} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {buyers.map((b) => (
-                      <SelectItem key={b.id} value={String(b.id)}>
-                        {b.name} {b.company ? `(${b.company})` : ''}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="manual">Manual Customer</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex-1 relative">
+                  <Input
+                    type="text"
+                    placeholder="Search customer..."
+                    value={customerSearch}
+                    onChange={e => setCustomerSearch(e.target.value)}
+                    className="mb-2 pr-8"
+                    autoComplete="off"
+                  />
+                  <SearchIcon className="absolute right-2 top-3 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  {customerSearch && (
+                    <div className="absolute z-10 bg-white border border-border rounded shadow w-full mt-1 max-h-56 overflow-auto">
+                      {buyers.filter(b => {
+                        const search = customerSearch.toLowerCase();
+                        return (
+                          b.name?.toLowerCase().includes(search) ||
+                          b.company?.toLowerCase().includes(search) ||
+                          b.phone?.toLowerCase().includes(search) ||
+                          b.email?.toLowerCase().includes(search)
+                        );
+                      }).length === 0 && (
+                        <div className="px-4 py-2 text-muted-foreground text-sm">No customers found</div>
+                      )}
+                      {buyers.filter(b => {
+                        const search = customerSearch.toLowerCase();
+                        return (
+                          b.name?.toLowerCase().includes(search) ||
+                          b.company?.toLowerCase().includes(search) ||
+                          b.phone?.toLowerCase().includes(search) ||
+                          b.email?.toLowerCase().includes(search)
+                        );
+                      }).map((b) => (
+                        <div
+                          key={b.id}
+                          className={`px-4 py-2 cursor-pointer hover:bg-muted ${buyerId === String(b.id) ? 'bg-muted' : ''}`}
+                          onClick={() => {
+                            setBuyerId(String(b.id));
+                            setIsManualCustomer(false);
+                            setCustomerSearch(b.name);
+                          }}
+                        >
+                          {b.name} {b.company ? `(${b.company})` : ''}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <Button
                   type="button"
                   variant="outline"
@@ -1090,6 +1119,27 @@ export default function SaleForm({ onSave }) {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="new-buyer-company">Company Name</Label>
+              <Input
+                id="new-buyer-company"
+                value={newBuyerCompany}
+                onChange={e => setNewBuyerCompany(e.target.value)}
+                placeholder="Enter company name"
+                disabled={isCreatingBuyer}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-buyer-email">Email</Label>
+              <Input
+                id="new-buyer-email"
+                type="email"
+                value={newBuyerEmail}
+                onChange={e => setNewBuyerEmail(e.target.value)}
+                placeholder="Enter email address"
+                disabled={isCreatingBuyer}
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="new-buyer-phone">Phone <span className="text-red-500">*</span></Label>
               <div className="flex gap-2">
                 <Input
@@ -1116,6 +1166,8 @@ export default function SaleForm({ onSave }) {
               onClick={() => {
                 setShowAddBuyer(false)
                 setNewBuyerName("")
+                setNewBuyerCompany("")
+                setNewBuyerEmail("")
                 setNewBuyerPhone("")
                 setNewBuyerPhoneAreaCode("")
               }}
