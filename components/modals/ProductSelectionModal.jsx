@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import DataTable from "@/components/data-table"
 import { Package, Search, Check } from "lucide-react"
@@ -16,6 +17,31 @@ function currency(n) {
 
 export default function ProductSelectionModal({ open, onClose, products = [], onSelect }) {
     const [selectedProduct, setSelectedProduct] = useState(null)
+    const [searchTerm, setSearchTerm] = useState("")
+
+    // Filter products based on search term
+    const filteredProducts = useMemo(() => {
+        if (!searchTerm.trim()) return products
+
+        const search = searchTerm.toLowerCase()
+        return products.filter(product => {
+            // Search in product name
+            const nameMatch = product.name?.toLowerCase().includes(search)
+            
+            // Search in product code
+            const codeMatch = product.productCode?.toLowerCase().includes(search) || 
+                             product.sku?.toLowerCase().includes(search)
+            
+            // Search in supplier name
+            const supplierName = product._original?.supplier?.name || 
+                               product._original?.supplier?.company || 
+                               product.supplier?.name || 
+                               product.supplier?.company || ""
+            const supplierMatch = supplierName.toLowerCase().includes(search)
+            
+            return nameMatch || codeMatch || supplierMatch
+        })
+    }, [products, searchTerm])
 
     const columns = useMemo(
         () => [
@@ -119,12 +145,24 @@ export default function ProductSelectionModal({ open, onClose, products = [], on
                     </DialogTitle>
                 </DialogHeader>
 
+                <div className="px-6 pb-2">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            type="text"
+                            placeholder="Search by name, code, or supplier..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-10"
+                        />
+                    </div>
+                </div>
+
                 <div className="flex-1 overflow-auto p-6 pt-2">
                     <DataTable
                         columns={columns}
-                        data={products}
-                        enableSearch={true}
-                        searchPlaceholder="Search by name, code, or type..."
+                        data={filteredProducts}
+                        enableSearch={false}
                         onRowClick={(row) => {
                             onSelect(row)
                             onClose()
