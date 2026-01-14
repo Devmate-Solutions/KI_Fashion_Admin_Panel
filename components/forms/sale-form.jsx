@@ -308,11 +308,11 @@ export default function SaleForm({ onSave }) {
       productId: product.id,
       productName: product.name,
       productCode: product.productCode,
-      season: Array.isArray(product.season) 
-        ? product.season 
-        : product.season 
-          ? [product.season] 
-          : product.productType 
+      season: Array.isArray(product.season)
+        ? product.season
+        : product.season
+          ? [product.season]
+          : product.productType
             ? (Array.isArray(product.productType) ? product.productType : [product.productType])
             : [],
       unitPrice: Number(product.defaultPrice || 0).toFixed(2), // Fix to 2 decimals
@@ -372,8 +372,6 @@ export default function SaleForm({ onSave }) {
     const invalidRows = rows.filter(row =>
       !row.productName ||
       !row.productCode ||
-      !row.season ||
-      row.season.length === 0 ||
       !row.unitPrice ||
       row.unitPrice <= 0 ||
       !row.quantity ||
@@ -381,7 +379,7 @@ export default function SaleForm({ onSave }) {
     )
 
     if (invalidRows.length > 0) {
-      setError('Please fill in product name, code, season, unit price, and quantity for all rows')
+      setError('Please fill in product name, code, unit price, and quantity for all rows')
       return
     }
 
@@ -473,33 +471,27 @@ export default function SaleForm({ onSave }) {
 
         const unitPrice = Number(row.unitPrice || 0)
         const quantity = Number(row.quantity)
-        const totalPrice = unitPrice * quantity
 
         return {
           product: productId,
           quantity: quantity,
           unitPrice: unitPrice,
-          totalPrice: totalPrice,
           discount: 0,
           taxRate: 0
         }
       }))
 
       // Calculate subtotal and grandTotal
-      const subtotal = itemsWithProducts.reduce((sum, item) => sum + (item.totalPrice || 0), 0)
+      const subtotal = itemsWithProducts.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0)
       const grandTotal = Math.max(0, subtotal - Number(discount || 0))
 
       const payload = {
         saleDate: saleDate,
         items: itemsWithProducts,
-        subtotal: subtotal,
         totalDiscount: Number(discount || 0),
-        totalTax: 0,
         shippingCost: 0,
-        grandTotal: grandTotal,
         cashPayment: Number(cash || 0),
         bankPayment: Number(bank || 0),
-        paymentStatus,
         paymentMethod: cash > 0 ? 'cash' : bank > 0 ? 'online' : 'credit',
         saleType: saleType,
         notes: `Manual entry - ${isManualCustomer ? manualCustomer.name : buyers.find(b => String(b.id) === String(buyerId))?.name || 'Customer'}`,
@@ -613,8 +605,8 @@ export default function SaleForm({ onSave }) {
                           b.email?.toLowerCase().includes(search)
                         );
                       }).length === 0 && (
-                        <div className="px-4 py-2 text-muted-foreground text-sm">No customers found</div>
-                      )}
+                          <div className="px-4 py-2 text-muted-foreground text-sm">No customers found</div>
+                        )}
                       {buyers.filter(b => {
                         const search = customerSearch.toLowerCase();
                         return (
@@ -738,7 +730,6 @@ export default function SaleForm({ onSave }) {
                 <th className="text-left p-3 font-medium min-w-[150px]">Name</th>
                 <th className="text-left p-3 font-medium min-w-[120px]">Code</th>
                 <th className="text-left p-3 font-medium min-w-[80px]">Image</th>
-                <th className="text-left p-3 font-medium min-w-[150px]">Season</th>
                 <th className="text-right p-3 font-medium min-w-[100px]">Unit Price</th>
                 <th className="text-right p-3 font-medium min-w-[100px]">Quantity</th>
                 <th className="text-right p-3 font-medium min-w-[100px]">Total</th>
@@ -748,7 +739,7 @@ export default function SaleForm({ onSave }) {
             <tbody>
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-muted-foreground">
+                  <td colSpan={7} className="text-center py-12 text-muted-foreground">
                     <div className="flex flex-col items-center gap-2">
                       <p className="text-sm">No products added yet</p>
                       <p className="text-xs">Click "Add Product" to get started</p>
@@ -791,11 +782,11 @@ export default function SaleForm({ onSave }) {
                                     productId: product._id || product.id,
                                     productName: product.name || name,
                                     productCode: product.productCode || product.sku || r.productCode,
-                                    season: Array.isArray(product.season) 
-                                      ? product.season 
-                                      : product.season 
-                                        ? [product.season] 
-                                        : product.productType 
+                                    season: Array.isArray(product.season)
+                                      ? product.season
+                                      : product.season
+                                        ? [product.season]
+                                        : product.productType
                                           ? (Array.isArray(product.productType) ? product.productType : [product.productType])
                                           : (r.season || []),
                                     unitPrice: Number(unitPrice || 0).toFixed(2),
@@ -843,11 +834,11 @@ export default function SaleForm({ onSave }) {
                                     productId: product._id || product.id,
                                     productName: product.name || r.productName,
                                     productCode: product.productCode || product.sku || code,
-                                    season: Array.isArray(product.season) 
-                                      ? product.season 
-                                      : product.season 
-                                        ? [product.season] 
-                                        : product.productType 
+                                    season: Array.isArray(product.season)
+                                      ? product.season
+                                      : product.season
+                                        ? [product.season]
+                                        : product.productType
                                           ? (Array.isArray(product.productType) ? product.productType : [product.productType])
                                           : (r.season || []),
                                     unitPrice: Number(unitPrice || 0).toFixed(2),
@@ -873,17 +864,6 @@ export default function SaleForm({ onSave }) {
                       size="sm"
                       maxVisible={2}
                       showCount={true}
-                    />
-                  </td>
-
-                  {/* Season */}
-                  <td className="p-2">
-                    <MultiSelect
-                      options={SEASON_OPTIONS}
-                      value={Array.isArray(row.season) ? row.season : []}
-                      onChange={(selectedSeasons) => updateRow(row.id, "season", selectedSeasons)}
-                      placeholder="Select seasons"
-                      disabled={isSaving}
                     />
                   </td>
 
@@ -1129,7 +1109,7 @@ export default function SaleForm({ onSave }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-buyer-email">Email</Label>
+              <Label htmlFor="new-buyer-email">Email <span className="text-red-500">*</span></Label>
               <Input
                 id="new-buyer-email"
                 type="email"
@@ -1177,7 +1157,7 @@ export default function SaleForm({ onSave }) {
             </Button>
             <Button
               onClick={handleAddBuyer}
-              disabled={isCreatingBuyer || !newBuyerName.trim() || !newBuyerPhone.trim()}
+              disabled={isCreatingBuyer || !newBuyerName.trim() || !newBuyerEmail.trim() || !newBuyerPhone.trim()}
             >
               {isCreatingBuyer ? 'Creating...' : 'Create Buyer'}
             </Button>

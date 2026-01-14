@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Package, Trash2, Search, ChevronDown, X } from "lucide-react";
 import { suppliersAPI } from "@/lib/api/endpoints/suppliers";
 import { returnsAPI } from "@/lib/api/endpoints/returns";
+import { dispatchOrdersAPI } from "@/lib/api/endpoints/dispatchOrders";
 import { useCreateProductReturn } from "@/lib/hooks/useReturns";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
@@ -305,21 +306,40 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
     }
 
     try {
-      const payload = {
-        supplierId: selectedSupplierId,
-        items: selectedProducts.map((p) => ({
-          productId: p.productId,
-          batchId: p.batchId,
-          quantity: p.quantity,
-          reason: p.reason || "",
-        })),
-        returnDate: new Date().toISOString(),
-        cashRefund: 0,
-        accountCredit: calculateTotal(),
-        notes: notes || `Product return - ${selectedProducts.length} item(s)`,
-      };
+      // Check if we have a dispatch order ID (should be present for all items since we enforce single DO)
+      const dispatchOrderId = selectedProducts[0]?.dispatchOrderId;
 
-      await createReturnMutation.mutateAsync(payload);
+      if (dispatchOrderId) {
+        // Use the unified dispatch order return route
+        const payload = {
+          returnedItems: selectedProducts.map((p) => ({
+            productId: p.productId,
+            batchId: p.batchId,
+            quantity: p.quantity,
+            reason: p.reason || "",
+          })),
+          notes: notes || `Product return - ${selectedProducts.length} item(s)`,
+        };
+
+        await dispatchOrdersAPI.returnItems(dispatchOrderId, payload);
+      } else {
+        // Fallback to product-level return if no dispatch order ID (legacy/manual data without DO)
+        const payload = {
+          supplierId: selectedSupplierId,
+          items: selectedProducts.map((p) => ({
+            productId: p.productId,
+            batchId: p.batchId,
+            quantity: p.quantity,
+            reason: p.reason || "",
+          })),
+          returnDate: new Date().toISOString(),
+          cashRefund: 0,
+          accountCredit: calculateTotal(),
+          notes: notes || `Product return - ${selectedProducts.length} item(s)`,
+        };
+
+        await createReturnMutation.mutateAsync(payload);
+      }
 
       toast.success("Return created successfully");
       if (onSuccess) onSuccess();
@@ -460,8 +480,8 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
                           {products.length === 0
                             ? "No products available for returns from this supplier"
                             : productSearch
-                            ? "No products match your search"
-                            : "All available products have been added"}
+                              ? "No products match your search"
+                              : "All available products have been added"}
                         </div>
                       ) : (
                         <div className="py-1">

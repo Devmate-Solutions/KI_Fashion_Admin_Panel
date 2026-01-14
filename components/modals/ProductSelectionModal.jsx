@@ -106,38 +106,65 @@ export default function ProductSelectionModal({ open, onClose, products = [], on
                     )
                 },
             },
+            // {
+            //     header: "Avg Landed Price",
+            //     accessor: "avgLandedCost",
+            //     render: (row) => {
+            //         const inventory = row._original?.inventory || {}
+            //         const avgCost = inventory.averageCostPrice || 0
+            //         return (
+            //             <span className="tabular-nums text-muted-foreground">
+            //                 {avgCost > 0 ? currency(avgCost) : '-'}
+            //             </span>
+            //         )
+            //     },
+            // },
             {
-                header: "Price",
-                accessor: "defaultPrice",
-                render: (row) => (
-                    <span className="tabular-nums font-medium">{currency(row.defaultPrice || 0)}</span>
-                ),
+                header: "Min Sell Price",
+                accessor: "minSellPrice",
+                render: (row) => {
+                    const inventory = row._original?.inventory || {}
+                    const avgCost = inventory.averageCostPrice || 0
+                    const minSellPrice = avgCost > 0 ? avgCost * 1.20 : 0
+                    return (
+                        <span className="tabular-nums font-medium text-amber-600">
+                            {minSellPrice > 0 ? currency(minSellPrice) : '-'}
+                        </span>
+                    )
+                },
             },
-            {
-                header: "Action",
-                accessor: "actions",
-                render: (row) => (
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0"
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            onSelect(row)
-                            onClose()
-                        }}
-                    >
-                        <Check className="h-4 w-4 text-emerald-600" />
-                    </Button>
-                ),
-            }
+            // {
+            //     header: "Price",
+            //     accessor: "defaultPrice",
+            //     render: (row) => (
+            //         <span className="tabular-nums font-medium">{currency(row.defaultPrice || 0)}</span>
+            //     ),
+            // },
+            // {
+            //     header: "Action",
+            //     accessor: "actions",
+            //     render: (row) => (
+            //         <Button
+            //             size="sm"
+            //             variant="ghost"
+            //             className="h-8 w-8 p-0"
+            //             onClick={(e) => {
+            //                 e.stopPropagation()
+            //                 onSelect(row)
+            //                 onClose()
+            //             }}
+            //         >
+            //             <Check className="h-4 w-4 text-emerald-600" />
+            //         </Button>
+            //     ),
+            // }
         ],
         [onSelect, onClose],
     )
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
+            <DialogContent className="w-full max-w-[1080px] max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
                 <DialogHeader className="p-6 pb-2">
                     <DialogTitle className="flex items-center gap-2">
                         <Package className="h-5 w-5" />
