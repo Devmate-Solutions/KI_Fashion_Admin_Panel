@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { PlusIcon, TrashIcon, UserPlusIcon, SearchIcon } from "lucide-react"
+import { PlusIcon, TrashIcon, UserPlusIcon, SearchIcon, Calendar, Tag, Users } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,7 @@ import { MultiSelect } from "@/components/ui/multi-select"
 import { SEASON_OPTIONS, normalizeSeasonArray } from "@/lib/constants/seasons"
 import ProductImageGallery from "@/components/ui/ProductImageGallery"
 import ProductSelectionModal from "@/components/modals/ProductSelectionModal"
+import BritishDatePicker from "@/components/BritishDatePicker"
 
 // Helper to get image array from various sources
 const getImageArray = (row) => {
@@ -552,50 +553,88 @@ export default function SaleForm({ onSave }) {
         </div>
       )}
 
-      {/* Section 1: Selling Details */}
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
-        <h2 className="text-base font-semibold mb-4">Selling Details</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="sale-date">Sale Date</Label>
-            <Input
-              id="sale-date"
-              type="date"
-              value={saleDate}
-              onChange={(e) => setSaleDate(e.target.value)}
-            />
+      {/* Section 1: Selling Details - Enhanced Design */}
+      <section className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-6 py-4 bg-muted/30 border-b border-border">
+          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <Tag className="h-5 w-5 text-primary" />
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="sale-type">Sale Type</Label>
-            <Select value={saleType} onValueChange={setSaleType}>
-              <SelectTrigger id="sale-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="retail">Retail</SelectItem>
-                <SelectItem value="wholesale">Wholesale</SelectItem>
-                <SelectItem value="bulk">Bulk</SelectItem>
-              </SelectContent>
-            </Select>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Selling Details</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Enter sale information and customer details</p>
           </div>
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="buyer">Customer / Distributor</Label>
-            <div className="flex flex-col gap-2">
+        {/* Content */}
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Sale Date */}
+            <div className="space-y-2">
+              <Label htmlFor="sale-date" className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                Sale Date
+              </Label>
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                  <Calendar className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <BritishDatePicker
+                  value={saleDate ? new Date(saleDate) : new Date()}
+                  onChange={(date) => {
+                    if (date) {
+                      setSaleDate(date.toISOString().split("T")[0]);
+                    }
+                  }}
+                  className="h-11 w-full pl-10 pr-3 text-base font-medium rounded-lg border border-input bg-background"
+                  placeholder="DD/MM/YYYY"
+                />
+              </div>
+            </div>
+
+            {/* Sale Type */}
+            <div className="space-y-2">
+              <Label htmlFor="sale-type" className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Tag className="h-4 w-4 text-muted-foreground" />
+                Sale Type
+              </Label>
+              <Select value={saleType} onValueChange={setSaleType}>
+                <SelectTrigger 
+                  id="sale-type"
+                  className="h-11 w-full rounded-lg border border-input bg-background text-base font-medium text-foreground hover:border-ring/50 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] transition-all duration-200"
+                >
+                  <SelectValue placeholder="Select sale type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="retail">Retail</SelectItem>
+                  <SelectItem value="wholesale">Wholesale</SelectItem>
+                  <SelectItem value="bulk">Bulk</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Customer / Distributor */}
+            <div className="space-y-2">
+              <Label htmlFor="buyer" className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                Customer / Distributor
+              </Label>
               <div className="flex gap-2">
                 <div className="flex-1 relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                    <SearchIcon className="h-5 w-5 text-muted-foreground" />
+                  </div>
                   <Input
+                    id="buyer"
                     type="text"
                     placeholder="Search customer..."
                     value={customerSearch}
                     onChange={e => setCustomerSearch(e.target.value)}
-                    className="mb-2 pr-8"
+                    className="h-11 w-full pl-10 pr-3 text-base font-medium rounded-lg border border-input bg-background"
                     autoComplete="off"
                   />
-                  <SearchIcon className="absolute right-2 top-3 h-4 w-4 text-muted-foreground pointer-events-none" />
                   {customerSearch && (
-                    <div className="absolute z-10 bg-white border border-border rounded shadow w-full mt-1 max-h-56 overflow-auto">
+                    <div className="absolute z-20 bg-background border border-border rounded-lg shadow-lg w-full mt-1 max-h-56 overflow-auto">
                       {buyers.filter(b => {
                         const search = customerSearch.toLowerCase();
                         return (
@@ -604,30 +643,40 @@ export default function SaleForm({ onSave }) {
                           b.phone?.toLowerCase().includes(search) ||
                           b.email?.toLowerCase().includes(search)
                         );
-                      }).length === 0 && (
-                          <div className="px-4 py-2 text-muted-foreground text-sm">No customers found</div>
-                        )}
-                      {buyers.filter(b => {
-                        const search = customerSearch.toLowerCase();
-                        return (
-                          b.name?.toLowerCase().includes(search) ||
-                          b.company?.toLowerCase().includes(search) ||
-                          b.phone?.toLowerCase().includes(search) ||
-                          b.email?.toLowerCase().includes(search)
-                        );
-                      }).map((b) => (
-                        <div
-                          key={b.id}
-                          className={`px-4 py-2 cursor-pointer hover:bg-muted ${buyerId === String(b.id) ? 'bg-muted' : ''}`}
-                          onClick={() => {
-                            setBuyerId(String(b.id));
-                            setIsManualCustomer(false);
-                            setCustomerSearch(b.name);
-                          }}
-                        >
-                          {b.name} {b.company ? `(${b.company})` : ''}
+                      }).length === 0 ? (
+                        <div className="px-4 py-3 text-muted-foreground text-sm text-center">
+                          No customers found
                         </div>
-                      ))}
+                      ) : (
+                        buyers.filter(b => {
+                          const search = customerSearch.toLowerCase();
+                          return (
+                            b.name?.toLowerCase().includes(search) ||
+                            b.company?.toLowerCase().includes(search) ||
+                            b.phone?.toLowerCase().includes(search) ||
+                            b.email?.toLowerCase().includes(search)
+                          );
+                        }).map((b) => (
+                          <div
+                            key={b.id}
+                            className={`px-4 py-3 cursor-pointer transition-colors ${
+                              buyerId === String(b.id) 
+                                ? 'bg-primary/10 text-primary' 
+                                : 'hover:bg-muted'
+                            }`}
+                            onClick={() => {
+                              setBuyerId(String(b.id));
+                              setIsManualCustomer(false);
+                              setCustomerSearch(b.name);
+                            }}
+                          >
+                            <div className="font-medium">{b.name}</div>
+                            {b.company && (
+                              <div className="text-xs text-muted-foreground mt-0.5">{b.company}</div>
+                            )}
+                          </div>
+                        ))
+                      )}
                     </div>
                   )}
                 </div>
@@ -636,26 +685,34 @@ export default function SaleForm({ onSave }) {
                   variant="outline"
                   size="icon"
                   onClick={() => setShowAddBuyer(true)}
-                  title="Add new buyer"
+                  title="Add new customer"
                   disabled={isLoadingBuyers}
+                  className="h-11 w-11 rounded-lg border border-input bg-background hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 flex-shrink-0"
                 >
                   <UserPlusIcon className="h-4 w-4" />
                 </Button>
               </div>
               {isManualCustomer && (
-                <div className="space-y-2 mt-2 p-3 border border-border rounded-md bg-muted/30">
+                <div className="mt-4 p-4 border border-border rounded-lg bg-muted/30 space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b border-border">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-semibold text-foreground">Manual Customer Details</span>
+                  </div>
                   <div className="space-y-2">
-                    <Label htmlFor="manual-name">Customer Name <span className="text-red-500">*</span></Label>
+                    <Label htmlFor="manual-name" className="text-sm font-semibold text-foreground">
+                      Customer Name <span className="text-destructive">*</span>
+                    </Label>
                     <Input
                       id="manual-name"
                       value={manualCustomer.name}
                       onChange={(e) => setManualCustomer({ ...manualCustomer, name: e.target.value })}
                       placeholder="Enter customer name"
+                      className="h-11 text-base font-medium"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="manual-phone">Phone</Label>
+                      <Label htmlFor="manual-phone" className="text-sm font-semibold text-foreground">Phone</Label>
                       <div className="flex gap-2">
                         <Input
                           id="manual-phone-area-code"
@@ -668,24 +725,28 @@ export default function SaleForm({ onSave }) {
                             }
                           }}
                           maxLength={5}
-                          className="w-24"
+                          className="w-24 h-11 text-base font-medium"
+                          placeholder="Area"
                         />
                         <Input
                           ref={manualCustomerPhoneInputRef}
                           id="manual-phone"
                           value={manualCustomer.phone}
                           onChange={(e) => setManualCustomer({ ...manualCustomer, phone: e.target.value })}
-                          className="flex-1"
+                          className="flex-1 h-11 text-base font-medium"
+                          placeholder="Phone number"
                         />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="manual-email">Email</Label>
+                      <Label htmlFor="manual-email" className="text-sm font-semibold text-foreground">Email</Label>
                       <Input
                         id="manual-email"
                         type="email"
                         value={manualCustomer.email}
                         onChange={(e) => setManualCustomer({ ...manualCustomer, email: e.target.value })}
+                        className="h-11 text-base font-medium"
+                        placeholder="customer@example.com"
                       />
                     </div>
                   </div>

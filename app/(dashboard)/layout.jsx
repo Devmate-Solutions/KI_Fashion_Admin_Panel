@@ -12,15 +12,24 @@ export default function RootLayout({ children }) {
             <TopBar />
             <div className="flex min-h-0 flex-1 overflow-hidden">
                 <Sidebar />
-                <main className="flex-1 min-w-0 overflow-y-auto">
-                    {children}
+                <main className="flex-1 min-w-0 overflow-y-auto scroll-smooth overflow-x-hidden">
+                    <div className="mx-auto max-w-[1600px] w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        {children}
+                    </div>
                     <Toaster
-                        position="top-right"
+                        position="top-center"
+                        containerStyle={{
+                            top: '80px',
+                        }}
                         toastOptions={{
                             duration: 4000,
                             style: {
                                 background: '#363636',
                                 color: '#fff',
+                                fontFamily: 'var(--font-poppins)',
+                                fontSize: '14px',
+                                padding: '12px 16px',
+                                maxWidth: 'calc(100vw - 2rem)',
                             },
                             success: {
                                 duration: 3000,

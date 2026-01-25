@@ -105,7 +105,7 @@ function StatCard({
         <CardContent className="p-6">
           <div className="flex items-center justify-between pb-2">
             <div className="h-4 bg-slate-100 rounded w-20 animate-pulse"></div>
-            <div className="h-10 w-10 bg-slate-50 rounded-xl animate-pulse"></div>
+            <div className="h-10 w-10 bg-slate-50 rounded-lg animate-pulse"></div>
           </div>
           <div className="mt-2 h-10 bg-slate-100 rounded w-32 animate-pulse"></div>
           <div className="mt-4 h-4 bg-slate-100 rounded w-24 animate-pulse"></div>
@@ -147,7 +147,7 @@ function StatCard({
   return (
     <Card
       className={cn(
-        "border border-slate-100/80 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_4px_6px_-2px_rgba(0,0,0,0.05)] bg-white transition-all duration-300 cursor-pointer group hover:-translate-y-1 overflow-hidden relative",
+        "border border-slate-100/80 bg-white transition-all duration-300 cursor-pointer group overflow-hidden relative active:scale-[0.98]",
         theme.glow
       )}
       onClick={onClick}
@@ -172,11 +172,11 @@ function StatCard({
           </div>
           <div
             className={cn(
-              "p-2.5 rounded-xl transition-all duration-300 group-hover:rotate-12",
+              "p-2.5 rounded-lg transition-all duration-300 group-hover:rotate-12 group-hover:scale-110",
               theme.icon
             )}
           >
-            <Icon className="h-5 w-5" />
+            <Icon className="h-5 w-5 transition-transform duration-300" />
           </div>
         </div>
 
@@ -239,14 +239,15 @@ function QuickAction({
     <button
       onClick={onClick}
       className={cn(
-        "flex flex-col items-start gap-3 p-5 rounded-2xl bg-gradient-to-br shadow-lg transition-all duration-300 hover:-translate-y-1 active:scale-[0.98] text-left group overflow-hidden relative w-full",
+        "flex flex-col items-start gap-3 p-5 rounded-lg bg-gradient-to-br transition-all duration-300 active:scale-[0.98] text-left group overflow-hidden relative w-full",
         themes[color] || themes.blue
       )}
+      data-click-scale
     >
       <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
         <Icon className="h-24 w-24" />
       </div>
-      <div className="p-2 rounded-xl bg-white/20 backdrop-blur-md">
+      <div className="p-2 rounded-lg bg-white/20 backdrop-blur-md">
         <Icon className="h-5 w-5" />
       </div>
       <div>
@@ -303,9 +304,9 @@ export default function HomePage() {
   }, [salesData]);
 
   const overviewTab = (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Headline Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total Monthly Revenue"
           value={currency(dashboardData?.totalSales?.thisMonth || 0)}
@@ -346,23 +347,23 @@ export default function HomePage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         {/* Main Analytics Section */}
-        <div className="xl:col-span-8 space-y-8">
-          <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-white overflow-hidden rounded-3xl">
-            <CardHeader className="flex flex-row items-center justify-between p-8 pb-4">
+        <div className="xl:col-span-8 space-y-6">
+          <Card className="border border-border bg-card overflow-hidden rounded-lg">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 p-4 sm:p-8 pb-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
-                  <CardTitle className="text-xl font-black text-slate-900 tracking-tight">
+                  <CardTitle className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
                     Sales Intelligence
                   </CardTitle>
                 </div>
-                <CardDescription className="text-slate-400 font-medium text-xs">
+                <CardDescription className="text-slate-400 font-medium text-[10px] sm:text-xs">
                   Revenue trend analysis for the current week
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-xl">
+              <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg">
                 <Badge
                   variant="ghost"
                   className="bg-white text-blue-600 shadow-sm text-[10px] font-bold border-none"
@@ -377,8 +378,8 @@ export default function HomePage() {
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="p-8 pt-4">
-              <div className="h-[320px] w-full">
+            <CardContent className="p-4 sm:p-8 pt-4">
+              <div className="h-[240px] sm:h-[320px] w-full">
                 {salesLoading ? (
                   <div className="h-full w-full flex items-center justify-center">
                     <Loader2 className="h-8 w-8 animate-spin text-blue-500/20" />
@@ -468,7 +469,7 @@ export default function HomePage() {
           </Card>
 
           {/* Financial Log */}
-          <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-white rounded-3xl overflow-hidden">
+          <Card className="border border-border bg-card rounded-lg overflow-hidden">
             <CardHeader className="p-8 pb-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
@@ -485,7 +486,7 @@ export default function HomePage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-xl font-bold text-[10px] uppercase tracking-widest border-slate-100 hover:bg-slate-50"
+                  className="rounded-lg font-bold text-[10px] uppercase tracking-widest border-slate-100 hover:bg-slate-50"
                   onClick={() => router.push("/reports")}
                 >
                   Full History
@@ -529,7 +530,7 @@ export default function HomePage() {
                       .map((entry, idx) => (
                         <tr
                           key={idx}
-                          className="hover:bg-slate-50/30 transition-colors group"
+                          className="hover:bg-slate-50/30 transition-all duration-150 ease-in-out group"
                         >
                           <td className="px-8 py-5">
                             <div className="flex flex-col">
@@ -571,7 +572,7 @@ export default function HomePage() {
         </div>
 
         {/* Sidebar Analytics */}
-        <div className="xl:col-span-4 space-y-8">
+        <div className="xl:col-span-4 space-y-6">
           {/* Action Center */}
           <div className="grid grid-cols-1 gap-4">
             <QuickAction
@@ -598,7 +599,7 @@ export default function HomePage() {
           </div>
 
           {/* Critical Alerts */}
-          <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-white rounded-3xl overflow-hidden">
+          <Card className="border border-border bg-card rounded-lg overflow-hidden">
             <CardHeader className="p-6 pb-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -608,7 +609,7 @@ export default function HomePage() {
                   </CardTitle>
                 </div>
                 {lowStockCount > 0 && (
-                  <Badge className="bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-200 border-none text-[10px] font-black px-2">
+                  <Badge className="bg-rose-500 hover:bg-rose-600 border-none text-[10px] font-black px-2">
                     {lowStockCount}
                   </Badge>
                 )}
@@ -622,10 +623,10 @@ export default function HomePage() {
                   .map((item, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center gap-4 p-5 hover:bg-rose-50/30 transition-all cursor-pointer group"
+                      className="flex items-center gap-4 p-5 hover:bg-rose-50/30 transition-all duration-200 ease-in-out cursor-pointer group hover:shadow-sm rounded-lg mx-2"
                       onClick={() => router.push("/stock")}
                     >
-                      <div className="h-12 w-12 rounded-2xl overflow-hidden border border-slate-100 bg-white shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform">
+                      <div className="h-12 w-12 rounded-lg overflow-hidden border border-slate-100 bg-white flex-shrink-0 group-hover:scale-105 transition-transform">
                         <ProductImageGallery
                           images={getImageArray(item)}
                           alt={item.productName}
@@ -641,14 +642,14 @@ export default function HomePage() {
                           Stock level: {item.currentStock}
                         </p>
                       </div>
-                      <div className="h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-white group-hover:shadow-md transition-all">
-                        <Plus className="h-4 w-4 text-slate-300 group-hover:text-blue-500" />
+                      <div className="h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-white group-hover:shadow-md group-hover:scale-110 transition-all duration-200 ease-in-out">
+                        <Plus className="h-4 w-4 text-slate-300 group-hover:text-blue-500 transition-colors duration-200" />
                       </div>
                     </div>
                   ))}
                 {lowStockCount === 0 && (
                   <div className="p-10 text-center">
-                    <div className="inline-flex items-center justify-center h-16 w-16 rounded-3xl bg-emerald-50 text-emerald-500 mb-4 shadow-inner">
+                    <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-emerald-50 text-emerald-500 mb-4">
                       <CheckCircle2 className="h-8 w-8" />
                     </div>
                     <p className="text-sm font-bold text-slate-900 uppercase tracking-widest">
@@ -673,7 +674,7 @@ export default function HomePage() {
           </Card>
 
           {/* Performance Summary */}
-          <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-gradient-to-br from-indigo-600 to-blue-700 rounded-3xl text-white">
+          <Card className="border border-border bg-gradient-to-br from-indigo-600 to-blue-700 rounded-lg text-white">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-black tracking-tight">
                 Monthly Target
@@ -741,7 +742,7 @@ export default function HomePage() {
             />
           </div>
 
-          <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden">
+          <Card className="border border-border bg-card rounded-lg overflow-hidden">
             <CardHeader className="p-8">
               <CardTitle className="text-xl font-black text-slate-900 tracking-tight">
                 Warehouse Ledger
@@ -766,11 +767,11 @@ export default function HomePage() {
                     {inventoryItems.slice(0, 15).map((item, idx) => (
                       <tr
                         key={idx}
-                        className="hover:bg-slate-50/30 transition-colors border-b border-slate-50 last:border-0"
+                        className="hover:bg-slate-50/30 transition-all duration-150 ease-in-out border-b border-slate-50 last:border-0"
                       >
                         <td className="px-8 py-4">
                           <div className="flex items-center gap-4">
-                            <div className="h-10 w-10 rounded-xl overflow-hidden border border-slate-100 shadow-sm bg-white">
+                            <div className="h-10 w-10 rounded-lg overflow-hidden border border-slate-100 bg-white">
                               <ProductImageGallery
                                 images={getImageArray(item)}
                                 alt={item.productName}
@@ -852,7 +853,7 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden">
+            <Card className="border border-border bg-card rounded-lg overflow-hidden">
               <CardHeader className="p-8 pb-4">
                 <CardTitle className="text-lg font-black text-slate-900 tracking-tight">
                   Outstanding Receivables
@@ -869,7 +870,7 @@ export default function HomePage() {
                     .map((customer, idx) => (
                       <div
                         key={idx}
-                        className="px-8 py-5 flex items-center justify-between hover:bg-slate-50/30 transition-all"
+                        className="px-8 py-5 flex items-center justify-between hover:bg-slate-50/30 transition-all duration-150 ease-in-out rounded-lg mx-2"
                       >
                         <span className="font-bold text-slate-900">
                           {customer.name || customer.company || "Unknown"}
@@ -883,7 +884,7 @@ export default function HomePage() {
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden">
+            <Card className="border border-border bg-card rounded-lg overflow-hidden">
               <CardHeader className="p-8 pb-4">
                 <CardTitle className="text-lg font-black text-slate-900 tracking-tight">
                   Outstanding Payables
@@ -899,7 +900,7 @@ export default function HomePage() {
                     .map((supplier, idx) => (
                       <div
                         key={idx}
-                        className="px-8 py-5 flex items-center justify-between hover:bg-slate-50/30 transition-all"
+                        className="px-8 py-5 flex items-center justify-between hover:bg-slate-50/30 transition-all duration-150 ease-in-out rounded-lg mx-2"
                       >
                         <span className="font-bold text-slate-900">
                           {supplier.supplierName ||
@@ -921,30 +922,30 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-8 bg-[#fbfcfd] min-h-screen">
+    <div className="space-y-8">
       {/* Dynamic Header */}
-      <div className="pb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <header className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-2xl bg-blue-600 shadow-xl shadow-blue-200 flex items-center justify-center text-white">
+            <div className="h-12 w-12 rounded-lg bg-blue-600 flex items-center justify-center text-white">
               <Monitor className="h-6 w-6" />
             </div>
-            <div>
-              <h1 className="text-3xl font-black tracking-tighter text-slate-900 leading-none">
+            <div className="space-y-1">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground leading-none">
                 Command Center
               </h1>
-              <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1.5 flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true"></span>
                 LIVE SYSTEM MONITOR • SUPER ADMIN
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="hidden lg:flex items-center gap-3 bg-white px-5 py-3 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-slate-100/50">
-            <Calendar className="h-4 w-4 text-blue-500" />
-            <span className="text-sm font-black text-slate-700 tabular-nums tracking-tight">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="hidden lg:flex items-center gap-3 bg-card px-4 py-2.5 rounded-lg border border-border">
+            <Calendar className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-foreground tabular-nums">
               {new Date().toLocaleDateString("en-GB", {
                 day: "2-digit",
                 month: "long",
@@ -954,13 +955,13 @@ export default function HomePage() {
           </div>
           <Button
             variant="default"
-            className="h-12 px-8 rounded-2xl shadow-xl shadow-blue-200 font-black text-xs uppercase tracking-widest bg-blue-600 hover:bg-blue-700 hover:shadow-blue-300 transition-all border-none"
+            className="h-10 sm:h-11 px-4 sm:px-6 rounded-lg font-semibold text-sm bg-primary hover:bg-primary/90 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             onClick={() => router.push("/dispatch-orders")}
           >
-            <Plus className="h-4 w-4 mr-2 stroke-[3px]" /> New Dispatch
+            <Plus className="h-4 w-4 mr-2" /> New Dispatch
           </Button>
         </div>
-      </div>
+      </header>
 
       {/* Modern Tab System Styling */}
       <div className="dashboard-tabs">

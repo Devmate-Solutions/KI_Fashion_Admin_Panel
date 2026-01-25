@@ -20,6 +20,8 @@ import {
   DollarSign,
   Wallet,
   FileText,
+  X,
+  Menu,
 } from "lucide-react";
 
 const items = [
@@ -51,6 +53,18 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [open, setOpen] = useState(false);
 
+  // Listen for menu open events from topbar
+  useEffect(() => {
+    const handleMenuClick = () => {
+      setOpen(true);
+    };
+    
+    window.addEventListener('open-sidebar', handleMenuClick);
+    return () => {
+      window.removeEventListener('open-sidebar', handleMenuClick);
+    };
+  }, []);
+
   useEffect(() => {
     const saved =
       typeof window !== "undefined"
@@ -66,13 +80,94 @@ export default function Sidebar() {
   }, [collapsed]);
 
   return (
-    <aside
-      className={`border-r border-slate-100 bg-white text-slate-900 hidden md:flex md:flex-col transition-all duration-300 ${
-        collapsed ? "w-20" : "w-64"
-      }`}
-      aria-label="Main navigation"
-      data-collapsed={collapsed}
-    >
+    <>
+      {/* Mobile Overlay */}
+      {open && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/50 z-40 transition-opacity"
+          onClick={() => setOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Mobile Sidebar */}
+      <aside
+        className={`md:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-100 transform transition-transform duration-300 ease-in-out ${
+          open ? "translate-x-0" : "-translate-x-full"
+        }`}
+        aria-label="Main navigation"
+      >
+        <div className="flex items-center justify-between px-6 py-6 border-b border-slate-50">
+          <span className="text-sm font-black uppercase tracking-widest text-blue-600">
+            KI CRM
+          </span>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-slate-50 hover:bg-slate-100 transition-all"
+            aria-label="Close navigation menu"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <nav className="flex-1 overflow-y-auto custom-scrollbar h-[calc(100vh-80px)]">
+          <ul className="py-6 px-3 space-y-1">
+            {items.map((it, idx) => {
+              if (it.type === "separator") {
+                return (
+                  <li
+                    key={`sep-${idx}`}
+                    className="pt-6 pb-2 px-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400"
+                  >
+                    {it.label}
+                  </li>
+                );
+              }
+
+              const active =
+                pathname === it.href ||
+                (it.href !== "/home" && pathname.startsWith(it.href + "/"));
+              const Icon = it.icon;
+              return (
+                <li key={it.href}>
+                  <Link
+                    href={it.href}
+                    prefetch={true}
+                    onClick={() => setOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 text-sm transition-all rounded-xl relative group min-h-[44px] ${
+                      active
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-100 font-bold"
+                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                    }`}
+                  >
+                    <Icon
+                      className={`h-5 w-5 shrink-0 ${
+                        active
+                          ? "text-white"
+                          : "text-slate-400 group-hover:text-slate-900"
+                      }`}
+                      aria-hidden="true"
+                    />
+                    <span className="truncate">{it.label}</span>
+                    {active && (
+                      <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white/40"></div>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      </aside>
+
+      {/* Desktop Sidebar */}
+      <aside
+        className={`border-r border-slate-100 bg-white text-slate-900 hidden md:flex md:flex-col transition-all duration-300 ${
+          collapsed ? "w-20" : "w-64"
+        }`}
+        aria-label="Main navigation"
+        data-collapsed={collapsed}
+      >
       <div className="flex items-center justify-between px-6 py-6 border-b border-slate-50">
         <span
           className={`text-sm font-black uppercase tracking-widest text-blue-600 ${
@@ -86,7 +181,7 @@ export default function Sidebar() {
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           onClick={() => setCollapsed((v) => !v)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-slate-50 hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-slate-50 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-all duration-200 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
         >
           <PanelLeft
             className={`h-4 w-4 transition-transform ${
@@ -126,10 +221,10 @@ export default function Sidebar() {
                   prefetch={true}
                   title={it.label}
                   aria-label={it.label}
-                  className={`flex items-center gap-3 px-4 py-3 text-sm transition-all rounded-xl relative group
+                  className={`flex items-center gap-3 px-4 py-3 text-sm transition-all duration-200 ease-in-out rounded-md relative group min-h-[44px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500
                     ${
                       active
-                        ? "bg-blue-600 text-white shadow-lg shadow-blue-100 font-bold"
+                        ? "bg-blue-600 text-white font-bold"
                         : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                     }`}
                 >
@@ -152,14 +247,6 @@ export default function Sidebar() {
         </ul>
       </nav>
 
-      {/* Mobile trigger (hidden on desktop) */}
-      <button
-        className="md:hidden border-t border-slate-100 px-4 py-4 text-sm font-bold bg-white"
-        onClick={() => setOpen(!open)}
-      >
-        Menu
-      </button>
-
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;
@@ -175,6 +262,7 @@ export default function Sidebar() {
           background: #e2e8f0;
         }
       `}</style>
-    </aside>
+      </aside>
+    </>
   );
 }

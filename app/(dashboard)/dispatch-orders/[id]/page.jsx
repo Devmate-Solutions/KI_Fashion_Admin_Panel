@@ -73,6 +73,7 @@ import PacketConfigurationModal from "@/components/modals/PacketConfigurationMod
 import StandaloneSupplierPaymentModal from "@/components/modals/StandaloneSupplierPaymentModal";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { SEASON_OPTIONS } from "@/lib/constants/seasons";
+import { cn } from "@/lib/utils";
 
 // Helper to get image array from various sources
 const getImageArray = (item) => {
@@ -1224,78 +1225,86 @@ export default function DispatchOrderDetailPage({ params }) {
   }
 
   return (
-    <div className="space-y-6 p-6 max-w-[1600px] mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b pb-4">
+    <div className="space-y-6 max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+      {/* Enhanced Header */}
+      <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
+              size="sm"
             onClick={() => router.push("/dispatch-orders")}
+              className="hover:bg-muted transition-colors"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Package className="h-6 w-6 text-primary" />
+              </div>
           <div>
-            <h1 className="text-2xl font-semibold">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Dispatch Order: {dispatchOrder.orderNumber}
             </h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {dispatchOrder.supplier?.name || dispatchOrder.supplier?.company || "Supplier"} • {dispatchOrder.dispatchDate ? new Date(dispatchOrder.dispatchDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "—"}
+                </p>
+              </div>
           </div>
         </div>
         <Badge
-          className={statusStyles[dispatchOrder.status] || statusStyles.pending}
+            className={cn(
+              "px-4 py-2 text-sm font-semibold rounded-md border",
+              statusStyles[dispatchOrder.status] || statusStyles.pending
+            )}
         >
           {dispatchOrder.status?.replace(/_/g, " ").replace(/-/g, " ").toUpperCase()}
         </Badge>
+        </div>
       </div>
 
-      {/* Order Info - Collapsible */}
-      <Accordion
-        type="single"
-        collapsible
-        defaultValue="order-info"
-        className="border border-blue-200 rounded-lg bg-blue-50/30"
-      >
-        <AccordionItem value="order-info" className="border-b-0">
-          <AccordionTrigger className="px-4 hover:no-underline bg-blue-50/50 rounded-t-lg">
+      {/* Order Info - Enhanced Design */}
+      <Card className="border border-border bg-card">
+        <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
-              <Info className="h-4 w-4 text-blue-600" />
-              <span className="font-semibold text-blue-900">
-                Order Information
-              </span>
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Info className="h-4 w-4 text-primary" />
             </div>
-          </AccordionTrigger>
-          <AccordionContent className="px-4 pb-4 bg-white/60 rounded-b-lg">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-2">
+            <CardTitle className="text-lg font-semibold">Order Information</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* Supplier - Always Read-Only */}
-              <div>
-                <Label className="text-xs text-muted-foreground">
+              <div className="space-y-1">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Supplier (Not Editable)
                 </Label>
-                <p className="font-medium text-sm">
+                <p className="font-semibold text-base text-foreground">
                   {dispatchOrder.supplier?.name ||
                     dispatchOrder.supplier?.company ||
                     "—"}
                 </p>
                 {dispatchOrder.supplier?.phone && (
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-sm text-muted-foreground">
                     {(dispatchOrder.supplier?.phoneAreaCode
                       ? `${dispatchOrder.supplier.phoneAreaCode}-`
                       : "") + dispatchOrder.supplier.phone}
                   </p>
                 )}
                 {dispatchOrder.supplier?.email && (
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-sm text-muted-foreground">
                     {dispatchOrder.supplier.email}
                   </p>
                 )}
               </div>
 
               {/* Logistics Company - Double-click to edit for pending orders */}
-              <div>
-                <Label className="text-xs text-muted-foreground">
+              <div className="space-y-1">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Logistics Company{" "}
-                  {isPending && <span className="text-red-500">*</span>}
-                  {/* {isPending && <span className="text-xs text-blue-600 ml-1">(double-click to edit)</span>} */}
+                  {isPending && <span className="text-destructive">*</span>}
                 </Label>
                 {isPending && editingField === "logisticsCompany" ? (
                   <div className="flex gap-1">
@@ -1330,10 +1339,10 @@ export default function DispatchOrderDetailPage({ params }) {
                   </div>
                 ) : (
                   <p
-                    className={`font-medium text-sm p-2 rounded ${isPending
-                      ? "cursor-pointer hover:bg-blue-50 border border-transparent hover:border-blue-300"
-                      : ""
-                      }`}
+                    className={cn(
+                      "font-semibold text-base text-foreground p-2 rounded-md transition-colors",
+                      isPending && "cursor-pointer hover:bg-muted border border-transparent hover:border-border"
+                    )}
                     onDoubleClick={() =>
                       isPending && setEditingField("logisticsCompany")
                     }
@@ -1348,42 +1357,59 @@ export default function DispatchOrderDetailPage({ params }) {
                 )}
               </div>
 
-              {/* Dispatch Date - Double-click to edit for pending orders */}
-              <div>
-                <Label className="text-xs text-muted-foreground">
-                  Date {isPending && <span className="text-red-500">*</span>}
-                  {/* {isPending && <span className="text-xs text-blue-600 ml-1">(double-click to edit)</span>} */}
+              {/* Dispatch Date - Enhanced Design */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+                  <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Date {isPending && <span className="text-destructive">*</span>}
                 </Label>
                 {isPending && editingField === "dispatchDate" ? (
-                  <div className="flex gap-1">
+                  <div className="flex gap-2 items-center">
+                    <div className="relative flex-1 group">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                        <svg className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
                     <Input
                       type="date"
                       value={editedDispatchDate}
                       onChange={(e) => setEditedDispatchDate(e.target.value)}
                       onBlur={() => setEditingField(null)}
-                      className="h-9 text-sm border-blue-500 border-2"
+                        className="h-11 pl-10 pr-3 text-sm font-medium border-primary focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
                       autoFocus
                     />
+                    </div>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => setEditingField(null)}
-                      className="h-9 px-2"
+                      className="h-11 w-11 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
+                      title="Confirm"
                     >
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <CheckCircle2 className="h-5 w-5" />
                     </Button>
                   </div>
                 ) : (
-                  <p
-                    className={`font-medium text-sm p-2 rounded ${isPending
-                      ? "cursor-pointer hover:bg-blue-50 border border-transparent hover:border-blue-300"
-                      : ""
-                      }`}
+                  <div
+                    className={cn(
+                      "relative group",
+                      isPending && "cursor-pointer"
+                    )}
                     onDoubleClick={() =>
                       isPending && setEditingField("dispatchDate")
                     }
-                    title={isPending ? "" : ""}
+                    title={isPending ? "Double-click to edit" : ""}
                   >
+                    <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition-colors">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <p className="font-semibold text-base text-foreground tabular-nums">
                     {(() => {
                       if (editedDispatchDate) {
                         const [year, month, day] = editedDispatchDate.split("-");
@@ -1400,14 +1426,22 @@ export default function DispatchOrderDetailPage({ params }) {
                       return "—";
                     })()}
                   </p>
+                      {isPending && (
+                        <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                          <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
 
               {/* Discount - Double-click to edit for pending orders */}
-              <div>
-                <Label className="text-xs text-muted-foreground">
+              <div className="space-y-1">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Discount
-                  {/* {isPending && <span className="text-xs text-blue-600 ml-1">(double-click to edit)</span>} */}
                 </Label>
                 {isPending && editingField === "discount" ? (
                   <div className="flex gap-1">
@@ -1439,14 +1473,14 @@ export default function DispatchOrderDetailPage({ params }) {
                   </div>
                 ) : (
                   <p
-                    className={`font-medium text-sm p-2 rounded ${isPending
-                      ? "cursor-pointer hover:bg-blue-50 border border-transparent hover:border-blue-300"
-                      : ""
-                      }`}
+                    className={cn(
+                      "font-semibold text-base text-foreground p-2 rounded-md transition-colors",
+                      isPending && "cursor-pointer hover:bg-muted border border-transparent hover:border-border"
+                    )}
                     onDoubleClick={() =>
                       isPending && setEditingField("discount")
                     }
-                    title={isPending ? "" : ""}
+                    title={isPending ? "Double-click to edit" : ""}
                   >
                     {isPending
                       ? (() => {
@@ -1482,9 +1516,9 @@ export default function DispatchOrderDetailPage({ params }) {
               </div>
 
               {/* Total Boxes - Editable for pending orders */}
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Label className="text-xs text-muted-foreground">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Total Boxes
                   </Label>
                   {isPending && (
@@ -1538,10 +1572,10 @@ export default function DispatchOrderDetailPage({ params }) {
                   </div>
                 ) : (
                   <p
-                    className={`font-medium text-sm p-2 rounded ${isPending
-                      ? "cursor-pointer hover:bg-blue-50 border border-transparent hover:border-blue-300"
-                      : ""
-                      }`}
+                    className={cn(
+                      "font-semibold text-base text-foreground p-2 rounded-md transition-colors",
+                      isPending && "cursor-pointer hover:bg-muted border border-transparent hover:border-border"
+                    )}
                     onDoubleClick={() =>
                       isPending && setEditingField("totalBoxes")
                     }
@@ -1556,11 +1590,11 @@ export default function DispatchOrderDetailPage({ params }) {
 
               {isConfirmed && (
                 <>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Exchange Rate
                     </Label>
-                    <p className="font-medium text-sm">
+                    <p className="font-semibold text-base text-foreground">
                       {dispatchOrder.exchangeRate
                         ? dispatchOrder.exchangeRate.toLocaleString(undefined, {
                           minimumFractionDigits: 2,
@@ -1569,11 +1603,11 @@ export default function DispatchOrderDetailPage({ params }) {
                         : "—"}
                     </p>
                   </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Percentage
                     </Label>
-                    <p className="font-medium text-sm">
+                    <p className="font-semibold text-base text-foreground">
                       {dispatchOrder.percentage != null
                         ? `${dispatchOrder.percentage}%`
                         : "—"}
@@ -1583,135 +1617,127 @@ export default function DispatchOrderDetailPage({ params }) {
               )}
               {isConfirmed && dispatchOrder.computedPaymentDetails && (
                 <>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Cash Payment
                     </Label>
-                    <p className="font-medium text-sm">
+                    <p className="font-semibold text-base text-foreground">
                       {(dispatchOrder.computedPaymentDetails.cashPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Bank Payment
                     </Label>
-                    <p className="font-medium text-sm">
+                    <p className="font-semibold text-base text-foreground">
                       {(dispatchOrder.computedPaymentDetails.bankPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
                 </>
               )}
             </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+        </CardContent>
+      </Card>
 
-      {/* Items - Collapsible */}
-      <Accordion
-        type="single"
-        collapsible
-        defaultValue="items"
-        className="border border-purple-200 rounded-lg bg-purple-50/30"
-      >
-        <AccordionItem value="items" className="border-b-0">
-          <AccordionTrigger className="px-4 hover:no-underline bg-purple-50/50 rounded-t-lg">
-            <div className="flex items-center justify-between w-full pr-4">
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-purple-600" />
-                <span className="font-semibold text-purple-900">Items</span>
+      {/* Items - Enhanced Design */}
+      <Card className="border border-border bg-card">
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Package className="h-5 w-5 text-primary" />
               </div>
-              <div className="text-sm text-purple-700 font-medium">
+              <div>
+                <CardTitle className="text-lg font-semibold">Items</CardTitle>
+              </div>
+            </div>
+            <div className="text-sm text-muted-foreground font-medium">
                 {isPending && !dispatchOrder?.returnedItems?.length ? (
-                  <>
-                    {/* {remainingItemsSummary.rows} items • {currency(totalAmount)} */}
-                  </>
-                ) : (
-                  <>
-                    {remainingItemsSummary.quantity} units remaining (
-                    {remainingItemsSummary.rows} products) •{" "}
-                    {currency(remainingItemsSummary.value)}
+                <span>
+                  {remainingItemsSummary.rows} items • {currency(remainingItemsSummary.value)}
+                </span>
+              ) : (
+                <span>
+                  {remainingItemsSummary.quantity} units remaining ({remainingItemsSummary.rows} products) • {currency(remainingItemsSummary.value)}
                     {activeItemsWithDetails.some(
                       (item) => item.totalReturned > 0
                     ) && (
-                        <span className="text-xs text-red-600 ml-2">
-                          (
-                          {activeItemsWithDetails.reduce(
+                      <span className="text-destructive ml-2">
+                        ({activeItemsWithDetails.reduce(
                             (sum, item) => sum + item.totalReturned,
                             0
-                          )}{" "}
-                          returned)
+                        )} returned)
                         </span>
                       )}
-                  </>
+                </span>
                 )}
               </div>
             </div>
-          </AccordionTrigger>
-          <AccordionContent className="px-0 pb-4 bg-white/60 rounded-b-lg">
-            <div className="border-t border-purple-200 mx-4 pt-4">
+        </CardHeader>
+        <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-purple-100/50 border-b-2 border-purple-200">
+              <thead className="bg-muted/30 border-b border-border sticky top-0 z-10">
                     <tr>
                       {isPending && (
-                        <th className="p-2 text-center text-purple-900 font-semibold">
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                           ✓
                         </th>
                       )}
-                      <th className="p-2 text-left text-purple-900 font-semibold">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         Image
                       </th>
-                      <th className="p-2 text-left text-purple-900 font-semibold">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         Product
                       </th>
-                      <th className="p-2 text-left text-purple-900 font-semibold">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         Code
                       </th>
-                      <th className="p-2 text-left text-purple-900 font-semibold w-24">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-24">
                         Colors
                       </th>
-                      <th className="p-2 text-left text-purple-900 font-semibold w-24">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-24">
                         Sizes
                       </th>
-                      <th className="p-2 text-left text-purple-900 font-semibold w-24">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-24">
                         Season
                       </th>
-                      <th className="p-2 text-center text-purple-900 font-semibold w-16">
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider w-16">
                         Packets
                       </th>
-                      <th className="p-2 text-right text-purple-900 font-semibold">
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         {isPending ? "QTY" : "Remaining Qty"}
                       </th>
                       {!isPending && (
-                        <th className="p-2 text-right text-purple-900 font-semibold">
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                           Returned
                         </th>
                       )}
                       {!isPending && (
-                        <th className="p-2 text-right text-purple-900 font-semibold">
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                           Original Qty
                         </th>
                       )}
-                      <th className="p-2 text-right text-purple-900 font-semibold">
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         Cost Price
                       </th>
-                      <th className="p-2 text-right text-purple-900 font-semibold">
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         Supplier Payment
                       </th>
-                      <th className="p-2 text-right text-purple-900 font-semibold">
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         Landed Price
                       </th>
-                      <th className="p-2 text-right text-purple-900 font-semibold">
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         Landed Total
                       </th>
                       {isPending && (
-                        <th className="p-2 text-center text-purple-900 font-semibold">
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                           Actions
                         </th>
                       )}
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-border">
                     {itemsWithDetails.map((item, idx) => {
                       const itemData = editedItems[item.index] || item;
                       const isVerified = itemVerifications[item.index] || false;
@@ -1739,19 +1765,15 @@ export default function DispatchOrderDetailPage({ params }) {
                       return (
                         <tr
                           key={item.index}
-                          className={`border-b border-purple-100 transition-colors ${isRemoved
-                            ? "opacity-50 bg-red-50"
-                            : isPending && !isVerified
-                              ? "bg-amber-50/50"
-                              : isPending && isVerified
-                                ? "bg-green-50/30"
-                                : idx % 2 === 0
-                                  ? "bg-white"
-                                  : "bg-purple-50/20"
-                            }`}
+                          className={cn(
+                            "transition-colors hover:bg-muted/20",
+                            isRemoved && "opacity-50 bg-destructive/5",
+                            isPending && !isVerified && "bg-amber-50/30",
+                            isPending && isVerified && "bg-emerald-50/20"
+                          )}
                         >
                           {isPending && (
-                            <td className="p-2 text-center">
+                            <td className="px-4 py-3 text-center">
                               <input
                                 type="checkbox"
                                 checked={isVerified}
@@ -1766,7 +1788,7 @@ export default function DispatchOrderDetailPage({ params }) {
                               />
                             </td>
                           )}
-                          <td className="p-2">
+                          <td className="px-4 py-3">
                             <ProductImageGallery
                               images={getImageArray(item)}
                               alt={itemData.productName || "Product"}
@@ -1775,7 +1797,7 @@ export default function DispatchOrderDetailPage({ params }) {
                               showCount={true}
                             />
                           </td>
-                          <td className="p-2 align-top">
+                          <td className="px-4 py-3 align-top">
                             {isPending && !isRemoved ? (
                               <Input
                                 value={itemData.productName}
@@ -1796,7 +1818,7 @@ export default function DispatchOrderDetailPage({ params }) {
                               </div>
                             )}
                           </td>
-                          <td className="p-2 align-top">
+                          <td className="px-4 py-3 align-top">
                             {isPending && !isRemoved ? (
                               <Input
                                 value={itemData.productCode}
@@ -1812,10 +1834,10 @@ export default function DispatchOrderDetailPage({ params }) {
                                 className="h-8 text-sm w-24"
                               />
                             ) : (
-                              <span>{itemData.productCode}</span>
+                              <span className="font-mono text-xs font-medium text-foreground">{itemData.productCode}</span>
                             )}
                           </td>
-                          <td className="p-2 w-24 align-top">
+                          <td className="px-4 py-3 w-24 align-top">
                             {isPending && !isRemoved ? (
                               <div className="min-w-[100px]">
                                 <ArrayInput
@@ -1861,7 +1883,7 @@ export default function DispatchOrderDetailPage({ params }) {
                               </div>
                             )}
                           </td>
-                          <td className="p-2 w-24 align-top">
+                          <td className="px-4 py-3 w-24 align-top">
                             {isPending && !isRemoved ? (
                               <div className="min-w-[100px]">
                                 <ArrayInput
@@ -1907,7 +1929,7 @@ export default function DispatchOrderDetailPage({ params }) {
                               </div>
                             )}
                           </td>
-                          <td className="p-2 w-24 align-top">
+                          <td className="px-4 py-3 w-24 align-top">
                             {isPending && !isRemoved ? (
                               <div className="min-w-[120px]">
                                 <MultiSelect
@@ -1954,7 +1976,7 @@ export default function DispatchOrderDetailPage({ params }) {
                               </div>
                             )}
                           </td>
-                          <td className="p-2 w-16 text-center">
+                          <td className="px-4 py-3 w-16 text-center">
                             <div className="flex flex-col gap-1.5 items-center">
                               {isPending ? (
                                 <>
@@ -2154,7 +2176,7 @@ export default function DispatchOrderDetailPage({ params }) {
                               })()}
                             </div>
                           </td>
-                          <td className="p-2 text-right align-top">
+                          <td className="px-4 py-3 text-right align-top">
                             <div className="flex flex-col items-end gap-1">
                               {isPending && !isRemoved ? (
                                 <Input
@@ -2176,18 +2198,18 @@ export default function DispatchOrderDetailPage({ params }) {
                                   className="h-8 text-sm w-10 text-right"
                                 />
                               ) : (
-                                <span className="font-medium text-blue-700 h-8 flex items-center">
+                                <span className="font-semibold text-primary h-8 flex items-center">
                                   {/* ALWAYS show remaining quantity (confirmedQty) which matches Return History */}
                                   {item.confirmedQty ?? 0}
                                 </span>
                               )}
                               {isPending && item.totalReturned > 0 && (
-                                <span className="text-[10px] text-red-600 font-medium">
+                                <span className="text-xs text-destructive font-medium">
                                   -{item.totalReturned} returned
                                 </span>
                               )}
                               {isPending && (
-                                <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                                <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
                                   rem: {item.confirmedQty}
                                 </span>
                               )}
@@ -2195,15 +2217,15 @@ export default function DispatchOrderDetailPage({ params }) {
                           </td>
                           {!isPending && (
                             <>
-                              <td className="p-2 text-right text-red-600 font-medium align-top">
+                              <td className="px-4 py-3 text-right text-destructive font-semibold align-top">
                                 {item.totalReturned}
                               </td>
-                              <td className="p-2 text-right font-medium text-muted-foreground align-top">
+                              <td className="px-4 py-3 text-right font-medium text-muted-foreground align-top">
                                 {item.quantity}
                               </td>
                             </>
                           )}
-                          <td className="p-2 text-right align-top">
+                          <td className="px-4 py-3 text-right align-top">
                             {isPending && !isRemoved ? (
                               <Input
                                 type="text"
@@ -2229,23 +2251,23 @@ export default function DispatchOrderDetailPage({ params }) {
                               </span>
                             )}
                           </td>
-                          <td className="p-2 text-right font-semibold text-slate-700 align-top">
+                          <td className="px-4 py-3 text-right font-semibold text-foreground align-top">
                             {truncateToTwoDecimals(supplierPaymentItemTotal).toFixed(2) || "—"}
                             {!isPending && item.totalReturned > 0 && (
-                              <div className="text-[9px] text-red-600 mt-0.5">
+                              <div className="text-xs text-destructive mt-1">
                                 (was{" "}
                                 {truncateToTwoDecimals((item.costPrice || 0) * item.quantity).toFixed(2)}{" "}
                                 before returns)
                               </div>
                             )}
                           </td>
-                          <td className="p-2 text-right text-blue-700 align-top">
+                          <td className="px-4 py-3 text-right font-semibold text-primary align-top">
                             {truncateToTwoDecimals(landedPrice).toFixed(2) || "—"}
                           </td>
-                          <td className="p-2 text-right font-medium text-blue-700 align-top">
+                          <td className="px-4 py-3 text-right font-semibold text-primary align-top">
                             {truncateToTwoDecimals(itemTotal).toFixed(2) || "—"}
                             {!isPending && item.totalReturned > 0 && (
-                              <div className="text-[9px] text-red-600 mt-0.5">
+                              <div className="text-xs text-destructive mt-1">
                                 (was{" "}
                                 {truncateToTwoDecimals(
                                   ((item.costPrice || 0) /
@@ -2259,7 +2281,7 @@ export default function DispatchOrderDetailPage({ params }) {
                           </td>
                           {
                             isPending && (
-                              <td className="p-2 text-center align-top">
+                              <td className="px-4 py-3 text-center align-top">
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -2292,42 +2314,45 @@ export default function DispatchOrderDetailPage({ params }) {
                         </tr >
                       );
                     })}
-                  </tbody >
-                </table >
-              </div >
-            </div >
-          </AccordionContent >
-        </AccordionItem >
-      </Accordion >
+                  </tbody>
+                </table>
+              </div>
+        </CardContent>
+      </Card>
 
       {/* Add New Item Section - Only for Pending Orders */}
 
       {/* Tabs for Confirm Order and Return Items */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="confirm">Confirm Order</TabsTrigger>
-          <TabsTrigger value="return">Return Items</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 bg-muted/30 p-1 rounded-lg">
+          <TabsTrigger value="confirm" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">Confirm Order</TabsTrigger>
+          <TabsTrigger value="return" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">Return Items</TabsTrigger>
         </TabsList>
 
         {/* Confirm Order Tab */}
         <TabsContent value="confirm" className="space-y-4 mt-4">
           {/* Confirm Form (for pending and pending-approval orders) */}
           {isPending && (
-            <Card className="bg-gradient-to-br from-emerald-50/80 to-teal-50/60 border-2 border-emerald-200">
-              <CardHeader className="bg-emerald-100/50 border-b border-emerald-200">
-                <CardTitle className="flex items-center gap-2 text-emerald-900">
+            <Card className="border border-border bg-card">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
                   <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                  Confirm Dispatch Order
-                </CardTitle>
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg font-semibold">Confirm Dispatch Order</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">Enter exchange rate and percentage to confirm this order</p>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4 bg-white/40">
-                <div className="grid grid-cols-2 gap-4">
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label
                       htmlFor="exchange-rate"
-                      className="text-sm font-medium"
+                      className="text-sm font-medium text-foreground"
                     >
-                      Exchange Rate <span className="text-red-500">*</span>
+                      Exchange Rate <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="exchange-rate"
@@ -2335,13 +2360,13 @@ export default function DispatchOrderDetailPage({ params }) {
                       inputMode="decimal"
                       value={exchangeRate}
                       onChange={(e) => setExchangeRate(e.target.value)}
-                      className="h-10 text-base"
+                      className="h-10"
                       placeholder="1.00"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="percentage" className="text-sm font-medium">
-                      Percentage (%) <span className="text-red-500">*</span>
+                    <Label htmlFor="percentage" className="text-sm font-medium text-foreground">
+                      Percentage (%) <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="percentage"
@@ -2356,16 +2381,16 @@ export default function DispatchOrderDetailPage({ params }) {
                         const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
                         setPercentage(sanitized);
                       }}
-                      className="h-10 text-base"
+                      className="h-10"
                       placeholder="0"
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label
                       htmlFor="cash-payment"
-                      className="text-sm font-medium flex items-center gap-2"
+                      className="text-sm font-medium text-foreground flex items-center gap-2"
                     >
                       <Banknote className="h-4 w-4 text-muted-foreground" />
                       Cash Payment
@@ -2383,14 +2408,14 @@ export default function DispatchOrderDetailPage({ params }) {
                         const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
                         setCashPayment(sanitized);
                       }}
-                      className="h-10 text-base"
+                      className="h-10"
                       placeholder="0.00"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label
                       htmlFor="bank-payment"
-                      className="text-sm font-medium flex items-center gap-2"
+                      className="text-sm font-medium text-foreground flex items-center gap-2"
                     >
                       <CreditCard className="h-4 w-4 text-muted-foreground" />
                       Bank Payment
@@ -2408,26 +2433,25 @@ export default function DispatchOrderDetailPage({ params }) {
                         const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
                         setBankPayment(sanitized);
                       }}
-                      className="h-10 text-base"
+                      className="h-10"
                       placeholder="0.00"
                     />
                   </div>
                 </div>
-                <Card className="bg-gradient-to-r from-slate-50 to-slate-100/80 border-2 border-slate-300">
-                  <CardContent className="pt-4 space-y-3">
+                <Card className="border border-border bg-muted/20">
+                  <CardContent className="pt-6 space-y-4">
                     {dispatchOrder?.returnedItems &&
                       dispatchOrder.returnedItems.length > 0 && (
-                        <div className="mb-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
-                          <span className="font-semibold">Note:</span> Values
-                          below reflect remaining quantities after returns.
+                        <div className="mb-4 p-3 bg-amber-50/50 border border-amber-200 rounded-md text-sm text-amber-800">
+                          <span className="font-semibold">Note:</span> Values below reflect remaining quantities after returns.
                         </div>
                       )}
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground font-medium">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between py-2">
+                        <span className="text-sm font-medium text-muted-foreground">
                         Supplier Payment Amount:
                       </span>
-                      <div className="flex flex-col items-end">
-                        <span className="font-semibold">
+                        <span className="text-base font-semibold text-foreground">
                           {truncateToTwoDecimals(confirmOrderSupplierCurrency.supplierPaymentAmount).toLocaleString(
                             undefined,
                             {
@@ -2436,15 +2460,13 @@ export default function DispatchOrderDetailPage({ params }) {
                             }
                           )}
                         </span>
-                      </div>
                     </div>
                     {confirmOrderSupplierCurrency.discount > 0 && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground font-medium">
+                        <div className="flex items-center justify-between py-2 border-t border-border">
+                          <span className="text-sm font-medium text-muted-foreground">
                           Discount:
                         </span>
-                        <div className="flex flex-col items-end">
-                          <span className="font-semibold text-green-600">
+                          <span className="text-base font-semibold text-emerald-600">
                             -
                             {truncateToTwoDecimals(confirmOrderSupplierCurrency.discount).toLocaleString(
                               undefined,
@@ -2454,15 +2476,13 @@ export default function DispatchOrderDetailPage({ params }) {
                               }
                             )}
                           </span>
-                        </div>
                       </div>
                     )}
-                    <div className="flex items-center justify-between text-sm pt-1 border-t">
-                      <span className="text-muted-foreground font-medium">
+                      <div className="flex items-center justify-between py-3 border-t border-border">
+                        <span className="text-sm font-medium text-muted-foreground">
                         Final Amount:
                       </span>
-                      <div className="flex flex-col items-end">
-                        <span className="font-semibold text-lg">
+                        <span className="text-xl font-bold text-foreground">
                           {truncateToTwoDecimals(confirmOrderSupplierCurrency.finalAmount).toLocaleString(
                             undefined,
                             {
@@ -2472,38 +2492,40 @@ export default function DispatchOrderDetailPage({ params }) {
                           )}
                         </span>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between text-sm pt-2 border-t">
-                      <span className="text-muted-foreground font-medium">
+                      <div className="flex items-center justify-between py-2 border-t border-border">
+                        <span className="text-sm font-medium text-muted-foreground">
                         Payments:
                       </span>
-                      <span className="font-semibold">
+                        <span className="text-base font-semibold text-foreground">
                         {truncateToTwoDecimals(confirmOrderSupplierCurrency.payments).toLocaleString(
                           undefined,
                           { minimumFractionDigits: 2, maximumFractionDigits: 2 }
                         )}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-sm pt-2 border-t">
-                      <span className="text-muted-foreground font-medium">
+                      <div className="flex items-center justify-between py-3 border-t-2 border-border bg-muted/30 rounded-md px-4 -mx-4 -mb-4">
+                        <span className="text-sm font-semibold text-foreground">
                         Remaining Balance:
                       </span>
                       <span
-                        className={`font-semibold text-lg ${confirmOrderSupplierCurrency.remainingBalance > 0
-                          ? "text-red-600"
-                          : "text-green-600"
-                          }`}
+                          className={cn(
+                            "text-xl font-bold",
+                            confirmOrderSupplierCurrency.remainingBalance > 0
+                              ? "text-destructive"
+                              : "text-emerald-600"
+                          )}
                       >
                         {truncateToTwoDecimals(Math.abs(confirmOrderSupplierCurrency.remainingBalance)).toLocaleString(
                           undefined,
                           { minimumFractionDigits: 2, maximumFractionDigits: 2 }
                         )}
                       </span>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               </CardContent>
-              <CardFooter className="flex justify-end gap-2 pt-2">
+              <CardFooter className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-border">
                 <Button
                   onClick={() => setShowDeleteDialog(true)}
                   disabled={
@@ -2511,16 +2533,16 @@ export default function DispatchOrderDetailPage({ params }) {
                   }
                   variant="destructive"
                   size="lg"
-                  className="min-w-[160px]"
+                  className="min-w-[160px] gap-2"
                 >
                   {deleteMutation.isPending ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                       Deleting...
                     </>
                   ) : (
                     <>
-                      <Trash2 className="h-4 w-4 mr-2" />
+                      <Trash2 className="h-4 w-4" />
                       Delete Order
                     </>
                   )}
@@ -2538,17 +2560,17 @@ export default function DispatchOrderDetailPage({ params }) {
                       !totalBoxesConfirmed
                     }
                     size="lg"
-                    className="min-w-[160px]"
+                    className="min-w-[160px] gap-2"
                     title={!totalBoxesConfirmed ? "Please confirm total boxes before confirming order" : ""}
                   >
                     {confirmMutation.isPending ? (
                       <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" />
                         Processing...
                       </>
                     ) : (
                       <>
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        <CheckCircle2 className="h-4 w-4" />
                         Confirm Order
                       </>
                     )}
@@ -2567,17 +2589,17 @@ export default function DispatchOrderDetailPage({ params }) {
                       !totalBoxesConfirmed
                     }
                     size="lg"
-                    className="min-w-[160px]"
+                    className="min-w-[160px] gap-2"
                     title={!totalBoxesConfirmed ? "Please confirm total boxes before submitting for approval" : ""}
                   >
                     {submitApprovalMutation.isPending ? (
                       <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" />
                         Processing...
                       </>
                     ) : (
                       <>
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        <CheckCircle2 className="h-4 w-4" />
                         {dispatchOrder?.status === 'pending-approval' ? 'Re-submit for Approval' : 'Submit Approval'}
                       </>
                     )}
@@ -2587,78 +2609,75 @@ export default function DispatchOrderDetailPage({ params }) {
             </Card>
           )}
 
-          {/* Payment Details (if confirmed) */}
+          {/* Payment Details - Enhanced Design */}
           {isConfirmed && (dispatchOrder.paymentDetails || dispatchOrder.computedPaymentDetails) && (
-            <Card className="bg-gradient-to-br from-amber-50/80 to-yellow-50/60 border-2 border-amber-200">
-              <CardHeader className="bg-amber-100/50 border-b border-amber-200">
+            <Card className="border border-border bg-card">
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-amber-900">
-                    <DollarSign className="h-5 w-5 text-amber-600" />
-                    Payment Details
-                  </CardTitle>
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <DollarSign className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg font-semibold">Payment Details</CardTitle>
+                      {dispatchOrder?.returnedItems &&
+                        dispatchOrder.returnedItems.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Payment amounts reflect remaining quantities after returns
+                          </p>
+                        )}
+                    </div>
+                  </div>
                   {canAddPayment && !showPaymentModal && (
-                    <Button size="sm" onClick={() => setShowPaymentModal(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
+                    <Button size="sm" onClick={() => setShowPaymentModal(true)} className="gap-2">
+                      <Plus className="h-4 w-4" />
                       Add Payment
                     </Button>
                   )}
                 </div>
               </CardHeader>
-
-              <CardContent className="bg-white/40">
-                {dispatchOrder?.returnedItems &&
-                  dispatchOrder.returnedItems.length > 0 && (
-                    <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
-                      <span className="font-semibold">Note:</span> Payment
-                      amounts reflect remaining quantities after returns.
-                      {(() => {
-                        const totalReturned =
-                          dispatchOrder.returnedItems.reduce(
-                            (sum, r) => sum + (r.quantity || 0),
-                            0
-                          );
-                        return ` (${totalReturned} items returned)`;
-                      })()}
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  <div className="space-y-2 p-4 rounded-lg bg-muted/30 border border-border">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="h-8 w-8 rounded-md bg-blue-500/10 flex items-center justify-center">
+                        <Banknote className="h-4 w-4 text-blue-600" />
                     </div>
-                  )}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="flex items-center gap-2">
-                    <Banknote className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <Label className="text-xs text-muted-foreground">
+                      <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Cash Payment
                       </Label>
-                      <p className="font-medium text-sm">
+                    </div>
+                    <p className="text-xl font-bold text-foreground">
                         {(dispatchOrder.computedPaymentDetails?.cashPayment || 0)
                           .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     </div>
+                  <div className="space-y-2 p-4 rounded-lg bg-muted/30 border border-border">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="h-8 w-8 rounded-md bg-indigo-500/10 flex items-center justify-center">
+                        <CreditCard className="h-4 w-4 text-indigo-600" />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <Label className="text-xs text-muted-foreground">
+                      <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Bank Payment
                       </Label>
-                      <p className="font-medium text-sm">
+                    </div>
+                    <p className="text-xl font-bold text-foreground">
                         {(dispatchOrder.computedPaymentDetails?.bankPayment || 0)
                           .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">
+                  <div className="space-y-2 p-4 rounded-lg bg-muted/30 border border-border">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-2">
                       Remaining Balance
                     </Label>
                     {(() => {
-                      // Use the same calculation as Confirm Order section
                       const calculatedRemaining = confirmOrderSupplierCurrency.remainingBalance;
                       return (
                         <p
-                          className={`font-medium text-sm ${calculatedRemaining > 0
-                            ? "text-red-600"
-                            : "text-green-600"
-                            }`}
+                          className={cn(
+                            "text-xl font-bold",
+                            calculatedRemaining > 0 ? "text-destructive" : "text-emerald-600"
+                          )}
                         >
                           {Math.abs(calculatedRemaining).toLocaleString(undefined, {
                             minimumFractionDigits: 2,
@@ -2694,131 +2713,116 @@ export default function DispatchOrderDetailPage({ params }) {
             />
           )}
 
-          {/* Payment History - Collapsible */}
+          {/* Payment History - Enhanced Design */}
           {isConfirmed && paymentHistory.length > 0 && (
-            <Accordion
-              type="single"
-              collapsible
-              className="border border-amber-200 rounded-lg bg-amber-50/30"
-            >
-              <AccordionItem value="payment-history" className="border-b-0">
-                <AccordionTrigger className="px-4 hover:no-underline bg-amber-50/50 rounded-t-lg">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-amber-600" />
-                    <span className="font-semibold text-amber-900">
-                      Payment History
-                    </span>
-                    <Badge
-                      variant="outline"
-                      className="ml-2 bg-amber-100 border-amber-300 text-amber-900"
-                    >
+            <Card className="border border-border bg-card">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <DollarSign className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <CardTitle className="text-lg font-semibold">Payment History</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">{paymentHistory.length} payment{paymentHistory.length !== 1 ? 's' : ''} recorded</p>
+                  </div>
+                  <Badge variant="outline" className="bg-muted border-border">
                       {paymentHistory.length}
                     </Badge>
                   </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-0 pb-4 bg-white/60 rounded-b-lg">
-                  <div className="border-t border-amber-200 mx-4 pt-4">
+              </CardHeader>
+              <CardContent className="p-0">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
-                        <thead className="bg-amber-100/50 border-b-2 border-amber-200">
-                          <tr>
-                            <th className="p-2 text-left">Date</th>
-                            <th className="p-2 text-left">Method</th>
-                            <th className="p-2 text-right">Amount</th>
-                            <th className="p-2 text-left">Description</th>
+                    <thead className="bg-muted/30 border-b border-border sticky top-0 z-10">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Method</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</th>
                           </tr>
                         </thead>
-                        <tbody>
+                    <tbody className="divide-y divide-border">
                           {paymentHistory.map((payment, idx) => (
                             <tr
                               key={idx}
-                              className={`border-b border-amber-100 ${idx % 2 === 0 ? "bg-white" : "bg-amber-50/20"
-                                }`}
+                          className="transition-colors hover:bg-muted/20"
                             >
-                              <td className="p-2">
+                          <td className="px-4 py-3 font-medium text-foreground">
                                 {new Date(payment.date).toLocaleDateString(
-                                  "en-GB"
+                              "en-GB",
+                              { day: '2-digit', month: 'short', year: 'numeric' }
                                 )}
                               </td>
-                              <td className="p-2">
-                                <Badge variant="outline">
+                          <td className="px-4 py-3">
+                            <Badge variant="outline" className="bg-muted border-border">
                                   {payment.paymentMethod === "cash"
                                     ? "Cash"
                                     : "Bank"}
                                 </Badge>
                               </td>
-                              <td className="p-2 text-right font-medium">
+                          <td className="px-4 py-3 text-right font-semibold text-foreground">
                                 {currency(payment.credit || 0)}
                               </td>
-                              <td className="p-2 text-muted-foreground">
-                                {payment.description || "-"}
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {payment.description || "—"}
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 
         {/* Return Items Tab */}
         <TabsContent value="return" className="space-y-4 mt-4">
-          {/* Returns History - Compact Table */}
+          {/* Returns History - Enhanced Design */}
           {dispatchOrder.returns && dispatchOrder.returns.length > 0 && (
-            <Accordion
-              type="single"
-              collapsible
-              className="border border-rose-200 rounded-lg bg-rose-50/30"
-            >
-              <AccordionItem value="return-history" className="border-b-0">
-                <AccordionTrigger className="px-4 hover:no-underline bg-rose-50/50 rounded-t-lg">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-rose-600" />
-                    <span className="font-semibold text-rose-900">
-                      Return History
-                    </span>
-                    <Badge
-                      variant="outline"
-                      className="ml-2 bg-rose-100 border-rose-300 text-rose-900"
-                    >
+            <Card className="border border-border bg-card">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-rose-500/10 flex items-center justify-center">
+                    <Package className="h-5 w-5 text-rose-600" />
+                  </div>
+                  <div className="flex-1">
+                    <CardTitle className="text-lg font-semibold">Return History</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">{dispatchOrder.returns.length} return{dispatchOrder.returns.length !== 1 ? 's' : ''} recorded</p>
+                  </div>
+                  <Badge variant="outline" className="bg-muted border-border">
                       {dispatchOrder.returns.length}
                     </Badge>
                   </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-0 pb-4 bg-white/60 rounded-b-lg">
-                  <div className="border-t border-rose-200 mx-4 pt-4">
+              </CardHeader>
+              <CardContent className="p-0">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
-                        <thead className="bg-rose-100/50 border-b-2 border-rose-200">
-                          <tr>
-                            <th className="p-2 text-left">Date</th>
-                            <th className="p-2 text-left">By</th>
-                            <th className="p-2 text-right">Value</th>
-                            <th className="p-2 text-right">Items</th>
-                            <th className="p-2 text-right">Qty</th>
-                            <th className="p-2 text-left">Details</th>
+                    <thead className="bg-muted/30 border-b border-border sticky top-0 z-10">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">By</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Value</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Items</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Qty</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Details</th>
                           </tr>
                         </thead>
-                        <tbody>
+                    <tbody className="divide-y divide-border">
                           {dispatchOrder.returns.map((returnDoc, idx) => (
                             <tr
                               key={idx}
-                              className={`border-b border-rose-100 ${idx % 2 === 0 ? "bg-white" : "bg-rose-50/20"
-                                }`}
+                          className="transition-colors hover:bg-muted/20"
                             >
-                              <td className="p-2">
+                          <td className="px-4 py-3 font-medium text-foreground">
                                 {new Date(
                                   returnDoc.returnedAt
-                                ).toLocaleDateString("en-GB")}
+                            ).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' })}
                               </td>
-                              <td className="p-2 text-muted-foreground">
+                          <td className="px-4 py-3 text-muted-foreground">
                                 {returnDoc.returnedBy?.name || "—"}
                               </td>
-                              <td className="p-2 text-right font-medium">
+                          <td className="px-4 py-3 text-right font-semibold text-foreground">
                                 {(() => {
                                   // Calculate return value correctly: sum of (costPrice * returnedQuantity) for each item
                                   let calculatedValue = 0;
@@ -2841,10 +2845,10 @@ export default function DispatchOrderDetailPage({ params }) {
                                   });
                                 })()}
                               </td>
-                              <td className="p-2 text-right">
+                              <td className="px-4 py-3 text-right font-semibold text-foreground">
                                 {returnDoc.items?.length || 0}
                               </td>
-                              <td className="p-2 text-right font-medium">
+                              <td className="px-4 py-3 text-right font-semibold text-foreground">
                                 {(() => {
                                   // Calculate total quantity of returned items
                                   const totalQty = returnDoc.items?.reduce((sum, item) => {
@@ -2853,7 +2857,7 @@ export default function DispatchOrderDetailPage({ params }) {
                                   return totalQty;
                                 })()}
                               </td>
-                              <td className="p-2">
+                              <td className="px-4 py-3">
                                 <Accordion type="single" collapsible>
                                   <AccordionItem
                                     value={`return-details-${idx}`}
@@ -2883,41 +2887,45 @@ export default function DispatchOrderDetailPage({ params }) {
                         </tbody>
                       </table>
                     </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+              </CardContent>
+            </Card>
           )}
 
-          {/* Return Form */}
-          <Card className="bg-gradient-to-br from-rose-50/80 to-pink-50/60 border-2 border-rose-200">
-            <CardHeader className="bg-rose-100/50 border-b border-rose-200">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-rose-900">
+          {/* Return Form - Enhanced Design */}
+          <Card className="border border-border bg-card">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-rose-500/10 flex items-center justify-center">
                   <Package className="h-5 w-5 text-rose-600" />
-                  Return Items
-                </CardTitle>
+                </div>
+                <div>
+                  <CardTitle className="text-lg font-semibold">Return Items</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">Select items to return and provide reasons</p>
+                </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4 bg-white/40">
+            <CardContent className="space-y-6">
               {returnableItems.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No items available to return</p>
+                <div className="text-center py-12">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
+                    <CheckCircle2 className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">No items available to return</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-rose-100/50 border-b-2 border-rose-200">
+                    <thead className="bg-muted/30 border-b border-border sticky top-0 z-10">
                       <tr>
-                        <th className="p-2 text-left">Image</th>
-                        <th className="p-2 text-left">Product</th>
-                        <th className="p-2 text-left">Code</th>
-                        <th className="p-2 text-center">Remaining</th>
-                        <th className="p-2 text-center">Return Qty</th>
-                        <th className="p-2 text-left">Reason</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Image</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Product</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Code</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Remaining</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Return Qty</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Reason</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-border">
                       {returnableItems.map((item, idx) => {
                         const remainingQty = item.quantity - item.totalReturned;
                         const hasReturnQty =
@@ -2927,14 +2935,12 @@ export default function DispatchOrderDetailPage({ params }) {
                         return (
                           <tr
                             key={item.index}
-                            className={`border-b border-rose-100 transition-colors ${hasReturnQty
-                              ? "bg-rose-200/40"
-                              : idx % 2 === 0
-                                ? "bg-white"
-                                : "bg-rose-50/20"
-                              }`}
+                            className={cn(
+                              "transition-colors hover:bg-muted/20",
+                              hasReturnQty && "bg-rose-50/30"
+                            )}
                           >
-                            <td className="p-2">
+                            <td className="px-4 py-3">
                               <ProductImageGallery
                                 images={getImageArray(item)}
                                 alt={item.productName || "Product"}
@@ -2943,40 +2949,40 @@ export default function DispatchOrderDetailPage({ params }) {
                                 showCount={true}
                               />
                             </td>
-                            <td className="p-2">
+                            <td className="px-4 py-3">
                               <div>
-                                <div className="font-medium">
+                                <div className="font-semibold text-foreground">
                                   {item.productName}
                                 </div>
                                 {item.primaryColor && (
-                                  <div className="text-xs text-muted-foreground">
+                                  <div className="text-xs text-muted-foreground mt-1">
                                     Color: {item.primaryColor}
                                   </div>
                                 )}
                                 <div className="text-xs text-muted-foreground mt-1">
                                   Original: {item.quantity} • Returned:{" "}
-                                  <span className="text-red-600">
+                                  <span className="text-destructive font-medium">
                                     {item.totalReturned}
                                   </span>
                                 </div>
                               </div>
                             </td>
-                            <td className="p-2">
-                              <span className="font-mono text-xs">
+                            <td className="px-4 py-3">
+                              <span className="font-mono text-xs font-medium text-foreground">
                                 {item.productCode}
                               </span>
                             </td>
-                            <td className="p-2 text-center">
+                            <td className="px-4 py-3 text-center">
                               <span
-                                className={`font-semibold ${remainingQty === 0
-                                  ? "text-muted-foreground"
-                                  : ""
-                                  }`}
+                                className={cn(
+                                  "font-semibold",
+                                  remainingQty === 0 && "text-muted-foreground"
+                                )}
                               >
                                 {remainingQty}
                               </span>
                             </td>
-                            <td className="p-2 text-center">
+                            <td className="px-4 py-3 text-center">
                               <div className="flex justify-center">
                                 <Input
                                   id={`return-qty-${item.index}`}
@@ -3006,7 +3012,7 @@ export default function DispatchOrderDetailPage({ params }) {
                                 />
                               </div>
                             </td>
-                            <td className="p-2">
+                            <td className="px-4 py-3">
                               <div className="flex gap-2">
                                 <Select
                                   value={returnReasons[item.index] || ""}
@@ -3060,11 +3066,11 @@ export default function DispatchOrderDetailPage({ params }) {
               )}
             </CardContent>
 
-            <div className="border-t pt-4 space-y-4 px-6 pb-6">
-              <div>
+            <CardFooter className="flex flex-col gap-6 pt-6 border-t border-border">
+              <div className="w-full">
                 <Label
                   htmlFor="return-notes"
-                  className="text-sm font-semibold mb-2 block"
+                  className="text-sm font-semibold mb-2 block text-foreground"
                 >
                   Additional Notes{" "}
                   <span className="text-muted-foreground font-normal text-xs">
@@ -3076,8 +3082,8 @@ export default function DispatchOrderDetailPage({ params }) {
                   value={returnNotes}
                   onChange={(e) => setReturnNotes(e.target.value)}
                   placeholder="Any additional information about this return..."
-                  className="min-h-[80px] text-sm"
-                  rows={3}
+                  className="min-h-[100px] text-sm"
+                  rows={4}
                 />
               </div>
 
@@ -3085,19 +3091,19 @@ export default function DispatchOrderDetailPage({ params }) {
               {Object.values(returnQuantities).some(
                 (qty) => qty && parseFloat(qty) > 0
               ) && (
-                  <Card className="bg-gradient-to-br from-rose-50/90 to-pink-50/70 border-2 border-rose-300/60 shadow-sm">
-                    <CardContent className="p-5">
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="h-8 w-8 rounded-lg bg-rose-100 flex items-center justify-center">
-                          <Package className="h-4 w-4 text-rose-600" />
+                  <Card className="border border-border bg-muted/20">
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="h-10 w-10 rounded-lg bg-rose-500/10 flex items-center justify-center">
+                          <Package className="h-5 w-5 text-rose-600" />
                         </div>
-                        <h3 className="text-base font-bold text-rose-900">Return Summary</h3>
+                        <h3 className="text-lg font-semibold text-foreground">Return Summary</h3>
                       </div>
 
-                      <div className="space-y-4">
+                      <div className="space-y-6">
                         {/* Items List */}
-                        <div className="bg-white/60 rounded-lg p-3 border border-rose-200/50">
-                          <p className="text-xs font-semibold text-rose-700 uppercase tracking-wide mb-2">Items to Return</p>
+                        <div className="bg-card rounded-lg p-4 border border-border">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Items to Return</p>
                           <div className="space-y-2">
                             {Object.entries(returnQuantities)
                               .filter(([_, qty]) => qty && parseFloat(qty) > 0)
@@ -3108,11 +3114,11 @@ export default function DispatchOrderDetailPage({ params }) {
                                 return (
                                   <div
                                     key={itemIndex}
-                                    className="flex items-center justify-between py-2 px-3 bg-white rounded-md border border-rose-100"
+                                    className="flex items-center justify-between py-3 px-4 bg-muted/30 rounded-md border border-border hover:bg-muted/50 transition-colors"
                                   >
-                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                      <div className="h-2 w-2 rounded-full bg-rose-400 flex-shrink-0"></div>
-                                      <span className="text-sm font-medium text-slate-700 truncate">
+                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                      <div className="h-2 w-2 rounded-full bg-rose-500 flex-shrink-0"></div>
+                                      <span className="text-sm font-medium text-foreground truncate">
                                         {item?.productName || "Unknown Item"}
                                       </span>
                                     </div>
@@ -3126,13 +3132,13 @@ export default function DispatchOrderDetailPage({ params }) {
                         </div>
 
                         {/* Summary Stats */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-white/80 rounded-lg p-3 border border-rose-200/50">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Package className="h-3.5 w-3.5 text-rose-500" />
-                              <span className="text-xs font-medium text-slate-600">Total Items</span>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-card rounded-lg p-4 border border-border">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Package className="h-4 w-4 text-rose-600" />
+                              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Items</span>
                             </div>
-                            <p className="text-xl font-bold text-rose-700">
+                            <p className="text-2xl font-bold text-foreground">
                               {
                                 Object.values(returnQuantities).filter(
                                   (qty) => qty && parseFloat(qty) > 0
@@ -3140,12 +3146,12 @@ export default function DispatchOrderDetailPage({ params }) {
                               }
                             </p>
                           </div>
-                          <div className="bg-white/80 rounded-lg p-3 border border-rose-200/50">
-                            <div className="flex items-center gap-2 mb-1">
-                              <CheckCircle2 className="h-3.5 w-3.5 text-rose-500" />
-                              <span className="text-xs font-medium text-slate-600">Total Quantity</span>
+                          <div className="bg-card rounded-lg p-4 border border-border">
+                            <div className="flex items-center gap-2 mb-2">
+                              <CheckCircle2 className="h-4 w-4 text-rose-600" />
+                              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Quantity</span>
                             </div>
-                            <p className="text-xl font-bold text-rose-700">
+                            <p className="text-2xl font-bold text-foreground">
                               {Object.values(returnQuantities).reduce(
                                 (sum, qty) => sum + (parseFloat(qty) || 0),
                                 0
@@ -3158,7 +3164,7 @@ export default function DispatchOrderDetailPage({ params }) {
                   </Card>
                 )}
 
-              <CardFooter className="flex items-center justify-end gap-4 pt-4 px-0">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-6 border-t border-border">
                 <Button
                   variant="outline"
                   size="lg"
@@ -3168,9 +3174,9 @@ export default function DispatchOrderDetailPage({ params }) {
                     setReturnNotes("");
                   }}
                   disabled={returnMutation.isPending}
-                  className="min-w-[120px]"
+                  className="min-w-[140px] gap-2"
                 >
-                  <XCircle className="h-4 w-4 mr-2" />
+                  <XCircle className="h-4 w-4" />
                   Clear Form
                 </Button>
                 <Button
@@ -3182,22 +3188,22 @@ export default function DispatchOrderDetailPage({ params }) {
                     )
                   }
                   size="lg"
-                  className="min-w-[160px]"
+                  className="min-w-[160px] gap-2"
                 >
                   {returnMutation.isPending ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                       Processing...
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      <CheckCircle2 className="h-4 w-4" />
                       Submit Return
                     </>
                   )}
                 </Button>
-              </CardFooter>
             </div>
+            </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>

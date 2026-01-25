@@ -83,8 +83,11 @@ export default function BuyingPage() {
           })
         })
       } else {
-        // Keep purchase without items as-is
-        flattened.push(purchase)
+        // Keep purchase without items as-is, but ensure it has a unique rowId
+        flattened.push({
+          ...purchase,
+          rowId: purchase.id || purchase._id || `purchase-${purchase.purchaseNumber || Date.now()}-${Math.random()}`
+        })
       }
     })
     
@@ -175,15 +178,11 @@ export default function BuyingPage() {
         header: "Buying ID",
         accessor: "purchaseNumber",
         render: (row) => (
-          
-          <div className="flex flex-col">
-            {/* <span className="font-medium text-sm">
-              {row.purchaseNumber || "—"}
-            </span> */}
-            {row.dispatchOrderId && (
+          <div className="flex flex-col gap-0.5">
+            {row.dispatchOrderId ? (
               <a
                 href={`/dispatch-orders/${row.dispatchOrderId}`}
-                className="text-xs text-blue-600 hover:underline mt-1"
+                className="text-sm font-semibold text-primary hover:underline transition-colors"
                 onClick={(e) => {
                   e.preventDefault()
                   router.push(`/dispatch-orders/${row.dispatchOrderId}`)
@@ -191,6 +190,8 @@ export default function BuyingPage() {
               >
                 {row.purchaseNumber || "—"}
               </a>
+            ) : (
+              <span className="text-sm font-semibold text-foreground">{row.purchaseNumber || "—"}</span>
             )}
           </div>
         ),
@@ -199,8 +200,8 @@ export default function BuyingPage() {
         header: "Date",
         accessor: "purchaseDate",
         render: (row) => (
-          <span className="font-medium">
-            {row.purchaseDate ? new Date(row.purchaseDate).toLocaleDateString('en-GB') : "—"}
+          <span className="font-medium text-foreground">
+            {row.purchaseDate ? new Date(row.purchaseDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "—"}
           </span>
         ),
       },
@@ -208,7 +209,7 @@ export default function BuyingPage() {
         header: "Supplier",
         accessor: "supplierName",
         render: (row) => (
-          <span className="font-medium">{row.supplierName || "—"}</span>
+          <span className="font-semibold text-foreground">{row.supplierName || "—"}</span>
         ),
       },
       {
@@ -225,18 +226,18 @@ export default function BuyingPage() {
                   maxVisible={1}
                   showCount={true}
                 />
-                <div className="text-xs leading-tight">
-                  <div className="font-semibold text-sm">{row.productName || "—"}</div>
-                  <div className="text-muted-foreground">{row.productCode || "—"}</div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="font-semibold text-sm text-foreground">{row.productName || "—"}</div>
+                  <div className="text-xs text-muted-foreground font-medium">{row.productCode || "—"}</div>
                   {row.quantity && (
-                    <div className="text-muted-foreground/70">
-                      Qty: {row.quantity}
+                    <div className="text-xs text-muted-foreground font-medium">
+                      Qty: <span className="font-semibold text-foreground">{row.quantity}</span>
                     </div>
                   )}
                 </div>
               </>
             ) : (
-              <span className="text-muted-foreground">No product</span>
+              <span className="text-sm text-muted-foreground">No product</span>
             )}
           </div>
         ),
@@ -441,7 +442,7 @@ export default function BuyingPage() {
           totalBoxes = totalBoxes ?? 0
 
           // Display exactly like Dispatch Orders: show the number (including 0)
-          return <span className="tabular-nums text-sm font-medium">{totalBoxes}</span>
+          return <span className="tabular-nums text-sm font-semibold text-foreground">{totalBoxes}</span>
         },
       },
       // {
@@ -466,7 +467,7 @@ export default function BuyingPage() {
         header: "Landed Price",
         accessor: "landedPrice",
         render: (row) => (
-          <span className="tabular-nums font-medium text-sm">
+          <span className="tabular-nums font-semibold text-sm text-foreground">
             {row?.landedPrice != null ? row?.landedPrice.toFixed(2) : "—"}
           </span>
         ),
@@ -478,7 +479,7 @@ export default function BuyingPage() {
           return (
             <div className="flex items-center gap-2">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation()
@@ -486,10 +487,10 @@ export default function BuyingPage() {
                     router.push(`/dispatch-orders/${row.dispatchOrderId}`)
                   }
                 }}
-                className="h-8 px-2 text-xs"
+                className="h-8 px-3 text-xs gap-1.5 hover:bg-primary hover:text-primary-foreground transition-colors"
                 title="Edit purchase"
               >
-                <Edit className="h-3.5 w-3.5 mr-1" />
+                <Edit className="h-3.5 w-3.5" />
                 Edit
               </Button>
               {/* Revert and Delete buttons commented out */}
@@ -623,7 +624,13 @@ export default function BuyingPage() {
   // Loading state
   if (purchasesLoading) {
     return (
-      <div className="mx-auto max-w-[1600px] p-4">
+      <div className="space-y-6">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Buying</h1>
+            <p className="text-sm text-muted-foreground">Manage supplier purchases and monitor payment status.</p>
+          </div>
+        </header>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
@@ -635,32 +642,40 @@ export default function BuyingPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4">
-      {/* Page header to match other sections */}
-      <header className="mb-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-lg font-semibold">Buying</h1>
-            <p className="text-sm text-muted-foreground">Manage supplier purchases and monitor payment status.</p>
-          </div>
-          {/* {JSON.stringify(buyingRows)} */}
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2 rounded-full border border-border px-3 py-1">
-              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
-              <span>Backend connected</span>
+    <div className="space-y-6">
+      {/* Enhanced Page Header */}
+      <header className="bg-card border border-border rounded-lg p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Package className="h-6 w-6 text-primary" />
             </div>
-            <span className="rounded-full border border-border px-3 py-1">
-              Total: {deliveryMetrics.total || 0}
-            </span>
-            <span className="rounded-full border border-border px-3 py-1">
-              Pending: {deliveryMetrics.pending || 0}
-            </span>
-            <span className="rounded-full border border-border px-3 py-1">
-              Dispatched: {deliveryMetrics.shipped || 0}
-            </span>
-            <span className="rounded-full border border-border px-3 py-1">
-              Delivered: {deliveryMetrics.delivered || 0}
-            </span>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Buying</h1>
+              <p className="text-sm text-muted-foreground mt-1">Manage supplier purchases and monitor payment status.</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true"></span>
+              <span className="text-xs font-medium text-foreground">Connected</span>
+            </div>
+            <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
+              <span className="text-xs font-semibold text-foreground">Total: </span>
+              <span className="text-xs font-bold text-primary">{deliveryMetrics.total || 0}</span>
+            </div>
+            <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
+              <span className="text-xs font-semibold text-foreground">Pending: </span>
+              <span className="text-xs font-bold text-amber-600">{deliveryMetrics.pending || 0}</span>
+            </div>
+            <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
+              <span className="text-xs font-semibold text-foreground">Dispatched: </span>
+              <span className="text-xs font-bold text-blue-600">{deliveryMetrics.shipped || 0}</span>
+            </div>
+            <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
+              <span className="text-xs font-semibold text-foreground">Delivered: </span>
+              <span className="text-xs font-bold text-emerald-600">{deliveryMetrics.delivered || 0}</span>
+            </div>
           </div>
         </div>
       </header>

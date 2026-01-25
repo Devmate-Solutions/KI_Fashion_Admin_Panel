@@ -89,50 +89,61 @@ export const useAuthStore = create((set, get) => ({
    * 2. Then, optionally refresh from API in background for accuracy
    */
   loadUser: async (forceRefresh = false) => {
-    // Check if token exists
-    if (!authService.isAuthenticated()) {
-      set({ user: null, isAuthenticated: false, isLoading: false });
-      return;
-    }
-
-    // STEP 1: Load user from JWT token (INSTANT - no API call)
-    const decodedToken = authService.getDecodedToken();
-    
-    if (decodedToken && !forceRefresh) {
-      // Check if user role indicates they shouldn't have CRM access
-      // Supplier, distributor, and buyer roles should not access CRM
-      const restrictedRoles = ['supplier', 'distributor', 'buyer'];
-      if (restrictedRoles.includes(decodedToken.role)) {
-        // User with restricted role trying to access CRM - logout
-        authService.logout();
+    try {
+      // Check if token exists
+      if (!authService.isAuthenticated()) {
         set({ user: null, isAuthenticated: false, isLoading: false });
         return;
       }
+
+      // STEP 1: Load user from JWT token (INSTANT - no API call)
+      const decodedToken = authService.getDecodedToken();
       
-      // Set user immediately from token
-      set({ 
-        user: {
-          id: decodedToken.id,
-          name: decodedToken.name,
-          email: decodedToken.email,
-          role: decodedToken.role,
-          permissions: decodedToken.permissions || []
-        },
-        isAuthenticated: true,
-        isLoading: false,
-        error: null
+      if (decodedToken && !forceRefresh) {
+        // Check if user role indicates they shouldn't have CRM access
+        // Supplier, distributor, and buyer roles should not access CRM
+        const restrictedRoles = ['supplier', 'distributor', 'buyer'];
+        if (restrictedRoles.includes(decodedToken.role)) {
+          // User with restricted role trying to access CRM - logout
+          authService.logout();
+          set({ user: null, isAuthenticated: false, isLoading: false });
+          return;
+        }
+        
+        // Set user immediately from token
+        set({ 
+          user: {
+            id: decodedToken.id,
+            name: decodedToken.name,
+            email: decodedToken.email,
+            role: decodedToken.role,
+            permissions: decodedToken.permissions || []
+          },
+          isAuthenticated: true,
+          isLoading: false,
+          error: null
+        });
+        
+        // STEP 2 (Optional): Refresh from API in background
+        // This ensures data is fresh without blocking UI
+        get().refreshUserInBackground().catch(() => {
+          // Silently fail background refresh
+        });
+        return;
+      }
+
+      // STEP 3: If forceRefresh or no decoded token, call API
+      set({ isLoading: true });
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 10000); // 10 second timeout
       });
       
-      // STEP 2 (Optional): Refresh from API in background
-      // This ensures data is fresh without blocking UI
-      get().refreshUserInBackground();
-      return;
-    }
-
-    // STEP 3: If forceRefresh or no decoded token, call API
-    set({ isLoading: true });
-    try {
-      const user = await authService.getCurrentUser();
+      const user = await Promise.race([
+        authService.getCurrentUser(),
+        timeoutPromise
+      ]);
       
       // Check if user has CRM portal access
       const portalAccess = user?.portalAccess || [];
@@ -155,6 +166,7 @@ export const useAuthStore = create((set, get) => ({
         error: null
       });
     } catch (error) {
+      // Always ensure isLoading is set to false, even on error
       authService.logout();
       set({ 
         user: null, 

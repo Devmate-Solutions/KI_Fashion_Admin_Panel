@@ -271,7 +271,13 @@ export default function SellingPage() {
   // Loading state
   if (salesLoading) {
     return (
-      <div className="mx-auto max-w-[1600px] p-4">
+      <div className="space-y-6">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Selling</h1>
+            <p className="text-sm text-muted-foreground">Manage customer sales and monitor payment status.</p>
+          </div>
+        </header>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
@@ -283,23 +289,20 @@ export default function SellingPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4">
-      {/* Page header to match other sections */}
-      <header className="mb-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-lg font-semibold">Selling</h1>
-            <p className="text-sm text-muted-foreground">Manage customer sales and monitor payment status.</p>
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Selling</h1>
+          <p className="text-sm text-muted-foreground">Manage customer sales and monitor payment status.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1.5">
+            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" aria-hidden="true"></span>
+            <span className="text-muted-foreground">Connected</span>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2 rounded-full border border-border px-3 py-1">
-              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
-              <span>Backend connected</span>
-            </div>
-            <span className="rounded-full border border-border px-3 py-1">
-              Total: {sellingRows.length || 0}
-            </span>
-          </div>
+          <span className="rounded-full border border-border bg-muted/50 px-3 py-1.5 text-muted-foreground">
+            Total: {sellingRows.length || 0}
+          </span>
         </div>
       </header>
 

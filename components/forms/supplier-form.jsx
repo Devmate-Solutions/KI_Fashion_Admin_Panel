@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Building2, Loader2 } from "lucide-react"
 
 /**
  * Add Supplier Form Component
@@ -121,134 +123,175 @@ export function AddSupplierForm({ open, onClose, onSubmit, loading = false }) {
     }
   }
 
-  if (!open) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md bg-card rounded-lg shadow-xl p-6 mx-4 max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-semibold mb-4">Add New Supplier</h2>
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <DialogTitle className="text-xl font-semibold">Add New Supplier</DialogTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Create a new supplier account with company details and contact information
+              </p>
+            </div>
+          </div>
+        </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="name">Name *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => handleChange('name', e.target.value)}
-              className={errors.name ? 'border-red-500' : ''}
-            />
-            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+        <form onSubmit={handleSubmit} className="space-y-5 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-sm font-semibold">Name <span className="text-red-500">*</span></Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => handleChange('name', e.target.value)}
+                className={`h-11 ${errors.name ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
+                placeholder="Enter supplier name"
+              />
+              {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-semibold">Email <span className="text-red-500">*</span></Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleChange('email', e.target.value)}
+                className={`h-11 ${errors.email ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
+                placeholder="Enter email address"
+              />
+              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+            </div>
           </div>
 
-          <div>
-            <Label htmlFor="email">Email *</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleChange('email', e.target.value)}
-              className={errors.email ? 'border-red-500' : ''}
-            />
-            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-          </div>
-
-          <div>
-            <Label htmlFor="company">Company Name *</Label>
+          <div className="space-y-2">
+            <Label htmlFor="company" className="text-sm font-semibold">Company Name <span className="text-red-500">*</span></Label>
             <Input
               id="company"
               value={formData.company}
               onChange={(e) => handleChange('company', e.target.value)}
-              className={errors.company ? 'border-red-500' : ''}
+              className={`h-11 ${errors.company ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
+              placeholder="Enter company name"
             />
-            {errors.company && <p className="text-red-500 text-sm mt-1">{errors.company}</p>}
+            {errors.company && <p className="text-red-500 text-xs mt-1">{errors.company}</p>}
           </div>
 
-          <div>
-            <Label htmlFor="phone">Phone *</Label>
+          <div className="space-y-2">
+            <Label htmlFor="phone" className="text-sm font-semibold">Phone <span className="text-red-500">*</span></Label>
             <div className="flex gap-2">
               <Input
                 id="phoneAreaCode"
                 value={formData.phoneAreaCode}
                 onChange={(e) => handleChange('phoneAreaCode', e.target.value)}
-                className={`w-24 ${errors.phoneAreaCode ? 'border-red-500' : ''}`}
+                className={`h-11 w-24 ${errors.phoneAreaCode ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
                 maxLength={5}
+                placeholder="Area"
               />
               <Input
                 ref={phoneInputRef}
                 id="phone"
                 value={formData.phone}
                 onChange={(e) => handleChange('phone', e.target.value)}
-                className={`flex-1 ${errors.phone ? 'border-red-500' : ''}`}
+                className={`h-11 flex-1 ${errors.phone ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
+                placeholder="Enter phone number"
               />
             </div>
-            {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+            {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
           </div>
 
-          <div>
-            <Label htmlFor="alternatePhone">Alternate Phone</Label>
+          <div className="space-y-2">
+            <Label htmlFor="alternatePhone" className="text-sm font-semibold">Alternate Phone</Label>
             <div className="flex gap-2">
               <Input
                 id="alternatePhoneAreaCode"
                 value={formData.alternatePhoneAreaCode}
                 onChange={(e) => handleChange('alternatePhoneAreaCode', e.target.value)}
-                className="w-24"
+                className="h-11 w-24"
                 maxLength={5}
+                placeholder="Area"
               />
               <Input
                 ref={alternatePhoneInputRef}
                 id="alternatePhone"
                 value={formData.alternatePhone}
                 onChange={(e) => handleChange('alternatePhone', e.target.value)}
-                className="flex-1"
+                className="h-11 flex-1"
+                placeholder="Enter alternate phone"
               />
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="address">Address</Label>
+          <div className="space-y-2">
+            <Label htmlFor="address" className="text-sm font-semibold">Address</Label>
             <Input
               id="address"
               value={formData.address}
               onChange={(e) => handleChange('address', e.target.value)}
+              className="h-11"
+              placeholder="Enter address"
             />
           </div>
 
-          <div>
-            <Label htmlFor="password">Password *</Label>
-            <Input
-              id="password"
-              type="password"
-              value={formData.password}
-              onChange={(e) => handleChange('password', e.target.value)}
-              className={errors.password ? 'border-red-500' : ''}
-            />
-            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-sm font-semibold">Password <span className="text-red-500">*</span></Label>
+              <Input
+                id="password"
+                type="password"
+                value={formData.password}
+                onChange={(e) => handleChange('password', e.target.value)}
+                className={`h-11 ${errors.password ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
+                placeholder="Enter password"
+              />
+              {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className="text-sm font-semibold">Confirm Password <span className="text-red-500">*</span></Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={formData.confirmPassword}
+                onChange={(e) => handleChange('confirmPassword', e.target.value)}
+                className={`h-11 ${errors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
+                placeholder="Confirm password"
+              />
+              {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
+            </div>
           </div>
 
-          <div>
-            <Label htmlFor="confirmPassword">Confirm Password *</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={(e) => handleChange('confirmPassword', e.target.value)}
-              className={errors.confirmPassword ? 'border-red-500' : ''}
-            />
-            {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
-          </div>
-
-          <div className="flex gap-2 justify-end pt-4">
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Supplier'}
-            </Button>
-          </div>
+        <DialogFooter className="gap-3 pt-4 border-t border-border/60">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onClose} 
+            disabled={loading}
+            className="h-10 px-5"
+          >
+            Cancel
+          </Button>
+          <Button 
+            type="submit" 
+            disabled={loading}
+            className="h-10 px-5 gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              'Create Supplier'
+            )}
+          </Button>
+        </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -256,6 +299,8 @@ export function AddSupplierForm({ open, onClose, onSubmit, loading = false }) {
  * Edit Supplier Form Component
  */
 export function EditSupplierForm({ open, supplier, onClose, onSubmit, loading = false }) {
+  const phoneInputRef = useRef(null)
+  const alternatePhoneInputRef = useRef(null)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -350,135 +395,174 @@ export function EditSupplierForm({ open, supplier, onClose, onSubmit, loading = 
     }
   }
 
-  if (!open) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md bg-card rounded-lg shadow-xl p-6 mx-4 max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-semibold mb-4">Edit Supplier</h2>
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <DialogTitle className="text-xl font-semibold">Edit Supplier</DialogTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Update supplier information and contact details
+              </p>
+            </div>
+          </div>
+        </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="name">Name *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => handleChange('name', e.target.value)}
-              className={errors.name ? 'border-red-500' : ''}
-            />
-            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+        <form onSubmit={handleSubmit} className="space-y-5 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-sm font-semibold">Name <span className="text-red-500">*</span></Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => handleChange('name', e.target.value)}
+                className={`h-11 ${errors.name ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
+                placeholder="Enter supplier name"
+              />
+              {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-semibold">Email <span className="text-red-500">*</span></Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleChange('email', e.target.value)}
+                className={`h-11 ${errors.email ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
+                placeholder="Enter email address"
+              />
+              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+            </div>
           </div>
 
-          <div>
-            <Label htmlFor="email">Email *</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleChange('email', e.target.value)}
-              className={errors.email ? 'border-red-500' : ''}
-            />
-            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-          </div>
-
-          <div>
-            <Label htmlFor="company">Company Name</Label>
+          <div className="space-y-2">
+            <Label htmlFor="company" className="text-sm font-semibold">Company Name</Label>
             <Input
               id="company"
               value={formData.company}
               onChange={(e) => handleChange('company', e.target.value)}
+              className="h-11"
               disabled={true}
             />
           </div>
 
-          <div>
-            <Label htmlFor="phone">Phone *</Label>
+          <div className="space-y-2">
+            <Label htmlFor="phone" className="text-sm font-semibold">Phone <span className="text-red-500">*</span></Label>
             <div className="flex gap-2">
               <Input
                 id="phoneAreaCode"
                 value={formData.phoneAreaCode}
                 onChange={(e) => handleChange('phoneAreaCode', e.target.value)}
-                className={`w-24 ${errors.phoneAreaCode ? 'border-red-500' : ''}`}
+                className={`h-11 w-24 ${errors.phoneAreaCode ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
                 maxLength={5}
+                placeholder="Area"
               />
               <Input
                 ref={phoneInputRef}
                 id="phone"
                 value={formData.phone}
                 onChange={(e) => handleChange('phone', e.target.value)}
-                className={`flex-1 ${errors.phone ? 'border-red-500' : ''}`}
+                className={`h-11 flex-1 ${errors.phone ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
+                placeholder="Enter phone number"
               />
             </div>
-            {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+            {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
           </div>
 
-          <div>
-            <Label htmlFor="alternatePhone">Alternate Phone</Label>
+          <div className="space-y-2">
+            <Label htmlFor="alternatePhone" className="text-sm font-semibold">Alternate Phone</Label>
             <div className="flex gap-2">
               <Input
                 id="alternatePhoneAreaCode"
                 value={formData.alternatePhoneAreaCode}
                 onChange={(e) => handleChange('alternatePhoneAreaCode', e.target.value)}
-                className="w-24"
+                className="h-11 w-24"
                 maxLength={5}
+                placeholder="Area"
               />
               <Input
                 ref={alternatePhoneInputRef}
                 id="alternatePhone"
                 value={formData.alternatePhone}
                 onChange={(e) => handleChange('alternatePhone', e.target.value)}
-                className="flex-1"
+                className="h-11 flex-1"
+                placeholder="Enter alternate phone"
               />
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="address">Address</Label>
+          <div className="space-y-2">
+            <Label htmlFor="address" className="text-sm font-semibold">Address</Label>
             <Input
               id="address"
               value={formData.address}
               onChange={(e) => handleChange('address', e.target.value)}
+              className="h-11"
+              placeholder="Enter address"
             />
           </div>
 
-          <div>
-            <Label htmlFor="password">Password (leave blank to keep current)</Label>
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-sm font-semibold">Password <span className="text-xs text-muted-foreground">(leave blank to keep current)</span></Label>
             <Input
               id="password"
               type="password"
               value={formData.password}
               onChange={(e) => handleChange('password', e.target.value)}
-              className={errors.password ? 'border-red-500' : ''}
+              className={`h-11 ${errors.password ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
+              placeholder="Enter new password"
             />
-            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
           </div>
 
           {formData.password && (
-            <div>
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className="text-sm font-semibold">Confirm Password</Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 value={formData.confirmPassword}
                 onChange={(e) => handleChange('confirmPassword', e.target.value)}
-                className={errors.confirmPassword ? 'border-red-500' : ''}
+                className={`h-11 ${errors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
+                placeholder="Confirm new password"
               />
-              {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
+              {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
             </div>
           )}
 
-          <div className="flex gap-2 justify-end pt-4">
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Updating...' : 'Update Supplier'}
-            </Button>
-          </div>
+        <DialogFooter className="gap-3 pt-4 border-t border-border/60">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onClose} 
+            disabled={loading}
+            className="h-10 px-5"
+          >
+            Cancel
+          </Button>
+          <Button 
+            type="submit" 
+            disabled={loading}
+            className="h-10 px-5 gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              'Update Supplier'
+            )}
+          </Button>
+        </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

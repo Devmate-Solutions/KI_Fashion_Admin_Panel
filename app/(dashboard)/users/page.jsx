@@ -570,13 +570,13 @@ export default function UsersPage() {
   const FormComponent = getFormComponent()
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">User Management</h1>
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">User Management</h1>
           <p className="text-sm text-muted-foreground">Manage system users and their roles</p>
         </div>
-      </div>
+      </header>
 
       <Tabs 
         tabs={tabs} 

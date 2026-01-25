@@ -15,7 +15,7 @@ import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { balancesAPI } from "@/lib/api/endpoints/balances"
 import { logisticsCompaniesAPI } from "@/lib/api/endpoints/logisticsCompanies"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { Loader2, Plus } from "lucide-react"
+import { Loader2, Plus, FileText, Truck, DollarSign, Building2, Clock, Users, Filter, Calendar, RotateCcw } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import toast from "react-hot-toast"
 import LogisticsPaymentModal from "@/components/modals/LogisticsPaymentModal"
@@ -735,18 +735,28 @@ export default function LogisticsLedgerPage() {
     }
   }
 
-  // TAB 1: Ledger Content
+  // TAB 1: Ledger Content - Premium Redesign
   const ledgerTabContent = (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg border p-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className="rounded-lg border border-border/60 bg-gradient-to-br from-card via-background to-card shadow-sm overflow-hidden">
+        {/* Header Section */}
+        <div className="relative bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50 px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-primary/10 backdrop-blur-sm flex items-center justify-center ring-1 ring-primary/20 shadow-sm">
+                <FileText className="h-6 w-6 text-primary" />
+              </div>
           <div>
-            <h2 className="font-semibold text-lg">Complete Ledger History</h2>
+                <h2 className="font-semibold text-xl text-foreground tracking-tight">Complete Ledger History</h2>
             <p className="text-sm text-muted-foreground mt-1">Select a company to view their complete accounting record</p>
+              </div>
           </div>
           <div className="flex items-center gap-4">
             <div className="w-[250px]">
-              <Label htmlFor="ledger-company-filter" className="mb-2 block">Select Company</Label>
+                <Label htmlFor="ledger-company-filter" className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
+                  <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                  Select Company
+                </Label>
               <Select
                 value={ledgerCompanyFilter}
                 onValueChange={(value) => {
@@ -757,7 +767,7 @@ export default function LogisticsLedgerPage() {
                 }}
                 disabled={allCompaniesLoading}
               >
-                <SelectTrigger id="ledger-company-filter">
+                  <SelectTrigger id="ledger-company-filter" className="h-11 border-border/60 bg-background/50 backdrop-blur-sm hover:bg-background transition-colors">
                   <SelectValue placeholder="Select a company..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -771,12 +781,15 @@ export default function LogisticsLedgerPage() {
             </div>
             {ledgerCompanyFilter && ledgerCompanyFilter !== 'all' && (
               <div className="w-[200px]">
-                <Label htmlFor="ledger-type-filter" className="mb-2 block">Filter by Type</Label>
+                  <Label htmlFor="ledger-type-filter" className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
+                    <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                    Filter By
+                  </Label>
                 <Select
                   value={ledgerTypeFilter}
                   onValueChange={setLedgerTypeFilter}
                 >
-                  <SelectTrigger id="ledger-type-filter">
+                    <SelectTrigger id="ledger-type-filter" className="h-11 border-border/60 bg-background/50 backdrop-blur-sm hover:bg-background transition-colors">
                     <SelectValue placeholder="All Transactions" />
                   </SelectTrigger>
                   <SelectContent>
@@ -789,49 +802,103 @@ export default function LogisticsLedgerPage() {
                 </Select>
               </div>
             )}
+            </div>
           </div>
         </div>
 
+        {/* Content Section */}
+        <div className="p-6">
         {!ledgerCompanyFilter || ledgerCompanyFilter === 'all' ? (
-          <div className="p-12 text-center text-muted-foreground">
-            <div className="mb-4">
-              <svg className="mx-auto h-12 w-12 text-muted-foreground/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-              </svg>
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl"></div>
+                <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-muted/90 via-muted/70 to-muted/50 backdrop-blur-sm ring-2 ring-border/60 shadow-lg">
+                  <Truck className="w-12 h-12 text-muted-foreground" />
             </div>
-            <p className="text-lg font-medium">Select a company to view ledger</p>
-            <p className="text-sm mt-1">Choose a logistics company from the dropdown above to see their complete transaction history</p>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2.5">Select a company to view ledger</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-md leading-relaxed">
+                Choose a logistics company from the dropdown above to see their complete transaction history
+              </p>
           </div>
         ) : allLedgerLoading ? (
-          <div className="p-12 flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-muted-foreground">Loading ledger entries...</span>
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
+                <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background backdrop-blur-sm ring-2 ring-primary/20 shadow-lg">
+                  <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2.5">Loading ledger entries</h3>
+              <p className="text-sm text-muted-foreground">Please wait while we fetch the records...</p>
           </div>
         ) : allLedgerError ? (
-          <div className="p-12 text-center text-red-600">
-            <p>Error loading ledger entries: {allLedgerError.message || 'Unknown error'}</p>
+            <div className="flex flex-col items-center justify-center py-20 px-4 text-red-600">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-red-500/5 rounded-full blur-3xl"></div>
+                <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-red-100/80 to-red-100/40 backdrop-blur-sm ring-2 ring-red-200/50 shadow-lg">
+                  <FileText className="w-12 h-12 text-red-600" />
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold text-red-700 mb-2.5">Error loading ledger entries</h3>
+              <p className="text-sm text-red-600 text-center max-w-md">{allLedgerError.message || 'Unknown error'}</p>
             <p className="text-xs text-muted-foreground mt-2">Check console for details</p>
           </div>
         ) : allLedgerTransactions.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground">
-            <p>No ledger entries found for this company</p>
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-muted/30 rounded-full blur-3xl"></div>
+                <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-muted/90 via-muted/70 to-muted/50 backdrop-blur-sm ring-2 ring-border/60 shadow-lg">
+                  <FileText className="w-12 h-12 text-muted-foreground" />
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2.5">No ledger entries found</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-md">No transaction records found for this company matching the selected filters.</p>
           </div>
         ) : (
           <>
+              {/* Summary Cards */}
             <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-muted/30 rounded-lg p-6 space-y-1">
-                <p className="text-sm text-muted-foreground">Total Entries</p>
-                <p className="text-2xl font-bold">{allLedgerTransactions.length}</p>
+                <div className="relative rounded-lg border border-border/60 bg-gradient-to-br from-card via-background to-card p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
+                  <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-primary/5 blur-xl group-hover:bg-primary/10 transition-all"></div>
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="h-12 w-12 rounded-xl bg-muted/60 backdrop-blur-sm flex items-center justify-center ring-1 ring-border/50">
+                        <FileText className="h-6 w-6 text-muted-foreground" />
               </div>
-              <div className="bg-muted/30 rounded-lg p-6 space-y-1">
-                <p className="text-sm text-muted-foreground">Company Balance</p>
-                <p className={`text-2xl font-bold ${calculatedTotalBalance >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {calculatedTotalBalance < 0 ? '-' : ''}{currency(Math.abs(calculatedTotalBalance))}
-                </p>
+                    </div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.15em] mb-2 text-muted-foreground">
+                      Total Entries
+                    </div>
+                    <div className="text-3xl font-bold tabular-nums text-foreground mb-1">
+                      {allLedgerTransactions.length}
+                    </div>
+                    <div className="text-xs text-muted-foreground">All transactions recorded</div>
+                  </div>
+                </div>
+                <div className="relative rounded-lg border border-border/60 bg-gradient-to-br from-card via-background to-card p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
+                  <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-primary/5 blur-xl group-hover:bg-primary/10 transition-all"></div>
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="h-12 w-12 rounded-xl bg-muted/60 backdrop-blur-sm flex items-center justify-center ring-1 ring-border/50">
+                        <DollarSign className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    </div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.15em] mb-2 text-muted-foreground">
+                      Company Balance
+                    </div>
+                    <div className={`text-3xl font-bold tabular-nums mb-1 ${calculatedTotalBalance <= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {calculatedTotalBalance <= 0 ? '+' : '-'}£{formatNumber(Math.abs(calculatedTotalBalance))}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {calculatedTotalBalance <= 0 ? 'Credit with company' : 'Amount owed to company'}
+                    </div>
+                  </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg border">
+              {/* Data Table */}
+              <div className="rounded-lg border border-border/60 bg-card shadow-sm overflow-hidden">
               <DataTable
                 columns={allLedgerColumns}
                 data={allLedgerTransactions}
@@ -844,6 +911,7 @@ export default function LogisticsLedgerPage() {
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
   )
@@ -1033,53 +1101,122 @@ export default function LogisticsLedgerPage() {
     </>
   )
 
-  // TAB 3: Payment History Content
+  // TAB 3: Payment History Content - Premium Redesign
   const paymentHistoryTabContent = (
     <div className="space-y-6">
-      {/* Summary Cards - Only show when company is selected */}
+      {/* Summary Cards - Premium Design */}
       {paymentHistoryCompany && paymentHistoryCompany !== 'all' && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Payments</h3>
-            <div className="text-2xl font-bold text-green-600">
-              {formatNumber(paymentSummary.total)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Total Payments Card - Highlighted */}
+          <div className="relative rounded-lg border border-emerald-200/60 bg-gradient-to-br from-emerald-50/80 via-emerald-50/60 to-white p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
+            <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-emerald-200/20 blur-2xl group-hover:bg-emerald-200/30 transition-all"></div>
+            <div className="absolute -bottom-6 -left-6 h-20 w-20 rounded-full bg-emerald-100/15 blur-xl"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-12 w-12 rounded-xl bg-emerald-100/90 backdrop-blur-sm flex items-center justify-center ring-2 ring-emerald-200/40 shadow-sm group-hover:ring-emerald-300/60 transition-all">
+                  <DollarSign className="h-6 w-6 text-emerald-600" />
             </div>
           </div>
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">Cash Payments</h3>
-            <div className="text-2xl font-bold">
-              {formatNumber(paymentSummary.cash)}
+              <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-emerald-700/80">
+                Total Payments
+            </div>
+              <div className="text-3xl font-bold text-emerald-700 tabular-nums mb-1.5">
+                £{formatNumber(paymentSummary.total)}
+          </div>
+              <div className="text-xs font-medium text-emerald-600/70">All-time payment total</div>
             </div>
           </div>
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">Bank Payments</h3>
-            <div className="text-2xl font-bold">
-              {formatNumber(paymentSummary.bank)}
+
+          {/* Cash Payments Card */}
+          <div className="relative rounded-lg border border-border/60 bg-gradient-to-br from-background via-card/50 to-background p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
+            <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-primary/5 blur-xl group-hover:bg-primary/10 transition-all"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-12 w-12 rounded-xl bg-muted/70 backdrop-blur-sm flex items-center justify-center ring-1 ring-border/60 shadow-sm">
+                  <DollarSign className="h-6 w-6 text-muted-foreground" />
+                </div>
+              </div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-muted-foreground">
+                Cash Payments
+              </div>
+              <div className="text-3xl font-bold tabular-nums text-foreground mb-1.5">
+                £{formatNumber(paymentSummary.cash)}
+              </div>
+              <div className="text-xs font-medium text-muted-foreground">Cash transactions</div>
             </div>
           </div>
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">Payments This Month</h3>
-            <div className="text-2xl font-bold">
+
+          {/* Bank Payments Card */}
+          <div className="relative rounded-lg border border-border/60 bg-gradient-to-br from-background via-card/50 to-background p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
+            <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-primary/5 blur-xl group-hover:bg-primary/10 transition-all"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-12 w-12 rounded-xl bg-muted/70 backdrop-blur-sm flex items-center justify-center ring-1 ring-border/60 shadow-sm">
+                  <Building2 className="h-6 w-6 text-muted-foreground" />
+                </div>
+              </div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-muted-foreground">
+                Bank Payments
+              </div>
+              <div className="text-3xl font-bold tabular-nums text-foreground mb-1.5">
+                £{formatNumber(paymentSummary.bank)}
+              </div>
+              <div className="text-xs font-medium text-muted-foreground">Bank transfers</div>
+            </div>
+          </div>
+
+          {/* Payments This Month Card */}
+          <div className="relative rounded-lg border border-border/60 bg-gradient-to-br from-background via-card/50 to-background p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
+            <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-primary/5 blur-xl group-hover:bg-primary/10 transition-all"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-12 w-12 rounded-xl bg-muted/70 backdrop-blur-sm flex items-center justify-center ring-1 ring-border/60 shadow-sm">
+                  <Clock className="h-6 w-6 text-muted-foreground" />
+                </div>
+              </div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-muted-foreground">
+                Payments This Month
+              </div>
+              <div className="text-3xl font-bold tabular-nums text-foreground mb-1.5">
               {paymentSummary.countThisMonth}
+              </div>
+              <div className="text-xs font-medium text-muted-foreground">Current month</div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Filters and Add Payment Button */}
-      <div className="bg-white rounded-lg border p-6">
-        <div className="flex items-center justify-between mb-6">
+      {/* Main Content Card - Unified Design */}
+      <div className="rounded-lg border border-border/60 bg-gradient-to-br from-card via-background to-card shadow-sm overflow-hidden">
+        {/* Header Section */}
+        <div className="relative bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50 px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-primary/10 backdrop-blur-sm flex items-center justify-center ring-1 ring-primary/20 shadow-sm">
+                <FileText className="h-6 w-6 text-primary" />
+              </div>
           <div>
-            <h2 className="font-semibold text-lg">Payment History</h2>
+                <h2 className="font-semibold text-xl text-foreground tracking-tight">Payment History</h2>
             <p className="text-sm text-muted-foreground mt-1">Select a company to view their payment history</p>
           </div>
-         
+            </div>
+          </div>
         </div>
 
-        {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div>
-            <Label htmlFor="payment-history-company">Select Company</Label>
+        {/* Filters Section */}
+        <div className="px-6 py-5 bg-gradient-to-b from-muted/20 via-muted/10 to-transparent border-b border-border/30">
+          <div className="flex items-center gap-2.5 mb-5">
+            <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <span className="text-sm font-semibold text-foreground">Filter Options</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="flex flex-col min-w-0">
+              <Label htmlFor="payment-history-company" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
+                <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="whitespace-nowrap">Select Company</span>
+              </Label>
             <Select
               value={paymentHistoryCompany}
               onValueChange={(value) => {
@@ -1088,7 +1225,7 @@ export default function LogisticsLedgerPage() {
               }}
               disabled={allCompaniesLoading}
             >
-              <SelectTrigger id="payment-history-company">
+                <SelectTrigger id="payment-history-company" className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg">
                 <SelectValue placeholder="Select a company..." />
               </SelectTrigger>
               <SelectContent>
@@ -1101,33 +1238,46 @@ export default function LogisticsLedgerPage() {
             </Select>
           </div>
 
-          <div>
-            <Label htmlFor="payment-history-date-from">Date From</Label>
+            <div className="flex flex-col min-w-0">
+              <Label htmlFor="payment-history-date-from" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
+                <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="whitespace-nowrap">Date From</span>
+              </Label>
             <Input
               id="payment-history-date-from"
               type="date"
               value={paymentHistoryDateFrom}
               onChange={(e) => setPaymentHistoryDateFrom(e.target.value)}
+                className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-100"
+                style={{ paddingRight: '2.5rem' }}
             />
           </div>
 
-          <div>
-            <Label htmlFor="payment-history-date-to">Date To</Label>
+            <div className="flex flex-col min-w-0">
+              <Label htmlFor="payment-history-date-to" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
+                <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="whitespace-nowrap">Date To</span>
+              </Label>
             <Input
               id="payment-history-date-to"
               type="date"
               value={paymentHistoryDateTo}
               onChange={(e) => setPaymentHistoryDateTo(e.target.value)}
+                className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-100"
+                style={{ paddingRight: '2.5rem' }}
             />
           </div>
 
-          <div>
-            <Label htmlFor="payment-history-method">Payment Method</Label>
+            <div className="flex flex-col min-w-0">
+              <Label htmlFor="payment-history-method" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
+                <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="whitespace-nowrap">Payment Method</span>
+              </Label>
             <Select
               value={paymentHistoryMethodFilter}
               onValueChange={setPaymentHistoryMethodFilter}
             >
-              <SelectTrigger id="payment-history-method">
+                <SelectTrigger id="payment-history-method" className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg">
                 <SelectValue placeholder="All Methods" />
               </SelectTrigger>
               <SelectContent>
@@ -1136,55 +1286,77 @@ export default function LogisticsLedgerPage() {
                 <SelectItem value="bank">Bank</SelectItem>
               </SelectContent>
             </Select>
+            </div>
           </div>
         </div>
 
         {/* Payment History Table */}
+        <div className="px-6 py-6 bg-background">
         {!paymentHistoryCompany || paymentHistoryCompany === 'all' ? (
-          <div className="p-12 text-center text-muted-foreground">
-            <div className="mb-4">
-              <svg className="mx-auto h-12 w-12 text-muted-foreground/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-              </svg>
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl"></div>
+                <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-muted/90 via-muted/70 to-muted/50 backdrop-blur-sm ring-2 ring-border/60 shadow-lg">
+                  <Users className="w-12 h-12 text-muted-foreground" />
             </div>
-            <p className="text-lg font-medium">Select a company to view payment history</p>
-            <p className="text-sm mt-1">Choose a logistics company from the dropdown above to see their payment records</p>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2.5">No company selected</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-md leading-relaxed">
+                Select a company from the dropdown above to view their complete payment history and transaction records
+              </p>
           </div>
         ) : paymentHistoryLoading ? (
-          <div className="p-12 flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-muted-foreground">Loading payment history...</span>
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
+                <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background backdrop-blur-sm ring-2 ring-primary/20 shadow-lg">
+                  <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2.5">Loading payment history</h3>
+              <p className="text-sm text-muted-foreground">Please wait while we fetch the records...</p>
           </div>
         ) : paymentHistoryTransactions.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground">
-            <p>No payment history found for this company</p>
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-muted/30 rounded-full blur-3xl"></div>
+                <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-muted/90 via-muted/70 to-muted/50 backdrop-blur-sm ring-2 ring-border/60 shadow-lg">
+                  <FileText className="w-12 h-12 text-muted-foreground" />
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2.5">No payment history found</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-md mb-5 leading-relaxed">
+                {paymentHistoryDateFrom || paymentHistoryDateTo || paymentHistoryMethodFilter !== 'all' 
+                  ? 'Try adjusting your filters to see more results' 
+                  : 'No payment records found for this company'}
+              </p>
             {(paymentHistoryDateFrom || paymentHistoryDateTo || paymentHistoryMethodFilter !== 'all') && (
               <Button
                 variant="outline"
                 size="sm"
-                className="mt-4"
+                  className="gap-2 h-10 px-5 shadow-sm hover:shadow-md transition-all rounded-lg"
                 onClick={() => {
                   setPaymentHistoryDateFrom('')
                   setPaymentHistoryDateTo('')
                   setPaymentHistoryMethodFilter('all')
                 }}
               >
+                  <RotateCcw className="h-4 w-4" />
                 Clear Filters
               </Button>
             )}
           </div>
         ) : (
-          <div className="bg-white rounded-lg border">
             <DataTable
               columns={paymentHistoryColumns}
               data={paymentHistoryTransactions}
               hideActions
-              enableSearch={true}
+              enableSearch={false}
               paginate={true}
               pageSize={50}
             />
-          </div>
         )}
+        </div>
       </div>
     </div>
   )
@@ -1205,13 +1377,21 @@ export default function LogisticsLedgerPage() {
   ]
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      {/* Premium Header */}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Truck className="h-5 w-5 text-primary" />
+            </div>
         <div>
-          <h1 className="text-2xl font-bold">Logistics Ledger</h1>
-          <p className="text-sm text-muted-foreground">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Logistics Ledger</h1>
+              <p className="text-sm text-muted-foreground mt-1">
             Track and manage payments to logistics companies based on boxes delivered
           </p>
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {allCompaniesLoading && (
@@ -1222,13 +1402,13 @@ export default function LogisticsLedgerPage() {
           )}
           <Button
             onClick={() => setUniversalPaymentOpen(true)}
-            className="bg-green-600 hover:bg-green-700"
+            className="gap-2 h-10 px-5 shadow-sm hover:shadow-md transition-all bg-primary hover:bg-primary/90"
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4" />
             Add Payment
           </Button>
         </div>
-      </div>
+      </header>
 
       <Tabs
         tabs={tabs}

@@ -17,7 +17,7 @@ import {
   useRejectExpense,
 } from "@/lib/hooks/useExpenses"
 import { useCostTypes } from "@/lib/hooks/useCostTypes"
-import { Plus, Trash2, Check, X, Edit, Filter, RotateCcw } from "lucide-react"
+import { Plus, Trash2, Check, X, Edit, Filter, RotateCcw, DollarSign, Wallet, Building2, Clock, Search, TrendingUp, Package, AlertCircle, CheckCircle2 } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -304,52 +304,102 @@ export default function ExpensesPage() {
   const pendingCount = expenses.filter(e => e.status === 'pending').length
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4">
-      <div className="flex items-center justify-between pb-4">
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight">Expenses</h1>
+    <div className="space-y-6">
+      {/* Header - Enhanced */}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <TrendingUp className="h-6 w-6 text-primary" />
+          </div>
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Expenses</h1>
           <p className="text-sm text-muted-foreground">Manage and track business expenses</p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
+        </div>
+        <Button onClick={handleCreate} className="gap-2 h-11 px-6 shadow-sm">
           <Plus className="h-4 w-4" />
           Add Expense
         </Button>
+      </header>
+
+      {/* Summary Cards - Modern Design */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Expenses */}
+        <div className="rounded-lg border border-border bg-card p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <div className="h-10 w-10 rounded-lg bg-muted/50 flex items-center justify-center">
+              <DollarSign className="h-5 w-5 text-muted-foreground" />
+            </div>
+          </div>
+          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+            Total Expenses
+          </div>
+          <div className="text-2xl font-bold text-foreground tabular-nums">
+            {currency(totalExpenses)}
+          </div>
+        </div>
+
+        {/* Cash Expenses */}
+        <div className="rounded-lg border border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-emerald-50/30 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+              <Wallet className="h-5 w-5 text-emerald-600" />
+            </div>
+          </div>
+          <div className="text-xs font-medium text-emerald-700/80 uppercase tracking-wider mb-1">
+            Cash Expenses
+          </div>
+          <div className="text-2xl font-bold text-emerald-700 tabular-nums">
+            {currency(cashExpenses)}
+          </div>
+        </div>
+
+        {/* Bank Expenses */}
+        <div className="rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50/50 to-blue-50/30 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-blue-600" />
+            </div>
+          </div>
+          <div className="text-xs font-medium text-blue-700/80 uppercase tracking-wider mb-1">
+            Bank Expenses
+          </div>
+          <div className="text-2xl font-bold text-blue-700 tabular-nums">
+            {currency(bankExpenses)}
+          </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Total Expenses</div>
-          <div className="text-2xl font-bold mt-1">{currency(totalExpenses)}</div>
+        {/* Pending Approvals */}
+        <div className="rounded-lg border border-amber-200 bg-gradient-to-br from-amber-50/50 to-amber-50/30 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
+              <Clock className="h-5 w-5 text-amber-600" />
+            </div>
         </div>
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Cash Expenses</div>
-          <div className="text-2xl font-bold mt-1 text-green-600">{currency(cashExpenses)}</div>
+          <div className="text-xs font-medium text-amber-700/80 uppercase tracking-wider mb-1">
+            Pending Approvals
         </div>
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Bank Expenses</div>
-          <div className="text-2xl font-bold mt-1 text-blue-600">{currency(bankExpenses)}</div>
+          <div className="text-2xl font-bold text-amber-700 tabular-nums">
+            {pendingCount}
         </div>
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Pending Approvals</div>
-          <div className="text-2xl font-bold mt-1 text-amber-600">{pendingCount}</div>
         </div>
       </div>
 
-      {/* Filters Bar */}
-      <div className="flex flex-wrap items-center gap-4 mb-6 p-4 border rounded-lg bg-card">
-        <div className="flex items-center gap-2 mr-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Filters:</span>
+      {/* Filters & Search Bar - Unified */}
+      <div className="rounded-lg border border-border bg-card p-3 sm:p-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
+          {/* Filter Label */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+            <span className="text-xs sm:text-sm font-semibold text-foreground">Filters:</span>
         </div>
 
         {/* Cost Type Filter */}
-        <div className="w-[200px]">
           <Select
             value={filters.costType}
             onValueChange={(value) => setFilters(prev => ({ ...prev, costType: value }))}
           >
-            <SelectTrigger>
+            <SelectTrigger className="h-10 sm:h-10 w-full sm:w-[180px] border-border">
               <SelectValue placeholder="All Cost Types" />
             </SelectTrigger>
             <SelectContent>
@@ -361,15 +411,13 @@ export default function ExpensesPage() {
               ))}
             </SelectContent>
           </Select>
-        </div>
 
         {/* Status Filter */}
-        <div className="w-[150px]">
           <Select
             value={filters.status}
             onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
           >
-            <SelectTrigger>
+            <SelectTrigger className="h-10 sm:h-10 w-full sm:w-[150px] border-border">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent>
@@ -379,15 +427,13 @@ export default function ExpensesPage() {
               <SelectItem value="rejected">Rejected</SelectItem>
             </SelectContent>
           </Select>
-        </div>
 
         {/* Payment Method Filter */}
-        <div className="w-[180px]">
           <Select
             value={filters.paymentMethod}
             onValueChange={(value) => setFilters(prev => ({ ...prev, paymentMethod: value }))}
           >
-            <SelectTrigger>
+            <SelectTrigger className="h-10 sm:h-10 w-full sm:w-[180px] border-border">
               <SelectValue placeholder="All Payment Types" />
             </SelectTrigger>
             <SelectContent>
@@ -396,13 +442,34 @@ export default function ExpensesPage() {
               <SelectItem value="bank_transfer">Bank</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Search Section */}
+          <div className="flex gap-2 sm:ml-auto w-full sm:w-auto">
+            <div className="relative flex-1 sm:flex-initial">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search..."
+                value={filters.search}
+                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                className="h-10 w-full sm:w-[200px] pl-9 sm:pl-10 pr-3 rounded-lg border border-input bg-background text-xs sm:text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+            </div>
+            <Button
+              size="sm"
+              className="h-10 px-4 sm:px-6 bg-primary hover:bg-primary/90 text-xs sm:text-sm min-w-[80px] sm:min-w-0"
+            >
+              Search
+            </Button>
         </div>
 
-        {/* Clear Filters */}
+          {/* Clear Filters Button */}
         <Button
           variant="outline"
           size="sm"
-          className="ml-auto gap-2"
+            className="gap-2 h-10 border-border"
           onClick={() => setFilters({
             search: '',
             costType: 'all',
@@ -410,9 +477,10 @@ export default function ExpensesPage() {
             paymentMethod: 'all',
           })}
         >
-          <RotateCcw className="h-3.5 w-3.5" />
+            <RotateCcw className="h-4 w-4" />
           Clear
         </Button>
+        </div>
       </div>
 
       {/* Expenses Table */}
@@ -420,8 +488,7 @@ export default function ExpensesPage() {
         columns={Array.isArray(expenseColumns) ? expenseColumns : []}
         data={expenses}
         isLoading={isLoading}
-        searchPlaceholder="Search expenses..."
-        onSearch={(search) => setFilters(prev => ({ ...prev, search }))}
+        enableSearch={false}
       />
 
       {/* Form Dialog */}

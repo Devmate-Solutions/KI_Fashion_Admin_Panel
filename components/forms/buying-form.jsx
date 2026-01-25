@@ -17,6 +17,13 @@ import {
   X,
   Image as ImageIcon,
   Plus,
+  DollarSign,
+  Percent,
+  Wallet,
+  Building2,
+  TrendingUp,
+  Calculator,
+  CheckCircle2,
 } from "lucide-react";
 import {
   Dialog,
@@ -1215,213 +1222,301 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         </div>
       )}
 
-      {/* Section 1: Metadata - Removed TC field */}
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
-        <h2 className="text-base font-semibold mb-4">Buying Details</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="invoice-date">Invoice Date</Label>
-            <BritishDatePicker value={new Date(invoiceDate)} onChange={(date) => setInvoiceDate(date)} />
-            {/* <DatePicker selected={invoiceDate} onChange={(date) => setInvoiceDate(date)} /> */}
-            
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="exchange-rate">Exchange Rate</Label>
-            <Input
-              id="exchange-rate"
-              type="text"
-              inputMode="decimal"
-              value={exchangeRate}
-              onChange={(e) => {
-                const value = e.target.value;
-                // Allow only numbers and one decimal point, limit to 2 decimal places
-                let sanitized = value
-                  .replace(/[^0-9.]/g, "")
-                  .replace(/(\..*)\./, "$1");
-                // Limit to 2 decimal places
-                const parts = sanitized.split(".");
-                if (parts[1] && parts[1].length > 2) {
-                  sanitized = parts[0] + "." + parts[1].slice(0, 2);
-                }
-                // Keep as string to allow typing decimal point
-                setExchangeRate(sanitized);
-              }}
-            />
-            <p className="text-xs text-muted-foreground">
-              Rate to convert supplier currency to base currency (£)
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="percentage">Percentage (%)</Label>
-            <Input
-              id="percentage"
-              type="text"
-              inputMode="decimal"
-              value={percentage}
-              onChange={(e) => {
-                const value = e.target.value;
-                // Allow only numbers and one decimal point, limit to 2 decimal places
-                let sanitized = value
-                  .replace(/[^0-9.]/g, "")
-                  .replace(/(\..*)\./, "$1");
-                // Limit to 2 decimal places
-                const parts = sanitized.split(".");
-                if (parts[1] && parts[1].length > 2) {
-                  sanitized = parts[0] + "." + parts[1].slice(0, 2);
-                }
-                // Keep as string to allow typing decimal point
-                setPercentage(sanitized);
-              }}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="supplier">Supplier</Label>
-            <div className="flex gap-2">
-              <Select
-                value={supplierId || undefined}
-                onValueChange={setSupplierId}
-                disabled={isLoadingSuppliers}
-              >
-                <SelectTrigger id="supplier" className="flex-1">
-                  <SelectValue
-                    placeholder={
-                      isLoadingSuppliers ? "Loading..." : "Select supplier..."
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {suppliers.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => setShowAddSupplier(true)}
-                title="Add new supplier"
-                disabled={isLoadingSuppliers}
-              >
-                <UserPlusIcon className="h-4 w-4" />
-              </Button>
+      {/* Section 1: Buying Details - Complete Redesign */}
+      <section className="rounded-lg border border-border bg-card shadow-sm mb-6 overflow-hidden">
+        {/* Header */}
+        <div className="bg-muted/30 border-b border-border px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <svg className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
             </div>
+            <h2 className="text-lg font-semibold text-foreground">Buying Details</h2>
           </div>
+        </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2 mb-2">
-              <input
-                type="checkbox"
-                id="enable-logistics"
-                checked={enableLogisticsTracking}
-                onChange={(e) => {
-                  setEnableLogisticsTracking(e.target.checked);
-                  if (!e.target.checked) {
-                    setLogisticsCompanyId("");
-                    setTotalBoxes(0);
-                  }
-                }}
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-              />
-              <Label htmlFor="enable-logistics" className="text-sm font-medium cursor-pointer">
-                Enable Logistics Tracking
-              </Label>
-            </div>
-            {enableLogisticsTracking && (
-              <>
-                <Label htmlFor="logistics-company">
-                  Logistics Company
+        {/* Content */}
+        <div className="p-6">
+          <div className="space-y-6">
+            {/* All Fields in One Row - Ordered: Invoice Date, Exchange Rate, Percentage, Supplier */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-0 items-start">
+              {/* Invoice Date */}
+              <div className="flex flex-col h-full">
+                <Label htmlFor="invoice-date" className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2 h-6">
+                  <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Invoice Date
                 </Label>
-                <Select
-                  value={logisticsCompanyId || undefined}
-                  onValueChange={(value) => setLogisticsCompanyId(value || "")}
-                  disabled={isLoadingLogisticsCompanies}
-                >
-                  <SelectTrigger id="logistics-company">
-                    <SelectValue
-                      placeholder={
-                        isLoadingLogisticsCompanies
-                          ? "Loading..."
-                          : "Select company .."
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {logisticsCompanies.map((company) => (
-                      <SelectItem
-                        key={company._id || company.id}
-                        value={String(company._id || company.id)}
+                <div className="relative group flex-1">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                    <svg className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <BritishDatePicker 
+                    value={new Date(invoiceDate)} 
+                    onChange={(date) => setInvoiceDate(date)}
+                    className="h-11 w-full rounded-lg border border-input bg-background pl-10 pr-3 py-2 text-sm font-medium text-foreground outline-none transition-all duration-200 focus:ring-2 focus:ring-ring focus:border-transparent hover:border-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+                    placeholder="DD/MM/YYYY"
+                  />
+                </div>
+                <div className="h-[42px]"></div>
+              </div>
+
+              {/* Exchange Rate */}
+              <div className="flex flex-col h-full">
+                <Label htmlFor="exchange-rate" className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2 h-6">
+                  <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                  </svg>
+                  Exchange Rate
+                </Label>
+                <Input
+                  id="exchange-rate"
+                  type="text"
+                  inputMode="decimal"
+                  value={exchangeRate}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow only numbers and one decimal point, limit to 2 decimal places
+                    let sanitized = value
+                      .replace(/[^0-9.]/g, "")
+                      .replace(/(\..*)\./, "$1");
+                    // Limit to 2 decimal places
+                    const parts = sanitized.split(".");
+                    if (parts[1] && parts[1].length > 2) {
+                      sanitized = parts[0] + "." + parts[1].slice(0, 2);
+                    }
+                    // Keep as string to allow typing decimal point
+                    setExchangeRate(sanitized);
+                  }}
+                  className="h-11 w-full text-base font-medium"
+                  placeholder="1.00"
+                />
+                <p className="text-xs text-muted-foreground mt-1.5 flex items-start gap-1.5 min-h-[42px]">
+                  <svg className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Rate to convert supplier currency to base currency (£)</span>
+                </p>
+              </div>
+
+              {/* Percentage */}
+              <div className="flex flex-col h-full">
+                <Label htmlFor="percentage" className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2 h-6">
+                  <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  Percentage (%)
+                </Label>
+                <Input
+                  id="percentage"
+                  type="text"
+                  inputMode="decimal"
+                  value={percentage}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow only numbers and one decimal point, limit to 2 decimal places
+                    let sanitized = value
+                      .replace(/[^0-9.]/g, "")
+                      .replace(/(\..*)\./, "$1");
+                    // Limit to 2 decimal places
+                    const parts = sanitized.split(".");
+                    if (parts[1] && parts[1].length > 2) {
+                      sanitized = parts[0] + "." + parts[1].slice(0, 2);
+                    }
+                    // Keep as string to allow typing decimal point
+                    setPercentage(sanitized);
+                  }}
+                  className="h-11 w-full text-base font-medium"
+                  placeholder="0.00"
+                />
+                <p className="text-xs text-muted-foreground mt-1.5 flex items-start gap-1.5 min-h-[42px]">
+                  <svg className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Profit margin percentage applied to landed price</span>
+                </p>
+              </div>
+
+              {/* Supplier */}
+              <div className="flex flex-col h-full">
+                <Label htmlFor="supplier" className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2 h-6">
+                  <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  Supplier
+                </Label>
+                <div className="flex gap-2 items-start">
+                  <Select
+                    value={supplierId || undefined}
+                    onValueChange={setSupplierId}
+                    disabled={isLoadingSuppliers}
+                  >
+                    <SelectTrigger 
+                      id="supplier" 
+                      size="default"
+                      className="flex-1 w-full h-11 rounded-lg border border-input bg-background text-sm font-medium text-foreground data-[size=default]:h-11 hover:border-ring/50 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] transition-all duration-200"
+                    >
+                      <SelectValue
+                        placeholder={
+                          isLoadingSuppliers ? "Loading..." : "Select supplier..."
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {suppliers.map((s) => (
+                        <SelectItem key={s.id} value={String(s.id)}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowAddSupplier(true)}
+                    title="Add new supplier"
+                    className="h-11 w-11 rounded-lg border border-input bg-background hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 flex-shrink-0"
+                  >
+                    <UserPlusIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="h-[42px]"></div>
+              </div>
+            </div>
+
+            {/* Row 3: Logistics Tracking */}
+            <div className="pt-2 border-t border-border">
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="enable-logistics"
+                  checked={enableLogisticsTracking}
+                  onChange={(e) => {
+                    setEnableLogisticsTracking(e.target.checked);
+                    if (!e.target.checked) {
+                      setLogisticsCompanyId("");
+                      setTotalBoxes(0);
+                    }
+                  }}
+                  className="h-5 w-5 rounded border-border text-primary focus:ring-primary mt-0.5 flex-shrink-0"
+                />
+                <div className="flex-1 space-y-3">
+                  <Label htmlFor="enable-logistics" className="text-sm font-semibold cursor-pointer text-foreground flex items-center gap-2">
+                    <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    Enable Logistics Tracking
+                  </Label>
+                  {enableLogisticsTracking && (
+                    <div className="space-y-2 pl-7">
+                      <Label htmlFor="logistics-company" className="text-sm font-medium text-foreground">
+                        Logistics Company
+                      </Label>
+                      <Select
+                        value={logisticsCompanyId || undefined}
+                        onValueChange={(value) => setLogisticsCompanyId(value || "")}
+                        disabled={isLoadingLogisticsCompanies}
                       >
-                        {company.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </>
-            )}
+                        <SelectTrigger id="logistics-company" className="h-11">
+                          <SelectValue
+                            placeholder={
+                              isLoadingLogisticsCompanies
+                                ? "Loading..."
+                                : "Select company..."
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {logisticsCompanies.map((company) => (
+                            <SelectItem
+                              key={company._id || company.id}
+                              value={String(company._id || company.id)}
+                            >
+                              {company.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Section 2: Products Cart - Fully Editable Table */}
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold">Products</h2>
+      {/* Section 2: Products - Enhanced Design */}
+      <section className="rounded-lg border border-border bg-card p-6 shadow-sm mb-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <svg className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-semibold text-foreground">Products</h2>
+          </div>
           <Button type="button" onClick={addRow} size="sm" className="gap-2">
             <PlusIcon className="h-4 w-4" />
             Add Product
           </Button>
         </div>
 
-        <div className="overflow-x-auto rounded-md border">
+        <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr className="border-b">
-                <th className="text-left p-3 font-medium min-w-[150px]">
+            <thead className="bg-muted/30 border-b border-border sticky top-0 z-10">
+              <tr>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[150px]">
                   Name
                 </th>
-                <th className="text-left p-3 font-medium min-w-[120px]">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[120px]">
                   Code
                 </th>
-                <th className="text-left p-3 font-medium min-w-[80px]">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[80px]">
                   Image
                 </th>
-                <th className="text-left p-3 font-medium min-w-[150px]">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[150px]">
                   Season
                 </th>
-                <th className="text-right p-3 font-medium min-w-[100px]">
+                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[100px]">
                   Cost Price
                 </th>
-                <th className="text-left p-3 font-medium min-w-[100px]">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[100px]">
                   Primary Color
                 </th>
-                <th className="text-left p-3 font-medium min-w-[100px]">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[100px]">
                   Size
                 </th>
-                <th className="text-right p-3 font-medium min-w-[100px]">
+                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[100px]">
                   Total Quantity
                 </th>
-                <th className="text-center p-3 font-medium min-w-[120px]">
+                <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[120px]">
                   Packet Config
                 </th>
-                <th className="text-center p-3 font-medium w-20">Action</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-20">Action</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-border">
               {rows.length === 0 && (
                 <tr>
                   <td
-                    colSpan={9}
-                    className="text-center py-12 text-muted-foreground"
+                    colSpan={10}
+                    className="text-center py-12"
                   >
-                    <div className="flex flex-col items-center gap-2">
-                      <p className="text-sm">No products added yet</p>
-                      <p className="text-xs">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-2">
+                        <svg className="w-8 h-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                      </div>
+                      <p className="text-sm font-medium text-foreground">No products added yet</p>
+                      <p className="text-xs text-muted-foreground">
                         Click "Add Product" to get started
                       </p>
                     </div>
@@ -1431,34 +1526,34 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               {rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="border-b hover:bg-muted/30 transition-colors"
+                  className="hover:bg-muted/20 transition-colors"
                 >
                   {/* Name */}
-                  <td className="p-2">
+                  <td className="px-4 py-3">
                     <Input
                       value={row.productName}
                       onChange={(e) => {
                         updateRow(row.id, "productName", e.target.value);
                       }}
                       placeholder="Enter product name"
-                      className="h-8 text-sm"
+                      className="h-9 text-sm"
                     />
                   </td>
 
                   {/* Code */}
-                  <td className="p-2">
+                  <td className="px-4 py-3">
                     <Input
                       value={row.productCode}
                       onChange={(e) => {
                         updateRow(row.id, "productCode", e.target.value);
                       }}
                       placeholder="Enter product code"
-                      className="h-8 text-sm"
+                      className="h-9 text-sm"
                     />
                   </td>
 
                   {/* Image - Compact display with 1 tile */}
-                  <td className="p-2 w-[100px]">
+                  <td className="px-4 py-3 w-[100px]">
                     {(() => {
                       const existingPreviews = imagePreviews[row.id] || {};
                       const existingImageKeys = Object.keys(
@@ -1594,7 +1689,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   </td>
 
                   {/* Season */}
-                  <td className="p-2 relative">
+                  <td className="px-4 py-3 relative">
                     <div className="min-w-[180px]">
                       <MultiSelect
                         options={SEASON_OPTIONS}
@@ -1610,7 +1705,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   </td>
 
                   {/* Cost Price */}
-                  <td className="p-2">
+                  <td className="px-4 py-3">
                     <Input
                       type="text"
                       inputMode="decimal"
@@ -1631,12 +1726,12 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                           sanitized === "" ? "" : sanitized
                         );
                       }}
-                      className="h-8 text-sm text-right tabular-nums"
+                      className="h-9 text-sm text-right tabular-nums"
                     />
                   </td>
 
                   {/* Primary Color - Always visible input */}
-                  <td className="p-2">
+                  <td className="px-4 py-3">
                     <div className="space-y-2">
                       <div className="flex items-center gap-1">
                         <Input
@@ -1719,11 +1814,11 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                       </div>
                       {Array.isArray(row.primaryColor) &&
                         row.primaryColor.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-wrap gap-1.5">
                             {row.primaryColor.slice(0, 2).map((color, idx) => (
                               <span
                                 key={idx}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs max-w-[80px] truncate"
+                                className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium border border-blue-200 max-w-[80px] truncate"
                                 title={color}
                               >
                                 <span className="truncate">{color}</span>
@@ -1735,14 +1830,14 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                                     );
                                     updateRow(row.id, "primaryColor", updated);
                                   }}
-                                  className="hover:text-blue-600 flex-shrink-0"
+                                  className="hover:text-blue-900 flex-shrink-0 transition-colors"
                                 >
-                                  <X className="h-2.5 w-2.5" />
+                                  <X className="h-3 w-3" />
                                 </button>
                               </span>
                             ))}
                             {row.primaryColor.length > 2 && (
-                              <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
+                              <span className="inline-flex items-center px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium border border-blue-200">
                                 +{row.primaryColor.length - 2}
                               </span>
                             )}
@@ -1752,7 +1847,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   </td>
 
                   {/* Size - Always visible input */}
-                  <td className="p-2">
+                  <td className="px-4 py-3">
                     <div className="space-y-2">
                       <div className="flex items-center gap-1">
                         <Input
@@ -1824,11 +1919,11 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                         </Button>
                       </div>
                       {Array.isArray(row.size) && row.size.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1.5">
                           {row.size.slice(0, 2).map((size, idx) => (
                             <span
                               key={idx}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs max-w-[80px] truncate"
+                              className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md text-xs font-medium border border-emerald-200 max-w-[80px] truncate"
                               title={size}
                             >
                               <span className="truncate">{size}</span>
@@ -1840,14 +1935,14 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                                   );
                                   updateRow(row.id, "size", updated);
                                 }}
-                                className="hover:text-green-600 flex-shrink-0"
+                                className="hover:text-emerald-900 flex-shrink-0 transition-colors"
                               >
-                                <X className="h-2.5 w-2.5" />
+                                <X className="h-3 w-3" />
                               </button>
                             </span>
                           ))}
                           {row.size.length > 2 && (
-                            <span className="inline-flex items-center px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs">
+                            <span className="inline-flex items-center px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md text-xs font-medium border border-emerald-200">
                               +{row.size.length - 2}
                             </span>
                           )}
@@ -1857,7 +1952,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   </td>
 
                   {/* Total Quantity */}
-                  <td className="p-2">
+                  <td className="px-4 py-3">
                     <Input
                       type="text"
                       inputMode="numeric"
@@ -1879,12 +1974,12 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                           );
                         }
                       }}
-                      className="h-8 text-sm text-right tabular-nums"
+                      className="h-9 text-sm text-right tabular-nums"
                     />
                   </td>
 
                   {/* Packet Configuration */}
-                  <td className="p-2 text-center">
+                  <td className="px-4 py-3 text-center">
                     <Button
                       type="button"
                       variant="outline"
@@ -1896,11 +1991,11 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                         });
                         setPacketModalOpen(true);
                       }}
-                      className="h-8 text-xs"
+                      className="h-9 text-xs gap-1.5"
                       title="Configure packets"
                     >
                       {productPackets[row.id]?.useVariantTracking ? (
-                        <span className="text-green-600">Configured</span>
+                        <span className="text-emerald-600 font-medium">Configured</span>
                       ) : (
                         <span>Configure</span>
                       )}
@@ -1908,13 +2003,13 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   </td>
 
                   {/* Action */}
-                  <td className="p-2 text-center">
+                  <td className="px-4 py-3 text-center">
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => removeRow(row.id)}
-                      className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
+                      className="h-9 w-9 p-0 hover:bg-destructive/10 hover:text-destructive transition-colors"
                       title="Remove row"
                     >
                       <TrashIcon className="h-4 w-4" />
@@ -1927,20 +2022,29 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         </div>
 
         {rows.length > 0 && (
-          <div className="mt-3 text-xs text-muted-foreground">
-            <kbd className="px-2 py-1 bg-muted rounded text-xs">Tab</kbd> to
-            navigate between fields
+          <div className="mt-4 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <kbd className="px-2 py-1 bg-muted rounded-md text-xs font-medium border border-border">Tab</kbd>
+              <span>to navigate between fields</span>
+            </div>
           </div>
         )}
       </section>
 
-      {/* Box Management Section - Only shown when logistics tracking is enabled */}
+      {/* Box Management Section - Enhanced Design */}
       {rows.length > 0 && enableLogisticsTracking && (
-        <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
-          <h2 className="text-base font-semibold mb-4">Box Management</h2>
+        <section className="rounded-lg border border-border bg-card p-6 shadow-sm mb-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <svg className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-semibold text-foreground">Box Management</h2>
+          </div>
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="total-boxes">Number of Boxes</Label>
+            <div className="space-y-2">
+              <Label htmlFor="total-boxes" className="text-sm font-medium text-foreground">Number of Boxes</Label>
               <Input
                 id="total-boxes"
                 type="text"
@@ -1952,7 +2056,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   const sanitized = value.replace(/[^0-9]/g, "");
                   setTotalBoxes(sanitized === "" ? "" : Number(sanitized) || 0);
                 }}
-                className="mt-1"
+                className="h-10"
               />
               <p className="text-xs text-muted-foreground mt-1">
                 All products in this order will be organized into these boxes
@@ -1962,236 +2066,338 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         </section>
       )}
 
-      {/* Section 3: Payment Summary - Enhanced UX */}
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
-        <h2 className="text-base font-semibold mb-4">Payment Summary</h2>
+      {/* Section 3: Payment Summary - Professional Redesign */}
+      <section className="rounded-lg border border-border bg-card overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-muted/40 to-muted/20 border-b border-border">
+          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 ring-1 ring-primary/20">
+            <DollarSign className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Payment Summary</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Review and complete payment details</p>
+          </div>
+        </div>
 
-        {/* Pricing Breakdown */}
-        <div className="mb-6 p-3 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-lg border-2 border-slate-200 dark:border-slate-700">
-          <h3 className="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">
-            Pricing Breakdown
-          </h3>
-          {rows.length > 0 && (
-            <div className="space-y-1 mb-3">
-              {rows.map((row) => (
-                <div
-                  key={row.id}
-                  className="flex justify-between items-center text-xs py-1 px-2 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700"
-                >
-                  <div className="flex items-center gap-2 flex-1">
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">
-                      Product Name:
-                    </span>
-                    <span
-                      className="truncate"
-                      title={row.productName || row.productCode}
-                    >
-                      {row.productName || row.productCode || "Product"}
-                    </span>
+        <div className="p-6 space-y-6">
+          {/* Top Section: Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Supplier Payment Amount */}
+            <div className="p-5 bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg border border-border">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-md bg-background/80 flex items-center justify-center">
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Supplier Payment
+                  </span>
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-foreground tabular-nums">
+                £{totals.supplierPaymentTotal.toFixed(2)}
+              </div>
+            </div>
+
+            {/* Final Amount - Highlighted */}
+            <div className="p-5 bg-gradient-to-br from-primary/15 via-primary/10 to-primary/5 rounded-lg border-2 border-primary/30 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+              <div className="relative">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-md bg-primary/20 flex items-center justify-center">
+                      <DollarSign className="h-4 w-4 text-primary" />
+                    </div>
+                    <span className="text-sm font-semibold text-foreground">Final Amount</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-300 dark:border-slate-600">
-            <div>
-              <div className="text-xs text-muted-foreground">Landed:</div>
-              <div className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                {totals.landedPriceTotal.toFixed(2)}
+                <div className="text-2xl font-bold tabular-nums text-primary mb-2">
+                  £{totals.supplierPaymentAfterDiscount.toFixed(2)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Amount due after discount
+                </p>
               </div>
             </div>
-            <div>
-              <div className="text-xs text-muted-foreground">
-                Landed Total (Inventory)
+
+            {/* Landed Total */}
+            <div className="p-5 bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg border border-border">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-md bg-background/80 flex items-center justify-center">
+                    <Calculator className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Landed Total
+                  </span>
+                </div>
               </div>
-              <div className="text-base font-semibold text-blue-700 dark:text-blue-400">
-                {totals.grandTotal.toFixed(2)}
+              <div className="text-2xl font-bold text-foreground tabular-nums">
+                £{totals.grandTotal.toFixed(2)}
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Left: Calculated totals */}
-          <div className="space-y-3">
-            <div className="flex justify-between items-center p-3 bg-muted/30 rounded-md">
-              <span className="text-sm font-medium">
-                Supplier Payment Amount
-              </span>
-              <span className="text-lg font-semibold tabular-nums">
-                {totals.supplierPaymentTotal.toFixed(2)}
-              </span>
-            </div>
-            {totals.discountAmount > 0 && (
-              <div className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-950/30 rounded-md">
-                <span className="text-sm font-medium">Discount</span>
-                <span className="text-lg font-semibold tabular-nums text-red-700 dark:text-red-400">
-                  -{totals.discountAmount.toFixed(2)}
-                </span>
+          {/* Bottom Section: Payment Inputs & Balance */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left: Payment Inputs */}
+            <div className="space-y-5">
+              <div className="pb-2 border-b border-border">
+                <h3 className="text-sm font-semibold text-foreground">Payment Details</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Enter payment amounts</p>
               </div>
-            )}
-            <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-950/30 rounded-md border-2 border-blue-200 dark:border-blue-900">
-              <span className="text-sm font-medium">Final Amount</span>
-              <span className="text-lg font-semibold tabular-nums text-blue-700 dark:text-blue-400">
-                {totals.supplierPaymentAfterDiscount.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-900 rounded-md">
-              <span className="text-sm font-medium text-muted-foreground">
-                Landed Total
-              </span>
-              <span className="text-sm font-semibold tabular-nums text-muted-foreground">
-                {totals.grandTotal.toFixed(2)}
-              </span>
-            </div>
-          </div>
 
-          {/* Middle: Input fields */}
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="discount">Discount</Label>
-              <Input
-                id="discount"
-                type="text"
-                inputMode="decimal"
-                value={discount}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  // Allow only numbers and one decimal point
-                  const sanitized = value
-                    .replace(/[^0-9.]/g, "")
-                    .replace(/(\..*)\./g, "$1");
-                  setDiscount(sanitized === "" ? "" : Number(sanitized || 0));
-                }}
-                onKeyDown={(e) => handlePaymentKeyDown(e, "discount")}
-                className="text-lg"
-              />
-              <p className="text-xs text-muted-foreground">
-                Applied to supplier payment amount
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cash">Cash Payment</Label>
-              <Input
-                id="cash"
-                ref={cashInputRef}
-                type="text"
-                inputMode="decimal"
-                value={cash}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  // Allow only numbers and one decimal point
-                  const sanitized = value
-                    .replace(/[^0-9.]/g, "")
-                    .replace(/(\..*)\./g, "$1");
-                  setCash(sanitized === "" ? "" : Number(sanitized || 0));
-                }}
-                onKeyDown={(e) => handlePaymentKeyDown(e, "cash")}
-                className="text-lg"
-              />
-            </div>
-          </div>
+              {/* Discount */}
+              <div className="space-y-2">
+                <Label htmlFor="discount" className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Percent className="h-4 w-4 text-muted-foreground" />
+                  % Discount
+                </Label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                    <Percent className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <Input
+                    id="discount"
+                    type="text"
+                    inputMode="decimal"
+                    value={discount}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      const sanitized = value
+                        .replace(/[^0-9.]/g, "")
+                        .replace(/(\..*)\./g, "$1");
+                      setDiscount(sanitized === "" ? "" : Number(sanitized || 0));
+                    }}
+                    onKeyDown={(e) => handlePaymentKeyDown(e, "discount")}
+                    className="h-11 w-full pl-10 pr-3 text-base font-medium rounded-lg border border-input bg-background focus-visible:ring-2 focus-visible:ring-primary/20"
+                    placeholder="0.00"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground flex items-start gap-1.5">
+                  <svg className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Applied to supplier payment amount</span>
+                </p>
+              </div>
 
-          {/* Right: More inputs and remaining */}
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="bank">Bank Payment</Label>
-              <Input
-                id="bank"
-                ref={bankInputRef}
-                type="text"
-                inputMode="decimal"
-                value={bank}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  // Allow only numbers and one decimal point
-                  const sanitized = value
-                    .replace(/[^0-9.]/g, "")
-                    .replace(/(\..*)\./g, "$1");
-                  setBank(sanitized === "" ? "" : Number(sanitized || 0));
-                }}
-                onKeyDown={(e) => handlePaymentKeyDown(e, "bank")}
-                className="text-lg"
-              />
+              {/* Payment Methods Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Bank Payment */}
+                <div className="space-y-2">
+                  <Label htmlFor="bank" className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    Bank
+                  </Label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                      <Building2 className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <Input
+                      id="bank"
+                      ref={bankInputRef}
+                      type="text"
+                      inputMode="decimal"
+                      value={bank}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const sanitized = value
+                          .replace(/[^0-9.]/g, "")
+                          .replace(/(\..*)\./g, "$1");
+                        setBank(sanitized === "" ? "" : Number(sanitized || 0));
+                      }}
+                      onKeyDown={(e) => handlePaymentKeyDown(e, "bank")}
+                      className="h-11 w-full pl-10 pr-3 text-base font-medium rounded-lg border border-input bg-background focus-visible:ring-2 focus-visible:ring-primary/20"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                {/* Cash Payment */}
+                <div className="space-y-2">
+                  <Label htmlFor="cash" className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                    Cash
+                  </Label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                      <Wallet className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <Input
+                      id="cash"
+                      ref={cashInputRef}
+                      type="text"
+                      inputMode="decimal"
+                      value={cash}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const sanitized = value
+                          .replace(/[^0-9.]/g, "")
+                          .replace(/(\..*)\./g, "$1");
+                        setCash(sanitized === "" ? "" : Number(sanitized || 0));
+                      }}
+                      onKeyDown={(e) => handlePaymentKeyDown(e, "cash")}
+                      className="h-11 w-full pl-10 pr-3 text-base font-medium rounded-lg border border-input bg-background focus-visible:ring-2 focus-visible:ring-primary/20"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-            <div
-              className={`flex justify-between items-center p-3 rounded-md border-2 ${totals.remaining > 0
-                ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900"
-                : "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900"
+
+            {/* Right: Remaining Balance */}
+            <div className="space-y-5">
+              <div className="pb-2 border-b border-border">
+                <h3 className="text-sm font-semibold text-foreground">Balance Summary</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Payment status overview</p>
+              </div>
+
+              <div
+                className={`p-6 rounded-lg border-2 relative overflow-hidden ${
+                  totals.remaining > 0
+                    ? "bg-gradient-to-br from-amber-50 via-amber-50/50 to-amber-50/30 border-amber-300"
+                    : "bg-gradient-to-br from-emerald-50 via-emerald-50/50 to-emerald-50/30 border-emerald-300"
                 }`}
-            >
-              <span className="text-sm font-medium">
-                {totals.remaining >= 0
-                  ? "Remaining Balance"
-                  : "Overpaid (Credit)"}
-              </span>
-              <span
-                className={`text-lg font-bold tabular-nums ${totals.remaining > 0
-                  ? "text-amber-700 dark:text-amber-400"
-                  : "text-green-700 dark:text-green-400"
-                  }`}
               >
-                {Math.abs(totals.remaining).toFixed(2)}
-              </span>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                <div className="relative">
+                  <div className="flex items-center gap-3 mb-4">
+                    {totals.remaining <= 0 ? (
+                      <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center ring-2 ring-emerald-200">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                      </div>
+                    ) : (
+                      <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center ring-2 ring-amber-200">
+                        <DollarSign className="h-5 w-5 text-amber-600" />
+                      </div>
+                    )}
+                    <div>
+                      <span className={`text-sm font-semibold block ${
+                        totals.remaining > 0 ? "text-amber-900" : "text-emerald-900"
+                      }`}>
+                        Remaining Balance
+                      </span>
+                      <span className={`text-xs ${
+                        totals.remaining > 0 ? "text-amber-700/80" : "text-emerald-700/80"
+                      }`}>
+                        {totals.remaining > 0 ? "Outstanding" : "Paid in full"}
+                      </span>
+                    </div>
+                  </div>
+                  <div
+                    className={`text-3xl font-bold tabular-nums mb-3 ${
+                      totals.remaining > 0
+                        ? "text-amber-700"
+                        : "text-emerald-700"
+                    }`}
+                  >
+                    £{Math.abs(totals.remaining).toFixed(2)}
+                  </div>
+                  <p className={`text-sm ${
+                    totals.remaining > 0 
+                      ? "text-amber-700/90" 
+                      : "text-emerald-700/90"
+                  }`}>
+                    {totals.remaining > 0 
+                      ? "Outstanding amount to be paid" 
+                      : "Credit available for future purchases"}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="mt-6 pt-6 border-t flex items-center justify-between">
-          <div className="text-xs text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <kbd className="px-2 py-1 bg-muted rounded text-xs">Enter</kbd>
-              <span>Next field</span>
-              <span className="text-muted-foreground/50">•</span>
-              <kbd className="px-2 py-1 bg-muted rounded text-xs">Ctrl+S</kbd>
-              <span>Save</span>
+        {/* Action Bar - Modern Design */}
+        <div className="px-6 py-5 bg-gradient-to-r from-muted/30 to-muted/20 border-t border-border">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+            {/* Keyboard Shortcuts */}
+            <div className="flex items-center gap-4">
+              <div className="text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-2">
+                  <kbd className="px-2.5 py-1.5 bg-background rounded-md text-xs font-medium border border-border shadow-sm">
+                    Enter
+                  </kbd>
+                  <span className="text-muted-foreground">Next field</span>
+                  <span className="text-muted-foreground/40">•</span>
+                  <kbd className="px-2.5 py-1.5 bg-background rounded-md text-xs font-medium border border-border shadow-sm">
+                    Ctrl+S
+                  </kbd>
+                  <span className="text-muted-foreground">Save</span>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="flex gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setRows([]);
-                setTotalBoxes(0);
-                setEnableLogisticsTracking(false);
-                setLogisticsCompanyId("");
-                setDiscount(0);
-                setCash(0);
-                setBank(0);
-                setError(null);
-              }}
-              disabled={isSaving}
-            >
-              Reset Form
-            </Button>
-            <Button
-              ref={saveButtonRef}
-              type="button"
-              onClick={handleSave}
-              size="lg"
-              className="gap-2 min-w-[140px]"
-              disabled={isSaving || isLoadingSuppliers}
-            >
-              {isSaving ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                  Saving...
-                </>
-              ) : (
-                "Save Buying"
-              )}
-            </Button>
+            
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setRows([]);
+                  setTotalBoxes(0);
+                  setEnableLogisticsTracking(false);
+                  setLogisticsCompanyId("");
+                  setDiscount(0);
+                  setCash(0);
+                  setBank(0);
+                  setError(null);
+                }}
+                disabled={isSaving}
+                className="gap-2 h-11 px-6 border-2 hover:bg-muted/50"
+              >
+                <X className="h-4 w-4" />
+                Reset Form
+              </Button>
+              <Button
+                ref={saveButtonRef}
+                type="button"
+                onClick={handleSave}
+                size="lg"
+                className="gap-2 min-w-[160px] h-11 px-6 bg-primary hover:bg-primary/90 shadow-md hover:shadow-lg transition-all"
+                disabled={isSaving || isLoadingSuppliers}
+              >
+                {isSaving ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-4 w-4" />
+                    Save Buying
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Add Supplier Dialog */}
-      <Dialog open={showAddSupplier} onOpenChange={setShowAddSupplier}>
-        <DialogContent>
+      <Dialog open={showAddSupplier} onOpenChange={(open) => {
+        if (!open) {
+          // Reset form when closing
+          setNewSupplierName("");
+          setNewSupplierPhone("");
+          setNewSupplierPhoneAreaCode("");
+          setError(null);
+        }
+        setShowAddSupplier(open);
+      }}>
+        <DialogContent className="sm:max-w-md z-[100]">
           <DialogHeader>
             <DialogTitle>Add New Supplier</DialogTitle>
+            <DialogDescription>
+              Create a new supplier to add to your list.
+            </DialogDescription>
           </DialogHeader>
+          {error && (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="new-supplier-name">
@@ -2243,6 +2449,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 setNewSupplierName("");
                 setNewSupplierPhone("");
                 setNewSupplierPhoneAreaCode("");
+                setError(null);
               }}
               disabled={isCreatingSupplier}
             >
@@ -2256,7 +2463,14 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 !newSupplierPhone.trim()
               }
             >
-              {isCreatingSupplier ? "Creating..." : "Create Supplier"}
+              {isCreatingSupplier ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2"></div>
+                  Creating...
+                </>
+              ) : (
+                "Create Supplier"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

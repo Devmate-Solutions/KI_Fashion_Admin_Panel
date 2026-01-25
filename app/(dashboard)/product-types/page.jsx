@@ -78,16 +78,16 @@ export default function ProductTypesPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Product Types</h1>
-          <p className="text-sm text-gray-500">Manage product categories and types</p>
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Product Types</h1>
+          <p className="text-sm text-muted-foreground">Manage product categories and types</p>
         </div>
-        <Button onClick={() => setOpenAddForm(true)}>
+        <Button onClick={() => setOpenAddForm(true)} className="h-9 sm:h-10">
           Add Product Type
         </Button>
-      </div>
+      </header>
 
       <DataTable
         columns={columns}

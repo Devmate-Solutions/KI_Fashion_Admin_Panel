@@ -18,10 +18,31 @@ export function AuthProvider({ children }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Load user when app starts
+  // Load user when app starts (only once)
   useEffect(() => {
     loadUser();
-  }, [loadUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run once on mount
+
+  // Safety timeout: If loading takes too long, force it to stop
+  useEffect(() => {
+    if (!isLoading) return;
+    
+    const safetyTimeout = setTimeout(() => {
+      console.warn('Auth loading timeout - forcing loading to false');
+      // Force loading to stop after 15 seconds
+      if (isLoading) {
+        // Check if we have a token to use as fallback
+        const token = typeof document !== 'undefined' ? document.cookie.split('; ').find(row => row.startsWith('auth_token=')) : null;
+        if (!token) {
+          // No token, redirect to login
+          router.push('/login');
+        }
+      }
+    }, 15000); // 15 second safety timeout
+
+    return () => clearTimeout(safetyTimeout);
+  }, [isLoading, router]);
 
   // Handle redirects based on auth status
   useEffect(() => {

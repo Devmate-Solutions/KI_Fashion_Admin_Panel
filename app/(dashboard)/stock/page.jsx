@@ -755,10 +755,10 @@ export default function StockPage() {
       </div> */}
 
       {/* Unified Search Filter */}
-      <div className="rounded-[4px] border border-border bg-card p-4">
-        <form onSubmit={handleApplyFilters} className="space-y-4">
-          <div className="flex gap-4">
-            <div className="flex-1">
+      <div className="rounded-lg border border-border bg-card p-4">
+        <form onSubmit={handleApplyFilters}>
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="flex-1 min-w-[200px]">
               <Label
                 htmlFor="filter-search"
                 className="text-xs text-muted-foreground mb-1 block"
@@ -777,19 +777,7 @@ export default function StockPage() {
                 }
               />
             </div>
-            <div className="flex gap-2">
-              <Button type="submit">Apply</Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleResetFilters}
-              >
-                Reset
-              </Button>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+            <div className="min-w-[140px]">
               <Label
                 htmlFor="filter-start-date"
                 className="text-xs text-muted-foreground mb-1 block"
@@ -808,7 +796,7 @@ export default function StockPage() {
                 }
               />
             </div>
-            <div>
+            <div className="min-w-[140px]">
               <Label
                 htmlFor="filter-end-date"
                 className="text-xs text-muted-foreground mb-1 block"
@@ -826,6 +814,16 @@ export default function StockPage() {
                   }))
                 }
               />
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit">Apply</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResetFilters}
+              >
+                Reset
+              </Button>
             </div>
           </div>
         </form>
@@ -1319,10 +1317,10 @@ export default function StockPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight">
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
             Inventory Control
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -1332,11 +1330,12 @@ export default function StockPage() {
         <Button
           variant="outline"
           size="sm"
+          className="h-9 sm:h-10"
           onClick={() => setAppliedFilters((prev) => ({ ...prev }))}
         >
           <RefreshCcw className="mr-2 h-4 w-4" /> Refresh Data
         </Button>
-      </div>
+      </header>
 
       <Tabs tabs={tabs} />
 

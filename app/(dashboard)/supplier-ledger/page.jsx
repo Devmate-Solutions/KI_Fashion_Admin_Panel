@@ -16,7 +16,7 @@ import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { dispatchOrdersAPI } from "@/lib/api/endpoints/dispatchOrders"
 import { balancesAPI } from "@/lib/api/endpoints/balances"
 import { useQuery } from "@tanstack/react-query"
-import { Loader2, Plus } from "lucide-react"
+import { Loader2, Plus, FileText, Users, Search, Filter, Building2, DollarSign, Clock, CheckCircle2, RotateCcw, Calendar } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useQueryClient } from "@tanstack/react-query"
 import toast from "react-hot-toast"
@@ -1189,28 +1189,27 @@ export default function SupplierLedgerPage() {
 
   const ledgerTabContent = (
     <div className="space-y-6">
-      {/* {JSON.stringify(allLedgerTransactions)} */}
-      <div className="bg-white rounded-lg border p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="font-semibold text-lg">Complete Ledger History</h2>
-            <p className="text-sm text-muted-foreground mt-1">Select a supplier to view their complete accounting record</p>
+      {/* Filters & Search Bar - Unified */}
+      <div className="rounded-lg border border-border bg-card p-3 sm:p-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
+          {/* Filter Label */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+            <span className="text-xs sm:text-sm font-semibold text-foreground">Filters:</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="w-[250px]">
-              <Label htmlFor="ledger-supplier-filter" className="mb-2 block">Select Supplier</Label>
+
+          {/* Select Supplier */}
               <Select
                 value={ledgerSupplierFilter}
                 onValueChange={(value) => {
                   setLedgerSupplierFilter(value)
-                  // If a specific supplier is selected, also update Tab 2 selection
                   if (value && value !== 'all') {
                     setSelectedSupplierId(value)
                   }
                 }}
                 disabled={allSuppliersLoading}
               >
-                <SelectTrigger id="ledger-supplier-filter">
+            <SelectTrigger className="h-10 w-full sm:w-[220px] border-border">
                   <SelectValue placeholder="Select a supplier..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -1221,15 +1220,14 @@ export default function SupplierLedgerPage() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+
+          {/* Filter By */}
             {ledgerSupplierFilter && ledgerSupplierFilter !== 'all' && (
-              <div className="w-[200px]">
-                <Label htmlFor="ledger-filter-by" className="mb-2 block">Filter By</Label>
                 <Select
                   value={ledgerFilterBy}
                   onValueChange={setLedgerFilterBy}
                 >
-                  <SelectTrigger id="ledger-filter-by">
+              <SelectTrigger className="h-10 w-full sm:w-[180px] border-border">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1240,59 +1238,132 @@ export default function SupplierLedgerPage() {
                     <SelectItem value="return">Return</SelectItem>
                   </SelectContent>
                 </Select>
+          )}
+
+          {/* Search Section */}
+          {ledgerSupplierFilter && ledgerSupplierFilter !== 'all' && (
+            <div className="flex gap-2 sm:ml-auto w-full sm:w-auto">
+              <div className="relative flex-1 sm:flex-initial">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                  <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={ledgerSearch}
+                  onChange={(e) => setLedgerSearch(e.target.value)}
+                  className="h-10 w-full sm:w-[200px] pl-9 sm:pl-10 pr-3 rounded-lg border border-input bg-background text-xs sm:text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
+              </div>
+              <Button
+                size="sm"
+                className="h-10 px-4 sm:px-6 bg-primary hover:bg-primary/90 text-xs sm:text-sm min-w-[80px] sm:min-w-0"
+              >
+                Search
+              </Button>
               </div>
             )}
           </div>
         </div>
 
-        {!ledgerSupplierFilter || ledgerSupplierFilter === 'all' ? (
-          <div className="p-12 text-center text-muted-foreground">
-            <div className="mb-4">
-              <svg className="mx-auto h-12 w-12 text-muted-foreground/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
+      {/* Content Section */}
+      <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-border">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <FileText className="h-5 w-5 text-primary" />
             </div>
-            <p className="text-lg font-medium">Select a supplier to view ledger</p>
-            <p className="text-sm mt-1">Choose a supplier from the dropdown above to see their complete transaction history</p>
+            <div>
+              <h2 className="font-semibold text-lg text-foreground">Complete Ledger History</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Select a supplier to view their complete accounting record</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6">
+        {!ledgerSupplierFilter || ledgerSupplierFilter === 'all' ? (
+            <div className="p-12 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
+                <Building2 className="w-8 h-8 text-muted-foreground" />
+            </div>
+              <p className="text-sm font-medium text-foreground mb-1">Select a supplier to view ledger</p>
+              <p className="text-xs text-muted-foreground">Choose a supplier from the dropdown above to see their complete transaction history</p>
           </div>
         ) : allLedgerLoading ? (
-          <div className="p-12 flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-muted-foreground">Loading ledger entries...</span>
+            <div className="p-12 flex flex-col items-center justify-center">
+              <Loader2 className="animate-spin h-8 w-8 text-primary mb-4" />
+              <p className="text-sm text-muted-foreground">Loading ledger entries...</p>
           </div>
-        ) : allLedgerTransactions.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground">
-            <p>No ledger entries found for this supplier</p>
+          ) : filteredLedgerTransactions.length === 0 ? (
+            <div className="p-12 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
+                <FileText className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-foreground mb-1">No transactions found</p>
+              <p className="text-xs text-muted-foreground">
+                {ledgerSearch ? 'Try adjusting your search or filters' : 'No ledger entries found for this supplier'}
+              </p>
           </div>
         ) : (
           <>
-            <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-muted/30 rounded-lg p-6 space-y-1">
-                <p className="text-sm text-muted-foreground">Total Entries</p>
-                <p className="text-2xl font-bold">{allLedgerTransactions.length}</p>
+              {/* Stats Cards - Enhanced */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="h-10 w-10 rounded-lg bg-muted/50 flex items-center justify-center">
+                      <FileText className="h-5 w-5 text-muted-foreground" />
               </div>
-              <div className="bg-muted/30 rounded-lg p-6 space-y-1">
-                <p className="text-sm text-muted-foreground">Supplier Balance</p>
-                <p className={`text-2xl font-bold ${(calculatedTotalBalance || 0) <= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {(calculatedTotalBalance || 0) > 0 ? '-' : '+'}{formatNumber(Math.abs(calculatedTotalBalance || 0))}
-                </p>
+                  </div>
+                  <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
+                    Total Entries
+                  </div>
+                  <div className="text-2xl font-bold tabular-nums text-foreground">
+                    {filteredLedgerTransactions.length}
+                  </div>
+                </div>
+                <div className={`rounded-lg border p-5 shadow-sm ${
+                  (calculatedTotalBalance || 0) <= 0 
+                    ? 'border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-emerald-50/30' 
+                    : 'border-red-200 bg-gradient-to-br from-red-50/50 to-red-50/30'
+                }`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                      (calculatedTotalBalance || 0) <= 0 ? 'bg-emerald-100' : 'bg-red-100'
+                    }`}>
+                      <DollarSign className={`h-5 w-5 ${
+                        (calculatedTotalBalance || 0) <= 0 ? 'text-emerald-600' : 'text-red-600'
+                      }`} />
+                    </div>
+                  </div>
+                  <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
+                    Supplier Balance
+                  </div>
+                  <div className={`text-2xl font-bold tabular-nums ${
+                    (calculatedTotalBalance || 0) <= 0 ? 'text-emerald-700' : 'text-red-700'
+                  }`}>
+                    £{formatNumber(Math.abs(calculatedTotalBalance || 0))}
+                  </div>
+                  <div className={`text-xs mt-1 ${
+                    (calculatedTotalBalance || 0) <= 0 ? 'text-emerald-600/80' : 'text-red-600/80'
+                  }`}>
+                    {(calculatedTotalBalance || 0) > 0 ? 'Amount owed to supplier' : 'Credit with supplier'}
+                  </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg border">
-              {/* {JSON.stringify(allLedgerTransactions)} */}
+              {/* Table */}
               <DataTable
                 columns={allLedgerColumns}
-                data={allLedgerTransactions}
+                data={filteredLedgerTransactions}
                 hideActions
-                enableSearch={true}
+                enableSearch={false}
                 paginate={true}
                 pageSize={50}
                 disableSorting={true}
               />
-            </div>
           </>
         )}
+        </div>
       </div>
     </div>
   )
@@ -1455,10 +1526,6 @@ export default function SupplierLedgerPage() {
   }
 
   const paymentSelector = (
-    <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <div className="flex-1">
-          <Label htmlFor="supplier-select">Select Supplier</Label>
           <Select
             value={selectedSupplierId}
             onValueChange={(value) => {
@@ -1467,7 +1534,7 @@ export default function SupplierLedgerPage() {
             }}
             disabled={allSuppliersLoading}
           >
-            <SelectTrigger id="supplier-select">
+      <SelectTrigger id="supplier-select" className="h-10 border-border">
               <SelectValue placeholder="Choose a supplier..." />
             </SelectTrigger>
             <SelectContent>
@@ -1484,71 +1551,85 @@ export default function SupplierLedgerPage() {
               )}
             </SelectContent>
           </Select>
-        </div>
-      </div>
-    </div>
   )
 
   const paymentDetails = (
     <>
-      {/* Stats Cards - Total Paid and Total Pending (only show when supplier selected) */}
+      {/* Stats Cards - Enhanced */}
       {selectedSupplierId && selectedSupplierId !== 'all' && (
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Paid</h3>
-            <div className="text-2xl font-bold text-green-600">
-              {formatNumber(pendingTotals.totalPaid || 0)}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-lg border border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-emerald-50/30 p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
             </div>
           </div>
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Pending</h3>
-            <div className="text-2xl font-bold text-red-600">
-              {formatNumber(Math.abs(calculatedTotalPendingFromRemaining || 0))}
+            <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
+              Total Paid
+            </div>
+            <div className="text-2xl font-bold text-emerald-700 tabular-nums">
+              £{formatNumber(pendingTotals.totalPaid || 0)}
+            </div>
+          </div>
+          <div className="rounded-lg border border-red-200 bg-gradient-to-br from-red-50/50 to-red-50/30 p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center">
+                <Clock className="h-5 w-5 text-red-600" />
+              </div>
+            </div>
+            <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
+              Total Pending
+            </div>
+            <div className="text-2xl font-bold text-red-700 tabular-nums">
+              £{formatNumber(Math.abs(calculatedTotalPendingFromRemaining || 0))}
             </div>
           </div>
         </div>
       )}
 
-      <div className="bg-white rounded-lg border">
-        <div className="p-4 border-b">
-          <h2 className="font-semibold">Pending Payments - Action Center</h2>
-          <p className="text-sm text-muted-foreground mt-1">Orders that need payment</p>
+      {/* Supplier Selector - Enhanced */}
+      <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-semibold text-foreground">Select Supplier:</span>
         </div>
-
-        <div className="p-4 space-y-4">
+          <div className="flex-1 min-w-[250px]">
           {paymentSelector}
+          </div>
         </div>
       </div>
 
       {/* Pending Balances View - Only shown when supplier is selected */}
       {!selectedSupplierId || selectedSupplierId === 'all' ? (
-        <div className="bg-white rounded-lg border p-12 text-center text-muted-foreground mt-4">
-          <div className="mb-4">
-            <svg className="mx-auto h-12 w-12 text-muted-foreground/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
+        <div className="rounded-lg border border-border bg-card p-12 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
+            <Users className="w-8 h-8 text-muted-foreground" />
           </div>
-          <p className="text-lg font-medium">Select a supplier to view pending payments</p>
-          <p className="text-sm mt-1">Choose a supplier from the dropdown above to see their pending payment details</p>
+          <p className="text-sm font-medium text-foreground mb-1">No supplier selected</p>
+          <p className="text-xs text-muted-foreground">Select a supplier to view their pending payments</p>
         </div>
       ) : pendingBalancesLoading ? (
-        <div className="bg-white rounded-lg border p-8 flex items-center justify-center mt-4">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-muted-foreground">Loading pending balances...</span>
+        <div className="rounded-lg border border-border bg-card p-12 flex flex-col items-center justify-center">
+          <Loader2 className="animate-spin h-8 w-8 text-primary mb-4" />
+          <p className="text-sm text-muted-foreground">Loading pending balances...</p>
         </div>
       ) : pendingBalancesError ? (
-        <div className="bg-white rounded-lg border p-8 text-center text-red-600 mt-4">
-          <p>Error loading pending balances: {pendingBalancesError.message}</p>
-          <p className="text-xs text-muted-foreground mt-2">Check console for details</p>
+        <div className="rounded-lg border border-red-200 bg-red-50/50 p-8 text-center">
+          <p className="text-sm font-medium text-red-700 mb-1">Error loading pending balances</p>
+          <p className="text-xs text-red-600/80">{pendingBalancesError.message}</p>
         </div>
       ) : pendingBalances.length === 0 ? (
-        <div className="bg-white rounded-lg border p-8 text-center text-muted-foreground mt-4">
-          <p>No pending balances found for this supplier.</p>
-          <p className="text-xs mt-2">This supplier has no confirmed dispatch orders or purchases with remaining balances.</p>
+        <div className="rounded-lg border border-border bg-card p-12 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
+            <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+          </div>
+          <p className="text-sm font-medium text-foreground mb-1">No pending balances</p>
+          <p className="text-xs text-muted-foreground">This supplier has no confirmed dispatch orders or purchases with remaining balances</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg border mt-4">
-          <DataTable columns={pendingBalanceColumns} data={pendingBalancesWithEntryNumbers} hideActions />
+        <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+          <DataTable columns={pendingBalanceColumns} data={pendingBalancesWithEntryNumbers} hideActions enableSearch={false} />
         </div>
       )}
 
@@ -1641,48 +1722,107 @@ export default function SupplierLedgerPage() {
 
   const paymentHistoryTabContent = (
     <div className="space-y-6">
-      {/* Summary Cards - Only show when supplier is selected */}
+      {/* Summary Cards - Premium Design */}
       {paymentHistorySupplier && paymentHistorySupplier !== 'all' && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Payments</h3>
-            <div className="text-2xl font-bold text-green-600">
-              {formatNumber(paymentSummary.total)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Total Payments Card - Highlighted */}
+          <div className="relative rounded-lg border border-emerald-200/60 bg-gradient-to-br from-emerald-50/80 via-emerald-50/60 to-white p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
+            <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-emerald-200/20 blur-2xl group-hover:bg-emerald-200/30 transition-all"></div>
+            <div className="absolute -bottom-6 -left-6 h-20 w-20 rounded-full bg-emerald-100/15 blur-xl"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-12 w-12 rounded-xl bg-emerald-100/90 backdrop-blur-sm flex items-center justify-center ring-2 ring-emerald-200/40 shadow-sm group-hover:ring-emerald-300/60 transition-all">
+                  <DollarSign className="h-6 w-6 text-emerald-600" />
             </div>
           </div>
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">Cash Payments</h3>
-            <div className="text-2xl font-bold">
-              {formatNumber(paymentSummary.cash)}
+              <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-emerald-700/80">
+                Total Payments
+            </div>
+              <div className="text-3xl font-bold text-emerald-700 tabular-nums mb-1.5">
+                £{formatNumber(paymentSummary.total)}
+          </div>
+              <div className="text-xs font-medium text-emerald-600/70">All-time payment total</div>
             </div>
           </div>
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">Bank Payments</h3>
-            <div className="text-2xl font-bold">
-              {formatNumber(paymentSummary.bank)}
+
+          {/* Cash Payments Card */}
+          <div className="relative rounded-lg border border-border/60 bg-gradient-to-br from-background via-card/50 to-background p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
+            <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-primary/5 blur-xl group-hover:bg-primary/10 transition-all"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-12 w-12 rounded-xl bg-muted/70 backdrop-blur-sm flex items-center justify-center ring-1 ring-border/60 shadow-sm">
+                  <DollarSign className="h-6 w-6 text-muted-foreground" />
+                </div>
+              </div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-muted-foreground">
+                Cash Payments
+              </div>
+              <div className="text-3xl font-bold tabular-nums text-foreground mb-1.5">
+                £{formatNumber(paymentSummary.cash)}
+              </div>
+              <div className="text-xs font-medium text-muted-foreground">Cash transactions</div>
             </div>
           </div>
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">Payments This Month</h3>
-            <div className="text-2xl font-bold">
+
+          {/* Bank Payments Card */}
+          <div className="relative rounded-lg border border-border/60 bg-gradient-to-br from-background via-card/50 to-background p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
+            <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-primary/5 blur-xl group-hover:bg-primary/10 transition-all"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-12 w-12 rounded-xl bg-muted/70 backdrop-blur-sm flex items-center justify-center ring-1 ring-border/60 shadow-sm">
+                  <Building2 className="h-6 w-6 text-muted-foreground" />
+                </div>
+              </div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-muted-foreground">
+                Bank Payments
+              </div>
+              <div className="text-3xl font-bold tabular-nums text-foreground mb-1.5">
+                £{formatNumber(paymentSummary.bank)}
+              </div>
+              <div className="text-xs font-medium text-muted-foreground">Bank transfers</div>
+            </div>
+          </div>
+
+          {/* Payments This Month Card */}
+          <div className="relative rounded-lg border border-border/60 bg-gradient-to-br from-background via-card/50 to-background p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
+            <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-primary/5 blur-xl group-hover:bg-primary/10 transition-all"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-12 w-12 rounded-xl bg-muted/70 backdrop-blur-sm flex items-center justify-center ring-1 ring-border/60 shadow-sm">
+                  <Clock className="h-6 w-6 text-muted-foreground" />
+                </div>
+              </div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-muted-foreground">
+                Payments This Month
+              </div>
+              <div className="text-3xl font-bold tabular-nums text-foreground mb-1.5">
               {paymentSummary.countThisMonth}
+              </div>
+              <div className="text-xs font-medium text-muted-foreground">Current month</div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Filters and Add Payment Button */}
-      <div className="bg-white rounded-lg border p-6">
-        <div className="flex items-center justify-between mb-6">
+      {/* Main Content Card - Unified Design */}
+      <div className="rounded-lg border border-border/60 bg-gradient-to-br from-card via-background to-card shadow-sm overflow-hidden">
+        {/* Header Section */}
+        <div className="relative bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50 px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-primary/10 backdrop-blur-sm flex items-center justify-center ring-1 ring-primary/20 shadow-sm">
+                <FileText className="h-6 w-6 text-primary" />
+              </div>
           <div>
-            <h2 className="font-semibold text-lg">Payment History</h2>
+                <h2 className="font-semibold text-xl text-foreground tracking-tight">Payment History</h2>
             <p className="text-sm text-muted-foreground mt-1">Select a supplier to view their payment history</p>
+              </div>
           </div>
           {paymentHistorySupplier && paymentHistorySupplier !== 'all' && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Button size="sm" className="gap-2 h-10 px-5 shadow-sm hover:shadow-md transition-all bg-primary hover:bg-primary/90">
+                    <Plus className="h-4 w-4" />
                   Add Payment
                 </Button>
               </DialogTrigger>
@@ -1810,22 +1950,32 @@ export default function SupplierLedgerPage() {
               </DialogContent>
             </Dialog>
           )}
+          </div>
         </div>
 
-        {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div>
-            <Label htmlFor="payment-history-supplier">Select Supplier</Label>
+        {/* Filters Section */}
+        <div className="px-6 py-5 bg-gradient-to-b from-muted/20 via-muted/10 to-transparent border-b border-border/30">
+          <div className="flex items-center gap-2.5 mb-5">
+            <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <span className="text-sm font-semibold text-foreground">Filter Options</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div className="flex flex-col min-w-0">
+              <Label htmlFor="payment-history-supplier" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
+                <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="whitespace-nowrap">Select Supplier</span>
+              </Label>
             <Select
               value={paymentHistorySupplier}
               onValueChange={(value) => {
                 setPaymentHistorySupplier(value)
-                // Update selectedSupplierId for the Add Payment dialog
                 setSelectedSupplierId(value)
               }}
               disabled={allSuppliersLoading}
             >
-              <SelectTrigger id="payment-history-supplier">
+                <SelectTrigger id="payment-history-supplier" className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg">
                 <SelectValue placeholder="Select a supplier..." />
               </SelectTrigger>
               <SelectContent>
@@ -1838,33 +1988,46 @@ export default function SupplierLedgerPage() {
             </Select>
           </div>
 
-          <div>
-            <Label htmlFor="payment-history-date-from">Date From</Label>
+            <div className="flex flex-col min-w-0">
+              <Label htmlFor="payment-history-date-from" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
+                <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="whitespace-nowrap">Date From</span>
+              </Label>
             <Input
               id="payment-history-date-from"
               type="date"
               value={paymentHistoryDateFrom}
               onChange={(e) => setPaymentHistoryDateFrom(e.target.value)}
+                className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-100"
+                style={{ paddingRight: '2.5rem' }}
             />
           </div>
 
-          <div>
-            <Label htmlFor="payment-history-date-to">Date To</Label>
+            <div className="flex flex-col min-w-0">
+              <Label htmlFor="payment-history-date-to" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
+                <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="whitespace-nowrap">Date To</span>
+              </Label>
             <Input
               id="payment-history-date-to"
               type="date"
               value={paymentHistoryDateTo}
               onChange={(e) => setPaymentHistoryDateTo(e.target.value)}
+                className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-100"
+                style={{ paddingRight: '2.5rem' }}
             />
           </div>
 
-          <div>
-            <Label htmlFor="payment-history-method">Payment Method</Label>
+            <div className="flex flex-col min-w-0">
+              <Label htmlFor="payment-history-method" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
+                <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="whitespace-nowrap">Payment Method</span>
+              </Label>
             <Select
               value={paymentHistoryMethodFilter}
               onValueChange={setPaymentHistoryMethodFilter}
             >
-              <SelectTrigger id="payment-history-method">
+                <SelectTrigger id="payment-history-method" className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg">
                 <SelectValue placeholder="All Methods" />
               </SelectTrigger>
               <SelectContent>
@@ -1873,55 +2036,77 @@ export default function SupplierLedgerPage() {
                 <SelectItem value="bank">Bank</SelectItem>
               </SelectContent>
             </Select>
+            </div>
           </div>
         </div>
 
         {/* Payment History Table */}
+        <div className="px-6 py-6 bg-background">
         {!paymentHistorySupplier || paymentHistorySupplier === 'all' ? (
-          <div className="p-12 text-center text-muted-foreground">
-            <div className="mb-4">
-              <svg className="mx-auto h-12 w-12 text-muted-foreground/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-              </svg>
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl animate-pulse"></div>
+                <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-muted/90 via-muted/70 to-muted/50 backdrop-blur-sm ring-2 ring-border/60 shadow-lg">
+                  <Users className="w-12 h-12 text-muted-foreground" />
             </div>
-            <p className="text-lg font-medium">Select a supplier to view payment history</p>
-            <p className="text-sm mt-1">Choose a supplier from the dropdown above to see their payment records</p>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2.5">No supplier selected</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-md leading-relaxed">
+                Select a supplier from the dropdown above to view their complete payment history and transaction records
+              </p>
           </div>
         ) : paymentHistoryLoading ? (
-          <div className="p-12 flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-muted-foreground">Loading payment history...</span>
+          <div className="flex flex-col items-center justify-center py-20 px-4">
+            <div className="relative mb-6">
+              <div className="absolute inset-0 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
+              <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background backdrop-blur-sm ring-2 ring-primary/20 shadow-lg">
+                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+              </div>
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2.5">Loading payment history</h3>
+            <p className="text-sm text-muted-foreground">Please wait while we fetch the records...</p>
           </div>
         ) : paymentHistoryTransactions.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground">
-            <p>No payment history found for this supplier</p>
+          <div className="flex flex-col items-center justify-center py-20 px-4">
+            <div className="relative mb-6">
+              <div className="absolute inset-0 bg-muted/30 rounded-full blur-3xl"></div>
+              <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-muted/90 via-muted/70 to-muted/50 backdrop-blur-sm ring-2 ring-border/60 shadow-lg">
+                <FileText className="w-12 h-12 text-muted-foreground" />
+              </div>
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2.5">No payment history found</h3>
+            <p className="text-sm text-muted-foreground text-center max-w-md mb-5 leading-relaxed">
+              {paymentHistoryDateFrom || paymentHistoryDateTo || paymentHistoryMethodFilter !== 'all' 
+                ? 'Try adjusting your filters to see more results' 
+                : 'No payment records found for this supplier'}
+            </p>
             {(paymentHistoryDateFrom || paymentHistoryDateTo || paymentHistoryMethodFilter !== 'all') && (
               <Button
                 variant="outline"
                 size="sm"
-                className="mt-4"
+                className="gap-2 h-10 px-5 shadow-sm hover:shadow-md transition-all rounded-lg"
                 onClick={() => {
                   setPaymentHistoryDateFrom('')
                   setPaymentHistoryDateTo('')
                   setPaymentHistoryMethodFilter('all')
                 }}
               >
+                <RotateCcw className="h-4 w-4" />
                 Clear Filters
               </Button>
             )}
           </div>
         ) : (
-          <div className="bg-white rounded-lg border">
             <DataTable
               columns={paymentHistoryColumns}
               data={paymentHistoryTransactions}
               hideActions
-              enableSearch={true}
+            enableSearch={false}
               paginate={true}
               pageSize={50}
             />
-          </div>
         )}
+        </div>
       </div>
     </div>
   )
@@ -1941,10 +2126,33 @@ export default function SupplierLedgerPage() {
     },
   ]
 
+  // Search state for Supplier Ledger tab
+  const [ledgerSearch, setLedgerSearch] = useState("")
+
+  // Filter ledger transactions by search
+  const filteredLedgerTransactions = useMemo(() => {
+    if (!ledgerSearch) return allLedgerTransactions
+    const searchLower = ledgerSearch.toLowerCase()
+    return allLedgerTransactions.filter(entry => 
+      entry.supplier?.toLowerCase().includes(searchLower) ||
+      entry.reference?.toLowerCase().includes(searchLower) ||
+      entry.type?.toLowerCase().includes(searchLower)
+    )
+  }, [allLedgerTransactions, ledgerSearch])
+
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Supplier Ledger</h1>
+    <div className="space-y-6">
+      {/* Header - Enhanced */}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <Building2 className="h-6 w-6 text-primary" />
+          </div>
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Supplier Ledger</h1>
+            <p className="text-sm text-muted-foreground">Manage supplier accounts, payments, and balances</p>
+          </div>
+        </div>
         <div className="flex items-center gap-3">
           {suppliersLoading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1954,13 +2162,13 @@ export default function SupplierLedgerPage() {
           )}
           <Button
             onClick={() => setUniversalPaymentOpen(true)}
-            className="bg-green-600 hover:bg-green-700"
+            className="bg-primary hover:bg-primary/90 h-11 px-6 shadow-sm"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Payment
           </Button>
         </div>
-      </div>
+      </header>
 
       <Tabs
         tabs={tabs}

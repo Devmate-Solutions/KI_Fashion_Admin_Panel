@@ -1,6 +1,14 @@
 import "./globals.css"
 import QueryProvider from "../lib/providers/QueryProvider"
 import { AuthProvider } from '@/lib/providers/AuthProvider';
+import { Poppins } from "next/font/google";
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  variable: "--font-poppins",
+  display: "swap",
+});
 
 export const metadata = {
   title: "KL Fashion CRM",
@@ -9,7 +17,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en-GB" className="antialiased" suppressHydrationWarning>
+    <html lang="en-GB" className={`${poppins.variable} antialiased`} suppressHydrationWarning>
       <body className="font-sans bg-background text-foreground" suppressHydrationWarning>
         <QueryProvider>
           <AuthProvider>

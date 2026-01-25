@@ -13,7 +13,7 @@ import { useBuyerLedger, useAllBuyerLedgers } from "@/lib/hooks/useLedger"
 import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { salesAPI } from "@/lib/api/endpoints/sales"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { Loader2 } from "lucide-react"
+import { Loader2, FileText, Users, Search, Filter, TrendingUp, DollarSign, Clock, Plus, CheckCircle2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import toast from "react-hot-toast"
 import Tabs from "@/components/tabs"
@@ -404,11 +404,34 @@ export default function CustomerLedgerPage() {
     { header: "Notes", accessor: "notes", render: (row) => <span className="text-sm text-muted-foreground">{row.notes}</span> }
   ], [])
 
+  // Search state for Customer Ledger tab
+  const [ledgerSearch, setLedgerSearch] = useState("")
+
+  // Filter ledger transactions by search
+  const filteredLedgerTransactions = useMemo(() => {
+    if (!ledgerSearch) return allLedgerTransactions
+    const searchLower = ledgerSearch.toLowerCase()
+    return allLedgerTransactions.filter(entry => 
+      entry.buyer?.toLowerCase().includes(searchLower) ||
+      entry.reference?.toLowerCase().includes(searchLower) ||
+      entry.type?.toLowerCase().includes(searchLower)
+    )
+  }, [allLedgerTransactions, ledgerSearch])
+
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Customer Ledger</h1>
+    <div className="space-y-6">
+      {/* Header - Enhanced */}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <FileText className="h-6 w-6 text-primary" />
+          </div>
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Customer Ledger</h1>
+            <p className="text-sm text-muted-foreground">Manage customer accounts, payments, and balances</p>
+          </div>
       </div>
+      </header>
 
       <Tabs
         tabs={[
@@ -416,64 +439,148 @@ export default function CustomerLedgerPage() {
             label: "Customer Ledger",
             content: (
               <div className="space-y-6">
-                {/* Filters */}
-                <div className="bg-white rounded-lg border p-6 flex flex-wrap gap-4 items-end">
-                  <div className="w-[300px]">
-                    <Label className="mb-2 block">Select Customer</Label>
-                    <Select value={ledgerBuyerFilter} onValueChange={(val) => {
+                {/* Filters & Search Bar - Unified */}
+                <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+                  <div className="flex flex-wrap items-center gap-4">
+                    {/* Filter Label */}
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-semibold text-foreground">Filters:</span>
+                    </div>
+
+                    {/* Select Customer */}
+                    <Select 
+                      value={ledgerBuyerFilter} 
+                      onValueChange={(val) => {
                       setLedgerBuyerFilter(val)
                       if (val && val !== 'all') setSelectedBuyerId(val)
-                    }}>
-                      <SelectTrigger><SelectValue placeholder="All Customers" /></SelectTrigger>
+                      }}
+                    >
+                      <SelectTrigger className="h-10 w-[220px] border-border">
+                        <SelectValue placeholder="All Customers" />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Customers</SelectItem>
                         {dropdownBuyers.map(b => (
-                          <SelectItem key={b.id} value={b.id}>{b.name} {b.company ? `(${b.company})` : ''}</SelectItem>
+                          <SelectItem key={b.id} value={b.id}>
+                            {b.name} {b.company ? `(${b.company})` : ''}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
 
-                  <div className="w-[200px]">
-                    <Label className="mb-2 block">Filter By</Label>
+                    {/* Filter By */}
                     <Select value={ledgerFilterBy} onValueChange={setLedgerFilterBy}>
-                      <SelectTrigger><SelectValue placeholder="All Transactions" /></SelectTrigger>
+                      <SelectTrigger className="h-10 w-[180px] border-border">
+                        <SelectValue placeholder="All Transactions" />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Transactions</SelectItem>
                         <SelectItem value="cash">Cash Receipts</SelectItem>
                         <SelectItem value="bank">Bank Receipts</SelectItem>
                       </SelectContent>
                     </Select>
+
+                    {/* Search Section */}
+                    <div className="flex gap-2 ml-auto">
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                          <Search className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Search..."
+                          value={ledgerSearch}
+                          onChange={(e) => setLedgerSearch(e.target.value)}
+                          className="h-10 w-full sm:w-[200px] pl-9 sm:pl-10 pr-3 rounded-lg border border-input bg-background text-xs sm:text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        className="h-10 px-4 sm:px-6 bg-primary hover:bg-primary/90 text-xs sm:text-sm min-w-[80px] sm:min-w-0"
+                      >
+                        Search
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Stats if customer selected */}
+                {/* Stats if customer selected - Enhanced */}
                 {ledgerBuyerFilter && ledgerBuyerFilter !== 'all' && buyerDetails && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-muted/30 rounded-lg p-6">
-                      <p className="text-sm text-muted-foreground">Customer Balance</p>
-                      <p className={`text-2xl font-bold ${buyerDetails.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        {formatNumber(buyerDetails.balance)}
-                        <span className="text-sm font-normal text-muted-foreground ml-1">{buyerDetails.balance > 0 ? '(Pending)' : '(Clear)'}</span>
-                      </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Customer Balance Card */}
+                    <div className={`rounded-lg border p-5 shadow-sm transition-shadow hover:shadow-md ${
+                      buyerDetails.balance > 0 
+                        ? 'border-red-200 bg-gradient-to-br from-red-50/50 to-red-50/30' 
+                        : 'border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-emerald-50/30'
+                    }`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                          buyerDetails.balance > 0 ? 'bg-red-100' : 'bg-emerald-100'
+                        }`}>
+                          <DollarSign className={`h-5 w-5 ${
+                            buyerDetails.balance > 0 ? 'text-red-600' : 'text-emerald-600'
+                          }`} />
+                        </div>
+                      </div>
+                      <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
+                        Customer Balance
+                      </div>
+                      <div className={`text-2xl font-bold tabular-nums ${
+                        buyerDetails.balance > 0 ? 'text-red-700' : 'text-emerald-700'
+                      }`}>
+                        £{formatNumber(buyerDetails.balance)}
+                      </div>
+                      <div className={`text-xs mt-1 ${
+                        buyerDetails.balance > 0 ? 'text-red-600/80' : 'text-emerald-600/80'
+                      }`}>
+                        {buyerDetails.balance > 0 ? 'Amount pending from customer' : 'Account is clear'}
+                      </div>
                     </div>
-                    <div className="bg-muted/30 rounded-lg p-6">
-                      <p className="text-sm text-muted-foreground">Total Sales</p>
-                      <p className="text-2xl font-bold">{formatNumber(buyerDetails.totalSales || 0)}</p>
+
+                    {/* Total Sales Card */}
+                    <div className="rounded-lg border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="h-10 w-10 rounded-lg bg-muted/50 flex items-center justify-center">
+                          <TrendingUp className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      </div>
+                      <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
+                        Total Sales
+                      </div>
+                      <div className="text-2xl font-bold tabular-nums text-foreground">
+                        £{formatNumber(buyerDetails.totalSales || 0)}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        All-time sales to this customer
+                    </div>
                     </div>
                   </div>
                 )}
 
                 {/* Table */}
-                <div className="bg-white rounded-lg border">
+                <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
                   {allLedgerLoading ? (
-                    <div className="p-12 flex justify-center"><Loader2 className="animate-spin text-muted-foreground" /></div>
+                    <div className="p-12 flex flex-col items-center justify-center">
+                      <Loader2 className="animate-spin h-8 w-8 text-primary mb-4" />
+                      <p className="text-sm text-muted-foreground">Loading ledger entries...</p>
+                    </div>
+                  ) : filteredLedgerTransactions.length === 0 ? (
+                    <div className="p-12 text-center">
+                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
+                        <FileText className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                      <p className="text-sm font-medium text-foreground mb-1">No transactions found</p>
+                      <p className="text-xs text-muted-foreground">
+                        {ledgerSearch ? 'Try adjusting your search or filters' : 'Select a customer to view their ledger'}
+                      </p>
+                    </div>
                   ) : (
                     <DataTable
                       columns={allLedgerColumns}
-                      data={allLedgerTransactions}
+                      data={filteredLedgerTransactions}
                       pagination={{ pageSize: 50 }}
-                      searchKey="reference"
+                      enableSearch={false}
                       disableSorting
                     />
                   )}
@@ -485,53 +592,91 @@ export default function CustomerLedgerPage() {
             label: "Pending Payments",
             content: (
               <div className="space-y-6">
-                <div className="bg-white rounded-lg border p-6 flex flex-wrap gap-4 items-end">
-                  <div className="w-[300px]">
-                    <Label className="mb-2 block">Select Customer</Label>
-                    <Select value={selectedBuyerId} onValueChange={(val) => {
+                {/* Filters Bar */}
+                <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-semibold text-foreground">Select Customer:</span>
+                    </div>
+                    <Select 
+                      value={selectedBuyerId} 
+                      onValueChange={(val) => {
                       setSelectedBuyerId(val)
                       setSelectedSaleId('none')
-                    }}>
-                      <SelectTrigger><SelectValue placeholder="Select Customer" /></SelectTrigger>
+                      }}
+                    >
+                      <SelectTrigger className="h-10 w-[300px] border-border">
+                        <SelectValue placeholder="Select Customer" />
+                      </SelectTrigger>
                       <SelectContent>
                         {dropdownBuyers.map(b => (
                           <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
 
                   {selectedBuyerId && selectedBuyerId !== 'all' && (
-                    <Button onClick={() => {
+                      <Button 
+                        onClick={() => {
                       setPaymentForm({ amount: '', date: '', description: '', method: 'cash' })
                       setSelectedSaleId('none')
                       setIsDialogOpen(true)
-                    }}>
-                      <span className="mr-2 text-lg">+</span> Record Payment
+                        }}
+                        className="ml-auto gap-2 h-10"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Record Payment
                     </Button>
                   )}
+                  </div>
                 </div>
 
                 {(!selectedBuyerId || selectedBuyerId === 'all') ? (
-                  <div className="bg-white rounded-lg border p-12 text-center text-muted-foreground">
-                    <p>Select a customer to view pending payments.</p>
+                  <div className="rounded-lg border border-border bg-card p-12 text-center">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
+                      <Users className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground mb-1">No customer selected</p>
+                    <p className="text-xs text-muted-foreground">Select a customer to view their pending payments</p>
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white rounded-lg border p-6">
-                        <h3 className="text-sm font-medium text-muted-foreground">Total Pending (This Selection)</h3>
-                        <p className="text-2xl font-bold text-red-600">{formatNumber(pendingTotals.totalPending)}</p>
+                    {/* Stats Card */}
+                    <div className="rounded-lg border border-red-200 bg-gradient-to-br from-red-50/50 to-red-50/30 p-5 shadow-sm">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center">
+                          <Clock className="h-5 w-5 text-red-600" />
+                        </div>
+                      </div>
+                      <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
+                        Total Pending Amount
+                      </div>
+                      <div className="text-2xl font-bold text-red-700 tabular-nums">
+                        £{formatNumber(pendingTotals.totalPending)}
+                      </div>
+                      <div className="text-xs text-red-600/80 mt-1">
+                        Outstanding amount from {unpaidSales.length} {unpaidSales.length === 1 ? 'sale' : 'sales'}
                       </div>
                     </div>
 
-                    <div className="bg-white rounded-lg border">
+                    {/* Table */}
+                    <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
                       {unpaidSalesLoading ? (
-                        <div className="p-12 flex justify-center"><Loader2 className="animate-spin" /></div>
+                        <div className="p-12 flex flex-col items-center justify-center">
+                          <Loader2 className="animate-spin h-8 w-8 text-primary mb-4" />
+                          <p className="text-sm text-muted-foreground">Loading pending payments...</p>
+                        </div>
                       ) : unpaidSales.length === 0 ? (
-                        <div className="p-12 text-center text-muted-foreground">No pending payments found.</div>
+                        <div className="p-12 text-center">
+                          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
+                            <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                          </div>
+                          <p className="text-sm font-medium text-foreground mb-1">No pending payments</p>
+                          <p className="text-xs text-muted-foreground">All payments have been received</p>
+                        </div>
                       ) : (
-                        <DataTable columns={pendingColumns} data={unpaidSales} hideActions />
+                        <DataTable columns={pendingColumns} data={unpaidSales} enableSearch={false} hideActions />
                       )}
                     </div>
                   </>
@@ -543,11 +688,17 @@ export default function CustomerLedgerPage() {
             label: "Payment History",
             content: (
               <div className="space-y-6">
-                <div className="bg-white rounded-lg border p-6 flex flex-wrap gap-4 items-end">
-                  <div className="w-[300px]">
-                    <Label className="mb-2 block">Select Customer</Label>
+                {/* Filters Bar */}
+                <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-semibold text-foreground">Select Customer:</span>
+                    </div>
                     <Select value={selectedBuyerId} onValueChange={setSelectedBuyerId}>
-                      <SelectTrigger><SelectValue placeholder="Select Customer" /></SelectTrigger>
+                      <SelectTrigger className="h-10 w-[300px] border-border">
+                        <SelectValue placeholder="Select Customer" />
+                      </SelectTrigger>
                       <SelectContent>
                         {dropdownBuyers.map(b => (
                           <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
@@ -558,15 +709,35 @@ export default function CustomerLedgerPage() {
                 </div>
 
                 {(!selectedBuyerId || selectedBuyerId === 'all') ? (
-                  <div className="bg-white rounded-lg border p-12 text-center text-muted-foreground">
-                    <p>Select a customer to view payment history.</p>
+                  <div className="rounded-lg border border-border bg-card p-12 text-center">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
+                      <Users className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground mb-1">No customer selected</p>
+                    <p className="text-xs text-muted-foreground">Select a customer to view their payment history</p>
                   </div>
                 ) : (
-                  <div className="bg-white rounded-lg border">
+                  <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
                     {paymentHistoryLoading ? (
-                      <div className="p-12 flex justify-center"><Loader2 className="animate-spin" /></div>
+                      <div className="p-12 flex flex-col items-center justify-center">
+                        <Loader2 className="animate-spin h-8 w-8 text-primary mb-4" />
+                        <p className="text-sm text-muted-foreground">Loading payment history...</p>
+                      </div>
+                    ) : paymentHistoryTransactions.length === 0 ? (
+                      <div className="p-12 text-center">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
+                          <FileText className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                        <p className="text-sm font-medium text-foreground mb-1">No payment history</p>
+                        <p className="text-xs text-muted-foreground">No payments have been recorded for this customer</p>
+                      </div>
                     ) : (
-                      <DataTable columns={paymentHistoryColumns} data={paymentHistoryTransactions} pagination={{ pageSize: 50 }} />
+                      <DataTable 
+                        columns={paymentHistoryColumns} 
+                        data={paymentHistoryTransactions} 
+                        pagination={{ pageSize: 50 }}
+                        enableSearch={false}
+                      />
                     )}
                   </div>
                 )}
@@ -578,40 +749,63 @@ export default function CustomerLedgerPage() {
         onTabChange={setActiveTab}
       />
 
+      {/* Payment Dialog - Enhanced */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Record Payment</DialogTitle>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <DollarSign className="h-5 w-5 text-primary" />
+              </div>
+              <DialogTitle className="text-xl">Record Payment</DialogTitle>
+            </div>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-5 py-4">
             {selectedSale && (
-              <div className="bg-muted p-3 rounded text-sm mb-2">
-                <p><span className="font-semibold">Sale:</span> {selectedSale.saleNumber}</p>
-                <p><span className="font-semibold">Total:</span> {formatNumber(selectedSale.grandTotal)}</p>
-                <p><span className="font-semibold">Remaining:</span> {formatNumber(selectedSale.grandTotal - (selectedSale.cashPayment || 0) - (selectedSale.bankPayment || 0))}</p>
+              <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-muted-foreground">Sale Number:</span>
+                  <span className="text-sm font-medium text-foreground">{selectedSale.saleNumber}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-muted-foreground">Total Amount:</span>
+                  <span className="text-sm font-bold text-foreground">£{formatNumber(selectedSale.grandTotal)}</span>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-border">
+                  <span className="text-sm font-semibold text-muted-foreground">Remaining:</span>
+                  <span className="text-sm font-bold text-red-600">
+                    £{formatNumber(selectedSale.grandTotal - (selectedSale.cashPayment || 0) - (selectedSale.bankPayment || 0))}
+                  </span>
+                </div>
               </div>
             )}
 
             <div className="space-y-2">
-              <Label>Payment Amount</Label>
+              <Label className="text-sm font-semibold">Payment Amount</Label>
               <Input
                 type="number"
+                step="0.01"
                 value={paymentForm.amount}
                 onChange={e => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))}
+                className="h-11"
+                placeholder="0.00"
               />
             </div>
             <div className="space-y-2">
-              <Label>Date</Label>
+              <Label className="text-sm font-semibold">Date</Label>
               <Input
                 type="date"
                 value={paymentForm.date}
                 onChange={e => setPaymentForm(prev => ({ ...prev, date: e.target.value }))}
+                className="h-11"
               />
             </div>
             <div className="space-y-2">
-              <Label>Method</Label>
+              <Label className="text-sm font-semibold">Payment Method</Label>
               <Select value={paymentForm.method} onValueChange={val => setPaymentForm(prev => ({ ...prev, method: val }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-11">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">Cash</SelectItem>
                   <SelectItem value="bank">Bank</SelectItem>
@@ -619,17 +813,31 @@ export default function CustomerLedgerPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Description</Label>
+              <Label className="text-sm font-semibold">Description (Optional)</Label>
               <Input
                 value={paymentForm.description}
                 onChange={e => setPaymentForm(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Optional note"
+                placeholder="Add a note about this payment"
+                className="h-11"
               />
             </div>
 
-            <Button className="w-full mt-4" onClick={handleAddPayment} disabled={isSubmittingPayment}>
-              {isSubmittingPayment ? <Loader2 className="animate-spin mr-2" /> : null}
+            <Button 
+              className="w-full h-11 mt-6 gap-2" 
+              onClick={handleAddPayment} 
+              disabled={isSubmittingPayment}
+            >
+              {isSubmittingPayment ? (
+                <>
+                  <Loader2 className="animate-spin h-4 w-4" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
               Confirm Payment
+                </>
+              )}
             </Button>
           </div>
         </DialogContent>

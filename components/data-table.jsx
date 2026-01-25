@@ -88,15 +88,15 @@ export default function DataTable({
   const displayTotal = manualPagination ? (totalItems || filtered.length) : filtered.length
 
   return (
-    <div className="rounded-[4px] border border-border bg-card">
-      <div className="flex items-center justify-between gap-2 p-3 border-b border-border">
-        <h3 className="text-sm font-medium">{title}</h3>
-        <div className="flex items-center gap-2">
+    <div className="rounded-lg border border-border bg-card transition-shadow duration-300">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border-b border-border">
+        {title && <h3 className="text-base font-semibold text-foreground">{title}</h3>}
+        <div className="flex items-center gap-2 flex-wrap">
           {enableSearch && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-1 sm:flex-initial min-w-0">
               <input
                 type="search"
-                className="h-8 w-44 md:w-64 rounded-[4px] border border-input bg-background px-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+                className="h-9 sm:h-10 w-full sm:w-44 md:w-64 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring focus:border-transparent min-w-0 transition-all duration-200 ease-in-out hover:border-ring/50"
                 placeholder="Search..."
                 value={query}
                 onChange={(e) => {
@@ -112,12 +112,13 @@ export default function DataTable({
                 }}
               />
               <button
-                className="h-8 rounded-[4px] bg-primary px-3 text-sm text-primary-foreground hover:opacity-90"
+                className="h-9 sm:h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all duration-200 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-shrink-0"
                 onClick={() => {
                   setPage(1)
                   if (onSearch) onSearch(query)
                 }}
                 title="Search"
+                aria-label="Search"
               >
                 Search
               </button>
@@ -125,7 +126,7 @@ export default function DataTable({
           )}
           {onAddNew && (
             <button
-              className="h-8 rounded-[4px] bg-primary px-3 text-sm text-primary-foreground hover:opacity-90"
+              className="h-9 sm:h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all duration-200 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring whitespace-nowrap"
               onClick={onAddNew}
             >
               Add New
@@ -134,134 +135,150 @@ export default function DataTable({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto -mx-4 sm:mx-0 overflow-y-visible">
         {loading ? (
-          <div className="flex items-center justify-center p-12">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
-              <p className="text-sm text-muted-foreground">Loading data...</p>
+          <div className="flex items-center justify-center p-8 sm:p-12">
+            <div className="text-center animate-in fade-in duration-300">
+              <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-3 border-primary border-t-transparent mx-auto mb-4 shadow-lg"></div>
+              <p className="text-xs sm:text-sm text-muted-foreground font-medium">Loading data...</p>
             </div>
           </div>
         ) : !Array.isArray(data) || data.length === 0 ? (
-          <div className="text-center p-12">
-            <p className="text-muted-foreground">No data available</p>
+          <div className="text-center p-8 sm:p-12 animate-in fade-in duration-300">
+            <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted/50 mb-4">
+              <svg className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+              </svg>
+            </div>
+            <p className="text-sm sm:text-base text-muted-foreground mb-2 font-medium">No data available</p>
             {onAddNew && (
               <button
                 onClick={onAddNew}
-                className="mt-4 px-4 py-2 text-sm bg-primary text-white rounded-md hover:bg-primary/90"
+                className="mt-4 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 hover:shadow-lg transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring active:scale-95 min-h-[44px]"
               >
                 Add First Entry
               </button>
             )}
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left [&>th]:font-medium [&>th]:text-xs [&>th]:text-muted-foreground border-b border-border">
-                {Array.isArray(columns) && columns.map((c) => (
-                  <th key={c.accessor || c.header}>
-                    {disableSorting ? (
-                      <span className="flex items-center gap-1">{c.header}</span>
-                    ) : (
-                      <button
-                        onClick={() => c.accessor && toggleSort(c.accessor)}
-                        className="flex items-center gap-1"
-                        title={c.accessor ? "Sort" : undefined}
-                      >
-                        <span>{c.header}</span>
-                        {sort.key === c.accessor ? (
-                          <span aria-hidden className="text-[10px]">
-                            {sort.dir === "asc" ? "▲" : "▼"}
-                          </span>
-                        ) : null}
-                      </button>
-                    )}
-                  </th>
-                ))}
-                {!hideActions && (onEdit || onDelete) && <th className="w-32">Actions</th>}
-              </tr>
-            </thead>
-            <tbody className="[&>tr]:border-b [&>tr]:border-border">
-              {Array.isArray(slice) && slice.map((row, idx) => (
-                <tr
-                  key={row.id ?? idx}
-                  className={`hover:bg-muted/30 ${onRowClick ? 'cursor-pointer' : ''}`}
-                  onClick={() => onRowClick && onRowClick(row)}
-                  data-row-id={row.rowId || row.id}
-                >
+          <div className="overflow-x-auto overflow-y-visible">
+            <table className="w-full text-sm min-w-[640px]">
+              <thead className="bg-muted/30 sticky top-0 z-10">
+                <tr className="border-b border-border">
                   {Array.isArray(columns) && columns.map((c) => (
-                    <td key={c.accessor || c.header} className="px-3 py-2 whitespace-nowrap">
-                      {c.render ? c.render(row) : String(row[c.accessor] ?? "")}
-                    </td>
+                    <th key={c.accessor || c.header} className="px-3 sm:px-4 py-2.5 sm:py-3 text-left font-semibold text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                      {disableSorting ? (
+                        <span className="flex items-center gap-1">{c.header}</span>
+                      ) : (
+                        <button
+                          onClick={() => c.accessor && toggleSort(c.accessor)}
+                          className="flex items-center gap-1 hover:text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring rounded min-h-[44px]"
+                          title={c.accessor ? "Sort" : undefined}
+                          aria-label={c.accessor ? `Sort by ${c.header}` : undefined}
+                        >
+                          <span>{c.header}</span>
+                          {sort.key === c.accessor ? (
+                            <span aria-hidden className="text-[10px]" aria-label={sort.dir === "asc" ? "Ascending" : "Descending"}>
+                              {sort.dir === "asc" ? "▲" : "▼"}
+                            </span>
+                          ) : null}
+                        </button>
+                      )}
+                    </th>
                   ))}
-                  {!hideActions && (onEdit || onDelete) && (
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        {onEdit && (
-                          <button
-                            className="text-xs px-2 py-1 border border-border rounded-[4px] hover:bg-muted"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onEdit(row)
-                            }}
-                          >
-                            Edit
-                          </button>
-                        )}
-                        {onDelete && (
-                          <button
-                            className="text-xs px-2 py-1 border border-border rounded-[4px] text-destructive hover:bg-muted"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onDelete(row)
-                            }}
-                          >
-                            Delete
-                          </button>
-                        )}
-                      </div>
+                  {!hideActions && (onEdit || onDelete) && <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-left font-semibold text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider w-24 sm:w-32 whitespace-nowrap">Actions</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {Array.isArray(slice) && slice.map((row, idx) => {
+                  // Use rowId first, then id, then fallback to index with row identifier
+                  const uniqueKey = row.rowId || row.id || row._id || `row-${idx}-${row.purchaseNumber || row.orderNumber || ''}`
+                  return (
+                  <tr
+                    key={uniqueKey}
+                    className={`hover:bg-muted/20 transition-all duration-150 ease-in-out ${onRowClick ? 'cursor-pointer' : ''}`}
+                    onClick={() => onRowClick && onRowClick(row)}
+                    data-row-id={row.rowId || row.id || row._id}
+                  >
+                    {Array.isArray(columns) && columns.map((c) => (
+                      <td key={c.accessor || c.header} className="px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm whitespace-nowrap">
+                        {c.render ? c.render(row) : String(row[c.accessor] ?? "")}
+                      </td>
+                    ))}
+                    {!hideActions && (onEdit || onDelete) && (
+                      <td className="px-3 sm:px-4 py-2.5 sm:py-3">
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          {onEdit && (
+                            <button
+                              className="text-[10px] sm:text-xs px-2 sm:px-3 py-1.5 border border-border rounded-md hover:bg-muted active:scale-95 transition-all duration-150 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-h-[36px] sm:min-h-[32px]"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onEdit(row)
+                              }}
+                              aria-label={`Edit ${row.name || row.id || 'item'}`}
+                            >
+                              Edit
+                            </button>
+                          )}
+                          {onDelete && (
+                            <button
+                              className="text-[10px] sm:text-xs px-2 sm:px-3 py-1.5 border border-border rounded-md text-destructive hover:bg-destructive/10 active:scale-95 transition-all duration-150 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-h-[36px] sm:min-h-[32px]"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onDelete(row)
+                              }}
+                              aria-label={`Delete ${row.name || row.id || 'item'}`}
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                  )
+                })}
+                {(!Array.isArray(slice) || slice.length === 0) && (
+                  <tr>
+                    <td colSpan={(Array.isArray(columns) ? columns.length : 0) + ((!hideActions && (onEdit || onDelete)) ? 1 : 0)} className="px-4 py-8 sm:py-12 text-center text-muted-foreground text-sm">
+                      No results found.
                     </td>
-                  )}
-                </tr>
-              ))}
-              {(!Array.isArray(slice) || slice.length === 0) && (
-                <tr>
-                  <td colSpan={(Array.isArray(columns) ? columns.length : 0) + ((!hideActions && (onEdit || onDelete)) ? 1 : 0)} className="px-3 py-6 text-center text-muted-foreground">
-                    No results found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
       {/* Pagination Controls */}
       {paginate && pageCount > 1 && (
-        <div className="flex items-center justify-between p-3 border-t border-border flex-wrap gap-3">
-          <div className="text-xs text-muted-foreground">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 sm:p-4 border-t border-border">
+          <div className="text-[10px] sm:text-xs text-muted-foreground order-2 sm:order-1 text-center sm:text-left">
             Showing {displayStart + 1} to {displayEnd} of {displayTotal} entries
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap order-1 sm:order-2 justify-center sm:justify-end w-full sm:w-auto">
             <button
-              className="px-2 py-1 text-xs border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium border border-border rounded-md hover:bg-muted active:scale-95 transition-all duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-h-[36px] sm:min-h-[32px]"
               onClick={() => setPage(1)}
               disabled={page === 1}
               title="First page"
+              aria-label="First page"
             >
               First
             </button>
             <button
-              className="px-2 py-1 text-xs border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium border border-border rounded-md hover:bg-muted active:scale-95 transition-all duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-h-[36px] sm:min-h-[32px]"
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
               title="Previous page"
+              aria-label="Previous page"
             >
-              Previous
+              Prev
             </button>
 
             {/* Page number buttons */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5 sm:gap-1">
               {(() => {
                 const pages = []
                 const maxVisible = 5
@@ -278,15 +295,16 @@ export default function DataTable({
                   pages.push(
                     <button
                       key={1}
-                      className={`px-2 py-1 text-xs border border-border rounded hover:bg-muted ${page === 1 ? 'bg-primary text-primary-foreground' : ''
+                      className={`px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium border border-border rounded-md hover:bg-muted active:scale-95 transition-all duration-150 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-h-[36px] sm:min-h-[32px] ${page === 1 ? 'bg-primary text-primary-foreground' : ''
                         }`}
                       onClick={() => setPage(1)}
+                      aria-label="Page 1"
                     >
                       1
                     </button>
                   )
                   if (startPage > 2) {
-                    pages.push(<span key="ellipsis1" className="px-1 text-xs text-muted-foreground">...</span>)
+                    pages.push(<span key="ellipsis1" className="px-0.5 sm:px-1 text-[10px] sm:text-xs text-muted-foreground">...</span>)
                   }
                 }
 
@@ -295,9 +313,10 @@ export default function DataTable({
                   pages.push(
                     <button
                       key={i}
-                      className={`px-2 py-1 text-xs border border-border rounded hover:bg-muted ${page === i ? 'bg-primary text-primary-foreground' : ''
+                      className={`px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium border border-border rounded-md hover:bg-muted active:scale-95 transition-all duration-150 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-h-[36px] sm:min-h-[32px] ${page === i ? 'bg-primary text-primary-foreground' : ''
                         }`}
                       onClick={() => setPage(i)}
+                      aria-label={`Page ${i}`}
                     >
                       {i}
                     </button>
@@ -307,14 +326,15 @@ export default function DataTable({
                 // Show last page if not in range
                 if (endPage < pageCount) {
                   if (endPage < pageCount - 1) {
-                    pages.push(<span key="ellipsis2" className="px-1 text-xs text-muted-foreground">...</span>)
+                    pages.push(<span key="ellipsis2" className="px-0.5 sm:px-1 text-[10px] sm:text-xs text-muted-foreground">...</span>)
                   }
                   pages.push(
                     <button
                       key={pageCount}
-                      className={`px-2 py-1 text-xs border border-border rounded hover:bg-muted ${page === pageCount ? 'bg-primary text-primary-foreground' : ''
+                      className={`px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium border border-border rounded-md hover:bg-muted active:scale-95 transition-all duration-150 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-h-[36px] sm:min-h-[32px] ${page === pageCount ? 'bg-primary text-primary-foreground' : ''
                         }`}
                       onClick={() => setPage(pageCount)}
+                      aria-label={`Page ${pageCount}`}
                     >
                       {pageCount}
                     </button>
@@ -326,24 +346,26 @@ export default function DataTable({
             </div>
 
             <button
-              className="px-2 py-1 text-xs border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium border border-border rounded-md hover:bg-muted active:scale-95 transition-all duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-h-[36px] sm:min-h-[32px]"
               onClick={() => setPage(p => Math.min(pageCount, p + 1))}
               disabled={page === pageCount}
               title="Next page"
+              aria-label="Next page"
             >
               Next
             </button>
             <button
-              className="px-2 py-1 text-xs border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium border border-border rounded-md hover:bg-muted active:scale-95 transition-all duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-h-[36px] sm:min-h-[32px]"
               onClick={() => setPage(pageCount)}
               disabled={page === pageCount}
               title="Last page"
+              aria-label="Last page"
             >
               Last
             </button>
 
-            {/* Direct page jump input */}
-            <div className="flex items-center gap-1">
+            {/* Direct page jump input - Hidden on mobile */}
+            <div className="hidden sm:flex items-center gap-1">
               <span className="text-xs text-muted-foreground">Go to:</span>
               <input
                 type="number"
@@ -360,11 +382,12 @@ export default function DataTable({
                     }
                   }
                 }}
-                className="w-12 h-7 px-1 text-xs text-center border border-border rounded focus:ring-1 focus:ring-ring outline-none"
+                className="w-14 h-8 px-2 text-xs text-center border border-border rounded-md focus:ring-2 focus:ring-ring focus:border-transparent outline-none min-h-[32px]"
                 placeholder={page.toString()}
+                aria-label="Go to page number"
               />
               <button
-                className="px-2 py-1 text-xs border border-border rounded hover:bg-muted"
+                className="px-3 py-1.5 text-xs font-medium border border-border rounded-md hover:bg-muted active:scale-95 transition-all duration-150 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-h-[32px]"
                 onClick={() => {
                   const pageNum = parseInt(pageInput)
                   if (pageNum >= 1 && pageNum <= pageCount) {
@@ -373,6 +396,7 @@ export default function DataTable({
                   }
                 }}
                 title="Jump to page"
+                aria-label="Jump to page"
               >
                 Go
               </button>

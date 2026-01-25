@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { useCallback } from "react"
 import toast from "react-hot-toast"
 import BuyingForm from "@/components/forms/buying-form"
+import { Package } from "lucide-react"
 
 export default function NewBuyingPage() {
   const router = useRouter()
@@ -22,10 +23,18 @@ export default function NewBuyingPage() {
   }, [router])
 
   return (
-    <div className="mx-auto max-w-[1200px] p-4">
-      <header className="mb-6">
-        <h1 className="text-lg font-semibold">New Buying</h1>
-        <p className="text-sm text-muted-foreground">Create a new buying entry with products and payments.</p>
+    <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+      {/* Enhanced Header */}
+      <header className="bg-card border border-border rounded-lg p-6 shadow-sm mb-6">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Package className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">New Buying</h1>
+            <p className="text-sm text-muted-foreground mt-1">Create a new buying entry with products and payments.</p>
+          </div>
+        </div>
       </header>
 
       <BuyingForm onSave={handleSave} />

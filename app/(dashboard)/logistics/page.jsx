@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import toast from "react-hot-toast"
 import DataTable from "@/components/data-table"
+import { Phone, Mail } from "lucide-react"
 
 export default function LogisticsPage() {
   const [companies, setCompanies] = useState([])
@@ -69,11 +70,19 @@ export default function LogisticsPage() {
         render: (row) => {
           const contact = row.contactInfo || {}
           return (
-            <div className="text-sm">
+            <div className="text-sm space-y-1">
               {contact.phone && (
-                <div>📞 {contact.phoneAreaCode ? `${contact.phoneAreaCode}-` : ''}{contact.phone}</div>
+                <div className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <span>{contact.phoneAreaCode ? `${contact.phoneAreaCode}-` : ''}{contact.phone}</span>
+                </div>
               )}
-              {contact.email && <div>✉️ {contact.email}</div>}
+              {contact.email && (
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <span>{contact.email}</span>
+                </div>
+              )}
               {!contact.phone && !contact.email && <span className="text-muted-foreground">No contact info</span>}
             </div>
           )

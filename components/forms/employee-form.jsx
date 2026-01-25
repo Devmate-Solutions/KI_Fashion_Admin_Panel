@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Users, Loader2 } from "lucide-react"
 
 const PERMISSIONS = [
   { value: 'users', label: 'Users' },
@@ -125,131 +127,174 @@ export function EmployeeForm({ open, onClose, onSubmit, initialData = null, load
     }
   }
 
-  if (!open) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md bg-card rounded-lg shadow-xl p-6 mx-4 max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-semibold mb-4">{initialData ? 'Edit Employee' : 'Add New Employee'}</h2>
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Users className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <DialogTitle className="text-xl font-semibold">
+                {initialData ? 'Edit Employee' : 'Add New Employee'}
+              </DialogTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                {initialData ? 'Update employee information and permissions' : 'Create a new employee account with role and permissions'}
+              </p>
+            </div>
+          </div>
+        </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="name">Name *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => handleChange('name', e.target.value)}
-              className={errors.name ? 'border-red-500' : ''}
-            />
-            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+        <form onSubmit={handleSubmit} className="space-y-5 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-sm font-semibold">Name <span className="text-red-500">*</span></Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => handleChange('name', e.target.value)}
+                className={`h-11 ${errors.name ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
+                placeholder="Enter employee name"
+              />
+              {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-semibold">Email <span className="text-red-500">*</span></Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleChange('email', e.target.value)}
+                className={`h-11 ${errors.email ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
+                placeholder="Enter email address"
+              />
+              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+            </div>
           </div>
 
-          <div>
-            <Label htmlFor="email">Email *</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleChange('email', e.target.value)}
-              className={errors.email ? 'border-red-500' : ''}
-            />
-            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="role" className="text-sm font-semibold">Role <span className="text-red-500">*</span></Label>
+              <Select value={formData.role} onValueChange={(value) => handleChange('role', value)}>
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="manager">Manager</SelectItem>
+                  <SelectItem value="employee">Employee</SelectItem>
+                  <SelectItem value="accountant">Accountant</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone" className="text-sm font-semibold">Phone</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => handleChange('phone', e.target.value)}
+                className="h-11"
+                placeholder="Enter phone number"
+              />
+            </div>
           </div>
 
-          <div>
-            <Label htmlFor="role">Role *</Label>
-            <Select value={formData.role} onValueChange={(value) => handleChange('role', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="manager">Manager</SelectItem>
-                <SelectItem value="employee">Employee</SelectItem>
-                <SelectItem value="accountant">Accountant</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="phone">Phone</Label>
-            <Input
-              id="phone"
-              value={formData.phone}
-              onChange={(e) => handleChange('phone', e.target.value)}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="address">Address</Label>
+          <div className="space-y-2">
+            <Label htmlFor="address" className="text-sm font-semibold">Address</Label>
             <Input
               id="address"
               value={formData.address}
               onChange={(e) => handleChange('address', e.target.value)}
+              className="h-11"
+              placeholder="Enter address"
             />
           </div>
 
           {!initialData && (
-            <>
-              <div>
-                <Label htmlFor="password">Password *</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-sm font-semibold">Password <span className="text-red-500">*</span></Label>
                 <Input
                   id="password"
                   type="password"
                   value={formData.password}
                   onChange={(e) => handleChange('password', e.target.value)}
-                  className={errors.password ? 'border-red-500' : ''}
+                  className={`h-11 ${errors.password ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
+                  placeholder="Enter password"
                 />
-                {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+                {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
               </div>
 
-              <div>
-                <Label htmlFor="confirmPassword">Confirm Password *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-sm font-semibold">Confirm Password <span className="text-red-500">*</span></Label>
                 <Input
                   id="confirmPassword"
                   type="password"
                   value={formData.confirmPassword}
                   onChange={(e) => handleChange('confirmPassword', e.target.value)}
-                  className={errors.confirmPassword ? 'border-red-500' : ''}
+                  className={`h-11 ${errors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
+                  placeholder="Confirm password"
                 />
-                {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
+                {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
               </div>
-            </>
+            </div>
           )}
 
-          <div>
-            <Label>Permissions</Label>
-            <div className="grid grid-cols-2 gap-2 mt-2 p-3 border rounded-md">
-              {PERMISSIONS.map((permission) => (
-                <div key={permission.value} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`permission-${permission.value}`}
-                    checked={formData.permissions.includes(permission.value)}
-                    onCheckedChange={() => handlePermissionToggle(permission.value)}
-                  />
-                  <Label
-                    htmlFor={`permission-${permission.value}`}
-                    className="text-sm font-normal cursor-pointer"
-                  >
-                    {permission.label}
-                  </Label>
-                </div>
-              ))}
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Permissions</Label>
+            <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+              <div className="grid grid-cols-2 gap-3">
+                {PERMISSIONS.map((permission) => (
+                  <div key={permission.value} className="flex items-center space-x-2.5 group">
+                    <Checkbox
+                      id={`permission-${permission.value}`}
+                      checked={formData.permissions.includes(permission.value)}
+                      onCheckedChange={() => handlePermissionToggle(permission.value)}
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor={`permission-${permission.value}`}
+                      className="text-sm font-medium cursor-pointer text-foreground group-hover:text-primary transition-colors"
+                    >
+                      {permission.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="flex gap-2 justify-end pt-4">
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Saving...' : initialData ? 'Update' : 'Create'}
-            </Button>
-          </div>
+        <DialogFooter className="gap-3 pt-4 border-t border-border/60">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onClose} 
+            disabled={loading}
+            className="h-10 px-5"
+          >
+            Cancel
+          </Button>
+          <Button 
+            type="submit" 
+            disabled={loading}
+            className="h-10 px-5 gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              initialData ? 'Update Employee' : 'Create Employee'
+            )}
+          </Button>
+        </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

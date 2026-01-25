@@ -25,11 +25,13 @@ export default function CashTrackingPage() {
   const cashOutTransactions = transactions.filter(t => t.type === 'cash_out')
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4">
-      <div className="pb-4">
-        <h1 className="text-lg font-semibold tracking-tight">Daily Cash Tracking</h1>
-        <p className="text-sm text-muted-foreground">Track cash flow on a daily basis</p>
-      </div>
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Daily Cash Tracking</h1>
+          <p className="text-sm text-muted-foreground">Track cash flow on a daily basis</p>
+        </div>
+      </header>
 
       {/* Date Selector */}
       <Card className="mb-6">

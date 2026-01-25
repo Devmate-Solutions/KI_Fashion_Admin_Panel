@@ -89,16 +89,16 @@ export default function CostTypesPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Cost Types</h1>
-          <p className="text-sm text-gray-500">Manage expense categories (A1=Meals, B1=Marketing, etc.)</p>
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Cost Types</h1>
+          <p className="text-sm text-muted-foreground">Manage expense categories (A1=Meals, B1=Marketing, etc.)</p>
         </div>
-        <Button onClick={() => setOpenAddForm(true)}>
+        <Button onClick={() => setOpenAddForm(true)} className="h-9 sm:h-10">
           Add Cost Type
         </Button>
-      </div>
+      </header>
 
       <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
         <h3 className="font-semibold mb-2">Cost Type ID Format</h3>

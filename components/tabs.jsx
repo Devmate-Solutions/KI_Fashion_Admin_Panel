@@ -22,10 +22,10 @@ export default function Tabs({ tabs, defaultTab = 0, activeTab, onTabChange, cla
               aria-selected={selected}
               aria-controls={`${idBase}-panel-${i}`}
               onClick={() => setCurrent(i)}
-              className={`px-3 py-2 text-sm rounded-t-[4px] border-b-2 -mb-px ${
+              className={`px-4 py-2.5 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-all duration-200 ease-in-out ${
                 selected
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+                  ? "border-primary text-foreground bg-primary/5"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
               }`}
             >
               {t.label}
@@ -42,7 +42,9 @@ export default function Tabs({ tabs, defaultTab = 0, activeTab, onTabChange, cla
             id={`${idBase}-panel-${i}`}
             aria-labelledby={`${idBase}-tab-${i}`}
             hidden={hidden}
-            className="pt-4"
+            className={`pt-4 transition-all duration-300 ease-in-out ${
+              hidden ? "opacity-0 hidden" : "opacity-100 animate-in fade-in slide-in-from-top-2"
+            }`}
           >
             {!hidden && t.content}
           </section>

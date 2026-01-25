@@ -101,16 +101,16 @@ export default function DeliveryPersonnelPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Delivery Personnel</h1>
-          <p className="text-sm text-gray-500">Manage delivery staff and track performance</p>
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Delivery Personnel</h1>
+          <p className="text-sm text-muted-foreground">Manage delivery staff and track performance</p>
         </div>
-        <Button onClick={() => setOpenAddForm(true)}>
+        <Button onClick={() => setOpenAddForm(true)} className="h-9 sm:h-10">
           Add Delivery Personnel
         </Button>
-      </div>
+      </header>
 
       <DataTable
         columns={columns}

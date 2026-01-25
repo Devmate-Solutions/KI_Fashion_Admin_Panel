@@ -180,13 +180,11 @@ export default function SetupPage() {
   )
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4">
-      <header className="mb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold">Setup</h1>
-            <p className="text-sm text-muted-foreground">Manage buyers and suppliers.</p>
-          </div>
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Setup</h1>
+          <p className="text-sm text-muted-foreground">Manage buyers and suppliers.</p>
         </div>
       </header>
 
