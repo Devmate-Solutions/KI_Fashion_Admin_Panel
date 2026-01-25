@@ -5,9 +5,9 @@ import { authService } from '../lib/api/services/auth';
  * This is like a global variable that all components can access
  */
 export const useAuthStore = create((set, get) => ({
-  // Initial state
+  // Initial state - isLoading starts true to prevent premature redirects on hard refresh
   user: null,
-  isLoading: false,
+  isLoading: true,
   isAuthenticated: false,
   error: null,
 

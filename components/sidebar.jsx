@@ -33,6 +33,8 @@ const items = [
   { href: "/expenses", label: "Expenses", icon: FileText },
   { href: "/customer-ledger", label: "Customer Ledger", icon: BookUser },
   { href: "/supplier-ledger", label: "Supplier Ledger", icon: Users },
+  { type: "separator", label: "Reports & Analytics" },
+  { href: "/reports", label: "Reports", icon: BarChart3 },
   { type: "separator", label: "Operations" },
   // { href: "/daily-report-form", label: "Daily Reports", icon: ClipboardList },
   { href: "/logistics", label: "Logistics", icon: Truck },
@@ -43,7 +45,6 @@ const items = [
   { href: "/users", label: "User Management", icon: UserCog },
   // { href: "/delivery-personnel", label: "Delivery Staff", icon: Truck },
   { href: "/cost-types", label: "Cost Config", icon: DollarSign },
-  // { href: "/reports", label: "System Reports", icon: BarChart3 },
 ];
 
 export default function Sidebar() {

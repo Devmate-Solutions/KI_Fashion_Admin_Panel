@@ -4,11 +4,15 @@ import { useMemo, useState } from "react"
 import Tabs from "@/components/tabs"
 import DataTable from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { useSales, useDeleteSale } from "@/lib/hooks/useSales"
 import { useSaleReturns } from "@/lib/hooks/useSaleReturns"
+import { useBuyers } from "@/lib/hooks/useBuyers"
 import SaleReturnDetailModal from "@/components/modals/SaleReturnDetailModal"
+import CustomerPaymentModal from "@/components/modals/CustomerPaymentModal"
 import ProductImageGallery from "@/components/ui/ProductImageGallery"
+import { Plus } from "lucide-react"
 
 // Helper to get image array from various sources
 const getImageArray = (item) => {
@@ -28,9 +32,13 @@ function currency(n) {
 
 export default function SellingPage() {
   const router = useRouter()
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false)
 
   // Fetch sales data
   const { data: sellingRows = [], isLoading: salesLoading } = useSales()
+
+  // Fetch buyers for payment modal
+  const { data: buyers = [] } = useBuyers({ limit: 100 })
 
   // Mutations
   const deleteSaleMutation = useDeleteSale()
@@ -46,7 +54,16 @@ export default function SellingPage() {
               {row.date ? new Date(row.date).toLocaleDateString('en-GB') : "—"}
             </span>
             {row._original?.saleNumber && (
-              <span className="text-xs text-muted-foreground">SN {row._original.saleNumber}</span>
+              <a
+                href={`/selling/${row.id}`}
+                className="text-xs text-blue-600 hover:underline mt-1"
+                onClick={(e) => {
+                  e.preventDefault()
+                  router.push(`/selling/${row.id}`)
+                }}
+              >
+                SN {row._original.saleNumber}
+              </a>
             )}
             {row._original?.isManualSale && (
               <Badge className="bg-blue-500/15 text-blue-600 border-blue-200 text-xs mt-1 w-fit">
@@ -79,13 +96,19 @@ export default function SellingPage() {
                         images={getImageArray(item)}
                         alt={item.product?.name || item.productCode || "Product"}
                         size="sm"
-                        maxVisible={2}
+                        maxVisible={1}
                         showCount={true}
                       />
                       <div className="text-xs leading-tight">
                         <div className="font-semibold text-sm">{item.product?.name || item.productCode || "—"}</div>
-                        {item.product?.sku && (
-                          <div className="text-muted-foreground">SKU: {item.product.sku}</div>
+                        {item.isPacketSale ? (
+                          <div className="text-[10px] text-blue-600 font-medium">
+                            Packet: {item.packetBarcode || '—'}
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-amber-600 font-medium">
+                            Loose Item
+                          </div>
                         )}
                         <div className="text-muted-foreground/70">
                           Qty: {item.quantity || 0} × {currency(item.unitPrice || 0)}
@@ -150,10 +173,9 @@ export default function SellingPage() {
     router.push('/selling/new')
   }
 
-  // Handle Edit Sale
+  // Handle Edit Sale - Navigate to detail page
   function handleEdit(sale) {
-    console.log('Edit sale:', sale)
-    alert('Edit functionality will be available soon. Please create a new sale for now.')
+    router.push(`/selling/${sale.id}`)
   }
 
   // Handle Delete Sale
@@ -193,11 +215,11 @@ export default function SellingPage() {
             </span>
             {r.sale?._id && (
               <a
-                href={`/selling`}
+                href={`/selling/${r.sale._id}`}
                 className="text-xs text-blue-600 hover:underline mt-1"
                 onClick={(e) => {
                   e.preventDefault()
-                  // Could navigate to sale detail if we had that page
+                  router.push(`/selling/${r.sale._id}`)
                 }}
               >
                 View Sale →
@@ -292,6 +314,14 @@ export default function SellingPage() {
             <p className="text-sm text-muted-foreground">Manage customer sales and monitor payment status.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <Button 
+              onClick={() => setPaymentModalOpen(true)} 
+              className="bg-green-600 hover:bg-green-700 text-white text-sm"
+              size="sm"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Add Payment
+            </Button>
             <div className="flex items-center gap-2 rounded-full border border-border px-3 py-1">
               <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
               <span>Backend connected</span>
@@ -316,15 +346,13 @@ export default function SellingPage() {
                     columns={sellingColumns}
                     data={sellingRows}
                     onAddNew={handleAddNew}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
                     loading={salesLoading}
                   />
                 </div>
               </div>
             ),
           },
-          {
+          /* {
             label: "Returns",
             content: (
               <div className="space-y-4">
@@ -336,7 +364,7 @@ export default function SellingPage() {
                 />
               </div>
             ),
-          },
+          }, */
         ]}
       />
 
@@ -348,6 +376,16 @@ export default function SellingPage() {
         returnData={selectedReturn}
         onAction={() => {
           // Refresh data will be handled by query invalidation in hooks
+        }}
+      />
+
+      {/* Customer Payment Modal */}
+      <CustomerPaymentModal
+        open={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        entities={buyers}
+        onSuccess={() => {
+          // Data refresh handled by query invalidation in the modal
         }}
       />
     </div>

@@ -4,19 +4,30 @@ import { useState, useMemo } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Combobox } from "@/components/ui/combobox"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import DataTable from "../../../components/data-table"
 import { useBuyers, useBuyer } from "@/lib/hooks/useBuyers"
 import { useBuyerLedger, useAllBuyerLedgers } from "@/lib/hooks/useLedger"
 import { ledgerAPI } from "@/lib/api/endpoints/ledger"
+import { paymentAPI } from "@/lib/api/endpoints/payments"
 import { salesAPI } from "@/lib/api/endpoints/sales"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { Loader2 } from "lucide-react"
+import { Loader2, Plus, Printer, RotateCcw, Receipt, FileText, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import toast from "react-hot-toast"
 import Tabs from "@/components/tabs"
+import CustomerPaymentModal from "@/components/modals/CustomerPaymentModal"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
 
 function formatNumber(n) {
   const num = Number(n || 0)
@@ -33,23 +44,21 @@ function formatDateTime(_date) {
 }
 
 export default function CustomerLedgerPage() {
-  const [selectedBuyerId, setSelectedBuyerId] = useState("")
-  const [selectedSaleId, setSelectedSaleId] = useState("none")
-  const [activeTab, setActiveTab] = useState(0) // 0: Ledger, 1: Pending Payments, 2: Payment History
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false)
-
-  // Forms
-  const [paymentForm, setPaymentForm] = useState({
-    amount: '',
-    date: '',
-    description: '',
-    method: 'cash'
-  })
-
-  // Filters for Ledger Tab
+  const [selectedBuyerId, setSelectedBuyerId] = useState("all")
   const [ledgerBuyerFilter, setLedgerBuyerFilter] = useState("")
-  const [ledgerFilterBy, setLedgerFilterBy] = useState("all")
+  const [activeTab, setActiveTab] = useState(0) // 0: Ledger, 1: Payment History, 2: Payment Receipts
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false)
+
+  // Reversal dialog state
+  const [reversalDialogOpen, setReversalDialogOpen] = useState(false)
+  const [selectedPayment, setSelectedPayment] = useState(null)
+  const [reversalReason, setReversalReason] = useState('')
+  const [isReversing, setIsReversing] = useState(false)
+
+  // Receipt dialog state
+  const [receiptDialogOpen, setReceiptDialogOpen] = useState(false)
+  const [receiptData, setReceiptData] = useState(null)
+  const [isLoadingReceipt, setIsLoadingReceipt] = useState(false)
 
   // Filters for Payment History Tab
   const [paymentHistoryDateFrom, setPaymentHistoryDateFrom] = useState("")
@@ -62,13 +71,22 @@ export default function CustomerLedgerPage() {
   const { data: buyers = [], isLoading: buyersLoading } = useBuyers({ limit: 100 })
   const dropdownBuyers = buyers
 
-  // Fetch ledger entries for Tab 1 (when buyer selected)
+  const comboboxOptions = useMemo(() => {
+    const options = dropdownBuyers.map(b => ({
+      value: b.id,
+      label: `${b.name}${b.company ? ` (${b.company})` : ''}`,
+    }))
+    // Add "All Customers" option at the beginning
+    return [{ value: 'all', label: 'All Customers' }, ...options]
+  }, [dropdownBuyers])
+
+  // Fetch ledger entries for Tab 0 (when buyer selected)
   const ledgerFilterParams = useMemo(() => {
-    if (!ledgerBuyerFilter || ledgerBuyerFilter === 'all') {
+    if (!selectedBuyerId || selectedBuyerId === 'all') {
       return null
     }
-    return { buyerId: ledgerBuyerFilter, limit: 100 }
-  }, [ledgerBuyerFilter])
+    return { buyerId: selectedBuyerId, limit: 100 }
+  }, [selectedBuyerId])
 
   const { data: allLedgerData, isLoading: allLedgerLoading } = useAllBuyerLedgers(ledgerFilterParams || {})
 
@@ -93,12 +111,6 @@ export default function CustomerLedgerPage() {
     enabled: !!selectedBuyerId && selectedBuyerId !== 'all'
   })
 
-  // Get selected sale details
-  const selectedSale = useMemo(() => {
-    if (!selectedSaleId || selectedSaleId === 'none') return null
-    return unpaidSales.find(sale => sale._id === selectedSaleId)
-  }, [selectedSaleId, unpaidSales])
-
   // Payment History Data (Tab 3)
   const paymentHistoryParams = useMemo(() => {
     if (!selectedBuyerId || selectedBuyerId === 'all') return null
@@ -106,6 +118,24 @@ export default function CustomerLedgerPage() {
   }, [selectedBuyerId])
 
   const { data: paymentHistoryData, isLoading: paymentHistoryLoading } = useAllBuyerLedgers(paymentHistoryParams || {})
+
+  // Payment Receipts Data (Tab 2) - Using new Payment model
+  const { data: paymentReceiptsData, isLoading: paymentReceiptsLoading, refetch: refetchPayments } = useQuery({
+    queryKey: ['payments', 'customer', selectedBuyerId],
+    queryFn: async () => {
+      if (!selectedBuyerId) return { payments: [] }
+      if (selectedBuyerId === 'all') {
+        // Fetch all customer payments
+        const response = await paymentAPI.getAllPayments({ limit: 500 })
+        console.log('All payments response:', response)
+        // Response structure: { data: { success: true, data: { payments, pagination } } }
+        return response.data?.data || response.data || { payments: [] }
+      }
+      const response = await paymentAPI.getCustomerPayments(selectedBuyerId, { limit: 100 })
+      return response.data?.data || response.data || { payments: [] }
+    },
+    enabled: !!selectedBuyerId
+  })
 
   // --- Calculations ---
 
@@ -126,7 +156,7 @@ export default function CustomerLedgerPage() {
   }, [unpaidSales])
 
 
-  // Transform ledger data for Tab 1 (All Transactions)
+  // Transform ledger data for Tab 0 (All Transactions)
   const allLedgerTransactions = useMemo(() => {
     if (!allLedgerData?.entries) return []
 
@@ -135,15 +165,6 @@ export default function CustomerLedgerPage() {
       entry.transactionType === 'receipt' ||
       entry.transactionType === 'adjustment'
     )
-
-    // Apply Filters
-    if (ledgerFilterBy !== 'all') {
-      filteredEntries = filteredEntries.filter(entry => {
-        if (ledgerFilterBy === 'cash') return entry.transactionType === 'receipt' && entry.paymentMethod === 'cash'
-        if (ledgerFilterBy === 'bank') return entry.transactionType === 'receipt' && entry.paymentMethod === 'bank'
-        return true
-      })
-    }
 
     const mappedItems = filteredEntries.map(entry => {
       const buyer = entry.entityId || {}
@@ -202,7 +223,7 @@ export default function CustomerLedgerPage() {
 
     // Reverse to show newest first
     return mappedItems.reverse()
-  }, [allLedgerData, ledgerFilterBy])
+  }, [allLedgerData])
 
   // Payment History Transactions (Tab 3)
   const paymentHistoryTransactions = useMemo(() => {
@@ -248,83 +269,198 @@ export default function CustomerLedgerPage() {
     })
   }, [paymentHistoryData, paymentHistoryDateFrom, paymentHistoryDateTo, paymentHistoryMethodFilter])
 
+  // Payment Receipts Transactions (from Payment model)
+  const paymentReceiptsTransactions = useMemo(() => {
+    if (!paymentReceiptsData?.payments) return []
+    
+    return paymentReceiptsData.payments.map(payment => ({
+      id: payment._id,
+      paymentNumber: payment.paymentNumber,
+      date: payment.createdAt || payment.paymentDate,
+      totalAmount: payment.totalAmount,
+      paymentMethod: payment.paymentMethod,
+      paymentDirection: payment.paymentDirection || 'credit',
+      debitReason: payment.debitReason || null,
+      cashAmount: payment.cashAmount || 0,
+      bankAmount: payment.bankAmount || 0,
+      salesAffected: payment.distributions?.filter(d => !d.isAdvance).length || 0,
+      advanceAmount: payment.advanceAmount || 0,
+      balanceBefore: payment.balanceBefore,
+      balanceAfter: payment.balanceAfter,
+      status: payment.status,
+      createdBy: payment.createdBy?.name || 'Unknown',
+      description: payment.description || '-',
+      reversalInfo: payment.reversalInfo,
+      customerName: payment.customerId?.name || payment.customerId?.company || 'Unknown',
+      customerId: payment.customerId?._id || payment.customerId,
+      raw: payment
+    }))
+  }, [paymentReceiptsData])
 
-  // --- Handlers ---
+  // Handle payment reversal
+  const handleOpenReversalDialog = (payment) => {
+    setSelectedPayment(payment)
+    setReversalReason('')
+    setReversalDialogOpen(true)
+  }
 
-  const handleAddPayment = async () => {
-    if (!selectedBuyerId || selectedBuyerId === 'all') {
-      toast.error('Please select a customer first')
+  const handleReversePayment = async () => {
+    if (!selectedPayment || !reversalReason.trim()) {
+      toast.error('Please provide a reason for reversal')
       return
     }
 
-    const amount = parseFloat(paymentForm.amount)
-    if (!amount || amount <= 0) {
-      toast.error('Please enter a valid amount')
-      return
-    }
-
-    setIsSubmittingPayment(true)
-
+    setIsReversing(true)
     try {
-      const payload = {
-        type: 'buyer',
-        entityId: selectedBuyerId,
-        entityModel: 'Buyer',
-        transactionType: 'receipt', // Money IN
-        debit: 0,
-        credit: amount,
-        date: paymentForm.date ? new Date(paymentForm.date) : new Date(),
-        description: paymentForm.description || `Payment Received - ${paymentForm.method}`,
-        paymentMethod: paymentForm.method,
-        paymentDetails: {
-          cashPayment: paymentForm.method === 'cash' ? amount : 0,
-          bankPayment: paymentForm.method === 'bank' ? amount : 0,
-          remainingBalance: 0
-        }
-      }
-
-      if (selectedSaleId && selectedSaleId !== 'none' && selectedSale) {
-        payload.referenceId = selectedSaleId
-        payload.referenceModel = 'Sale'
-        payload.description = paymentForm.description || `Payment for ${selectedSale.saleNumber} - ${paymentForm.method}`
-
-        // Also update the Sale paymentStatus/paidAmount via salesAPI if needed
-        // But usually Ledger is SSOT. 
-        // Note: sales.js (legacy) might need update, but ledger entry should suffice if SSOT.
-        // sales.js router.post('/entry') handles syncing 'paid' status if reference is DispatchOrder.
-        // Does it do it for Sale?
-        // Let's check ledger.js router.post('/entry').
-        // It handles DispatchOrder payments. It does NOT seem to handle Sale receipts automatically updating Sale model.
-        // We might need to call salesAPI.updatePayment as well or rely on a background sync.
-        // For now, let's just create the ledger entry.
-      }
-
-      await ledgerAPI.createEntry(payload)
-
-      // If linked to a sale, update the sale's payment status directly for immediate feedback
-      // (Optimistic update or separate API call)
-      if (selectedSaleId && selectedSaleId !== 'none') {
-        // Optionally call salesAPI.updatePayment if backend doesn't sync automatically
-        // But for now we assume Ledger is primary.
-      }
-
-      toast.success('Payment recorded successfully')
-      setPaymentForm({ amount: '', date: '', description: '', method: 'cash' })
-      setSelectedSaleId('none')
-      setIsDialogOpen(false)
-
-      queryClient.invalidateQueries({ queryKey: ['unpaid-sales', selectedBuyerId] })
-      queryClient.invalidateQueries({ queryKey: ['buyer', selectedBuyerId] }) // Refresh buyer details
-      // Trigger ledgers refresh
+      await paymentAPI.reversePayment(selectedPayment.paymentNumber, reversalReason.trim())
+      toast.success(`Payment ${selectedPayment.paymentNumber} has been reversed`)
+      
+      // Refresh data
+      refetchPayments()
       queryClient.invalidateQueries({ queryKey: ['ledger'] })
-
+      queryClient.invalidateQueries({ queryKey: ['buyers'] })
+      queryClient.invalidateQueries({ queryKey: ['sales'] })
+      
+      setReversalDialogOpen(false)
+      setSelectedPayment(null)
+      setReversalReason('')
     } catch (error) {
-      console.error('Error recording payment:', error)
-      toast.error(error.response?.data?.message || 'Failed to record payment')
+      console.error('Error reversing payment:', error)
+      toast.error(error.response?.data?.message || 'Failed to reverse payment')
     } finally {
-      setIsSubmittingPayment(false)
+      setIsReversing(false)
     }
   }
+
+  // Handle view/print receipt
+  const handleViewReceipt = async (payment) => {
+    setIsLoadingReceipt(true)
+    try {
+      const response = await paymentAPI.getPaymentReceipt(payment.paymentNumber)
+      setReceiptData(response.data?.data)
+      setReceiptDialogOpen(true)
+    } catch (error) {
+      console.error('Error fetching receipt:', error)
+      toast.error('Failed to load receipt')
+    } finally {
+      setIsLoadingReceipt(false)
+    }
+  }
+
+  // Print receipt function
+  const handlePrintReceipt = () => {
+    if (!receiptData) return
+
+    const printWindow = window.open('', '_blank')
+    const printContent = generateReceiptHTML(receiptData)
+    printWindow.document.write(printContent)
+    printWindow.document.close()
+    printWindow.focus()
+    setTimeout(() => {
+      printWindow.print()
+    }, 250)
+  }
+
+  // Generate receipt HTML for printing
+  const generateReceiptHTML = (receipt) => {
+    const distributionRows = receipt.distributions
+      .map(d => `
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${d.reference}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">£${d.amount.toFixed(2)}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${d.isAdvance ? 'Advance' : 'Applied'}</td>
+        </tr>
+      `).join('')
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Payment Receipt - ${receipt.receiptNumber}</title>
+        <style>
+          body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+          .header h1 { margin: 0; font-size: 24px; }
+          .header p { margin: 5px 0; color: #666; }
+          .receipt-info { display: flex; justify-content: space-between; margin-bottom: 20px; }
+          .info-box { background: #f5f5f5; padding: 15px; border-radius: 8px; }
+          .info-box h3 { margin: 0 0 10px 0; font-size: 14px; color: #666; }
+          .info-box p { margin: 5px 0; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th { background: #333; color: white; padding: 10px; text-align: left; }
+          .totals { margin-top: 20px; text-align: right; }
+          .totals p { margin: 5px 0; }
+          .totals .total { font-size: 18px; font-weight: bold; }
+          .status-badge { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 12px; }
+          .status-active { background: #dcfce7; color: #166534; }
+          .status-reversed { background: #fee2e2; color: #991b1b; }
+          .footer { margin-top: 40px; text-align: center; color: #666; font-size: 12px; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>PAYMENT RECEIPT</h1>
+          <p>KI Fashion</p>
+        </div>
+        
+        <div class="receipt-info">
+          <div class="info-box">
+            <h3>Receipt Details</h3>
+            <p><strong>Receipt #:</strong> ${receipt.receiptNumber}</p>
+            <p><strong>Date:</strong> ${formatDateTime({ date: receipt.date })}</p>
+            <p><strong>Payment Method:</strong> ${receipt.payment.paymentMethod.toUpperCase()}</p>
+            <p><strong>Status:</strong> <span class="status-badge ${receipt.status === 'active' ? 'status-active' : 'status-reversed'}">${receipt.status.toUpperCase()}</span></p>
+          </div>
+          
+          <div class="info-box">
+            <h3>Customer Details</h3>
+            <p><strong>${receipt.customer.name}</strong></p>
+            ${receipt.customer.company ? `<p>${receipt.customer.company}</p>` : ''}
+            ${receipt.customer.email ? `<p>${receipt.customer.email}</p>` : ''}
+            ${receipt.customer.phone ? `<p>${receipt.customer.phone}</p>` : ''}
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Reference</th>
+              <th style="text-align: right;">Amount</th>
+              <th>Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${distributionRows}
+          </tbody>
+        </table>
+
+        <div class="totals">
+          <p><strong>Balance Before:</strong> £${receipt.balances.before.toFixed(2)}</p>
+          <p class="total"><strong>Total Received:</strong> £${receipt.payment.totalAmount.toFixed(2)}</p>
+          <p><strong>Balance After:</strong> £${receipt.balances.after.toFixed(2)}</p>
+        </div>
+
+        ${receipt.notes ? `<p><strong>Notes:</strong> ${receipt.notes}</p>` : ''}
+
+        ${receipt.reversal ? `
+          <div style="margin-top: 20px; padding: 15px; background: #fee2e2; border-radius: 8px;">
+            <p><strong>REVERSED</strong></p>
+            <p>Date: ${formatDateTime({ date: receipt.reversal.reversedAt })}</p>
+            <p>Reason: ${receipt.reversal.reason}</p>
+          </div>
+        ` : ''}
+
+        <div class="footer">
+          <p>Thank you for your payment!</p>
+          <p>Received by: ${receipt.createdBy}</p>
+          <p>Generated: ${new Date().toLocaleString('en-GB')}</p>
+        </div>
+      </body>
+      </html>
+    `
+  }
+
 
   // --- Columns ---
 
@@ -378,19 +514,6 @@ export default function CustomerLedgerPage() {
           {row.paymentStatus.toUpperCase()}
         </Badge>
       )
-    },
-    {
-      header: "Action", accessor: "action", render: (row) => (
-        <Button size="sm" variant="outline" onClick={() => {
-          setSelectedSaleId(row._id)
-          const paid = (row.cashPayment || 0) + (row.bankPayment || 0)
-          const remaining = row.grandTotal - paid
-          setPaymentForm(prev => ({ ...prev, amount: remaining.toString() }))
-          setIsDialogOpen(true)
-        }}>
-          Receive Payment
-        </Button>
-      )
     }
   ], [])
 
@@ -404,10 +527,511 @@ export default function CustomerLedgerPage() {
     { header: "Notes", accessor: "notes", render: (row) => <span className="text-sm text-muted-foreground">{row.notes}</span> }
   ], [])
 
+  const paymentReceiptsColumns = useMemo(() => {
+    const baseColumns = [
+      { 
+        header: "Receipt #", 
+        accessor: "paymentNumber", 
+        render: (row) => (
+          <span className="font-mono font-medium text-blue-600">{row.paymentNumber}</span>
+        )
+      },
+      { header: "Date", accessor: "date", render: (row) => formatDateTime({ date: row.date }) },
+    ]
+
+    // Add Customer column when viewing all customers
+    if (selectedBuyerId === 'all') {
+      baseColumns.push({
+        header: "Customer",
+        accessor: "customerName",
+        render: (row) => (
+          <span className="font-medium">{row.customerName}</span>
+        )
+      })
+    }
+
+    const remainingColumns = [
+      { 
+        header: "Type",
+        accessor: "paymentDirection",
+        render: (row) => (
+          <Badge variant={row.paymentDirection === 'debit' ? 'destructive' : 'success'} className="capitalize">
+            {row.paymentDirection === 'debit' ? 'Debit' : 'Credit'}
+          </Badge>
+        )
+      },
+      { 
+        header: "Debit", 
+        accessor: "debitAmount", 
+        render: (row) => (
+          <span className={row.paymentDirection === 'debit' ? "text-red-600 font-bold" : "text-muted-foreground"}>
+            {row.paymentDirection === 'debit' ? `£${formatNumber(row.totalAmount)}` : '-'}
+          </span>
+        )
+      },
+      { 
+        header: "Credit", 
+        accessor: "creditAmount", 
+        render: (row) => (
+          <span className={row.paymentDirection !== 'debit' ? "text-green-600 font-bold" : "text-muted-foreground"}>
+            {row.paymentDirection !== 'debit' ? `£${formatNumber(row.totalAmount)}` : '-'}
+          </span>
+        )
+      },
+      { 
+        header: "Balance", 
+        accessor: "balanceAfter", 
+        render: (row) => (
+          <span className={`font-bold tabular-nums ${row.balanceAfter > 0 ? 'text-red-600' : row.balanceAfter < 0 ? 'text-green-600' : ''}`}>
+            £{formatNumber(Math.abs(row.balanceAfter))}
+            {row.balanceAfter < 0 && <span className="text-xs ml-1">(CR)</span>}
+          </span>
+        )
+      },
+      { 
+        header: "Method", 
+        accessor: "paymentMethod", 
+        render: (row) => (
+          <Badge variant="outline" className="capitalize">{row.paymentMethod}</Badge>
+        )
+      },
+      { 
+        header: "Status", 
+        accessor: "status", 
+        render: (row) => (
+          <Badge variant={row.status === 'active' ? 'success' : 'destructive'}>
+            {row.status.toUpperCase()}
+          </Badge>
+        )
+      },
+      { header: "By", accessor: "createdBy", render: (row) => row.createdBy },
+      {
+        header: "Actions",
+        accessor: "actions",
+        render: (row) => (
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleViewReceipt(row)}
+              title="View/Print Receipt"
+            >
+              <Printer className="h-4 w-4" />
+            </Button>
+            {row.status === 'active' && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-red-600 hover:text-red-700"
+                onClick={() => handleOpenReversalDialog(row)}
+                title="Reverse Payment"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        )
+      }
+    ]
+
+    return [...baseColumns, ...remainingColumns]
+  }, [selectedBuyerId])
+
+  // Calculate buyer balance map from ledger data for the modal
+  const buyerBalanceMap = useMemo(() => {
+    const balanceMap = {}
+    
+    // Use balance from dropdownBuyers (from API)
+    if (dropdownBuyers && dropdownBuyers.length > 0) {
+      for (const buyer of dropdownBuyers) {
+        const buyerId = String(buyer._id || buyer.id)
+        balanceMap[buyerId] = buyer.balance || 0
+      }
+    }
+    
+    return balanceMap
+  }, [dropdownBuyers])
+
+  // Get selected entity details
+  const selectedEntity = useMemo(() => {
+    if (!selectedBuyerId || selectedBuyerId === 'all') return null
+    return dropdownBuyers.find(b => String(b.id || b._id) === selectedBuyerId)
+  }, [selectedBuyerId, dropdownBuyers])
+
+  // Print Payment Receipts Report
+  const handlePrintPaymentReceiptsReport = () => {
+    if (!paymentReceiptsTransactions.length) {
+      toast.error('No payment receipts to print')
+      return
+    }
+
+    const isAllCustomers = selectedBuyerId === 'all'
+    const activePayments = paymentReceiptsTransactions.filter(p => p.status === 'active')
+    const totalCredits = activePayments.filter(p => p.paymentDirection !== 'debit').reduce((sum, p) => sum + p.totalAmount, 0)
+    const totalDebits = activePayments.filter(p => p.paymentDirection === 'debit').reduce((sum, p) => sum + p.totalAmount, 0)
+    const netTotal = totalCredits - totalDebits
+    const currentBalance = !isAllCustomers && activePayments.length > 0 ? activePayments[0].balanceAfter : 0
+
+    const printWindow = window.open('', '_blank')
+    const reportHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Payment Receipts Report - ${isAllCustomers ? 'All Customers' : (selectedEntity?.name || 'Customer')}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            max-width: 1100px; 
+            margin: 0 auto; 
+            padding: 30px;
+            color: #333;
+          }
+          .header { 
+            text-align: center; 
+            margin-bottom: 30px; 
+            border-bottom: 3px solid #1e40af; 
+            padding-bottom: 20px; 
+          }
+          .logo-section {
+            margin-bottom: 15px;
+          }
+          .logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1e40af;
+            letter-spacing: 2px;
+          }
+          .company-name {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+          }
+          .report-title { 
+            font-size: 24px; 
+            font-weight: bold;
+            margin-top: 15px;
+            color: #1e3a8a;
+          }
+          .report-subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+          }
+          .info-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            gap: 20px;
+          }
+          .info-box { 
+            background: #f8fafc; 
+            padding: 15px 20px; 
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            flex: 1;
+          }
+          .info-box h3 { 
+            font-size: 11px; 
+            color: #64748b; 
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+          }
+          .info-box p { 
+            margin: 4px 0; 
+            font-size: 13px;
+          }
+          .info-box .highlight {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1e40af;
+          }
+          .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+          }
+          .summary-card {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+          }
+          .summary-card .label {
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+          }
+          .summary-card .value {
+            font-size: 20px;
+            font-weight: bold;
+          }
+          .summary-card.green { border-color: #86efac; background: #f0fdf4; }
+          .summary-card.green .value { color: #059669; }
+          .summary-card.red { border-color: #fca5a5; background: #fef2f2; }
+          .summary-card.red .value { color: #dc2626; }
+          .summary-card.amber { border-color: #fcd34d; background: #fffbeb; }
+          .summary-card.amber .value { color: #d97706; }
+          .summary-card.blue { border-color: #93c5fd; background: #eff6ff; }
+          .summary-card.blue .value { color: #1e40af; }
+          table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin: 20px 0;
+            font-size: 11px;
+          }
+          th { 
+            background: #1e40af; 
+            color: white; 
+            padding: 10px 6px; 
+            text-align: left;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 9px;
+            letter-spacing: 0.5px;
+          }
+          td {
+            padding: 8px 6px;
+            border-bottom: 1px solid #e2e8f0;
+          }
+          tr:nth-child(even) {
+            background: #f8fafc;
+          }
+          tr:hover {
+            background: #f1f5f9;
+          }
+          .text-right { text-align: right; }
+          .text-center { text-align: center; }
+          .font-bold { font-weight: bold; }
+          .text-green { color: #059669; }
+          .text-red { color: #dc2626; }
+          .text-muted { color: #94a3b8; }
+          .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+          }
+          .badge-credit { background: #dcfce7; color: #166534; }
+          .badge-debit { background: #fee2e2; color: #991b1b; }
+          .badge-active { background: #dbeafe; color: #1e40af; }
+          .badge-reversed { background: #fef3c7; color: #92400e; }
+          .summary-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f0f9ff;
+            border-radius: 8px;
+            border: 1px solid #bae6fd;
+          }
+          .summary-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #0369a1;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(${isAllCustomers ? '3' : '4'}, 1fr);
+            gap: 15px;
+          }
+          .summary-item {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+          }
+          .summary-item .label {
+            font-size: 10px;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+          }
+          .summary-item .value {
+            font-size: 18px;
+            font-weight: bold;
+          }
+          .footer { 
+            margin-top: 40px; 
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            text-align: center; 
+            color: #94a3b8; 
+            font-size: 11px; 
+          }
+          @media print { 
+            body { padding: 15px; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo-section">
+            <div class="logo">KI FASHION</div>
+            <div class="company-name">Fashion & Textile Solutions</div>
+          </div>
+          <div class="report-title">PAYMENT RECEIPTS REPORT</div>
+          <div class="report-subtitle">${isAllCustomers ? 'All Customers - Summary Report' : 'Statement of Account Transactions'}</div>
+        </div>
+        
+        ${isAllCustomers ? `
+        <!-- Summary Cards for All Customers -->
+        <div class="summary-cards">
+          <div class="summary-card green">
+            <div class="label">Total Credits (Received)</div>
+            <div class="value">£${formatNumber(totalCredits)}</div>
+          </div>
+          <div class="summary-card red">
+            <div class="label">Total Debits (Issued)</div>
+            <div class="value">£${formatNumber(totalDebits)}</div>
+          </div>
+          <div class="summary-card blue">
+            <div class="label">Net Amount</div>
+            <div class="value">£${formatNumber(Math.abs(netTotal))}</div>
+          </div>
+          <div class="summary-card amber">
+            <div class="label">Total Transactions</div>
+            <div class="value">${paymentReceiptsTransactions.length}</div>
+          </div>
+        </div>
+        ` : `
+        <div class="info-section">
+          <div class="info-box">
+            <h3>Customer Details</h3>
+            <p><strong>${selectedEntity?.name || 'N/A'}</strong></p>
+            ${selectedEntity?.company ? `<p>${selectedEntity.company}</p>` : ''}
+            ${selectedEntity?.email ? `<p>${selectedEntity.email}</p>` : ''}
+            ${selectedEntity?.phone ? `<p>${selectedEntity.phone}</p>` : ''}
+          </div>
+          
+          <div class="info-box">
+            <h3>Report Period</h3>
+            <p>All Transactions</p>
+            <p class="highlight">${paymentReceiptsTransactions.length} Records</p>
+          </div>
+          
+          <div class="info-box">
+            <h3>Current Balance</h3>
+            <p class="highlight ${currentBalance > 0 ? 'text-red' : 'text-green'}">
+              £${formatNumber(Math.abs(currentBalance))}
+              ${currentBalance < 0 ? ' (Credit)' : currentBalance > 0 ? ' (Due)' : ''}
+            </p>
+          </div>
+        </div>
+        `}
+
+        <table>
+          <thead>
+            <tr>
+              <th>Receipt #</th>
+              <th>Date</th>
+              ${isAllCustomers ? '<th>Customer</th>' : ''}
+              <th class="text-center">Type</th>
+              <th class="text-right">Debit</th>
+              <th class="text-right">Credit</th>
+              <th class="text-right">Balance</th>
+              <th class="text-center">Method</th>
+              <th class="text-center">Status</th>
+              <th>By</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${paymentReceiptsTransactions.map(row => `
+              <tr>
+                <td><strong>${row.paymentNumber}</strong></td>
+                <td>${formatDateTime({ date: row.date })}</td>
+                ${isAllCustomers ? `<td>${row.customerName}</td>` : ''}
+                <td class="text-center">
+                  <span class="badge ${row.paymentDirection === 'debit' ? 'badge-debit' : 'badge-credit'}">
+                    ${row.paymentDirection === 'debit' ? 'Debit' : 'Credit'}
+                  </span>
+                </td>
+                <td class="text-right ${row.paymentDirection === 'debit' ? 'text-red font-bold' : 'text-muted'}">
+                  ${row.paymentDirection === 'debit' ? '£' + formatNumber(row.totalAmount) : '-'}
+                </td>
+                <td class="text-right ${row.paymentDirection !== 'debit' ? 'text-green font-bold' : 'text-muted'}">
+                  ${row.paymentDirection !== 'debit' ? '£' + formatNumber(row.totalAmount) : '-'}
+                </td>
+                <td class="text-right font-bold ${row.balanceAfter > 0 ? 'text-red' : row.balanceAfter < 0 ? 'text-green' : ''}">
+                  £${formatNumber(Math.abs(row.balanceAfter))}${row.balanceAfter < 0 ? ' (CR)' : ''}
+                </td>
+                <td class="text-center" style="text-transform: capitalize;">${row.paymentMethod}</td>
+                <td class="text-center">
+                  <span class="badge ${row.status === 'active' ? 'badge-active' : 'badge-reversed'}">
+                    ${row.status}
+                  </span>
+                </td>
+                <td>${row.createdBy}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <div class="summary-section">
+          <div class="summary-title">Summary</div>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <div class="label">Total Credits (Received)</div>
+              <div class="value text-green">£${formatNumber(totalCredits)}</div>
+            </div>
+            <div class="summary-item">
+              <div class="label">Total Debits (Issued)</div>
+              <div class="value text-red">£${formatNumber(totalDebits)}</div>
+            </div>
+            <div class="summary-item">
+              <div class="label">Net Amount</div>
+              <div class="value ${netTotal >= 0 ? 'text-green' : 'text-red'}">£${formatNumber(Math.abs(netTotal))}</div>
+            </div>
+            ${!isAllCustomers ? `
+            <div class="summary-item">
+              <div class="label">Current Balance</div>
+              <div class="value ${currentBalance > 0 ? 'text-red' : 'text-green'}">£${formatNumber(Math.abs(currentBalance))}</div>
+            </div>
+            ` : ''}
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>This is a computer-generated report and does not require a signature.</p>
+          <p>Generated on: ${new Date().toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' })}</p>
+          <p>KI Fashion - All Rights Reserved</p>
+        </div>
+      </body>
+      </html>
+    `
+
+    printWindow.document.write(reportHTML)
+    printWindow.document.close()
+    printWindow.focus()
+    setTimeout(() => {
+      printWindow.print()
+    }, 250)
+  }
+
+  // Calculate current buyer's ledger balance from transactions
+  const currentBuyerLedgerBalance = useMemo(() => {
+    if (allLedgerTransactions.length > 0) {
+      return allLedgerTransactions[0].balance || 0
+    }
+    return buyerDetails?.balance || 0
+  }, [allLedgerTransactions, buyerDetails])
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">Customer Ledger</h1>
+        <Button onClick={() => setPaymentModalOpen(true)} className="bg-green-600 hover:bg-green-700">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Payment
+        </Button>
       </div>
 
       <Tabs
@@ -420,118 +1044,52 @@ export default function CustomerLedgerPage() {
                 <div className="bg-white rounded-lg border p-6 flex flex-wrap gap-4 items-end">
                   <div className="w-[300px]">
                     <Label className="mb-2 block">Select Customer</Label>
-                    <Select value={ledgerBuyerFilter} onValueChange={(val) => {
-                      setLedgerBuyerFilter(val)
-                      if (val && val !== 'all') setSelectedBuyerId(val)
-                    }}>
-                      <SelectTrigger><SelectValue placeholder="All Customers" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Customers</SelectItem>
-                        {dropdownBuyers.map(b => (
-                          <SelectItem key={b.id} value={b.id}>{b.name} {b.company ? `(${b.company})` : ''}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="w-[200px]">
-                    <Label className="mb-2 block">Filter By</Label>
-                    <Select value={ledgerFilterBy} onValueChange={setLedgerFilterBy}>
-                      <SelectTrigger><SelectValue placeholder="All Transactions" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Transactions</SelectItem>
-                        <SelectItem value="cash">Cash Receipts</SelectItem>
-                        <SelectItem value="bank">Bank Receipts</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Stats if customer selected */}
-                {ledgerBuyerFilter && ledgerBuyerFilter !== 'all' && buyerDetails && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-muted/30 rounded-lg p-6">
-                      <p className="text-sm text-muted-foreground">Customer Balance</p>
-                      <p className={`text-2xl font-bold ${buyerDetails.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        {formatNumber(buyerDetails.balance)}
-                        <span className="text-sm font-normal text-muted-foreground ml-1">{buyerDetails.balance > 0 ? '(Pending)' : '(Clear)'}</span>
-                      </p>
-                    </div>
-                    <div className="bg-muted/30 rounded-lg p-6">
-                      <p className="text-sm text-muted-foreground">Total Sales</p>
-                      <p className="text-2xl font-bold">{formatNumber(buyerDetails.totalSales || 0)}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Table */}
-                <div className="bg-white rounded-lg border">
-                  {allLedgerLoading ? (
-                    <div className="p-12 flex justify-center"><Loader2 className="animate-spin text-muted-foreground" /></div>
-                  ) : (
-                    <DataTable
-                      columns={allLedgerColumns}
-                      data={allLedgerTransactions}
-                      pagination={{ pageSize: 50 }}
-                      searchKey="reference"
-                      disableSorting
+                    <Combobox
+                      options={comboboxOptions}
+                      value={selectedBuyerId}
+                      onValueChange={setSelectedBuyerId}
+                      placeholder="Search Customer..."
+                      searchPlaceholder="Type customer name..."
+                      loading={buyersLoading}
                     />
-                  )}
-                </div>
-              </div>
-            )
-          },
-          {
-            label: "Pending Payments",
-            content: (
-              <div className="space-y-6">
-                <div className="bg-white rounded-lg border p-6 flex flex-wrap gap-4 items-end">
-                  <div className="w-[300px]">
-                    <Label className="mb-2 block">Select Customer</Label>
-                    <Select value={selectedBuyerId} onValueChange={(val) => {
-                      setSelectedBuyerId(val)
-                      setSelectedSaleId('none')
-                    }}>
-                      <SelectTrigger><SelectValue placeholder="Select Customer" /></SelectTrigger>
-                      <SelectContent>
-                        {dropdownBuyers.map(b => (
-                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
-
-                  {selectedBuyerId && selectedBuyerId !== 'all' && (
-                    <Button onClick={() => {
-                      setPaymentForm({ amount: '', date: '', description: '', method: 'cash' })
-                      setSelectedSaleId('none')
-                      setIsDialogOpen(true)
-                    }}>
-                      <span className="mr-2 text-lg">+</span> Record Payment
-                    </Button>
-                  )}
                 </div>
 
                 {(!selectedBuyerId || selectedBuyerId === 'all') ? (
                   <div className="bg-white rounded-lg border p-12 text-center text-muted-foreground">
-                    <p>Select a customer to view pending payments.</p>
+                    <p>Select a customer to view their ledger.</p>
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white rounded-lg border p-6">
-                        <h3 className="text-sm font-medium text-muted-foreground">Total Pending (This Selection)</h3>
-                        <p className="text-2xl font-bold text-red-600">{formatNumber(pendingTotals.totalPending)}</p>
+                    {/* Stats if customer selected */}
+                    {buyerDetails && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-muted/30 rounded-lg p-6">
+                          <p className="text-sm text-muted-foreground">Customer Balance</p>
+                          <p className={`text-2xl font-bold ${buyerDetails.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {formatNumber(buyerDetails.balance)}
+                            <span className="text-sm font-normal text-muted-foreground ml-1">{buyerDetails.balance > 0 ? '(Pending)' : '(Clear)'}</span>
+                          </p>
+                        </div>
+                        <div className="bg-muted/30 rounded-lg p-6">
+                          <p className="text-sm text-muted-foreground">Total Sales</p>
+                          <p className="text-2xl font-bold">{formatNumber(buyerDetails.totalSales || 0)}</p>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
+                    {/* Table */}
                     <div className="bg-white rounded-lg border">
-                      {unpaidSalesLoading ? (
-                        <div className="p-12 flex justify-center"><Loader2 className="animate-spin" /></div>
-                      ) : unpaidSales.length === 0 ? (
-                        <div className="p-12 text-center text-muted-foreground">No pending payments found.</div>
+                      {allLedgerLoading ? (
+                        <div className="p-12 flex justify-center"><Loader2 className="animate-spin text-muted-foreground" /></div>
                       ) : (
-                        <DataTable columns={pendingColumns} data={unpaidSales} hideActions />
+                        <DataTable
+                          columns={allLedgerColumns}
+                          data={allLedgerTransactions}
+                          pagination={{ pageSize: 50 }}
+                          searchKey="reference"
+                          disableSorting
+                        />
                       )}
                     </div>
                   </>
@@ -546,14 +1104,14 @@ export default function CustomerLedgerPage() {
                 <div className="bg-white rounded-lg border p-6 flex flex-wrap gap-4 items-end">
                   <div className="w-[300px]">
                     <Label className="mb-2 block">Select Customer</Label>
-                    <Select value={selectedBuyerId} onValueChange={setSelectedBuyerId}>
-                      <SelectTrigger><SelectValue placeholder="Select Customer" /></SelectTrigger>
-                      <SelectContent>
-                        {dropdownBuyers.map(b => (
-                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Combobox
+                      options={comboboxOptions}
+                      value={selectedBuyerId}
+                      onValueChange={setSelectedBuyerId}
+                      placeholder="Search Customer..."
+                      searchPlaceholder="Type customer name..."
+                      loading={buyersLoading}
+                    />
                   </div>
                 </div>
 
@@ -572,66 +1130,346 @@ export default function CustomerLedgerPage() {
                 )}
               </div>
             )
+          },
+          {
+            label: "Payment Receipts",
+            content: (
+              <div className="space-y-6">
+                <div className="bg-white rounded-lg border p-6 flex flex-wrap gap-4 items-end justify-between">
+                  <div className="flex items-end gap-2">
+                    <div className="w-[300px]">
+                      <Label className="mb-2 block">Select Customer</Label>
+                      <Combobox
+                        options={comboboxOptions}
+                        value={selectedBuyerId}
+                        onValueChange={setSelectedBuyerId}
+                        placeholder="Search Customer..."
+                        searchPlaceholder="Type customer name..."
+                        loading={buyersLoading}
+                      />
+                    </div>
+                    {selectedBuyerId && selectedBuyerId !== 'all' && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setSelectedBuyerId('all')}
+                        title="Reset to All Customers"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  {paymentReceiptsTransactions.length > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={handlePrintPaymentReceiptsReport}
+                      className="flex items-center gap-2"
+                    >
+                      <FileText className="h-4 w-4" />
+                      Print Report
+                    </Button>
+                  )}
+                </div>
+
+                {/* Stats - shown for both single customer and all customers view */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="bg-green-50 rounded-lg p-4 border border-green-100">
+                    <p className="text-sm text-green-700">Total Credits (Received)</p>
+                    <p className="text-2xl font-bold text-green-700">
+                      £{formatNumber(
+                        paymentReceiptsTransactions
+                          .filter(p => p.status === 'active' && p.paymentDirection !== 'debit')
+                          .reduce((sum, p) => sum + p.totalAmount, 0)
+                      )}
+                    </p>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-4 border border-red-100">
+                    <p className="text-sm text-red-700">Total Debits (Issued)</p>
+                    <p className="text-2xl font-bold text-red-700">
+                      £{formatNumber(
+                        paymentReceiptsTransactions
+                          .filter(p => p.status === 'active' && p.paymentDirection === 'debit')
+                          .reduce((sum, p) => sum + p.totalAmount, 0)
+                      )}
+                    </p>
+                  </div>
+                  <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
+                    <p className="text-sm text-amber-700">Reversed Payments</p>
+                    <p className="text-2xl font-bold text-amber-700">
+                      {paymentReceiptsTransactions.filter(p => p.status === 'reversed').length}
+                    </p>
+                  </div>
+                  {selectedBuyerId && selectedBuyerId !== 'all' ? (
+                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                      <p className="text-sm text-blue-700">Current Balance</p>
+                      <p className={`text-2xl font-bold ${
+                        paymentReceiptsTransactions[0]?.balanceAfter > 0 ? 'text-red-600' : 
+                        paymentReceiptsTransactions[0]?.balanceAfter < 0 ? 'text-green-600' : 'text-blue-700'
+                      }`}>
+                        £{formatNumber(Math.abs(paymentReceiptsTransactions[0]?.balanceAfter || 0))}
+                        {paymentReceiptsTransactions[0]?.balanceAfter < 0 && (
+                          <span className="text-sm font-normal ml-1">(Credit)</span>
+                        )}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                      <p className="text-sm text-blue-700">Total Transactions</p>
+                      <p className="text-2xl font-bold text-blue-700">
+                        {paymentReceiptsTransactions.length}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-lg border">
+                  {paymentReceiptsLoading ? (
+                    <div className="p-12 flex justify-center"><Loader2 className="animate-spin" /></div>
+                  ) : paymentReceiptsTransactions.length === 0 ? (
+                    <div className="p-12 text-center text-muted-foreground">
+                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                      <p>No payment receipts found{selectedBuyerId && selectedBuyerId !== 'all' ? ' for this customer' : ''}.</p>
+                      <p className="text-sm mt-2">Add a payment to create a receipt.</p>
+                    </div>
+                  ) : (
+                    <DataTable 
+                      columns={paymentReceiptsColumns} 
+                      data={paymentReceiptsTransactions} 
+                      pagination={{ pageSize: 25 }}
+                    />
+                  )}
+                </div>
+              </div>
+            )
           }
         ]}
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+      <CustomerPaymentModal
+        open={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        entityId={selectedBuyerId !== 'all' ? selectedBuyerId : ''}
+        entityName={
+          selectedBuyerId !== 'all'
+            ? (dropdownBuyers.find(b => String(b.id) === selectedBuyerId)?.name ||
+              dropdownBuyers.find(b => String(b.id) === selectedBuyerId)?.company ||
+              'Customer')
+            : ''
+        }
+        totalBalance={
+          selectedBuyerId !== 'all'
+            ? Math.abs(dropdownBuyers.find(b => String(b.id) === selectedBuyerId)?.balance || 0)
+            : 0
+        }
+        ledgerBalance={currentBuyerLedgerBalance}
+        ledgerBalanceBuyerId={selectedBuyerId !== 'all' ? selectedBuyerId : null}
+        buyerBalanceMap={buyerBalanceMap}
+        entities={dropdownBuyers}
+        allLedgerData={allLedgerData}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['ledger'] })
+          queryClient.invalidateQueries({ queryKey: ['buyers'] })
+          queryClient.invalidateQueries({ queryKey: ['payments'] })
+          refetchPayments()
+        }}
+      />
+
+      {/* Reversal Confirmation Dialog */}
+      <Dialog open={reversalDialogOpen} onOpenChange={setReversalDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Record Payment</DialogTitle>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <RotateCcw className="h-5 w-5" />
+              Reverse Payment
+            </DialogTitle>
+            <DialogDescription>
+              This will reverse payment <span className="font-mono font-medium">{selectedPayment?.paymentNumber}</span> and 
+              restore the customer&apos;s balance.
+            </DialogDescription>
           </DialogHeader>
+          
           <div className="space-y-4 py-4">
-            {selectedSale && (
-              <div className="bg-muted p-3 rounded text-sm mb-2">
-                <p><span className="font-semibold">Sale:</span> {selectedSale.saleNumber}</p>
-                <p><span className="font-semibold">Total:</span> {formatNumber(selectedSale.grandTotal)}</p>
-                <p><span className="font-semibold">Remaining:</span> {formatNumber(selectedSale.grandTotal - (selectedSale.cashPayment || 0) - (selectedSale.bankPayment || 0))}</p>
+            {selectedPayment && (
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Amount:</span>
+                  <span className="font-bold text-green-600">£{formatNumber(selectedPayment.totalAmount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Method:</span>
+                  <span className="capitalize">{selectedPayment.paymentMethod}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Date:</span>
+                  <span>{formatDateTime({ date: selectedPayment.date })}</span>
+                </div>
               </div>
             )}
-
+            
             <div className="space-y-2">
-              <Label>Payment Amount</Label>
-              <Input
-                type="number"
-                value={paymentForm.amount}
-                onChange={e => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))}
+              <Label htmlFor="reversal-reason">
+                Reason for Reversal <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="reversal-reason"
+                placeholder="Enter the reason for reversing this payment..."
+                value={reversalReason}
+                onChange={(e) => setReversalReason(e.target.value)}
+                rows={3}
               />
             </div>
-            <div className="space-y-2">
-              <Label>Date</Label>
-              <Input
-                type="date"
-                value={paymentForm.date}
-                onChange={e => setPaymentForm(prev => ({ ...prev, date: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Method</Label>
-              <Select value={paymentForm.method} onValueChange={val => setPaymentForm(prev => ({ ...prev, method: val }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="bank">Bank</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Input
-                value={paymentForm.description}
-                onChange={e => setPaymentForm(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Optional note"
-              />
-            </div>
-
-            <Button className="w-full mt-4" onClick={handleAddPayment} disabled={isSubmittingPayment}>
-              {isSubmittingPayment ? <Loader2 className="animate-spin mr-2" /> : null}
-              Confirm Payment
-            </Button>
           </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setReversalDialogOpen(false)}
+              disabled={isReversing}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleReversePayment}
+              disabled={isReversing || !reversalReason.trim()}
+            >
+              {isReversing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Reversing...
+                </>
+              ) : (
+                'Reverse Payment'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Receipt View Dialog */}
+      <Dialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5" />
+              Payment Receipt
+            </DialogTitle>
+          </DialogHeader>
+          
+          {isLoadingReceipt ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : receiptData ? (
+            <div className="overflow-y-auto max-h-[60vh] space-y-4 py-4">
+              {/* Receipt Header */}
+              <div className="text-center border-b pb-4">
+                <h2 className="text-xl font-bold">PAYMENT RECEIPT</h2>
+                <p className="text-sm text-muted-foreground">KI Fashion</p>
+              </div>
+
+              {/* Receipt Details */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <h3 className="text-xs text-muted-foreground mb-2">Receipt Details</h3>
+                  <p><span className="text-muted-foreground">Receipt #:</span> <span className="font-mono font-medium">{receiptData.receiptNumber}</span></p>
+                  <p><span className="text-muted-foreground">Date:</span> {formatDateTime({ date: receiptData.date })}</p>
+                  <p><span className="text-muted-foreground">Method:</span> <span className="capitalize">{receiptData.payment.paymentMethod}</span></p>
+                  <p>
+                    <span className="text-muted-foreground">Status:</span>{' '}
+                    <Badge variant={receiptData.status === 'active' ? 'success' : 'destructive'}>
+                      {receiptData.status.toUpperCase()}
+                    </Badge>
+                  </p>
+                </div>
+                
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <h3 className="text-xs text-muted-foreground mb-2">Customer Details</h3>
+                  <p className="font-medium">{receiptData.customer.name}</p>
+                  {receiptData.customer.company && <p className="text-sm">{receiptData.customer.company}</p>}
+                  {receiptData.customer.email && <p className="text-sm">{receiptData.customer.email}</p>}
+                  {receiptData.customer.phone && <p className="text-sm">{receiptData.customer.phone}</p>}
+                </div>
+              </div>
+
+              {/* Distribution Table */}
+              <div>
+                <h3 className="text-sm font-medium mb-2">Payment Distribution</h3>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="text-left p-2">Reference</th>
+                        <th className="text-right p-2">Amount</th>
+                        <th className="text-left p-2">Type</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {receiptData.distributions.map((dist, idx) => (
+                        <tr key={idx} className="border-t">
+                          <td className="p-2">{dist.reference}</td>
+                          <td className="p-2 text-right font-medium">£{formatNumber(dist.amount)}</td>
+                          <td className="p-2">
+                            <Badge variant={dist.isAdvance ? 'warning' : 'outline'}>
+                              {dist.isAdvance ? 'Advance' : 'Applied'}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Totals */}
+              <div className="bg-green-50 rounded-lg p-4 space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span>Balance Before:</span>
+                  <span>£{formatNumber(receiptData.balances.before)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-lg">
+                  <span>Total Received:</span>
+                  <span className="text-green-600">£{formatNumber(receiptData.payment.totalAmount)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Balance After:</span>
+                  <span>£{formatNumber(receiptData.balances.after)}</span>
+                </div>
+              </div>
+
+              {receiptData.notes && (
+                <div>
+                  <h3 className="text-sm font-medium mb-1">Notes</h3>
+                  <p className="text-sm text-muted-foreground">{receiptData.notes}</p>
+                </div>
+              )}
+
+              {/* Reversal Info */}
+              {receiptData.reversal && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-red-700 mb-2">Payment Reversed</h3>
+                  <p className="text-sm"><span className="text-muted-foreground">Date:</span> {formatDateTime({ date: receiptData.reversal.reversedAt })}</p>
+                  <p className="text-sm"><span className="text-muted-foreground">Reason:</span> {receiptData.reversal.reason}</p>
+                </div>
+              )}
+
+              <div className="text-center text-xs text-muted-foreground pt-4 border-t">
+                <p>Received by: {receiptData.createdBy}</p>
+              </div>
+            </div>
+          ) : null}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReceiptDialogOpen(false)}>
+              Close
+            </Button>
+            <Button onClick={handlePrintReceipt} disabled={!receiptData}>
+              <Printer className="h-4 w-4 mr-2" />
+              Print Receipt
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

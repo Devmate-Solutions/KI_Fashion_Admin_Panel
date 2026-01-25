@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import Tabs from "../../../components/tabs";
 import DataTable from "../../../components/data-table";
 import FormDialog from "../../../components/form-dialog";
@@ -25,6 +25,13 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   useInventoryList,
   useInventoryItem,
   useInventoryMovements,
@@ -32,10 +39,12 @@ import {
   useReduceStock,
   useAdjustStock,
 } from "@/lib/hooks/useInventory";
+import { usePacketStockList } from "@/lib/hooks/usePacketStock";
 import { toast } from "react-hot-toast";
-import { Boxes, Loader2, MoveRight, RefreshCcw } from "lucide-react";
+import { Boxes, Loader2, MoveRight, RefreshCcw, Package, Barcode, Printer, QrCode, Copy, Check, Scissors } from "lucide-react";
 import ProductImageGallery from "@/components/ui/ProductImageGallery";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import BreakPacketDialog from "@/components/modals/BreakPacketDialog";
 
 const MOVEMENT_LIMIT = 20;
 
@@ -82,7 +91,7 @@ const inventoryColumns = [
           images={getImageArray(row)}
           alt={row.productName || "Product"}
           size="sm"
-          maxVisible={3}
+          maxVisible={1}
           showCount={true}
         />
       );
@@ -105,7 +114,15 @@ const inventoryColumns = [
     accessor: "productName",
     render: (row) => (
       <div>
-        <div className="font-medium leading-tight">{row.productName}</div>
+        <a
+          href={`/stock/${row.productId || row.product?._id}/packets`}
+          className="font-medium leading-tight text-blue-600 hover:underline cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          {row.productName}
+        </a>
       </div>
     ),
   },
@@ -246,13 +263,6 @@ const inventoryColumns = [
     ),
   },
   {
-    header: "Stock Limit",
-    accessor: "reorderLevel",
-    render: (row) => (
-      <div className="tabular-nums">{formatNumber(row.reorderLevel)}</div>
-    ),
-  },
-  {
     header: "Landed Cost",
     accessor: "averageCostPrice",
     render: (row) => (
@@ -271,28 +281,11 @@ const inventoryColumns = [
     ),
   },
   {
-    header: "Status",
-    accessor: "needsReorder",
-    render: (row) => (
-      <Badge
-        variant={
-          row.needsReorder
-            ? "destructive"
-            : row.lowStock
-              ? "secondary"
-              : "outline"
-        }
-      >
-        {row.needsReorder ? "Re-Order" : row.lowStock ? "Low Stock" : "Healthy"}
-      </Badge>
-    ),
-  },
-  {
-    header: "Date/Time",
+    header: "Date",
     accessor: "lastStockUpdate",
     render: (row) => (
       <div className="text-sm text-muted-foreground">
-        {formatDateTime(row.lastStockUpdate)}
+        {row.lastStockUpdate ? new Date(row.lastStockUpdate).toLocaleDateString('en-GB') : "—"}
       </div>
     ),
   },
@@ -380,6 +373,17 @@ export default function StockPage() {
   const [movementFilters, setMovementFilters] = useState(
     defaultMovementFilters
   );
+
+  // Packet Stock tab state
+  const [packetPage, setPacketPage] = useState(1);
+  const [packetPageLimit, setPacketPageLimit] = useState(20);
+  const [packetSearch, setPacketSearch] = useState("");
+  const [packetAppliedSearch, setPacketAppliedSearch] = useState("");
+  const [packetStockFilter, setPacketStockFilter] = useState("all"); // 'all', 'inStock', 'outOfStock'
+  const [packetTypeFilter, setPacketTypeFilter] = useState("all"); // 'all', 'packet', 'loose'
+  const [selectedPacketDetail, setSelectedPacketDetail] = useState(null);
+  const [copiedBarcode, setCopiedBarcode] = useState(null);
+  const [packetToBreak, setPacketToBreak] = useState(null);
 
   const inventoryParams = useMemo(() => {
     const params = {
@@ -540,6 +544,37 @@ export default function StockPage() {
 
   const addStockMutation = useAddStock();
   const reduceStockMutation = useReduceStock();
+
+  // Packet Stock data fetching
+  const packetStockParams = useMemo(() => {
+    const params = {
+      page: packetPage,
+      limit: packetPageLimit,
+    };
+    if (packetAppliedSearch?.trim()) {
+      params.search = packetAppliedSearch.trim();
+    }
+    if (packetStockFilter === "inStock") {
+      params.hasStock = "true";
+    } else if (packetStockFilter === "outOfStock") {
+      params.hasStock = "false";
+    }
+    if (packetTypeFilter === "packet") {
+      params.isLoose = "false";
+    } else if (packetTypeFilter === "loose") {
+      params.isLoose = "true";
+    }
+    return params;
+  }, [packetPage, packetPageLimit, packetAppliedSearch, packetStockFilter, packetTypeFilter]);
+
+  const {
+    data: packetStockData,
+    isLoading: packetStockLoading,
+    isFetching: packetStockFetching,
+  } = usePacketStockList(packetStockParams);
+
+  const packetStockItems = packetStockData?.data ?? [];
+  const packetStockPagination = packetStockData?.pagination;
   const adjustStockMutation = useAdjustStock();
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -626,6 +661,115 @@ export default function StockPage() {
       // toast handled
     }
   }
+
+  // Packet Stock helper functions
+  const handleCopyBarcode = async (barcode) => {
+    try {
+      await navigator.clipboard.writeText(barcode);
+      setCopiedBarcode(barcode);
+      toast.success("Barcode copied to clipboard");
+      setTimeout(() => setCopiedBarcode(null), 2000);
+    } catch (err) {
+      toast.error("Failed to copy barcode");
+    }
+  };
+
+  const handlePrintBarcode = (packet) => {
+    const printWindow = window.open("", "_blank", "width=400,height=300");
+    if (!printWindow) {
+      toast.error("Please allow popups for printing");
+      return;
+    }
+
+    const compositionText = packet.composition
+      ?.map((c) => `${c.color}/${c.size} × ${c.quantity}`)
+      .join(", ") || "—";
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Barcode: ${packet.barcode}</title>
+          <style>
+            body { 
+              font-family: 'Courier New', monospace; 
+              padding: 20px; 
+              text-align: center;
+              margin: 0;
+            }
+            .label { 
+              border: 2px dashed #ccc; 
+              padding: 20px; 
+              display: inline-block;
+              min-width: 280px;
+            }
+            .barcode { 
+              font-size: 24px; 
+              font-weight: bold; 
+              letter-spacing: 2px;
+              margin-bottom: 10px;
+            }
+            .product { 
+              font-size: 14px; 
+              margin-bottom: 8px;
+              font-weight: bold;
+            }
+            .composition { 
+              font-size: 11px; 
+              color: #666;
+              margin-bottom: 8px;
+            }
+            .type {
+              font-size: 12px;
+              background: ${packet.isLoose ? "#fef3c7" : "#dbeafe"};
+              padding: 2px 8px;
+              border-radius: 4px;
+              display: inline-block;
+              margin-bottom: 8px;
+            }
+            .items {
+              font-size: 12px;
+              color: #333;
+            }
+            @media print {
+              body { margin: 0; padding: 10px; }
+              .label { border: 1px solid #000; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="label">
+            <div class="barcode">${packet.barcode}</div>
+            <div class="product">${packet.product?.name || "Unknown Product"}</div>
+            <div class="type">${packet.isLoose ? "LOOSE ITEM" : "PACKET"}</div>
+            <div class="composition">${compositionText}</div>
+            <div class="items">${packet.totalItemsPerPacket || 1} item(s) per ${packet.isLoose ? "unit" : "packet"}</div>
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              window.onafterprint = function() { window.close(); };
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const handleApplyPacketSearch = (e) => {
+    e.preventDefault();
+    setPacketAppliedSearch(packetSearch);
+    setPacketPage(1);
+  };
+
+  const handleResetPacketFilters = () => {
+    setPacketSearch("");
+    setPacketAppliedSearch("");
+    setPacketStockFilter("all");
+    setPacketTypeFilter("all");
+    setPacketPage(1);
+  };
 
   const inventoryTab = (
     <div className="space-y-4">
@@ -1253,7 +1397,382 @@ export default function StockPage() {
     </div>
   );
 
-  const tabs = [{ label: "Inventory", content: inventoryTab }];
+  // Packet Stock columns
+  const packetStockColumns = [
+    {
+      header: "Barcode",
+      accessor: "barcode",
+      render: (row) => (
+        <div className="flex items-center gap-2">
+          <code className="px-2 py-1 bg-muted rounded text-xs font-mono">
+            {row.barcode}
+          </code>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCopyBarcode(row.barcode);
+            }}
+          >
+            {copiedBarcode === row.barcode ? (
+              <Check className="h-3 w-3 text-green-600" />
+            ) : (
+              <Copy className="h-3 w-3" />
+            )}
+          </Button>
+        </div>
+      ),
+    },
+    {
+      header: "Type",
+      accessor: "isLoose",
+      render: (row) => (
+        <Badge variant={row.isLoose ? "secondary" : "default"}>
+          {row.isLoose ? "Loose" : "Packet"}
+        </Badge>
+      ),
+    },
+    {
+      header: "Product",
+      accessor: "product.name",
+      render: (row) => (
+        <div>
+          <div className="font-medium">{row.product?.name || "—"}</div>
+          <div className="text-xs text-muted-foreground">
+            {row.product?.productCode || row.product?.sku || "—"}
+          </div>
+        </div>
+      ),
+    },
+    {
+      header: "Supplier",
+      accessor: "supplier.name",
+      render: (row) => row.supplier?.name || row.supplier?.company || "—",
+    },
+    {
+      header: "Composition",
+      accessor: "composition",
+      render: (row) => {
+        const comp = row.composition || [];
+        if (comp.length === 0) return "—";
+        return (
+          <div className="flex flex-wrap gap-1 max-w-[200px]">
+            {comp.slice(0, 3).map((c, idx) => (
+              <span
+                key={idx}
+                className="inline-block px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px]"
+              >
+                {c.color}/{c.size} ×{c.quantity}
+              </span>
+            ))}
+            {comp.length > 3 && (
+              <span className="text-[10px] text-muted-foreground">
+                +{comp.length - 3} more
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      header: "Items/Pkt",
+      accessor: "totalItemsPerPacket",
+      render: (row) => (
+        <div className="text-center tabular-nums">
+          {row.totalItemsPerPacket || 1}
+        </div>
+      ),
+    },
+    {
+      header: "Available",
+      accessor: "availablePackets",
+      render: (row) => {
+        const actual = (row.availablePackets || 0) - (row.reservedPackets || 0);
+        return (
+          <div className="text-right">
+            <span className="font-medium tabular-nums">{actual}</span>
+            {row.reservedPackets > 0 && (
+              <span className="text-xs text-amber-600 ml-1">
+                ({row.reservedPackets} reserved)
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      header: "Sold",
+      accessor: "soldPackets",
+      render: (row) => (
+        <div className="text-right tabular-nums text-muted-foreground">
+          {row.soldPackets || 0}
+        </div>
+      ),
+    },
+    {
+      header: "Unit Price",
+      accessor: "unitPrice",
+      render: (row) => {
+        const price = row.landedPricePerPacket || 0;
+        const items = row.totalItemsPerPacket || 1;
+        const unitPrice = items > 0 ? price / items : 0;
+        return (
+          <div className="text-right tabular-nums text-muted-foreground">
+            {currency(unitPrice)}
+          </div>
+        );
+      },
+    },
+    {
+      header: "Price/Pkt",
+      accessor: "suggestedSellingPrice",
+      render: (row) => (
+        <div className="text-right tabular-nums">
+          {currency(row.suggestedSellingPrice || 0)}
+        </div>
+      ),
+    },
+    {
+      header: "Actions",
+      accessor: "_id",
+      render: (row) => (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedPacketDetail(row);
+            }}
+            title="View Details"
+          >
+            <QrCode className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePrintBarcode(row);
+            }}
+            title="Print Barcode"
+          >
+            <Printer className="h-4 w-4" />
+          </Button>
+          {!row.isLoose && (row.availablePackets - (row.reservedPackets || 0)) > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+              onClick={(e) => {
+                e.stopPropagation();
+                setPacketToBreak(row);
+              }}
+              title="Break Packet"
+            >
+              <Scissors className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  // Calculate packet stock summary
+  const packetStockSummary = useMemo(() => {
+    const items = packetStockItems || [];
+    let totalPackets = 0;
+    let totalItems = 0;
+    let totalValue = 0;
+    let lowStockCount = 0;
+
+    items.forEach((p) => {
+      const available = (p.availablePackets || 0) - (p.reservedPackets || 0);
+      totalPackets += available;
+      totalItems += available * (p.totalItemsPerPacket || 1);
+      totalValue += available * (p.suggestedSellingPrice || 0);
+      if (available > 0 && available <= 5) lowStockCount++;
+    });
+
+    return { totalPackets, totalItems, totalValue, lowStockCount };
+  }, [packetStockItems]);
+
+  const packetStockTab = (
+    <div className="space-y-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Packets
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold tabular-nums">
+              {formatNumber(packetStockSummary.totalPackets)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Items
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold tabular-nums">
+              {formatNumber(packetStockSummary.totalItems)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Value
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold tabular-nums">
+              {currency(packetStockSummary.totalValue)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Low Stock
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold tabular-nums text-amber-600">
+              {packetStockSummary.lowStockCount}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <form onSubmit={handleApplyPacketSearch} className="flex flex-wrap items-end gap-3">
+        <div className="flex-1 min-w-[200px]">
+          <Label className="text-xs">Search</Label>
+          <Input
+            placeholder="Search barcode, product..."
+            value={packetSearch}
+            onChange={(e) => setPacketSearch(e.target.value)}
+            className="h-9"
+          />
+        </div>
+        <div className="w-[140px]">
+          <Label className="text-xs">Stock</Label>
+          <Select value={packetStockFilter} onValueChange={setPacketStockFilter}>
+            <SelectTrigger className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="inStock">In Stock</SelectItem>
+              <SelectItem value="outOfStock">Out of Stock</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-[140px]">
+          <Label className="text-xs">Type</Label>
+          <Select value={packetTypeFilter} onValueChange={setPacketTypeFilter}>
+            <SelectTrigger className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="packet">Packets Only</SelectItem>
+              <SelectItem value="loose">Loose Only</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button type="submit" size="sm" className="h-9">
+          Apply
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9"
+          onClick={handleResetPacketFilters}
+        >
+          Reset
+        </Button>
+      </form>
+
+      {/* Data Table */}
+      {packetStockLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : packetStockItems.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p>No packet configurations found</p>
+          <p className="text-sm">
+            Packet stocks are created when dispatch orders are confirmed
+          </p>
+        </div>
+      ) : (
+        <DataTable
+          columns={packetStockColumns}
+          data={packetStockItems}
+          onRowClick={(row) => setSelectedPacketDetail(row)}
+          loading={packetStockFetching}
+        />
+      )}
+
+      {/* Pagination */}
+      {packetStockPagination && packetStockPagination.pages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={() => setPacketPage((p) => Math.max(1, p - 1))}
+                className={packetPage <= 1 ? "pointer-events-none opacity-50" : undefined}
+              />
+            </PaginationItem>
+            {Array.from({ length: Math.min(5, packetStockPagination.pages) }, (_, i) => {
+              const pageNum = i + 1;
+              return (
+                <PaginationItem key={pageNum}>
+                  <PaginationLink
+                    isActive={packetPage === pageNum}
+                    onClick={() => setPacketPage(pageNum)}
+                  >
+                    {pageNum}
+                  </PaginationLink>
+                </PaginationItem>
+              );
+            })}
+            <PaginationItem>
+              <PaginationNext
+                onClick={() =>
+                  setPacketPage((p) => Math.min(packetStockPagination.pages, p + 1))
+                }
+                className={
+                  packetPage >= packetStockPagination.pages
+                    ? "pointer-events-none opacity-50"
+                    : undefined
+                }
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
+    </div>
+  );
+
+  const tabs = [
+    { label: "Inventory", content: inventoryTab },
+    { label: "Packet Stock", content: packetStockTab },
+  ];
 
   const addStockFields = [
     {
@@ -1371,6 +1890,193 @@ export default function StockPage() {
         onClose={() => setAdjustDialogOpen(false)}
         onSubmit={submitAdjustStock}
         loading={adjustStockMutation.isPending}
+      />
+
+      {/* Packet Detail Dialog */}
+      <Dialog
+        open={!!selectedPacketDetail}
+        onOpenChange={(open) => !open && setSelectedPacketDetail(null)}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Packet Details
+            </DialogTitle>
+            <DialogDescription>
+              {selectedPacketDetail?.isLoose ? "Loose Item" : "Packet"} Configuration
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedPacketDetail && (
+            <div className="space-y-4">
+              {/* Barcode Section */}
+              <div className="p-4 bg-muted rounded-lg text-center">
+                <div className="text-2xl font-mono font-bold tracking-wider mb-2">
+                  {selectedPacketDetail.barcode}
+                </div>
+                <div className="flex justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCopyBarcode(selectedPacketDetail.barcode)}
+                  >
+                    {copiedBarcode === selectedPacketDetail.barcode ? (
+                      <Check className="h-4 w-4 mr-1" />
+                    ) : (
+                      <Copy className="h-4 w-4 mr-1" />
+                    )}
+                    Copy
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePrintBarcode(selectedPacketDetail)}
+                  >
+                    <Printer className="h-4 w-4 mr-1" />
+                    Print
+                  </Button>
+                  {!selectedPacketDetail.isLoose && 
+                    (selectedPacketDetail.availablePackets - (selectedPacketDetail.reservedPackets || 0)) > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                      onClick={() => {
+                        setSelectedPacketDetail(null);
+                        setPacketToBreak(selectedPacketDetail);
+                      }}
+                    >
+                      <Scissors className="h-4 w-4 mr-1" />
+                      Break
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Product Info */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <Label className="text-muted-foreground">Product</Label>
+                  <div className="font-medium">
+                    {selectedPacketDetail.product?.name || "—"}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">SKU</Label>
+                  <div className="font-medium">
+                    {selectedPacketDetail.product?.productCode ||
+                      selectedPacketDetail.product?.sku ||
+                      "—"}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Supplier</Label>
+                  <div className="font-medium">
+                    {selectedPacketDetail.supplier?.name ||
+                      selectedPacketDetail.supplier?.company ||
+                      "—"}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Type</Label>
+                  <div>
+                    <Badge variant={selectedPacketDetail.isLoose ? "secondary" : "default"}>
+                      {selectedPacketDetail.isLoose ? "Loose Item" : "Packet"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Composition */}
+              <div>
+                <Label className="text-muted-foreground mb-2 block">
+                  Composition ({selectedPacketDetail.totalItemsPerPacket || 1} items per{" "}
+                  {selectedPacketDetail.isLoose ? "unit" : "packet"})
+                </Label>
+                <div className="border rounded-md overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium">Color</th>
+                        <th className="px-3 py-2 text-left font-medium">Size</th>
+                        <th className="px-3 py-2 text-right font-medium">Qty</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(selectedPacketDetail.composition || []).map((comp, idx) => (
+                        <tr key={idx} className="border-t">
+                          <td className="px-3 py-2">{comp.color}</td>
+                          <td className="px-3 py-2">{comp.size}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">
+                            {comp.quantity}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Stock & Pricing */}
+              <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div className="text-center">
+                  <div className="text-2xl font-bold tabular-nums text-green-600">
+                    {(selectedPacketDetail.availablePackets || 0) -
+                      (selectedPacketDetail.reservedPackets || 0)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Available</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold tabular-nums text-amber-600">
+                    {selectedPacketDetail.reservedPackets || 0}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Reserved</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold tabular-nums text-muted-foreground">
+                    {selectedPacketDetail.soldPackets || 0}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Sold</div>
+                </div>
+              </div>
+
+              {/* Pricing */}
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <Label className="text-muted-foreground">Cost/Packet</Label>
+                  <div className="font-medium tabular-nums">
+                    {currency(selectedPacketDetail.costPricePerPacket || 0)}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Landed/Packet</Label>
+                  <div className="font-medium tabular-nums">
+                    {currency(selectedPacketDetail.landedPricePerPacket || 0)}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Suggested Price</Label>
+                  <div className="font-medium tabular-nums text-green-600">
+                    {currency(selectedPacketDetail.suggestedSellingPrice || 0)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Break Packet Dialog */}
+      <BreakPacketDialog
+        open={!!packetToBreak}
+        onOpenChange={(open) => !open && setPacketToBreak(null)}
+        packetStock={packetToBreak}
+        mode="inventory"
+        onSuccess={(result) => {
+          console.log("Packet broken successfully:", result);
+          setPacketToBreak(null);
+        }}
       />
     </div>
   );
