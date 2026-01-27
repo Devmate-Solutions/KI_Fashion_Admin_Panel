@@ -4,7 +4,11 @@ import { useEffect, useMemo, useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+<<<<<<< HEAD
 import { PlusIcon, TrashIcon, UserPlusIcon, SearchIcon, Calendar, Tag, Users } from "lucide-react"
+=======
+import { PlusIcon, TrashIcon, UserPlusIcon, SearchIcon, X, ChevronDown, Scissors } from "lucide-react"
+>>>>>>> d237026 (barcode and packet change)
 import {
   Dialog,
   DialogContent,
@@ -20,8 +24,14 @@ import { useBuyers } from "@/lib/hooks/useBuyers"
 import { MultiSelect } from "@/components/ui/multi-select"
 import { SEASON_OPTIONS, normalizeSeasonArray } from "@/lib/constants/seasons"
 import ProductImageGallery from "@/components/ui/ProductImageGallery"
+<<<<<<< HEAD
 import ProductSelectionModal from "@/components/modals/ProductSelectionModal"
 import BritishDatePicker from "@/components/BritishDatePicker"
+=======
+import PacketStockSelectionModal from "@/components/modals/PacketStockSelectionModal"
+import BreakPacketDialog from "@/components/modals/BreakPacketDialog"
+import { useBreakPacket } from "@/lib/hooks/usePacketStock"
+>>>>>>> d237026 (barcode and packet change)
 
 // Helper to get image array from various sources
 const getImageArray = (row) => {
@@ -48,6 +58,7 @@ export default function SaleForm({ onSave }) {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState(null)
   const [customerSearch, setCustomerSearch] = useState("")
+  const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
 
   // Buyers (from API)
   const [buyers, setBuyers] = useState([])
@@ -98,6 +109,16 @@ export default function SaleForm({ onSave }) {
 
   // Cart rows
   const [rows, setRows] = useState([])
+
+  // Barcode scanning
+  const [barcodeInput, setBarcodeInput] = useState("")
+  const [isLookingUpBarcode, setIsLookingUpBarcode] = useState(false)
+  const [barcodeError, setBarcodeError] = useState(null)
+  const barcodeInputRef = useRef(null)
+
+  // Packet breaking during sale
+  const [packetToBreak, setPacketToBreak] = useState(null)
+  const breakPacketMutation = useBreakPacket()
 
   // Payment section
   const [discount, setDiscount] = useState(0)
@@ -291,7 +312,13 @@ export default function SaleForm({ onSave }) {
         // Auto-calculate total when quantity or unitPrice changes
         const unitPrice = Number(updated.unitPrice || 0)
         const quantity = Number(updated.quantity || 0)
-        updated.totalPrice = unitPrice * quantity
+        
+        // For packet sales: total = packets × items per packet × price per item
+        if (updated.isPacketSale && updated.totalItemsPerPacket) {
+          updated.totalPrice = unitPrice * quantity * updated.totalItemsPerPacket
+        } else {
+          updated.totalPrice = unitPrice * quantity
+        }
 
         return updated
       }),
@@ -323,6 +350,103 @@ export default function SaleForm({ onSave }) {
     }
 
     setRows((r) => [...r, newRow])
+  }
+
+  // Handle barcode scan/input
+  async function handleBarcodeLookup(barcode) {
+    if (!barcode || !barcode.trim()) {
+      return
+    }
+
+    const trimmedBarcode = barcode.trim().toUpperCase()
+    
+    // Validate barcode format
+    if (!trimmedBarcode.startsWith('PKT-') && !trimmedBarcode.startsWith('LSE-')) {
+      setBarcodeError('Invalid barcode format. Expected PKT-XXXXXXXX or LSE-XXXXXXXX')
+      return
+    }
+
+    // Check if this barcode already exists in cart
+    const existingRowIndex = rows.findIndex(row => row.packetBarcode === trimmedBarcode)
+    
+    if (existingRowIndex !== -1) {
+      // Barcode already in cart - increment quantity if within available limit
+      const existingRow = rows[existingRowIndex]
+      const newQty = (existingRow.quantity || 1) + 1
+      
+      if (newQty > existingRow.availablePackets) {
+        setBarcodeError(`Cannot add more. Max available: ${existingRow.availablePackets} packets`)
+        return
+      }
+      
+      // Update quantity of existing row
+      updateRow(existingRow.id, 'quantity', newQty)
+      setBarcodeInput('') // Clear input
+      return
+    }
+
+    setIsLookingUpBarcode(true)
+    setBarcodeError(null)
+
+    try {
+      const response = await salesAPI.lookupBarcode(trimmedBarcode)
+      const packetData = response.data?.data
+
+      if (!packetData) {
+        setBarcodeError('Packet not found')
+        return
+      }
+
+      if (packetData.availablePackets <= 0) {
+        setBarcodeError(`No stock available for ${packetData.product?.name || 'this packet'}`)
+        return
+      }
+
+      // Calculate price per item from suggested packet price
+      const totalItems = packetData.totalItemsPerPacket || 1
+      const suggestedPricePerItem = Number(packetData.suggestedSellingPrice || 0) / totalItems
+
+      // Create cart row from packet data
+      const newRow = {
+        id: Date.now(),
+        productId: packetData.product?._id,
+        productName: packetData.product?.name || 'Unknown Product',
+        productCode: packetData.product?.productCode || packetData.product?.sku || '',
+        season: packetData.product?.season || [],
+        unitPrice: Number(suggestedPricePerItem).toFixed(2), // Price per item
+        quantity: 1, // Number of packets
+        photo: packetData.product?.images?.[0] || null,
+        totalPrice: Number(suggestedPricePerItem * totalItems), // 1 packet × items × price per item
+        // Packet-specific fields
+        isPacketSale: true,
+        packetStockId: packetData.packetStockId,
+        packetBarcode: packetData.barcode,
+        packetComposition: packetData.composition,
+        totalItemsPerPacket: packetData.totalItemsPerPacket,
+        availablePackets: packetData.availablePackets,
+        isLoose: packetData.isLoose,
+        compositionText: packetData.compositionText,
+        supplierName: packetData.supplier?.name || ''
+      }
+
+      setRows((r) => [...r, newRow])
+      setBarcodeInput('') // Clear input after successful scan
+      
+    } catch (err) {
+      console.error('Barcode lookup error:', err)
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to lookup barcode'
+      setBarcodeError(errorMessage)
+    } finally {
+      setIsLookingUpBarcode(false)
+    }
+  }
+
+  // Handle barcode input key press
+  function handleBarcodeKeyDown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleBarcodeLookup(barcodeInput)
+    }
   }
 
   // Derived totals
@@ -473,13 +597,28 @@ export default function SaleForm({ onSave }) {
         const unitPrice = Number(row.unitPrice || 0)
         const quantity = Number(row.quantity)
 
-        return {
+        // Build base item
+        const item = {
           product: productId,
           quantity: quantity,
           unitPrice: unitPrice,
           discount: 0,
           taxRate: 0
         }
+
+        // Add packet-specific fields if this is a packet sale
+        if (row.isPacketSale) {
+          item.isPacketSale = true
+          item.packetStock = row.packetStockId
+          item.packetBarcode = row.packetBarcode
+          item.totalItemsPerPacket = row.totalItemsPerPacket
+          item.packetComposition = row.packetComposition
+          // For packets: quantity is packet count, actual items = packets × itemsPerPacket
+          item.quantity = quantity * (row.totalItemsPerPacket || 1)
+          item.packetQuantity = quantity // Store original packet count
+        }
+
+        return item
       }))
 
       // Calculate subtotal and grandTotal
@@ -621,6 +760,7 @@ export default function SaleForm({ onSave }) {
               </Label>
               <div className="flex gap-2">
                 <div className="flex-1 relative">
+<<<<<<< HEAD
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
                     <SearchIcon className="h-5 w-5 text-muted-foreground" />
                   </div>
@@ -677,7 +817,120 @@ export default function SaleForm({ onSave }) {
                           </div>
                         ))
                       )}
+=======
+                  {/* Selected customer display */}
+                  {buyerId && !isManualCustomer ? (
+                    <div className="flex items-center justify-between h-10 px-3 border rounded-md bg-muted/30">
+                      <span className="font-medium text-sm truncate">
+                        {buyers.find(b => String(b.id) === String(buyerId))?.name || 'Selected Customer'}
+                        {buyers.find(b => String(b.id) === String(buyerId))?.company && (
+                          <span className="text-muted-foreground ml-1">
+                            ({buyers.find(b => String(b.id) === String(buyerId))?.company})
+                          </span>
+                        )}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setBuyerId('')
+                          setCustomerSearch('')
+                        }}
+                        className="h-7 w-7 p-0 ml-2"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+>>>>>>> d237026 (barcode and packet change)
                     </div>
+                  ) : (
+                    /* Search input */
+                    <div className="relative">
+                      <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="text"
+                        placeholder={isLoadingBuyers ? "Loading customers..." : "Search customer by name, company, phone..."}
+                        value={customerSearch}
+                        onChange={e => {
+                          setCustomerSearch(e.target.value)
+                          setCustomerDropdownOpen(true)
+                        }}
+                        onFocus={() => setCustomerDropdownOpen(true)}
+                        disabled={isLoadingBuyers}
+                        className="pl-9 pr-9 h-10"
+                        autoComplete="off"
+                      />
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    </div>
+                  )}
+
+                  {/* Customer dropdown */}
+                  {customerDropdownOpen && !buyerId && (
+                    <div className="absolute z-50 w-full mt-1 bg-white dark:bg-zinc-900 border rounded-md shadow-lg">
+                      <div className="max-h-[250px] overflow-auto">
+                        {(() => {
+                          const filteredBuyers = buyers.filter(b => {
+                            if (!customerSearch.trim()) return true
+                            const search = customerSearch.toLowerCase()
+                            return (
+                              b.name?.toLowerCase().includes(search) ||
+                              b.company?.toLowerCase().includes(search) ||
+                              b.phone?.toLowerCase().includes(search) ||
+                              b.email?.toLowerCase().includes(search)
+                            )
+                          })
+
+                          if (filteredBuyers.length === 0) {
+                            return (
+                              <div className="p-3 text-sm text-muted-foreground text-center">
+                                {buyers.length === 0 ? 'No customers available' : 'No customers match your search'}
+                              </div>
+                            )
+                          }
+
+                          return (
+                            <div className="py-1">
+                              {filteredBuyers.slice(0, 50).map((b) => (
+                                <button
+                                  key={b.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setBuyerId(String(b.id))
+                                    setIsManualCustomer(false)
+                                    setCustomerSearch('')
+                                    setCustomerDropdownOpen(false)
+                                  }}
+                                  className="w-full px-3 py-2 text-left hover:bg-accent transition-colors flex flex-col"
+                                >
+                                  <span className="font-medium text-sm">
+                                    {b.name || 'Unknown'}
+                                    {b.company && <span className="text-muted-foreground font-normal ml-1">({b.company})</span>}
+                                  </span>
+                                  {(b.phone || b.email) && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {b.phone}{b.phone && b.email && ' • '}{b.email}
+                                    </span>
+                                  )}
+                                </button>
+                              ))}
+                              {filteredBuyers.length > 50 && (
+                                <div className="px-3 py-2 text-xs text-muted-foreground text-center border-t">
+                                  Showing first 50 results. Type to narrow down.
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })()}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Click outside to close */}
+                  {customerDropdownOpen && (
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setCustomerDropdownOpen(false)}
+                    />
                   )}
                 </div>
                 <Button
@@ -761,26 +1014,53 @@ export default function SaleForm({ onSave }) {
       <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold">Products</h2>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowProductModal(true)}
-              size="sm"
-              className="gap-2"
-            >
-              <SearchIcon className="h-4 w-4" />
-              Browse Inventory
-            </Button>
-            <Button
-              type="button"
-              onClick={addRow}
-              size="sm"
-              className="gap-2"
-            >
-              <PlusIcon className="h-4 w-4" />
-              Add Product
-            </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowProductModal(true)}
+            size="sm"
+            className="gap-2"
+          >
+            <SearchIcon className="h-4 w-4" />
+            Browse Inventory
+          </Button>
+        </div>
+
+        {/* Barcode Scanner Input */}
+        <div className="mb-4 p-4 bg-muted/30 rounded-lg border border-dashed">
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <Label htmlFor="barcode-input" className="text-sm font-medium mb-1 block">
+                Scan Packet Barcode
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  ref={barcodeInputRef}
+                  id="barcode-input"
+                  type="text"
+                  placeholder="Scan or enter barcode (PKT-XXXXXXXX or LSE-XXXXXXXX)"
+                  value={barcodeInput}
+                  onChange={(e) => {
+                    setBarcodeInput(e.target.value.toUpperCase())
+                    setBarcodeError(null)
+                  }}
+                  onKeyDown={handleBarcodeKeyDown}
+                  disabled={isLookingUpBarcode}
+                  className="flex-1 font-mono"
+                />
+                <Button
+                  type="button"
+                  onClick={() => handleBarcodeLookup(barcodeInput)}
+                  disabled={isLookingUpBarcode || !barcodeInput.trim()}
+                  size="default"
+                >
+                  {isLookingUpBarcode ? 'Looking up...' : 'Add'}
+                </Button>
+              </div>
+              {barcodeError && (
+                <p className="text-sm text-destructive mt-1">{barcodeError}</p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -803,15 +1083,36 @@ export default function SaleForm({ onSave }) {
                   <td colSpan={7} className="text-center py-12 text-muted-foreground">
                     <div className="flex flex-col items-center gap-2">
                       <p className="text-sm">No products added yet</p>
-                      <p className="text-xs">Click "Add Product" to get started</p>
+                      <p className="text-xs">Scan a barcode or click "Add Product" to get started</p>
                     </div>
                   </td>
                 </tr>
               )}
               {rows.map((row) => (
-                <tr key={row.id} className="border-b hover:bg-muted/30 transition-colors">
+                <tr key={row.id} className={`border-b hover:bg-muted/30 transition-colors ${row.isPacketSale ? 'bg-blue-50/30' : ''}`}>
                   {/* Name */}
                   <td className="p-2">
+                    {row.isPacketSale ? (
+                      <div className="flex flex-col gap-1">
+                        <span className="font-medium text-sm">{row.productName}</span>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800">
+                            {row.isLoose ? 'LOOSE' : 'PACKET'}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground font-mono">
+                            {row.packetBarcode}
+                          </span>
+                        </div>
+                        {row.compositionText && (
+                          <span className="text-[10px] text-muted-foreground">
+                            {row.compositionText} ({row.totalItemsPerPacket} items)
+                          </span>
+                        )}
+                        <span className="text-[10px] text-emerald-600">
+                          {row.availablePackets} available
+                        </span>
+                      </div>
+                    ) : (
                     <Input
                       value={row.productName}
                       onChange={(e) => {
@@ -864,10 +1165,14 @@ export default function SaleForm({ onSave }) {
                       placeholder="Enter product name"
                       className="h-8 text-sm"
                     />
+                    )}
                   </td>
 
                   {/* Code */}
                   <td className="p-2">
+                    {row.isPacketSale ? (
+                      <span className="text-sm text-muted-foreground">{row.productCode}</span>
+                    ) : (
                     <Input
                       value={row.productCode}
                       onChange={(e) => {
@@ -915,6 +1220,7 @@ export default function SaleForm({ onSave }) {
                       }}
                       className="h-8 text-sm"
                     />
+                    )}
                   </td>
 
                   {/* Image */}
@@ -930,6 +1236,30 @@ export default function SaleForm({ onSave }) {
 
                   {/* Unit Price */}
                   <td className="p-2">
+                    {row.isPacketSale ? (
+                      <div className="flex flex-col items-end gap-1">
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          step="0.01"
+                          min="0"
+                          value={row.unitPrice}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                            updateRow(row.id, "unitPrice", sanitized === "" ? "" : Number(sanitized));
+                          }}
+                          onBlur={(e) => {
+                            const val = parseFloat(e.target.value)
+                            if (!isNaN(val)) {
+                              updateRow(row.id, "unitPrice", Number(val.toFixed(2)))
+                            }
+                          }}
+                          className="h-8 text-sm text-right tabular-nums w-24"
+                        />
+                        <span className="text-xs text-muted-foreground">per item</span>
+                      </div>
+                    ) : (
                     <Input
                       type="text"
                       inputMode="decimal"
@@ -950,10 +1280,33 @@ export default function SaleForm({ onSave }) {
                       }}
                       className="h-8 text-sm text-right tabular-nums"
                     />
+                    )}
                   </td>
 
                   {/* Quantity */}
                   <td className="p-2">
+                    {row.isPacketSale ? (
+                      <div className="flex flex-col items-end gap-1">
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min="1"
+                          max={row.availablePackets || 999}
+                          value={row.quantity}
+                          onChange={(e) => {
+                            const value = Math.min(
+                              Math.max(1, parseInt(e.target.value) || 1),
+                              row.availablePackets || 999
+                            );
+                            updateRow(row.id, "quantity", value);
+                          }}
+                          className="h-8 text-sm text-right tabular-nums w-20"
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          {row.availablePackets} available
+                        </span>
+                      </div>
+                    ) : (
                     <Input
                       type="text"
                       inputMode="numeric"
@@ -966,27 +1319,69 @@ export default function SaleForm({ onSave }) {
                       }}
                       className="h-8 text-sm text-right tabular-nums"
                     />
+                    )}
                   </td>
 
                   {/* Total */}
                   <td className="p-2">
                     <div className="text-right text-sm font-medium tabular-nums">
-                      £{(Number(row.unitPrice || 0) * Number(row.quantity || 0)).toFixed(2)}
+                      {row.isPacketSale && row.totalItemsPerPacket ? (
+                        <>
+                          £{(Number(row.unitPrice || 0) * Number(row.quantity || 0) * row.totalItemsPerPacket).toFixed(2)}
+                          <span className="block text-xs text-muted-foreground font-normal">
+                            {row.quantity} pkt × {row.totalItemsPerPacket} items × £{Number(row.unitPrice || 0).toFixed(2)}
+                          </span>
+                        </>
+                      ) : (
+                        <>£{(Number(row.unitPrice || 0) * Number(row.quantity || 0)).toFixed(2)}</>
+                      )}
                     </div>
                   </td>
 
                   {/* Action */}
                   <td className="p-2 text-center">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeRow(row.id)}
-                      className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
-                      title="Remove row"
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center justify-center gap-1">
+                      {/* Break Packet button - only for non-loose packets */}
+                      {row.isPacketSale && !row.isLoose && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            // Remove from cart and open break dialog
+                            removeRow(row.id)
+                            setPacketToBreak({
+                              _id: row.packetStockId,
+                              barcode: row.packetBarcode,
+                              product: {
+                                _id: row.productId,
+                                name: row.productName,
+                                productCode: row.productCode
+                              },
+                              composition: row.packetComposition,
+                              totalItemsPerPacket: row.totalItemsPerPacket,
+                              availablePackets: row.availablePackets,
+                              suggestedSellingPrice: Number(row.unitPrice) * row.totalItemsPerPacket,
+                              supplier: { name: row.supplierName }
+                            })
+                          }}
+                          className="h-8 w-8 p-0 hover:bg-amber-100 hover:text-amber-700 dark:hover:bg-amber-950/50 dark:hover:text-amber-400"
+                          title="Break packet to sell individual items"
+                        >
+                          <Scissors className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeRow(row.id)}
+                        className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
+                        title="Remove row"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1029,14 +1424,18 @@ export default function SaleForm({ onSave }) {
               <Input
                 id="discount"
                 type="text"
-                inputMode="numeric"
+                inputMode="decimal"
                 step="0.01"
                 value={discount}
                 onChange={(e) => {
                   const value = e.target.value;
                   // Allow only numbers and one decimal point
                   const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                  setDiscount(sanitized === "" ? "" : Number(sanitized || 0));
+                  setDiscount(sanitized);
+                }}
+                onBlur={(e) => {
+                  const val = parseFloat(e.target.value);
+                  setDiscount(!isNaN(val) ? val : 0);
                 }}
                 onKeyDown={(e) => handlePaymentKeyDown(e, "discount")}
                 placeholder="0.00"
@@ -1049,14 +1448,18 @@ export default function SaleForm({ onSave }) {
                 id="cash"
                 ref={cashInputRef}
                 type="text"
-                inputMode="numeric"
+                inputMode="decimal"
                 step="0.01"
                 value={cash}
                 onChange={(e) => {
                   const value = e.target.value;
                   // Allow only numbers and one decimal point
                   const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                  setCash(sanitized === "" ? "" : Number(sanitized || 0));
+                  setCash(sanitized);
+                }}
+                onBlur={(e) => {
+                  const val = parseFloat(e.target.value);
+                  setCash(!isNaN(val) ? val : 0);
                 }}
                 onKeyDown={(e) => handlePaymentKeyDown(e, "cash")}
                 placeholder="0.00"
@@ -1073,14 +1476,18 @@ export default function SaleForm({ onSave }) {
                 id="bank"
                 ref={bankInputRef}
                 type="text"
-                inputMode="numeric"
+                inputMode="decimal"
                 step="0.01"
                 value={bank}
                 onChange={(e) => {
                   const value = e.target.value;
                   // Allow only numbers and one decimal point
                   const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                  setBank(sanitized === "" ? "" : Number(sanitized || 0));
+                  setBank(sanitized);
+                }}
+                onBlur={(e) => {
+                  const val = parseFloat(e.target.value);
+                  setBank(!isNaN(val) ? val : 0);
                 }}
                 onKeyDown={(e) => handlePaymentKeyDown(e, "bank")}
                 placeholder="0.00"
@@ -1226,12 +1633,69 @@ export default function SaleForm({ onSave }) {
         </DialogContent>
       </Dialog>
 
-      {/* Product Selection Modal */}
-      <ProductSelectionModal
+      {/* Packet Stock Selection Modal */}
+      <PacketStockSelectionModal
         open={showProductModal}
         onClose={() => setShowProductModal(false)}
-        products={products}
-        onSelect={handleProductSelect}
+        onSelect={(cartRow) => {
+          // Check if packet barcode already exists in cart
+          const existingRowIndex = rows.findIndex(row => row.packetBarcode === cartRow.packetBarcode)
+          
+          if (existingRowIndex !== -1) {
+            // Barcode already in cart - increment quantity if within available limit
+            const existingRow = rows[existingRowIndex]
+            const newQty = (existingRow.quantity || 1) + 1
+            
+            if (newQty > existingRow.availablePackets) {
+              setError(`Cannot add more. Max available: ${existingRow.availablePackets} packets of ${existingRow.packetBarcode}`)
+              return
+            }
+            
+            // Update quantity of existing row
+            updateRow(existingRow.id, 'quantity', newQty)
+          } else {
+            // New barcode - add to cart
+            setRows((r) => [...r, cartRow])
+          }
+        }}
+      />
+
+      {/* Break Packet Dialog - for selling partial packets */}
+      <BreakPacketDialog
+        open={!!packetToBreak}
+        onOpenChange={(open) => !open && setPacketToBreak(null)}
+        packet={packetToBreak}
+        onSuccess={(result) => {
+          // After breaking, add the sold items to cart as individual item sales
+          if (result?.itemsSold && result.itemsSold.length > 0 && packetToBreak) {
+            // Calculate total items sold
+            const totalItemsSold = result.itemsSold.reduce((sum, item) => sum + item.quantity, 0)
+            const pricePerItem = Number(packetToBreak.suggestedSellingPrice) / (packetToBreak.totalItemsPerPacket || 1)
+
+            // Add broken items as a loose stock row (items sold individually)
+            const brokenRow = {
+              id: Date.now(),
+              productId: packetToBreak.product?._id,
+              productName: packetToBreak.product?.name || 'Unknown Product',
+              productCode: packetToBreak.product?.productCode || '',
+              unitPrice: Number(pricePerItem).toFixed(2),
+              quantity: totalItemsSold, // Number of individual items
+              photo: packetToBreak.product?.images?.[0] || null,
+              totalPrice: Number(pricePerItem * totalItemsSold),
+              // Mark as broken packet sale
+              isPacketSale: false, // Individual items, not packet
+              fromBrokenPacket: true,
+              originalPacketBarcode: packetToBreak.barcode,
+              looseStockBarcode: result.looseStockBarcode,
+              itemsSoldBreakdown: result.itemsSold, // Keep breakdown for reference
+              supplierName: packetToBreak.supplier?.name || ''
+            }
+
+            setRows((r) => [...r, brokenRow])
+          }
+          setPacketToBreak(null)
+        }}
+        mode="sale"
       />
     </div>
   )

@@ -1,51 +1,128 @@
 "use client"
 
-import { useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import Link from "next/link"
 import {
-  useSalesReport,
-  usePurchasesReport,
-  useFinancialReport,
-  useInventoryReport,
-  useSuppliersReport,
-  useCustomersReport,
-  useDashboardSummary
-} from "../../../lib/hooks/useReports"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
-import { Button } from "../../../components/ui/button"
-import { Input } from "../../../components/ui/input"
-import { Label } from "../../../components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
+  TrendingUp,
+  ShoppingCart,
+  Package,
+  Boxes,
+  Users,
+  Truck,
+  Activity,
+  RotateCcw,
+  FileText,
+  DollarSign,
+  CreditCard,
+} from "lucide-react"
 
-function currency(n) {
-  const num = Number(n || 0)
-  return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
+const reportCategories = [
+  {
+    title: "Financial Reports",
+    description: "Revenue, expenses, and profitability analysis",
+    reports: [
+      {
+        name: "Profit & Loss Report",
+        description: "Revenue vs expenses summary with net profit/loss",
+        href: "/reports/profit-loss",
+        icon: TrendingUp,
+        color: "text-green-600 bg-green-50",
+      },
+      {
+        name: "Receivables Report",
+        description: "Customer outstanding amounts and aging",
+        href: "/reports/receivables",
+        icon: DollarSign,
+        color: "text-blue-600 bg-blue-50",
+      },
+      {
+        name: "Payables Report",
+        description: "Supplier outstanding amounts and aging",
+        href: "/reports/payables",
+        icon: CreditCard,
+        color: "text-orange-600 bg-orange-50",
+      },
+    ],
+  },
+  {
+    title: "Sales Reports",
+    description: "Daily sales transactions and analysis",
+    reports: [
+      {
+        name: "Daily Sale Report",
+        description: "All sales transactions by date range",
+        href: "/reports/daily-sales",
+        icon: ShoppingCart,
+        color: "text-purple-600 bg-purple-50",
+      },
+      {
+        name: "Daily Sale Product-wise",
+        description: "Sales breakdown by individual products",
+        href: "/reports/sales-product-wise",
+        icon: Package,
+        color: "text-indigo-600 bg-indigo-50",
+      },
+      {
+        name: "Daily Sales Return Report",
+        description: "Customer returns and refunds",
+        href: "/reports/sales-returns",
+        icon: RotateCcw,
+        color: "text-red-600 bg-red-50",
+      },
+    ],
+  },
+  {
+    title: "Buying Reports",
+    description: "Purchase orders and supplier transactions",
+    reports: [
+      {
+        name: "Daily Buying Report",
+        description: "All purchase orders by date range",
+        href: "/reports/daily-buying",
+        icon: Truck,
+        color: "text-teal-600 bg-teal-50",
+      },
+      {
+        name: "Daily Buying Product-wise",
+        description: "Purchases breakdown by individual products",
+        href: "/reports/buying-product-wise",
+        icon: Boxes,
+        color: "text-cyan-600 bg-cyan-50",
+      },
+      {
+        name: "Daily Buying Return Report",
+        description: "Returns to suppliers",
+        href: "/reports/buying-returns",
+        icon: RotateCcw,
+        color: "text-amber-600 bg-amber-50",
+      },
+    ],
+  },
+  {
+    title: "Inventory & Activity",
+    description: "Stock levels and user activity tracking",
+    reports: [
+      {
+        name: "Stock in Hand Report",
+        description: "Current inventory levels and valuation",
+        href: "/reports/stock-in-hand",
+        icon: Boxes,
+        color: "text-emerald-600 bg-emerald-50",
+      },
+      {
+        name: "Daily Activity Report",
+        description: "User activity log and audit trail",
+        href: "/reports/activity-log",
+        icon: Activity,
+        color: "text-slate-600 bg-slate-50",
+      },
+    ],
+  },
+]
 
 export default function ReportsPage() {
-  const [dateRange, setDateRange] = useState({
-    startDate: '',
-    endDate: ''
-  })
-
-  // Fetch all reports
-  const { data: dashboardData, isLoading: dashboardLoading } = useDashboardSummary(dateRange)
-  const { data: salesData, isLoading: salesLoading, refetch: refetchSales } = useSalesReport(dateRange)
-  const { data: purchasesData, isLoading: purchasesLoading, refetch: refetchPurchases } = usePurchasesReport(dateRange)
-  const { data: financialData, isLoading: financialLoading, refetch: refetchFinancial } = useFinancialReport(dateRange)
-  const { data: inventoryData, isLoading: inventoryLoading, refetch: refetchInventory } = useInventoryReport(dateRange)
-  const { data: suppliersData, isLoading: suppliersLoading, refetch: refetchSuppliers } = useSuppliersReport(dateRange)
-  const { data: customersData, isLoading: customersLoading, refetch: refetchCustomers } = useCustomersReport(dateRange)
-
-  const handleRefreshAll = () => {
-    refetchSales()
-    refetchPurchases()
-    refetchFinancial()
-    refetchInventory()
-    refetchSuppliers()
-    refetchCustomers()
-  }
-
   return (
+<<<<<<< HEAD
     <div className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
@@ -53,308 +130,72 @@ export default function ReportsPage() {
           <p className="text-sm text-muted-foreground">Comprehensive business insights and performance metrics</p>
         </div>
         <Button onClick={handleRefreshAll} className="h-9 sm:h-10">Refresh All</Button>
+=======
+    <div className="p-4 md:p-6 max-w-[1600px] mx-auto">
+      {/* Header */}
+      <header className="mb-6">
+        <h1 className="text-xl md:text-2xl font-bold">Reports & Analytics</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Generate detailed reports with date filtering and print functionality
+        </p>
+>>>>>>> d237026 (barcode and packet change)
       </header>
 
-      {/* Date Range Filter */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Filter by Date Range</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 items-end">
-            <div className="flex-1">
-              <Label htmlFor="startDate">Start Date</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={dateRange.startDate}
-                onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-              />
+      {/* Report Categories */}
+      <div className="space-y-8">
+        {reportCategories.map((category) => (
+          <div key={category.title}>
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold">{category.title}</h2>
+              <p className="text-sm text-muted-foreground">{category.description}</p>
             </div>
-            <div className="flex-1">
-              <Label htmlFor="endDate">End Date</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={dateRange.endDate}
-                onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {category.reports.map((report) => {
+                const Icon = report.icon
+                return (
+                  <Link key={report.href} href={report.href}>
+                    <Card className="h-full hover:shadow-md hover:border-primary/50 transition-all cursor-pointer group">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start gap-3">
+                          <div className={`p-2 rounded-lg ${report.color}`}>
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-base group-hover:text-primary transition-colors">
+                              {report.name}
+                            </CardTitle>
+                            <CardDescription className="text-xs mt-1 line-clamp-2">
+                              {report.description}
+                            </CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="flex items-center text-xs text-muted-foreground">
+                          <FileText className="h-3 w-3 mr-1" />
+                          <span>Click to generate report</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                )
+              })}
             </div>
-            <Button
-              variant="outline"
-              onClick={() => setDateRange({ startDate: '', endDate: '' })}
-            >
-              Clear
-            </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Dashboard Summary */}
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold mb-4">Dashboard Overview</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total Sales</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {dashboardLoading ? '...' : currency(dashboardData?.totalSales || 0)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total Purchases</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {dashboardLoading ? '...' : currency(dashboardData?.totalPurchases || 0)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Net Profit</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {dashboardLoading ? '...' : currency(dashboardData?.netProfit || 0)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total Expenses</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {dashboardLoading ? '...' : currency(dashboardData?.totalExpenses || 0)}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        ))}
       </div>
 
-      {/* Detailed Reports Tabs */}
-      <Tabs defaultValue="sales" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="sales">Sales</TabsTrigger>
-          <TabsTrigger value="purchases">Purchases</TabsTrigger>
-          <TabsTrigger value="financial">Financial</TabsTrigger>
-          <TabsTrigger value="inventory">Inventory</TabsTrigger>
-          <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
-          <TabsTrigger value="customers">Customers</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="sales">
-          <Card>
-            <CardHeader>
-              <CardTitle>Sales Report</CardTitle>
-              <CardDescription>Detailed sales analysis and metrics</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {salesLoading ? (
-                <p>Loading sales report...</p>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-500">Total Sales</p>
-                      <p className="text-xl font-semibold">{currency(salesData?.totalSales || 0)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Number of Orders</p>
-                      <p className="text-xl font-semibold">{salesData?.orderCount || 0}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Average Order Value</p>
-                      <p className="text-xl font-semibold">{currency(salesData?.avgOrderValue || 0)}</p>
-                    </div>
-                  </div>
-                  <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded overflow-auto max-h-96">
-                    {JSON.stringify(salesData, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="purchases">
-          <Card>
-            <CardHeader>
-              <CardTitle>Purchases Report</CardTitle>
-              <CardDescription>Purchase orders and supplier transactions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {purchasesLoading ? (
-                <p>Loading purchases report...</p>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-500">Total Purchases</p>
-                      <p className="text-xl font-semibold">{currency(purchasesData?.totalPurchases || 0)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Number of Orders</p>
-                      <p className="text-xl font-semibold">{purchasesData?.orderCount || 0}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Pending Payments</p>
-                      <p className="text-xl font-semibold">{currency(purchasesData?.pendingPayments || 0)}</p>
-                    </div>
-                  </div>
-                  <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded overflow-auto max-h-96">
-                    {JSON.stringify(purchasesData, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="financial">
-          <Card>
-            <CardHeader>
-              <CardTitle>Financial Report</CardTitle>
-              <CardDescription>Income, expenses, and profitability</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {financialLoading ? (
-                <p>Loading financial report...</p>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-500">Total Revenue</p>
-                      <p className="text-xl font-semibold text-green-600">{currency(financialData?.totalRevenue || 0)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Total Expenses</p>
-                      <p className="text-xl font-semibold text-red-600">{currency(financialData?.totalExpenses || 0)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Net Profit</p>
-                      <p className="text-xl font-semibold text-blue-600">{currency(financialData?.netProfit || 0)}</p>
-                    </div>
-                  </div>
-                  <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded overflow-auto max-h-96">
-                    {JSON.stringify(financialData, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="inventory">
-          <Card>
-            <CardHeader>
-              <CardTitle>Inventory Report</CardTitle>
-              <CardDescription>Stock levels, valuation, and movement</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {inventoryLoading ? (
-                <p>Loading inventory report...</p>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-500">Total Items</p>
-                      <p className="text-xl font-semibold">{inventoryData?.totalItems || 0}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Total Value</p>
-                      <p className="text-xl font-semibold">{currency(inventoryData?.totalValue || 0)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Low Stock Items</p>
-                      <p className="text-xl font-semibold text-red-600">{inventoryData?.lowStockCount || 0}</p>
-                    </div>
-                  </div>
-                  <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded overflow-auto max-h-96">
-                    {JSON.stringify(inventoryData, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="suppliers">
-          <Card>
-            <CardHeader>
-              <CardTitle>Suppliers Report</CardTitle>
-              <CardDescription>Supplier performance and analysis</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {suppliersLoading ? (
-                <p>Loading suppliers report...</p>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-500">Total Suppliers</p>
-                      <p className="text-xl font-semibold">{suppliersData?.totalSuppliers || 0}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Total Payable</p>
-                      <p className="text-xl font-semibold">{currency(suppliersData?.totalPayable || 0)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Top Supplier</p>
-                      <p className="text-xl font-semibold truncate">{suppliersData?.topSupplier?.name || 'N/A'}</p>
-                    </div>
-                  </div>
-                  <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded overflow-auto max-h-96">
-                    {JSON.stringify(suppliersData, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="customers">
-          <Card>
-            <CardHeader>
-              <CardTitle>Customers Report</CardTitle>
-              <CardDescription>Customer analysis and insights</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {customersLoading ? (
-                <p>Loading customers report...</p>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-500">Total Customers</p>
-                      <p className="text-xl font-semibold">{customersData?.totalCustomers || 0}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Total Receivable</p>
-                      <p className="text-xl font-semibold">{currency(customersData?.totalReceivable || 0)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Top Customer</p>
-                      <p className="text-xl font-semibold truncate">{customersData?.topCustomer?.name || 'N/A'}</p>
-                    </div>
-                  </div>
-                  <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded overflow-auto max-h-96">
-                    {JSON.stringify(customersData, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* Quick Info */}
+      <div className="mt-8 p-4 bg-muted/50 rounded-lg">
+        <h3 className="font-medium mb-2">Report Features</h3>
+        <ul className="text-sm text-muted-foreground space-y-1">
+          <li>• All reports support date range filtering</li>
+          <li>• Print-ready format with company header</li>
+          <li>• Sortable and searchable tables</li>
+          <li>• Summary statistics at a glance</li>
+          <li>• British date format (DD/MM/YYYY) and GBP currency</li>
+        </ul>
+      </div>
     </div>
   )
 }

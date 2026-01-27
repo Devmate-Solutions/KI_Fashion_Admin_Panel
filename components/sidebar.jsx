@@ -20,9 +20,12 @@ import {
   DollarSign,
   Wallet,
   FileText,
+  ChevronDown,
+  ChevronRight,
   X,
   Menu,
 } from "lucide-react";
+import * as Collapsible from "@radix-ui/react-collapsible";
 
 const items = [
   // { href: "/home", label: "Dashboard", icon: Home },
@@ -35,6 +38,8 @@ const items = [
   { href: "/expenses", label: "Expenses", icon: FileText },
   { href: "/customer-ledger", label: "Customer Ledger", icon: BookUser },
   { href: "/supplier-ledger", label: "Supplier Ledger", icon: Users },
+  { type: "separator", label: "Reports & Analytics" },
+  { type: "reports", label: "Reports", icon: BarChart3 },
   { type: "separator", label: "Operations" },
   // { href: "/daily-report-form", label: "Daily Reports", icon: ClipboardList },
   { href: "/logistics", label: "Logistics", icon: Truck },
@@ -45,25 +50,27 @@ const items = [
   { href: "/users", label: "User Management", icon: UserCog },
   // { href: "/delivery-personnel", label: "Delivery Staff", icon: Truck },
   { href: "/cost-types", label: "Cost Config", icon: DollarSign },
-  // { href: "/reports", label: "System Reports", icon: BarChart3 },
+];
+
+const reportLinks = [
+  { href: "/reports/daily-sales", label: "Daily Sales (Invoice Wise)" },
+  { href: "/reports/daily-buying", label: "Daily Buying (Invoice Wise)" },
+  { href: "/reports/sales-product-wise", label: "Sales (Product Wise)" },
+  { href: "/reports/buying-product-wise", label: "Buying (Product Wise)" },
+  { href: "/reports/stock-in-hand", label: "Stock in Hand" },
+  { href: "/reports/receivables", label: "Receivables Report" },
+  { href: "/reports/payables", label: "Payables Report" },
+  {href: "/reports/profit-loss", label: "Comparison Report (PNL)"}
+  // { href: "/reports/sales-returns", label: "Sales Returns (Invoice Wise)" },
+  // { href: "/reports/sales-returns-product-wise", label: "Sales Returns (Product Wise)" },
+  // { href: "/reports/buying-returns-product-wise", label: "Buying Returns (Product Wise)" },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [open, setOpen] = useState(false);
-
-  // Listen for menu open events from topbar
-  useEffect(() => {
-    const handleMenuClick = () => {
-      setOpen(true);
-    };
-    
-    window.addEventListener('open-sidebar', handleMenuClick);
-    return () => {
-      window.removeEventListener('open-sidebar', handleMenuClick);
-    };
-  }, []);
+  const [reportsOpen, setReportsOpen] = useState(false);
 
   useEffect(() => {
     const saved =
@@ -71,11 +78,18 @@ export default function Sidebar() {
         ? window.localStorage.getItem("sidebar:collapsed")
         : null;
     if (saved != null) setCollapsed(saved === "true");
-  }, []);
+
+    // Auto-expand reports if on a report page
+    if (pathname?.startsWith('/reports/')) {
+      setReportsOpen(true);
+    }
+  }, [pathname]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem("sidebar:collapsed", String(collapsed));
+      // Update body data attribute for main content margin adjustment
+      document.body.setAttribute('data-sidebar-collapsed', String(collapsed));
     } catch {}
   }, [collapsed]);
 
@@ -210,6 +224,85 @@ export default function Sidebar() {
               );
             }
 
+            // Reports collapsible menu
+            if (it.type === "reports") {
+              const anyReportActive = pathname?.startsWith('/reports');
+              const Icon = it.icon;
+              
+              return (
+                <li key="reports-collapsible">
+                  <Collapsible.Root open={reportsOpen} onOpenChange={setReportsOpen}>
+                    <Collapsible.Trigger asChild>
+                      <button
+                        type="button"
+                        title={it.label}
+                        aria-label={it.label}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-all rounded-xl relative group
+                          ${
+                            anyReportActive
+                              ? "bg-blue-600 text-white shadow-lg shadow-blue-100 font-bold"
+                              : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                          }`}
+                      >
+                        <Icon
+                          className={`h-5 w-5 shrink-0 ${
+                            anyReportActive
+                              ? "text-white"
+                              : "text-slate-400 group-hover:text-slate-900"
+                          }`}
+                          aria-hidden="true"
+                        />
+                        {!collapsed && (
+                          <>
+                            <span className="truncate flex-1 text-left">{it.label}</span>
+                            {reportsOpen ? (
+                              <ChevronDown className="h-4 w-4 shrink-0" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 shrink-0" />
+                            )}
+                          </>
+                        )}
+                        {anyReportActive && !collapsed && (
+                          <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white/40"></div>
+                        )}
+                      </button>
+                    </Collapsible.Trigger>
+                    
+                    {!collapsed && (
+                      <Collapsible.Content className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+                        <ul className="mt-1 space-y-1">
+                          {reportLinks.map((report) => {
+                            const active = pathname === report.href;
+                            return (
+                              <li key={report.href}>
+                                <Link
+                                  href={report.href}
+                                  prefetch={true}
+                                  title={report.label}
+                                  aria-label={report.label}
+                                  className={`flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all rounded-xl relative
+                                    ${
+                                      active
+                                        ? "bg-blue-50 text-blue-700 font-semibold"
+                                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                                    }`}
+                                >
+                                  <span className="truncate text-xs">{report.label}</span>
+                                  {active && (
+                                    <div className="absolute left-6 w-1.5 h-1.5 rounded-full bg-blue-600"></div>
+                                  )}
+                                </Link>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </Collapsible.Content>
+                    )}
+                  </Collapsible.Root>
+                </li>
+              );
+            }
+
             const active =
               pathname === it.href ||
               (it.href !== "/home" && pathname.startsWith(it.href + "/"));
@@ -260,6 +353,36 @@ export default function Sidebar() {
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: #e2e8f0;
+        }
+
+        @keyframes collapsible-down {
+          from {
+            height: 0;
+            opacity: 0;
+          }
+          to {
+            height: var(--radix-collapsible-content-height);
+            opacity: 1;
+          }
+        }
+
+        @keyframes collapsible-up {
+          from {
+            height: var(--radix-collapsible-content-height);
+            opacity: 1;
+          }
+          to {
+            height: 0;
+            opacity: 0;
+          }
+        }
+
+        .animate-collapsible-down {
+          animation: collapsible-down 0.2s ease-out;
+        }
+
+        .animate-collapsible-up {
+          animation: collapsible-up 0.2s ease-out;
         }
       `}</style>
       </aside>
