@@ -8,8 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Building2, Loader2 } from "lucide-react"
 
 /**
- * Add Supplier Form Component
+ * Add Supplier Form Component okay
  */
+
 export function AddSupplierForm({ open, onClose, onSubmit, loading = false }) {
   const phoneInputRef = useRef(null)
   const alternatePhoneInputRef = useRef(null)
