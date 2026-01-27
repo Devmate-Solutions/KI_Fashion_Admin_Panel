@@ -53,6 +53,7 @@ import {
 import { toast } from "react-hot-toast";
 import ProductImageGallery from "@/components/ui/ProductImageGallery";
 import DataTable from "@/components/data-table";
+import PacketLabelPrintModal from "@/components/modals/PacketLabelPrintModal";
 
 function currency(n) {
   const num = Number(n || 0);
@@ -103,6 +104,7 @@ export default function ProductPacketsPage({ params }) {
   // Modal state
   const [selectedPacket, setSelectedPacket] = useState(null);
   const [copiedBarcode, setCopiedBarcode] = useState(null);
+  const [printPacketId, setPrintPacketId] = useState(null);
 
   // Fetch product/inventory info
   const { data: inventoryData, isLoading: inventoryLoading } =
@@ -199,46 +201,7 @@ export default function ProductPacketsPage({ params }) {
   };
 
   const handlePrintBarcode = (packet) => {
-    const printWindow = window.open("", "_blank", "width=400,height=300");
-    if (!printWindow) {
-      toast.error("Please allow popups for printing");
-      return;
-    }
-
-    const compositionText =
-      packet.composition
-        ?.map((c) => `${c.color}/${c.size} × ${c.quantity}`)
-        .join(", ") || "—";
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Barcode: ${packet.barcode}</title>
-          <style>
-            body { font-family: monospace; text-align: center; padding: 20px; }
-            .barcode { font-size: 24px; font-weight: bold; margin: 20px 0; letter-spacing: 2px; }
-            .product { font-size: 14px; margin-bottom: 10px; }
-            .composition { font-size: 12px; color: #666; margin-bottom: 10px; }
-            .price { font-size: 16px; font-weight: bold; }
-            @media print {
-              body { padding: 10px; }
-              .no-print { display: none; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="product">${packet.product?.name || "—"}</div>
-          <div class="barcode">${packet.barcode}</div>
-          <div class="composition">${compositionText}</div>
-          <div class="price">${currency(packet.suggestedSellingPrice || 0)}</div>
-          <button class="no-print" onclick="window.print();window.close();" style="margin-top:20px;padding:10px 20px;cursor:pointer;">
-            Print
-          </button>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    setPrintPacketId(packet._id);
   };
 
   // Columns for DataTable
@@ -336,7 +299,7 @@ export default function ProductPacketsPage({ params }) {
         ),
       },
       {
-        header: "Unit Price",
+        header: "Landed Price",
         accessor: "unitPrice",
         render: (row) => {
           const price = row.landedPricePerPacket || 0;
@@ -477,12 +440,12 @@ export default function ProductPacketsPage({ params }) {
                   {product?.sku || product?.productCode || "—"}
                 </p>
               </div>
-              <div>
+              {/* <div>
                 <Label className="text-xs text-muted-foreground">Supplier</Label>
                 <p className="font-medium text-sm">
                   {inventory?.supplierName || product?.supplier?.companyName || product?.supplier?.name || "—"}
                 </p>
-              </div>
+              </div> */}
               <div>
                 <Label className="text-xs text-muted-foreground">
                   Current Stock
@@ -919,7 +882,7 @@ export default function ProductPacketsPage({ params }) {
                 {!selectedPacket.isLoose && (
                   <div>
                     <Label className="text-xs text-muted-foreground">
-                      Unit Price (Landed)
+                      Landed Price
                     </Label>
                     <p className="font-medium text-muted-foreground">
                       {currency(
@@ -990,6 +953,13 @@ export default function ProductPacketsPage({ params }) {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Packet Label Print Modal */}
+      <PacketLabelPrintModal
+        open={!!printPacketId}
+        onClose={() => setPrintPacketId(null)}
+        packetId={printPacketId}
+      />
     </div>
   );
 }

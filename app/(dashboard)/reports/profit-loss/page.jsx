@@ -3,143 +3,196 @@
 import { useState, useMemo } from "react"
 import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
-import { useProfitLossReport } from "@/lib/hooks/useReports"
+import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import apiClient from "@/lib/api-client"
+import toast from "react-hot-toast"
+import { useQuery } from "@tanstack/react-query"
 
 function currency(n) {
   const num = Number(n || 0)
   return `£${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
+function formatDate(date) {
+  if (!date) return "—"
+  return new Date(date).toLocaleDateString("en-GB")
+}
+
 function getDefaultDateRange() {
   const today = new Date()
-  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+  const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
   return {
-    from: firstOfMonth.toISOString().split("T")[0],
+    from: thirtyDaysAgo.toISOString().split("T")[0],
     to: today.toISOString().split("T")[0],
   }
+}
+
+async function fetchProfitLossReport(startDate, endDate) {
+  const response = await apiClient.get("/reports/profit-loss", {
+    params: {
+      startDate,
+      endDate,
+    },
+  })
+  return response.data.data || { plData: [], summary: {} }
 }
 
 export default function ProfitLossReportPage() {
   const [dateRange, setDateRange] = useState(getDefaultDateRange())
 
-  const { data, isLoading, refetch } = useProfitLossReport({
-    startDate: dateRange.from,
-    endDate: dateRange.to,
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["profitLossReport", dateRange.from, dateRange.to],
+    queryFn: () => fetchProfitLossReport(dateRange.from, dateRange.to),
   })
 
-  const reportData = useMemo(() => {
-    if (!data) return []
-    
-    const items = []
-    
-    // Revenue Section
-    items.push({ category: "REVENUE", description: "", amount: "", isHeader: true })
-    items.push({ category: "", description: "Total Sales Revenue", amount: currency(data.totalSales || 0) })
-    items.push({ category: "", description: "Less: Sales Returns", amount: `(${currency(data.salesReturns || 0)})` })
-    items.push({ category: "", description: "Net Sales Revenue", amount: currency((data.totalSales || 0) - (data.salesReturns || 0)), isBold: true })
-    
-    // Cost of Goods Sold
-    items.push({ category: "COST OF GOODS SOLD", description: "", amount: "", isHeader: true })
-    items.push({ category: "", description: "Purchases", amount: currency(data.totalPurchases || 0) })
-    items.push({ category: "", description: "Less: Purchase Returns", amount: `(${currency(data.purchaseReturns || 0)})` })
-    items.push({ category: "", description: "Net Purchases", amount: currency((data.totalPurchases || 0) - (data.purchaseReturns || 0)), isBold: true })
-    
-    // Gross Profit
-    const grossProfit = (data.totalSales || 0) - (data.salesReturns || 0) - (data.totalPurchases || 0) + (data.purchaseReturns || 0)
-    items.push({ category: "GROSS PROFIT", description: "", amount: currency(grossProfit), isTotal: true })
-    
-    // Operating Expenses
-    items.push({ category: "OPERATING EXPENSES", description: "", amount: "", isHeader: true })
-    if (data.expensesByCategory && data.expensesByCategory.length > 0) {
-      data.expensesByCategory.forEach((exp) => {
-        items.push({ category: "", description: exp._id || exp.category || "Other", amount: currency(exp.totalAmount || 0) })
-      })
+  const reportData = data?.plData || []
+  const summary = data?.summary || {}
+
+  const handleExport = async () => {
+    try {
+      const result = await exportToExcelWithTotals(
+        reportData,
+        columns,
+        totalsRow,
+        `Profit_Loss_Report_${dateRange.from}_${dateRange.to}`
+      )
+      if (result.success) {
+        toast.success("Report exported successfully!")
+      } else {
+        toast.error("Failed to export report")
+      }
+    } catch (error) {
+      toast.error("Export failed: " + error.message)
     }
-    items.push({ category: "", description: "Total Operating Expenses", amount: currency(data.totalExpenses || 0), isBold: true })
-    
-    // Net Profit
-    const netProfit = grossProfit - (data.totalExpenses || 0)
-    items.push({ category: "NET PROFIT / (LOSS)", description: "", amount: currency(netProfit), isTotal: true, isProfit: netProfit >= 0 })
-    
-    return items
-  }, [data])
+  }
 
   const columns = [
     {
-      header: "Category",
-      accessor: "category",
+      header: "Sno",
+      accessor: "sno",
+      align: "center",
+      render: (row) => row.sno,
+    },
+    {
+      header: "Transaction Date",
+      accessor: "transactionDate",
+      render: (row) => formatDate(row.transactionDate),
+    },
+    {
+      header: "Invoice No.",
+      accessor: "invoiceNumber",
       render: (row) => (
-        <span className={`${row.isHeader ? "font-bold text-primary" : ""} ${row.isTotal ? "font-bold text-lg" : ""}`}>
-          {row.category}
-        </span>
+        <span className="font-mono text-xs">{row.invoiceNumber || "—"}</span>
       ),
     },
     {
-      header: "Description",
-      accessor: "description",
-      render: (row) => (
-        <span className={row.isBold ? "font-semibold" : ""}>
-          {row.description}
-        </span>
-      ),
+      header: "Customer Name",
+      accessor: "customerName",
+      render: (row) => row.customerName || "—",
     },
     {
-      header: "Amount (£)",
-      accessor: "amount",
+      header: "Product Code",
+      accessor: "productCode",
+      render: (row) => row.productCode || "—",
+    },
+    {
+      header: "Items Sold",
+      accessor: "itemsSold",
       align: "right",
-      render: (row) => (
-        <span className={`
-          ${row.isHeader ? "" : ""}
-          ${row.isTotal ? "font-bold text-lg" : ""}
-          ${row.isBold ? "font-semibold" : ""}
-          ${row.isProfit === false ? "text-red-600" : ""}
-          ${row.isProfit === true ? "text-green-600" : ""}
-        `}>
-          {row.amount}
-        </span>
-      ),
+      render: (row) => row.itemsSold || 0,
+    },
+    {
+      header: "Selling Price",
+      accessor: "sellingPrice",
+      align: "right",
+      render: (row) => currency(row.sellingPrice || 0),
+    },
+    {
+      header: "Total Sales",
+      accessor: "totalSales",
+      align: "right",
+      render: (row) => currency(row.totalSales || 0),
+    },
+    {
+      header: "Average Price",
+      accessor: "averagePrice",
+      align: "right",
+      render: (row) => currency(row.averagePrice || 0),
+    },
+    {
+      header: "Average Cost",
+      accessor: "averageCost",
+      align: "right",
+      render: (row) => currency(row.averageCost || 0),
+    },
+    {
+      header: "PNL",
+      accessor: "pnl",
+      align: "right",
+      render: (row) => {
+        const pnl = row.pnl || 0
+        const isProfit = pnl > 0
+        const isLoss = pnl < 0
+        return (
+          <span
+            className={`font-semibold ${
+              isProfit ? "text-green-600" : isLoss ? "text-red-600" : "text-gray-600"
+            }`}
+          >
+            {isProfit ? "+" : ""}{currency(pnl)}
+          </span>
+        )
+      },
     },
   ]
 
-  const summary = [
+  const totalsRow = {
+    sno: "TOTAL",
+    itemsSold: reportData.reduce((sum, row) => sum + (row.itemsSold || 0), 0),
+    totalSales: reportData.reduce((sum, row) => sum + (row.totalSales || 0), 0),
+    pnl: Number((reportData.reduce((sum, row) => sum + (row.pnl || 0), 0)).toFixed(2)),
+  }
+
+  const summaryCards = [
     {
-      label: "Total Revenue",
-      value: currency(data?.totalSales || 0),
-      color: "text-blue-600",
+      label: "Total Transactions",
+      value: reportData.length,
+      subtext: "items sold",
     },
     {
-      label: "Total Costs",
-      value: currency((data?.totalPurchases || 0) + (data?.totalExpenses || 0)),
-      color: "text-orange-600",
+      label: "Total Profit",
+      value: currency(summary.totalProfit || 0),
+      color: "text-green-600",
     },
     {
-      label: "Net Profit/Loss",
-      value: currency(data?.netProfit || 0),
-      color: (data?.netProfit || 0) >= 0 ? "text-green-600" : "text-red-600",
+      label: "Total Loss",
+      value: currency(summary.totalLoss || 0),
+      color: "text-red-600",
     },
     {
-      label: "Profit Margin",
-      value: `${data?.profitMargin || 0}%`,
-      color: "text-purple-600",
+      label: "Net P&L",
+      value: currency(summary.netPnL || 0),
+      color: (summary.netPnL || 0) > 0 ? "text-green-600" : "text-red-600",
     },
   ]
 
   return (
     <ReportLayout
       title="Profit & Loss Report"
-      description="Revenue, expenses, and net profit/loss for the selected period"
+      description="Transaction-wise profit and loss analysis"
       dateRange={dateRange}
       onDateChange={setDateRange}
       onRefresh={refetch}
+      onExport={handleExport}
       loading={isLoading}
-      summary={summary}
+      summary={summaryCards}
     >
       <PrintableTable
         columns={columns}
         data={reportData}
         loading={isLoading}
-        enableSearch={false}
-        enableSort={false}
+        showTotals={true}
+        totalsRow={totalsRow}
       />
     </ReportLayout>
   )

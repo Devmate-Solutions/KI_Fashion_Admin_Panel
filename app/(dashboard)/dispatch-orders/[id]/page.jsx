@@ -71,6 +71,7 @@ import PacketCompositionView from "@/components/ui/PacketCompositionView";
 import ArrayInput from "@/components/ui/ArrayInput";
 import PacketConfigurationModal from "@/components/modals/PacketConfigurationModal";
 import StandaloneSupplierPaymentModal from "@/components/modals/StandaloneSupplierPaymentModal";
+import BarcodePrintModal from "@/components/modals/BarcodePrintModal";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { SEASON_OPTIONS } from "@/lib/constants/seasons";
 import { cn } from "@/lib/utils";
@@ -150,6 +151,7 @@ export default function DispatchOrderDetailPage({ params }) {
   const [packetDialogOpen, setPacketDialogOpen] = useState(false);
   const [selectedItemForPackets, setSelectedItemForPackets] = useState(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showBarcodePrintModal, setShowBarcodePrintModal] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -1030,9 +1032,11 @@ export default function DispatchOrderDetailPage({ params }) {
         setExchangeRate("1.0");
         setPercentage("0");
         setActiveTab("confirm");
-        toast.success("Order confirmed successfully!");
 
-        // No warning needed as edits are now saved
+        // Open barcode print modal instead of redirecting
+        setTimeout(() => {
+          setShowBarcodePrintModal(true);
+        }, 500);
       },
     });
   }, [
@@ -2692,6 +2696,8 @@ export default function DispatchOrderDetailPage({ params }) {
             </Card>
           )}
 
+         
+
           {/* Standalone Supplier Payment Modal */}
           {isConfirmed && dispatchOrder?.supplier && (
             <StandaloneSupplierPaymentModal
@@ -3264,6 +3270,13 @@ export default function DispatchOrderDetailPage({ params }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Barcode Print Modal */}
+      <BarcodePrintModal
+        open={showBarcodePrintModal}
+        onClose={() => setShowBarcodePrintModal(false)}
+        dispatchOrderId={dispatchOrderId}
+      />
     </div >
   );
 }

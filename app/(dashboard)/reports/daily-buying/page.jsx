@@ -5,10 +5,17 @@ import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useDailyBuyingReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
+import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import toast from "react-hot-toast"
 
-function currency(n) {
+function formatNumber(n) {
   const num = Number(n || 0)
-  return `£${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// Kept for backward compatibility - now without currency symbol
+function currency(n) {
+  return formatNumber(n)
 }
 
 function formatDate(date) {
@@ -38,75 +45,85 @@ export default function DailyBuyingReportPage() {
 
   const totals = useMemo(() => {
     return {
-      total: purchaseData.reduce((sum, p) => sum + (p.grandTotal || 0), 0),
-      paid: purchaseData.reduce((sum, p) => sum + (p.amountPaid || 0), 0),
-      balance: purchaseData.reduce((sum, p) => sum + ((p.grandTotal || 0) - (p.amountPaid || 0)), 0),
+      total: purchaseData.reduce((sum, p) => sum + (p.supplierPaymentTotal || 0), 0),
+      discount: purchaseData.reduce((sum, p) => sum + (p.totalDiscount || 0), 0),
+      cashPayment: purchaseData.reduce((sum, p) => sum + (p.cashPayment || 0), 0),
+      bankPayment: purchaseData.reduce((sum, p) => sum + (p.bankPayment || 0), 0),
+      totalPayment: purchaseData.reduce((sum, p) => sum + (p.totalPayment || 0), 0),
+      balance: purchaseData.reduce((sum, p) => sum + (p.balance || 0), 0),
     }
   }, [purchaseData])
 
+  const handleExport = async () => {
+    try {
+      const result = await exportToExcelWithTotals(
+        purchaseData,
+        columns,
+        totalsRow,
+        `Daily_Buying_Report_${dateRange.from}_${dateRange.to}`
+      )
+      if (result.success) {
+        toast.success("Report exported successfully!")
+      } else {
+        toast.error("Failed to export report")
+      }
+    } catch (error) {
+      toast.error("Export failed: " + error.message)
+    }
+  }
+
   const columns = [
     {
-      header: "Date",
-      accessor: "dispatchDate",
-      render: (row) => formatDate(row.dispatchDate || row.createdAt),
-    },
-    {
-      header: "Order #",
+      header: "ID",
       accessor: "orderNumber",
       render: (row) => (
         <span className="font-mono text-xs">{row.orderNumber || row._id?.slice(-8) || "—"}</span>
       ),
     },
     {
-      header: "Supplier",
+      header: "Transaction Type",
+      accessor: "transactionType",
+      render: () => "Buying Invoice",
+    },
+    {
+      header: "Invoice Date",
+      accessor: "dispatchDate",
+      render: (row) => formatDate(row.dispatchDate || row.createdAt),
+    },
+    {
+      header: "Name",
       accessor: "supplier",
       render: (row) => row.supplier?.name || row.supplier?.company || "—",
     },
     {
-      header: "Items",
-      accessor: "items",
-      render: (row) => `${row.items?.length || 0} item(s)`,
-    },
-    {
       header: "Total",
-      accessor: "grandTotal",
+      accessor: "supplierPaymentTotal",
       align: "right",
-      render: (row) => currency(row.grandTotal),
+      render: (row) => currency(row.supplierPaymentTotal + row.totalDiscount || 0),
     },
     {
-      header: "Paid",
-      accessor: "amountPaid",
+      header: "Discount",
+      accessor: "totalDiscount",
       align: "right",
-      render: (row) => currency(row.amountPaid || 0),
+      render: (row) => currency(row.totalDiscount || 0),
     },
     {
-      header: "Balance",
-      accessor: "balance",
+      header: "Total After Disc.",
+      accessor: "totalAfterDiscount",
       align: "right",
-      render: (row) => {
-        const balance = (row.grandTotal || 0) - (row.amountPaid || 0)
-        return (
-          <span className={balance > 0 ? "text-red-600" : "text-green-600"}>
-            {currency(balance)}
-          </span>
-        )
-      },
+      render: (row) => currency(row.supplierPaymentTotal || 0),
     },
     {
-      header: "Status",
-      accessor: "status",
-      render: (row) => {
-        const statusStyles = {
-          confirmed: "bg-emerald-100 text-emerald-700",
-          pending: "bg-amber-100 text-amber-700",
-          draft: "bg-gray-100 text-gray-700",
-        }
-        return (
-          <Badge className={statusStyles[row.status] || statusStyles.pending}>
-            {row.status || "pending"}
-          </Badge>
-        )
-      },
+      header: "Bank Cash",
+      accessor: "bankPayment",
+      align: "right",
+      render: (row) => currency(row.bankPayment || 0),
+    },
+    {
+      header: "Cash",
+      accessor: "cashPayment",
+      align: "right",
+      render: (row) => currency(row.cashPayment || 0),
     },
   ]
 
@@ -123,7 +140,7 @@ export default function DailyBuyingReportPage() {
     },
     {
       label: "Amount Paid",
-      value: currency(totals.paid),
+      value: currency(totals.totalPayment),
       color: "text-green-600",
     },
     {
@@ -135,17 +152,20 @@ export default function DailyBuyingReportPage() {
 
   const totalsRow = {
     grandTotal: currency(totals.total),
-    amountPaid: currency(totals.paid),
-    balance: currency(totals.balance),
+    discount: currency(totals.discount),
+    totalAfterDiscount: currency(totals.total),
+    bankPayment: currency(totals.bankPayment),
+    cashPayment: currency(totals.cashPayment),
   }
 
   return (
     <ReportLayout
-      title="Daily Buying Report"
+      title="Daily Buying Invoice Wise Report"
       description="All purchase orders for the selected date range"
       dateRange={dateRange}
       onDateChange={setDateRange}
       onRefresh={refetch}
+      onExport={handleExport}
       loading={isLoading}
       summary={summary}
     >

@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Printer, RefreshCw, FileDown, ArrowLeft } from "lucide-react"
-import Link from "next/link"
+import { Printer, RefreshCw, FileDown } from "lucide-react"
 
 export default function ReportLayout({
   title,
@@ -17,7 +16,7 @@ export default function ReportLayout({
   loading = false,
   children,
   summary = [],
-  showBackButton = true,
+  onExport = null,
 }) {
   const printRef = useRef(null)
 
@@ -36,18 +35,7 @@ export default function ReportLayout({
       {/* Non-printable header controls */}
       <div className="no-print p-4 md:p-6 border-b bg-card">
         <div className="max-w-[1600px] mx-auto">
-          {/* Back button and title */}
-          <div className="flex items-center gap-4 mb-4">
-            {showBackButton && (
-              <Link href="/reports">
-                <Button variant="outline" size="sm">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Reports
-                </Button>
-              </Link>
-            )}
-          </div>
-          
+          {/* Title and actions */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-xl md:text-2xl font-bold">{title}</h1>
@@ -96,6 +84,19 @@ export default function ReportLayout({
                 </Button>
               )}
               
+              {onExport && (
+                <Button 
+                  onClick={onExport} 
+                  variant="outline"
+                  size="sm"
+                  disabled={loading}
+                  className="h-9 bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Excel
+                </Button>
+              )}
+              
               <Button 
                 onClick={handlePrint} 
                 size="sm"
@@ -136,7 +137,7 @@ export default function ReportLayout({
           </div>
 
           {/* Summary Cards */}
-          {summary && summary.length > 0 && (
+          {/* {summary && summary.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {summary.map((item, idx) => (
                 <Card key={idx} className="print:border print:border-gray-300">
@@ -156,7 +157,7 @@ export default function ReportLayout({
                 </Card>
               ))}
             </div>
-          )}
+          )} */}
 
           {/* Loading State */}
           {loading ? (

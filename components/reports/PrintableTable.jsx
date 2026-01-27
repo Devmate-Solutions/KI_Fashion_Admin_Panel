@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { ChevronUp, ChevronDown } from "lucide-react"
+import { ChevronUp, ChevronDown, Filter } from "lucide-react"
 
 function normalize(v) {
   return String(v ?? "").toLowerCase()
@@ -13,6 +13,7 @@ export default function PrintableTable({
   loading = false,
   enableSearch = true,
   enableSort = true,
+  enableColumnFilters = true,
   pageSize = 50,
   showTotals = false,
   totalsRow = null,
@@ -20,11 +21,13 @@ export default function PrintableTable({
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState({ key: null, dir: "asc" })
   const [page, setPage] = useState(1)
+  const [columnFilters, setColumnFilters] = useState({})
 
   const filtered = useMemo(() => {
     const safeData = Array.isArray(data) ? data : []
     const safeColumns = Array.isArray(columns) ? columns : []
 
+    // Global search filter
     const q = normalize(query)
     let base = q
       ? safeData.filter((row) =>
@@ -32,6 +35,17 @@ export default function PrintableTable({
         )
       : safeData
 
+    // Column-specific filters
+    if (enableColumnFilters) {
+      Object.entries(columnFilters).forEach(([key, filterValue]) => {
+        if (filterValue && filterValue.trim()) {
+          const fv = normalize(filterValue)
+          base = base.filter((row) => normalize(row[key]).includes(fv))
+        }
+      })
+    }
+
+    // Sorting
     if (enableSort && sort.key) {
       const dir = sort.dir === "asc" ? 1 : -1
       base = [...base].sort((a, b) => {
@@ -129,6 +143,32 @@ export default function PrintableTable({
                   </th>
                 ))}
             </tr>
+            
+            {/* Column Filters Row */}
+            {/* {enableColumnFilters && (
+              <tr className="no-print bg-muted/30">
+                {Array.isArray(columns) &&
+                  columns.map((c) => (
+                    <th
+                      key={`filter-${c.accessor || c.header}`}
+                      className="px-2 py-1.5 border-b border-border"
+                    >
+                      {c.accessor && c.filterable !== false ? (
+                        <div className="relative">
+                          <Filter className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+                          <input
+                            type="text"
+                            className="w-full h-7 pl-7 pr-2 text-xs rounded border border-input bg-background outline-none focus:ring-1 focus:ring-ring"
+                            placeholder={`Filter...`}
+                            value={columnFilters[c.accessor] || ""}
+                            onChange={(e) => handleColumnFilterChange(c.accessor, e.target.value)}
+                          />
+                        </div>
+                      ) : null}
+                    </th>
+                  ))}
+              </tr>
+            )} */}
           </thead>
           <tbody>
             {Array.isArray(slice) && slice.length > 0 ? (

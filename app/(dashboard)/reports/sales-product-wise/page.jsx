@@ -4,10 +4,17 @@ import { useState, useMemo } from "react"
 import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useSalesProductWiseReport } from "@/lib/hooks/useReports"
+import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import toast from "react-hot-toast"
 
 function currency(n) {
   const num = Number(n || 0)
   return `£${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+function formatDate(date) {
+  if (!date) return "—"
+  return new Date(date).toLocaleDateString("en-GB")
 }
 
 function getDefaultDateRange() {
@@ -27,21 +34,75 @@ export default function SalesProductWiseReportPage() {
   })
 
   const productData = useMemo(() => {
-    return data?.products || []
+    // Flatten sales items into individual rows
+    const sales = data?.sales || []
+    const flatData = []
+    sales.forEach((sale, saleIdx) => {
+      if (sale.items && sale.items.length > 0) {
+        sale.items.forEach((item) => {
+          flatData.push({
+            ...item,
+            sno: flatData.length + 1,
+            transactionDate: sale.saleDate,
+            buyerName: sale.buyer?.name || sale.buyer?.company || "Walk-in",
+            supplierName: item.product?.supplier?.name || item.product?.supplier?.company || "—",
+            productCode: item.product?.productCode || item.product?.sku || "—",
+            productName: item.product?.name || "—",
+          })
+        })
+      }
+    })
+    return flatData
   }, [data])
 
   const totals = useMemo(() => {
     return {
-      quantity: productData.reduce((sum, p) => sum + (p.totalQuantity || 0), 0),
-      revenue: productData.reduce((sum, p) => sum + (p.totalRevenue || 0), 0),
+      quantity: productData.reduce((sum, p) => sum + (p.quantity || 0), 0),
+      revenue: productData.reduce((sum, p) => sum + (p.totalPrice || p.quantity * p.unitPrice || 0), 0),
     }
   }, [productData])
 
+  const handleExport = async () => {
+    try {
+      const result = await exportToExcelWithTotals(
+        productData,
+        columns,
+        totalsRow,
+        `Sales_Product_Wise_Report_${dateRange.from}_${dateRange.to}`
+      )
+      if (result.success) {
+        toast.success("Report exported successfully!")
+      } else {
+        toast.error("Failed to export report")
+      }
+    } catch (error) {
+      toast.error("Export failed: " + error.message)
+    }
+  }
+
   const columns = [
     {
-      header: "#",
-      accessor: "index",
-      render: (row, idx) => idx + 1,
+      header: "Sno",
+      accessor: "sno",
+      render: (row) => row.sno,
+    },
+    {
+      header: "Transaction Date",
+      accessor: "transactionDate",
+      render: (row) => formatDate(row.transactionDate),
+    },
+    {
+      header: "Transaction Type",
+      accessor: "transactionType",
+      render: () => "Sales",
+    },
+    {
+      header: "Supplier Name",
+      accessor: "supplierName",
+    },
+    {
+      header: "Buyer Name",
+      accessor: "buyerName",
     },
     {
       header: "Product Code",
@@ -51,48 +112,29 @@ export default function SalesProductWiseReportPage() {
       ),
     },
     {
-      header: "Product Name",
-      accessor: "productName",
-      render: (row) => row.productName || row.name || "—",
+      header: "Items Sold",
+      accessor: "quantity",
+      align: "right",
     },
     {
-      header: "Qty Sold",
-      accessor: "totalQuantity",
+      header: "CPI",
+      accessor: "unitPrice",
       align: "right",
-      render: (row) => row.totalQuantity || 0,
+      render: (row) => currency(row.unitPrice || 0),
     },
     {
-      header: "Unit Price",
-      accessor: "avgUnitPrice",
+      header: "Total",
+      accessor: "totalPrice",
       align: "right",
-      render: (row) => currency(row.avgUnitPrice || row.unitPrice || 0),
-    },
-    {
-      header: "Total Revenue",
-      accessor: "totalRevenue",
-      align: "right",
-      render: (row) => (
-        <span className="font-semibold">{currency(row.totalRevenue || 0)}</span>
-      ),
-    },
-    {
-      header: "% of Total",
-      accessor: "percentage",
-      align: "right",
-      render: (row) => {
-        const percentage = totals.revenue > 0 
-          ? ((row.totalRevenue || 0) / totals.revenue * 100).toFixed(1)
-          : 0
-        return `${percentage}%`
-      },
+      render: (row) => currency(row.totalPrice || (row.quantity * row.unitPrice) || 0),
     },
   ]
 
   const summary = [
     {
-      label: "Total Products",
+      label: "Total Items",
       value: productData.length,
-      subtext: "unique products sold",
+      subtext: "product transactions",
     },
     {
       label: "Total Quantity",
@@ -104,27 +146,22 @@ export default function SalesProductWiseReportPage() {
       value: currency(totals.revenue),
       color: "text-green-600",
     },
-    {
-      label: "Avg per Product",
-      value: currency(productData.length > 0 ? totals.revenue / productData.length : 0),
-      color: "text-blue-600",
-    },
   ]
 
   const totalsRow = {
-    productName: "",
-    totalQuantity: totals.quantity,
-    totalRevenue: currency(totals.revenue),
-    percentage: "100%",
+    buyerName: "",
+    quantity: totals.quantity,
+    totalPrice: currency(totals.revenue),
   }
 
   return (
     <ReportLayout
-      title="Daily Sale Product-wise Report"
+      title="Daily Sales Product Wise Report"
       description="Sales breakdown by individual products"
       dateRange={dateRange}
       onDateChange={setDateRange}
       onRefresh={refetch}
+      onExport={handleExport}
       loading={isLoading}
       summary={summary}
     >
@@ -138,3 +175,4 @@ export default function SalesProductWiseReportPage() {
     </ReportLayout>
   )
 }
+

@@ -68,8 +68,10 @@ export default function CustomerLedgerPage() {
   const queryClient = useQueryClient()
 
   // Fetch active buyers for dropdowns
-  const { data: buyers = [], isLoading: buyersLoading } = useBuyers({ limit: 100 })
+  const { data: buyers = [], isLoading: buyersLoading, error: buyersError } = useBuyers({ limit: 500 })
   const dropdownBuyers = buyers
+  
+  console.log(`Customer Ledger: Loaded ${dropdownBuyers.length} buyers for dropdown`)
 
   const comboboxOptions = useMemo(() => {
     const options = dropdownBuyers.map(b => ({
@@ -82,8 +84,12 @@ export default function CustomerLedgerPage() {
 
   // Fetch ledger entries for Tab 0 (when buyer selected)
   const ledgerFilterParams = useMemo(() => {
-    if (!selectedBuyerId || selectedBuyerId === 'all') {
+    if (!selectedBuyerId) {
       return null
+    }
+    // When 'all' is selected, fetch all entries without buyerId filter
+    if (selectedBuyerId === 'all') {
+      return { limit: 500 }
     }
     return { buyerId: selectedBuyerId, limit: 100 }
   }, [selectedBuyerId])
@@ -120,21 +126,86 @@ export default function CustomerLedgerPage() {
   const { data: paymentHistoryData, isLoading: paymentHistoryLoading } = useAllBuyerLedgers(paymentHistoryParams || {})
 
   // Payment Receipts Data (Tab 2) - Using new Payment model
-  const { data: paymentReceiptsData, isLoading: paymentReceiptsLoading, refetch: refetchPayments } = useQuery({
+  const { data: paymentReceiptsData, isLoading: paymentReceiptsLoading, refetch: refetchPayments, error: paymentReceiptsError, isError, isFetching, status } = useQuery({
     queryKey: ['payments', 'customer', selectedBuyerId],
     queryFn: async () => {
-      if (!selectedBuyerId) return { payments: [] }
-      if (selectedBuyerId === 'all') {
-        // Fetch all customer payments
-        const response = await paymentAPI.getAllPayments({ limit: 500 })
-        console.log('All payments response:', response)
-        // Response structure: { data: { success: true, data: { payments, pagination } } }
-        return response.data?.data || response.data || { payments: [] }
+      console.log('🔍 Payment Receipts Query Starting...')
+      console.log('🔍 selectedBuyerId:', selectedBuyerId)
+      
+      if (!selectedBuyerId) {
+        console.log('❌ No selectedBuyerId - returning empty')
+        return { payments: [] }
       }
-      const response = await paymentAPI.getCustomerPayments(selectedBuyerId, { limit: 100 })
-      return response.data?.data || response.data || { payments: [] }
+      
+      try {
+        if (selectedBuyerId === 'all') {
+          // Fetch all customer payments
+          console.log('📡 Calling paymentAPI.getAllPayments...')
+          const response = await paymentAPI.getAllPayments({ limit: 1000 })
+          console.log('📥 Full API response:', response)
+          console.log('📥 response.data:', response.data)
+          console.log('📥 response.data?.data:', response.data?.data)
+          console.log('📥 response.data?.data?.payments:', response.data?.data?.payments)
+          
+          // Response structure from backend: { data: { success: true, data: { payments: [], pagination: {} } } }
+          // axios wraps it in response.data
+          const paymentsData = response.data?.data
+          if (paymentsData && Array.isArray(paymentsData.payments)) {
+            console.log(`✅ Found ${paymentsData.payments.length} payments for all customers`)
+            return paymentsData
+          }
+          // Fallback for different response structure
+          if (response.data && Array.isArray(response.data.payments)) {
+            console.log(`✅ Found ${response.data.payments.length} payments (fallback structure)`)
+            return response.data
+          }
+          // Another fallback - check if response itself has payments
+          if (response && Array.isArray(response.payments)) {
+            console.log(`✅ Found ${response.payments.length} payments (direct structure)`)
+            return response
+          }
+          console.warn('⚠️ No payments found in response - returning empty array')
+          console.warn('⚠️ Final response structure:', JSON.stringify(response?.data || response, null, 2))
+          return { payments: [] }
+        }
+        
+        // Fetch single customer payments
+        console.log(`📡 Calling paymentAPI.getCustomerPayments for ${selectedBuyerId}...`)
+        const response = await paymentAPI.getCustomerPayments(selectedBuyerId, { limit: 500 })
+        console.log(`📥 Customer ${selectedBuyerId} payments response:`, response)
+        
+        const paymentsData = response.data?.data
+        if (paymentsData && Array.isArray(paymentsData.payments)) {
+          console.log(`✅ Found ${paymentsData.payments.length} payments for customer ${selectedBuyerId}`)
+          return paymentsData
+        }
+        if (response.data && Array.isArray(response.data.payments)) {
+          console.log(`✅ Found ${response.data.payments.length} payments (fallback structure)`)
+          return response.data
+        }
+        console.warn('⚠️ No payments found for customer - returning empty array')
+        return { payments: [] }
+      } catch (error) {
+        console.error('❌ Error fetching payment receipts:', error)
+        console.error('❌ Error details:', error.response?.data)
+        console.error('❌ Error status:', error.response?.status)
+        throw error
+      }
     },
-    enabled: !!selectedBuyerId
+    enabled: !!selectedBuyerId,
+    retry: 1,
+    staleTime: 10 * 1000 // 10 seconds
+  })
+  
+  // Debug logging for query state
+  console.log('📊 Payment Receipts Query State:', {
+    status,
+    isLoading: paymentReceiptsLoading,
+    isFetching,
+    isError,
+    error: paymentReceiptsError,
+    dataExists: !!paymentReceiptsData,
+    paymentsCount: paymentReceiptsData?.payments?.length ?? 'N/A'
   })
 
   // --- Calculations ---
@@ -158,13 +229,20 @@ export default function CustomerLedgerPage() {
 
   // Transform ledger data for Tab 0 (All Transactions)
   const allLedgerTransactions = useMemo(() => {
-    if (!allLedgerData?.entries) return []
+    if (!allLedgerData?.entries) {
+      console.log('⚠ allLedgerTransactions: No ledger entries available')
+      return []
+    }
+    
+    console.log(`✓ allLedgerTransactions: Processing ${allLedgerData.entries.length} ledger entries`)
 
     let filteredEntries = allLedgerData.entries.filter(entry =>
       entry.transactionType === 'sale' ||
       entry.transactionType === 'receipt' ||
       entry.transactionType === 'adjustment'
     )
+    
+    console.log(`✓ Filtered to ${filteredEntries.length} transactions (sale/receipt/adjustment only)`)
 
     const mappedItems = filteredEntries.map(entry => {
       const buyer = entry.entityId || {}
@@ -271,7 +349,12 @@ export default function CustomerLedgerPage() {
 
   // Payment Receipts Transactions (from Payment model)
   const paymentReceiptsTransactions = useMemo(() => {
-    if (!paymentReceiptsData?.payments) return []
+    if (!paymentReceiptsData?.payments) {
+      console.log('⚠ paymentReceiptsTransactions: No payments data available')
+      return []
+    }
+    
+    console.log(`✓ paymentReceiptsTransactions: Processing ${paymentReceiptsData.payments.length} payment receipts`)
     
     return paymentReceiptsData.payments.map(payment => ({
       id: payment._id,
@@ -632,7 +715,7 @@ export default function CustomerLedgerPage() {
             >
               <Printer className="h-4 w-4" />
             </Button>
-            {row.status === 'active' && (
+            {/* {row.status === 'active' && (
               <Button
                 size="sm"
                 variant="outline"
@@ -642,7 +725,7 @@ export default function CustomerLedgerPage() {
               >
                 <RotateCcw className="h-4 w-4" />
               </Button>
-            )}
+            )} */}
           </div>
         )
       }
@@ -1063,152 +1146,95 @@ export default function CustomerLedgerPage() {
             label: "Customer Ledger",
             content: (
               <div className="space-y-6">
-                {/* Filters & Search Bar - Unified */}
-                <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
-                  <div className="flex flex-wrap items-center gap-4">
-                    {/* Filter Label */}
-                    <div className="flex items-center gap-2">
-                      <Filter className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-semibold text-foreground">Filters:</span>
-                    </div>
+                {/* Filters */}
+                <div className="bg-white rounded-lg border p-6 flex flex-wrap gap-4 items-end">
+                  <div className="w-[300px]">
+                    <Label className="mb-2 block">Select Customer</Label>
+                    {buyersError ? (
+                      <div className="text-sm text-red-600 p-2 bg-red-50 rounded border border-red-200">
+                        Error loading customers: {buyersError.message}
+                      </div>
+                    ) : (
+                      <Combobox
+                        options={comboboxOptions}
+                        value={selectedBuyerId}
+                        onValueChange={setSelectedBuyerId}
+                        placeholder="Search Customer..."
+                        searchPlaceholder="Type customer name..."
+                        loading={buyersLoading}
+                      />
+                    )}
+                  </div>
+                </div>
 
-                    {/* Select Customer */}
-                    <Select 
-                      value={ledgerBuyerFilter} 
-                      onValueChange={(val) => {
-                      setLedgerBuyerFilter(val)
-                      if (val && val !== 'all') setSelectedBuyerId(val)
-                      }}
-                    >
-                      <SelectTrigger className="h-10 w-[220px] border-border">
-                        <SelectValue placeholder="All Customers" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Customers</SelectItem>
-                        {dropdownBuyers.map(b => (
-                          <SelectItem key={b.id} value={b.id}>
-                            {b.name} {b.company ? `(${b.company})` : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
 
-                    {/* Filter By */}
-                    <Select value={ledgerFilterBy} onValueChange={setLedgerFilterBy}>
-                      <SelectTrigger className="h-10 w-[180px] border-border">
-                        <SelectValue placeholder="All Transactions" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Transactions</SelectItem>
-                        <SelectItem value="cash">Cash Receipts</SelectItem>
-                        <SelectItem value="bank">Bank Receipts</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    {/* Search Section */}
-                    <div className="flex gap-2 ml-auto">
-                      <div className="relative">
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
-                          <Search className="h-4 w-4 text-muted-foreground" />
+                {!selectedBuyerId ? (
+                  <div className="bg-white rounded-lg border p-12 text-center text-muted-foreground">
+                    <p>Select a customer to view their ledger.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Stats if specific customer selected */}
+                    {selectedBuyerId !== 'all' && buyerDetails && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-muted/30 rounded-lg p-6">
+                          <p className="text-sm text-muted-foreground">Customer Balance</p>
+                          <p className={`text-2xl font-bold ${buyerDetails.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {formatNumber(buyerDetails.balance)}
+                            <span className="text-sm font-normal text-muted-foreground ml-1">{buyerDetails.balance > 0 ? '(Pending)' : '(Clear)'}</span>
+                          </p>
                         </div>
-                        <input
-                          type="text"
-                          placeholder="Search..."
-                          value={ledgerSearch}
-                          onChange={(e) => setLedgerSearch(e.target.value)}
-                          className="h-10 w-full sm:w-[200px] pl-9 sm:pl-10 pr-3 rounded-lg border border-input bg-background text-xs sm:text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        <div className="bg-muted/30 rounded-lg p-6">
+                          <p className="text-sm text-muted-foreground">Total Sales</p>
+                          <p className="text-2xl font-bold">{formatNumber(buyerDetails.totalSales || 0)}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Summary stats for all customers */}
+                    {selectedBuyerId === 'all' && allLedgerTransactions.length > 0 && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-red-50 rounded-lg p-6 border border-red-100">
+                          <p className="text-sm text-red-700">Total Sales (Debit)</p>
+                          <p className="text-2xl font-bold text-red-600">
+                            {formatNumber(allLedgerTransactions.reduce((sum, t) => sum + t.debit, 0))}
+                          </p>
+                        </div>
+                        <div className="bg-green-50 rounded-lg p-6 border border-green-100">
+                          <p className="text-sm text-green-700">Total Received (Credit)</p>
+                          <p className="text-2xl font-bold text-green-600">
+                            {formatNumber(allLedgerTransactions.reduce((sum, t) => sum + t.credit, 0))}
+                          </p>
+                        </div>
+                        <div className="bg-blue-50 rounded-lg p-6 border border-blue-100">
+                          <p className="text-sm text-blue-700">Total Transactions</p>
+                          <p className="text-2xl font-bold text-blue-600">
+                            {allLedgerTransactions.length}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Table */}
+                    <div className="bg-white rounded-lg border">
+                      {allLedgerLoading ? (
+                        <div className="p-12 flex justify-center"><Loader2 className="animate-spin text-muted-foreground" /></div>
+                      ) : allLedgerTransactions.length === 0 ? (
+                        <div className="p-12 text-center text-muted-foreground">
+                          <p>No ledger entries found{selectedBuyerId === 'all' ? '' : ' for this customer'}.</p>
+                        </div>
+                      ) : (
+                        <DataTable
+                          columns={allLedgerColumns}
+                          data={allLedgerTransactions}
+                          paginate={false}
+                          searchKey="reference"
+                          disableSorting
                         />
-                      </div>
-                      <Button
-                        size="sm"
-                        className="h-10 px-4 sm:px-6 bg-primary hover:bg-primary/90 text-xs sm:text-sm min-w-[80px] sm:min-w-0"
-                      >
-                        Search
-                      </Button>
+                      )}
                     </div>
-                  </div>
-                </div>
-
-                {/* Stats if customer selected - Enhanced */}
-                {ledgerBuyerFilter && ledgerBuyerFilter !== 'all' && buyerDetails && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Customer Balance Card */}
-                    <div className={`rounded-lg border p-5 shadow-sm transition-shadow hover:shadow-md ${
-                      buyerDetails.balance > 0 
-                        ? 'border-red-200 bg-gradient-to-br from-red-50/50 to-red-50/30' 
-                        : 'border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-emerald-50/30'
-                    }`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                          buyerDetails.balance > 0 ? 'bg-red-100' : 'bg-emerald-100'
-                        }`}>
-                          <DollarSign className={`h-5 w-5 ${
-                            buyerDetails.balance > 0 ? 'text-red-600' : 'text-emerald-600'
-                          }`} />
-                        </div>
-                      </div>
-                      <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
-                        Customer Balance
-                      </div>
-                      <div className={`text-2xl font-bold tabular-nums ${
-                        buyerDetails.balance > 0 ? 'text-red-700' : 'text-emerald-700'
-                      }`}>
-                        £{formatNumber(buyerDetails.balance)}
-                      </div>
-                      <div className={`text-xs mt-1 ${
-                        buyerDetails.balance > 0 ? 'text-red-600/80' : 'text-emerald-600/80'
-                      }`}>
-                        {buyerDetails.balance > 0 ? 'Amount pending from customer' : 'Account is clear'}
-                      </div>
-                    </div>
-
-                    {/* Total Sales Card */}
-                    <div className="rounded-lg border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="h-10 w-10 rounded-lg bg-muted/50 flex items-center justify-center">
-                          <TrendingUp className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                      </div>
-                      <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
-                        Total Sales
-                      </div>
-                      <div className="text-2xl font-bold tabular-nums text-foreground">
-                        £{formatNumber(buyerDetails.totalSales || 0)}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        All-time sales to this customer
-                    </div>
-                    </div>
-                  </div>
+                  </>
                 )}
-
-                {/* Table */}
-                <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
-                  {allLedgerLoading ? (
-                    <div className="p-12 flex flex-col items-center justify-center">
-                      <Loader2 className="animate-spin h-8 w-8 text-primary mb-4" />
-                      <p className="text-sm text-muted-foreground">Loading ledger entries...</p>
-                    </div>
-                  ) : filteredLedgerTransactions.length === 0 ? (
-                    <div className="p-12 text-center">
-                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
-                        <FileText className="w-8 h-8 text-muted-foreground" />
-                      </div>
-                      <p className="text-sm font-medium text-foreground mb-1">No transactions found</p>
-                      <p className="text-xs text-muted-foreground">
-                        {ledgerSearch ? 'Try adjusting your search or filters' : 'Select a customer to view their ledger'}
-                      </p>
-                    </div>
-                  ) : (
-                    <DataTable
-                      columns={allLedgerColumns}
-                      data={filteredLedgerTransactions}
-                      pagination={{ pageSize: 50 }}
-                      enableSearch={false}
-                      disableSorting
-                    />
-                  )}
-                </div>
               </div>
             )
           },
@@ -1265,45 +1291,13 @@ export default function CustomerLedgerPage() {
                     <p className="text-xs text-muted-foreground">Select a customer to view their pending payments</p>
                   </div>
                 ) : (
-                  <>
-                    {/* Stats Card */}
-                    <div className="rounded-lg border border-red-200 bg-gradient-to-br from-red-50/50 to-red-50/30 p-5 shadow-sm">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center">
-                          <Clock className="h-5 w-5 text-red-600" />
-                        </div>
-                      </div>
-                      <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
-                        Total Pending Amount
-                      </div>
-                      <div className="text-2xl font-bold text-red-700 tabular-nums">
-                        £{formatNumber(pendingTotals.totalPending)}
-                      </div>
-                      <div className="text-xs text-red-600/80 mt-1">
-                        Outstanding amount from {unpaidSales.length} {unpaidSales.length === 1 ? 'sale' : 'sales'}
-                      </div>
-                    </div>
-
-                    {/* Table */}
-                    <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
-                      {unpaidSalesLoading ? (
-                        <div className="p-12 flex flex-col items-center justify-center">
-                          <Loader2 className="animate-spin h-8 w-8 text-primary mb-4" />
-                          <p className="text-sm text-muted-foreground">Loading pending payments...</p>
-                        </div>
-                      ) : unpaidSales.length === 0 ? (
-                        <div className="p-12 text-center">
-                          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
-                            <CheckCircle2 className="w-8 h-8 text-emerald-500" />
-                          </div>
-                          <p className="text-sm font-medium text-foreground mb-1">No pending payments</p>
-                          <p className="text-xs text-muted-foreground">All payments have been received</p>
-                        </div>
-                      ) : (
-                        <DataTable columns={pendingColumns} data={unpaidSales} enableSearch={false} hideActions />
-                      )}
-                    </div>
-                  </>
+                  <div className="bg-white rounded-lg border">
+                    {paymentHistoryLoading ? (
+                      <div className="p-12 flex justify-center"><Loader2 className="animate-spin" /></div>
+                    ) : (
+                      <DataTable columns={paymentHistoryColumns} data={paymentHistoryTransactions} paginate={false} />
+                    )}
+                  </div>
                 )}
               </div>
             )
@@ -1332,39 +1326,86 @@ export default function CustomerLedgerPage() {
                   </div>
                 </div>
 
-                {(!selectedBuyerId || selectedBuyerId === 'all') ? (
-                  <div className="rounded-lg border border-border bg-card p-12 text-center">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
-                      <Users className="w-8 h-8 text-muted-foreground" />
+
+                {/* Stats - shown for both single customer and all customers view */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="bg-green-50 rounded-lg p-4 border border-green-100">
+                    <p className="text-sm text-green-700">Total Credits (Received)</p>
+                    <p className="text-2xl font-bold text-green-700">
+                      £{formatNumber(
+                        paymentReceiptsTransactions
+                          .filter(p => p.status === 'active' && p.paymentDirection !== 'debit')
+                          .reduce((sum, p) => sum + p.totalAmount, 0)
+                      )}
+                    </p>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-4 border border-red-100">
+                    <p className="text-sm text-red-700">Total Debits (Issued)</p>
+                    <p className="text-2xl font-bold text-red-700">
+                      £{formatNumber(
+                        paymentReceiptsTransactions
+                          .filter(p => p.status === 'active' && p.paymentDirection === 'debit')
+                          .reduce((sum, p) => sum + p.totalAmount, 0)
+                      )}
+                    </p>
+                  </div>
+     
+                  {selectedBuyerId && selectedBuyerId !== 'all' ? (
+                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                      <p className="text-sm text-blue-700">Current Balance</p>
+                      <p className={`text-2xl font-bold ${
+                        paymentReceiptsTransactions[0]?.balanceAfter > 0 ? 'text-red-600' : 
+                        paymentReceiptsTransactions[0]?.balanceAfter < 0 ? 'text-green-600' : 'text-blue-700'
+                      }`}>
+                        £{formatNumber(Math.abs(paymentReceiptsTransactions[0]?.balanceAfter || 0))}
+                        {paymentReceiptsTransactions[0]?.balanceAfter < 0 && (
+                          <span className="text-sm font-normal ml-1">(Credit)</span>
+                        )}
+                      </p>
                     </div>
-                    <p className="text-sm font-medium text-foreground mb-1">No customer selected</p>
-                    <p className="text-xs text-muted-foreground">Select a customer to view their payment history</p>
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
-                    {paymentHistoryLoading ? (
-                      <div className="p-12 flex flex-col items-center justify-center">
-                        <Loader2 className="animate-spin h-8 w-8 text-primary mb-4" />
-                        <p className="text-sm text-muted-foreground">Loading payment history...</p>
-                      </div>
-                    ) : paymentHistoryTransactions.length === 0 ? (
-                      <div className="p-12 text-center">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
-                          <FileText className="w-8 h-8 text-muted-foreground" />
-                        </div>
-                        <p className="text-sm font-medium text-foreground mb-1">No payment history</p>
-                        <p className="text-xs text-muted-foreground">No payments have been recorded for this customer</p>
-                      </div>
-                    ) : (
-                      <DataTable 
-                        columns={paymentHistoryColumns} 
-                        data={paymentHistoryTransactions} 
-                        pagination={{ pageSize: 50 }}
-                        enableSearch={false}
-                      />
-                    )}
-                  </div>
-                )}
+                  ) : (
+                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                      <p className="text-sm text-blue-700">Total Transactions</p>
+                      <p className="text-2xl font-bold text-blue-700">
+                        {paymentReceiptsTransactions.length}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-lg border">
+                  {paymentReceiptsLoading ? (
+                    <div className="p-12 flex justify-center"><Loader2 className="animate-spin" /></div>
+                  ) : paymentReceiptsError ? (
+                    <div className="p-12 text-center text-red-500">
+                      <X className="h-12 w-12 mx-auto mb-4" />
+                      <p className="font-medium">Error loading payment receipts</p>
+                      <p className="text-sm mt-2 text-muted-foreground">
+                        {paymentReceiptsError.response?.data?.message || paymentReceiptsError.message || 'Failed to fetch data'}
+                      </p>
+                      <Button 
+                        onClick={() => refetchPayments()} 
+                        variant="outline" 
+                        className="mt-4"
+                      >
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Retry
+                      </Button>
+                    </div>
+                  ) : paymentReceiptsTransactions.length === 0 ? (
+                    <div className="p-12 text-center text-muted-foreground">
+                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                      <p>No payment receipts found{selectedBuyerId && selectedBuyerId !== 'all' ? ' for this customer' : ''}.</p>
+                      <p className="text-sm mt-2">Add a payment to create a receipt.</p>
+                    </div>
+                  ) : (
+                    <DataTable 
+                      columns={paymentReceiptsColumns} 
+                      data={paymentReceiptsTransactions}
+                      paginate={false}
+                    />
+                  )}
+                </div>
               </div>
             )
           }

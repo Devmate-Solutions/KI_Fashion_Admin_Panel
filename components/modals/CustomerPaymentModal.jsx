@@ -47,20 +47,11 @@ export default function CustomerPaymentModal({
     const [form, setForm] = useState({
         cashAmount: '',
         bankAmount: '',
+        debitAmount: '',
         date: '',
         notes: '',
-        paymentDirection: 'credit',
-        debitReason: ''
+        paymentDirection: 'credit'
     })
-
-    // Debit reason options
-    const debitReasonOptions = [
-        { value: 'refund', label: 'Refund' },
-        { value: 'credit_note', label: 'Credit Note' },
-        { value: 'price_adjustment', label: 'Price Adjustment' },
-        { value: 'goodwill', label: 'Goodwill Credit' },
-        { value: 'other', label: 'Other Adjustment' }
-    ]
 
     // Set default date to today when modal opens
     useEffect(() => {
@@ -80,7 +71,7 @@ export default function CustomerPaymentModal({
     // Reset form when modal opens/closes
     useEffect(() => {
         if (!open) {
-            setForm({ cashAmount: '', bankAmount: '', date: '', notes: '', paymentDirection: 'credit', debitReason: '' })
+            setForm({ cashAmount: '', bankAmount: '', debitAmount: '', date: '', notes: '', paymentDirection: 'credit' })
             setSearchQuery('')
             setShowSuggestions(false)
             if (!initialEntityId) {
@@ -120,7 +111,8 @@ export default function CustomerPaymentModal({
 
     const cashAmount = parseFloat(form.cashAmount) || 0
     const bankAmount = parseFloat(form.bankAmount) || 0
-    const totalPayment = cashAmount + bankAmount
+    const debitAmount = parseFloat(form.debitAmount) || 0
+    const totalPayment = form.paymentDirection === 'debit' ? debitAmount : (cashAmount + bankAmount)
 
     // Get entity details based on selection
     const selectedEntity = entities.find(e => (e._id || e.id) === selectedEntityId || String(e.id) === selectedEntityId)
@@ -153,7 +145,7 @@ export default function CustomerPaymentModal({
                 : initialBalance))
 
     const handleClose = () => {
-        setForm({ cashAmount: '', bankAmount: '', date: '', notes: '', paymentDirection: 'credit', debitReason: '' })
+        setForm({ cashAmount: '', bankAmount: '', debitAmount: '', date: '', notes: '', paymentDirection: 'credit' })
         setSearchQuery('')
         setShowSuggestions(false)
         if (!initialEntityId) {
@@ -185,46 +177,53 @@ export default function CustomerPaymentModal({
             return
         }
 
-        // Validate debit reason for debit transactions
-        if (form.paymentDirection === 'debit' && !form.debitReason) {
-            toast.error('Please select a reason for the debit transaction')
-            return
-        }
-
         setIsSubmitting(true)
 
         try {
             // Use the new payment API that creates a payment receipt
-            // For combined cash + bank payments, we create separate payment records
             let lastPaymentNumber = null
             let totalCreated = 0
 
-            if (cashAmount > 0) {
-                const cashResult = await paymentAPI.createCustomerPayment({
+            if (form.paymentDirection === 'debit') {
+                // For debit transactions, create single payment with adjustment reason
+                const debitResult = await paymentAPI.createCustomerPayment({
                     customerId: entityId,
-                    amount: cashAmount,
-                    paymentMethod: 'cash',
+                    amount: debitAmount,
+                    paymentMethod: 'adjustment',
                     date: form.date,
-                    description: form.notes || `Cash ${form.paymentDirection === 'debit' ? 'debit' : 'payment'} from ${entityName}`,
+                    description: form.notes || `Adjustment credit from ${entityName}`,
                     paymentDirection: form.paymentDirection,
-                    debitReason: form.paymentDirection === 'debit' ? form.debitReason : undefined
+                    debitReason: 'adjustment'
                 })
-                lastPaymentNumber = cashResult.data?.data?.payment?.paymentNumber
+                lastPaymentNumber = debitResult.data?.data?.payment?.paymentNumber
                 totalCreated++
-            }
+            } else {
+                // For credit transactions, create separate records for cash and bank
+                if (cashAmount > 0) {
+                    const cashResult = await paymentAPI.createCustomerPayment({
+                        customerId: entityId,
+                        amount: cashAmount,
+                        paymentMethod: 'cash',
+                        date: form.date,
+                        description: form.notes || `Cash payment from ${entityName}`,
+                        paymentDirection: form.paymentDirection
+                    })
+                    lastPaymentNumber = cashResult.data?.data?.payment?.paymentNumber
+                    totalCreated++
+                }
 
-            if (bankAmount > 0) {
-                const bankResult = await paymentAPI.createCustomerPayment({
-                    customerId: entityId,
-                    amount: bankAmount,
-                    paymentMethod: 'bank',
-                    date: form.date,
-                    description: form.notes || `Bank ${form.paymentDirection === 'debit' ? 'debit' : 'payment'} from ${entityName}`,
-                    paymentDirection: form.paymentDirection,
-                    debitReason: form.paymentDirection === 'debit' ? form.debitReason : undefined
-                })
-                lastPaymentNumber = bankResult.data?.data?.payment?.paymentNumber
-                totalCreated++
+                if (bankAmount > 0) {
+                    const bankResult = await paymentAPI.createCustomerPayment({
+                        customerId: entityId,
+                        amount: bankAmount,
+                        paymentMethod: 'bank',
+                        date: form.date,
+                        description: form.notes || `Bank payment from ${entityName}`,
+                        paymentDirection: form.paymentDirection
+                    })
+                    lastPaymentNumber = bankResult.data?.data?.payment?.paymentNumber
+                    totalCreated++
+                }
             }
 
             const typeLabel = form.paymentDirection === 'debit' ? 'debit transaction' : 'payment'
@@ -300,23 +299,11 @@ export default function CustomerPaymentModal({
                     {form.paymentDirection === 'debit' && (
                         <div className="space-y-2">
                             <Label htmlFor="debit-reason">
-                                Reason for Credit/Refund <span className="text-red-500">*</span>
+                                Type <span className="text-red-500">*</span>
                             </Label>
-                            <Select
-                                value={form.debitReason}
-                                onValueChange={(value) => setForm({ ...form, debitReason: value })}
-                            >
-                                <SelectTrigger id="debit-reason">
-                                    <SelectValue placeholder="Select reason..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {debitReasonOptions.map((option) => (
-                                        <SelectItem key={option.value} value={option.value}>
-                                            {option.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div className="px-3 py-2 bg-muted rounded p-2 text-sm">
+                                <p className="font-medium">Adjustment</p>
+                            </div>
                         </div>
                     )}
 
@@ -405,51 +392,78 @@ export default function CustomerPaymentModal({
                         </div>
                     </div>
 
-                    {/* Cash Amount */}
-                    <div className="space-y-2">
-                        <Label htmlFor="cashAmount" className="flex items-center gap-2">
-                            <Banknote className="h-4 w-4 text-green-600" />
-                            Cash Amount
-                        </Label>
-                        <Input
-                            id="cashAmount"
-                            type="text"
-                            inputMode="decimal"
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={form.cashAmount}
-                            onChange={(e) => {
-                                const value = e.target.value;
-                                const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                                setForm({ ...form, cashAmount: sanitized });
-                            }}
-                            className="text-right"
-                        />
-                    </div>
+                    {/* Amount Fields - different based on payment direction */}
+                    {form.paymentDirection === 'debit' ? (
+                        <div className="space-y-2">
+                            <Label htmlFor="debitAmount" className="flex items-center gap-2">
+                                <Wallet className="h-4 w-4 text-red-600" />
+                                Amount <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                                id="debitAmount"
+                                type="text"
+                                inputMode="decimal"
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={form.debitAmount}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                                    setForm({ ...form, debitAmount: sanitized });
+                                }}
+                                className="text-right"
+                            />
+                        </div>
+                    ) : (
+                        <>
+                            {/* Cash Amount */}
+                            <div className="space-y-2">
+                                <Label htmlFor="cashAmount" className="flex items-center gap-2">
+                                    <Banknote className="h-4 w-4 text-green-600" />
+                                    Cash Amount
+                                </Label>
+                                <Input
+                                    id="cashAmount"
+                                    type="text"
+                                    inputMode="decimal"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    value={form.cashAmount}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                                        setForm({ ...form, cashAmount: sanitized });
+                                    }}
+                                    className="text-right"
+                                />
+                            </div>
 
-                    {/* Bank Amount */}
-                    <div className="space-y-2">
-                        <Label htmlFor="bankAmount" className="flex items-center gap-2">
-                            <CreditCard className="h-4 w-4 text-blue-600" />
-                            Bank Amount
-                        </Label>
-                        <Input
-                            id="bankAmount"
-                            type="text"
-                            inputMode="decimal"
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={form.bankAmount}
-                            onChange={(e) => {
-                                const value = e.target.value;
-                                const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                                setForm({ ...form, bankAmount: sanitized });
-                            }}
-                            className="text-right"
-                        />
-                    </div>
+                            {/* Bank Amount */}
+                            <div className="space-y-2">
+                                <Label htmlFor="bankAmount" className="flex items-center gap-2">
+                                    <CreditCard className="h-4 w-4 text-blue-600" />
+                                    Bank Amount
+                                </Label>
+                                <Input
+                                    id="bankAmount"
+                                    type="text"
+                                    inputMode="decimal"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    value={form.bankAmount}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                                        setForm({ ...form, bankAmount: sanitized });
+                                    }}
+                                    className="text-right"
+                                />
+                            </div>
+                        </>
+                    )}
 
                     {/* Total Payment Display */}
                     {totalPayment > 0 && (
@@ -531,8 +545,7 @@ export default function CustomerPaymentModal({
                             isSubmitting ||
                             !entityId ||
                             !form.date ||
-                            totalPayment <= 0 ||
-                            (form.paymentDirection === 'debit' && !form.debitReason)
+                            totalPayment <= 0
                         }
                         className={form.paymentDirection === 'debit' ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
                     >

@@ -6,9 +6,14 @@ import PrintableTable from "@/components/reports/PrintableTable"
 import { useBuyingReturnsReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
 
-function currency(n) {
+function formatNumber(n) {
   const num = Number(n || 0)
-  return `£${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// Kept for backward compatibility - now without currency symbol
+function currency(n) {
+  return formatNumber(n)
 }
 
 function formatDate(date) {

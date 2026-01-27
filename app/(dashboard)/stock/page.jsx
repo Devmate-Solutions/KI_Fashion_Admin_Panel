@@ -129,7 +129,17 @@ const inventoryColumns = [
   {
     header: "SKU",
     accessor: "sku",
-    render: (row) => row.sku || "-",
+    render: (row) => (
+      <a
+        href={`/stock/${row.productId || row.product?._id}/packets`}
+        className="font-medium text-blue-600 hover:underline cursor-pointer"
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
+      >
+        {row.sku || "-"}
+      </a>
+    ),
   },
   {
     header: "Season",
@@ -774,15 +784,12 @@ export default function StockPage() {
   const inventoryTab = (
     <div className="space-y-4">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Stock Value
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          
+          <CardContent className="flex space-x-1 px-3 pt-0">
+            <div>Stock Value:</div>
+            <div className="text-lg font-bold">
               {totalStockValue.toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
@@ -792,37 +799,26 @@ export default function StockPage() {
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Items
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+         
+          <CardContent className="flex space-x-1 px-3 pt-0">
+            <div>Total Items:</div>
+            <div className="text-lg font-bold">
               {formatNumber(totalStockItems)}
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Products
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalProducts}</div>
+          <CardContent className="flex space-x-1 px-3 pt-0">
+            <div>Total Products:</div>
+            <div className="text-lg font-bold">{totalProducts}</div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Low Stock Items
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-600">
+          <CardContent className="flex space-x-1 px-3 pt-0">
+            <div>Low Stock Items:</div>
+                        <div className="text-lg font-bold text-amber-600">
               {lowStockCount}
             </div>
           </CardContent>
@@ -899,76 +895,79 @@ export default function StockPage() {
       </div> */}
 
       {/* Unified Search Filter */}
-      <div className="rounded-lg border border-border bg-card p-4">
-        <form onSubmit={handleApplyFilters}>
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <Label
-                htmlFor="filter-search"
-                className="text-xs text-muted-foreground mb-1 block"
-              >
-                Search
-              </Label>
-              <Input
-                id="filter-search"
-                placeholder="Search by SKU, product name, or supplier..."
-                value={filterForm.search}
-                onChange={(event) =>
-                  setFilterForm((prev) => ({
-                    ...prev,
-                    search: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="min-w-[140px]">
-              <Label
-                htmlFor="filter-start-date"
-                className="text-xs text-muted-foreground mb-1 block"
-              >
-                Start Date
-              </Label>
-              <Input
-                id="filter-start-date"
-                type="date"
-                value={filterForm.startDate}
-                onChange={(event) =>
-                  setFilterForm((prev) => ({
-                    ...prev,
-                    startDate: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="min-w-[140px]">
-              <Label
-                htmlFor="filter-end-date"
-                className="text-xs text-muted-foreground mb-1 block"
-              >
-                End Date
-              </Label>
-              <Input
-                id="filter-end-date"
-                type="date"
-                value={filterForm.endDate}
-                onChange={(event) =>
-                  setFilterForm((prev) => ({
-                    ...prev,
-                    endDate: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit">Apply</Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleResetFilters}
-              >
-                Reset
-              </Button>
-            </div>
+      <div className="rounded-[4px] border border-border bg-card p-3">
+        <form onSubmit={handleApplyFilters} className="flex flex-wrap items-end gap-2">
+          <div className="flex-1 min-w-[250px]">
+            <Label
+              htmlFor="filter-search"
+              className="text-xs text-muted-foreground mb-1 block"
+            >
+              Search
+            </Label>
+            <Input
+              id="filter-search"
+              placeholder="SKU, product, supplier..."
+              value={filterForm.search}
+              onChange={(event) =>
+                setFilterForm((prev) => ({
+                  ...prev,
+                  search: event.target.value,
+                }))
+              }
+              className="h-8 text-sm"
+            />
+          </div>
+          <div className="min-w-[150px]">
+            <Label
+              htmlFor="filter-start-date"
+              className="text-xs text-muted-foreground mb-1 block"
+            >
+              Start Date
+            </Label>
+            <Input
+              id="filter-start-date"
+              type="date"
+              value={filterForm.startDate}
+              onChange={(event) =>
+                setFilterForm((prev) => ({
+                  ...prev,
+                  startDate: event.target.value,
+                }))
+              }
+              className="h-8 text-sm"
+            />
+          </div>
+          <div className="min-w-[150px]">
+            <Label
+              htmlFor="filter-end-date"
+              className="text-xs text-muted-foreground mb-1 block"
+            >
+              End Date
+            </Label>
+            <Input
+              id="filter-end-date"
+              type="date"
+              value={filterForm.endDate}
+              onChange={(event) =>
+                setFilterForm((prev) => ({
+                  ...prev,
+                  endDate: event.target.value,
+                }))
+              }
+              className="h-8 text-sm"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" size="sm" className="h-8">Apply</Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={handleResetFilters}
+            >
+              Reset
+            </Button>
           </div>
         </form>
       </div>

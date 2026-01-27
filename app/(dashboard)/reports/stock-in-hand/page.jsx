@@ -5,6 +5,8 @@ import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useStockInHandReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
+import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import toast from "react-hot-toast"
 
 function currency(n) {
   const num = Number(n || 0)
@@ -39,16 +41,36 @@ export default function StockInHandReportPage() {
     return {
       items: stockData.length,
       totalStock: stockData.reduce((sum, p) => sum + (p.currentStock || p.stockInHand || 0), 0),
+      totalBought: stockData.reduce((sum, p) => sum + (p.itemsBought || 0), 0),
+      totalSold: stockData.reduce((sum, p) => sum + (p.itemsSold || 0), 0),
       totalValue: stockData.reduce((sum, p) => sum + (p.totalValue || p.value || 0), 0),
       lowStock: stockData.filter(p => p.needsReorder || (p.currentStock || p.stockInHand || 0) <= (p.reorderLevel || 10)).length,
     }
   }, [stockData])
 
+  const handleExport = async () => {
+    try {
+      const result = await exportToExcelWithTotals(
+        stockData,
+        columns,
+        totalsRow,
+        `Stock_In_Hand_Report_${dateRange.to}`
+      )
+      if (result.success) {
+        toast.success("Report exported successfully!")
+      } else {
+        toast.error("Failed to export report")
+      }
+    } catch (error) {
+      toast.error("Export failed: " + error.message)
+    }
+  }
+
   const columns = [
     {
-      header: "#",
-      accessor: "index",
-      render: (row, idx) => idx + 1,
+      header: "Supplier Name",
+      accessor: "supplierName",
+      render: (row) => row.supplierName || "—",
     },
     {
       header: "Product Code",
@@ -58,17 +80,41 @@ export default function StockInHandReportPage() {
       ),
     },
     {
-      header: "Product Name",
+      header: "Product Description",
       accessor: "productName",
-      render: (row) => row.productName || row.name || "—",
+      render: (row) => row.productName || row.name || row.description || "—",
     },
     {
-      header: "Stock in Hand",
+      header: "Color",
+      accessor: "color",
+      render: (row) => {
+        // Try to get color from multiple sources
+        if (row.color) return row.color;
+        if (row.variantComposition && row.variantComposition.length > 0) {
+          return row.variantComposition.map(v => v.color).join(", ");
+        }
+        return "—";
+      },
+    },
+    {
+      header: "Items Bought",
+      accessor: "itemsBought",
+      align: "right",
+      render: (row) => row.itemsBought || 0,
+    },
+    {
+      header: "Items Sold",
+      accessor: "itemsSold",
+      align: "right",
+      render: (row) => row.itemsSold || 0,
+    },
+    {
+      header: "Remaining",
       accessor: "currentStock",
       align: "right",
       render: (row) => {
         const stock = row.currentStock || row.stockInHand || 0
-        const isLow = stock <= (row.reorderLevel || 10)
+        const isLow = stock <= (row.reorderLevel || row.minimumStock || 10)
         return (
           <span className={isLow ? "text-red-600 font-semibold" : ""}>
             {stock}
@@ -77,43 +123,20 @@ export default function StockInHandReportPage() {
       },
     },
     {
-      header: "Reorder Level",
-      accessor: "reorderLevel",
+      header: "Min Sell Price",
+      accessor: "minSellPrice",
       align: "right",
-      render: (row) => row.reorderLevel || 10,
-    },
-    {
-      header: "Avg Cost",
-      accessor: "averageCostPrice",
-      align: "right",
-      render: (row) => currency(row.averageCostPrice || row.costPrice || 0),
-    },
-    {
-      header: "Stock Value",
-      accessor: "totalValue",
-      align: "right",
-      render: (row) => (
-        <span className="font-semibold">
-          {currency(row.totalValue || row.value || 0)}
-        </span>
-      ),
-    },
-    {
-      header: "Status",
-      accessor: "status",
       render: (row) => {
-        const stock = row.currentStock || row.stockInHand || 0
-        const isLow = stock <= (row.reorderLevel || 10)
-        const isOut = stock === 0
-        
-        if (isOut) {
-          return <Badge className="bg-red-100 text-red-700">Out of Stock</Badge>
-        }
-        if (isLow) {
-          return <Badge className="bg-amber-100 text-amber-700">Low Stock</Badge>
-        }
-        return <Badge className="bg-emerald-100 text-emerald-700">In Stock</Badge>
+        const landedPrice = row.landedPrice || row.averageCostPrice || row.costPrice || 0
+        const minSellPrice = landedPrice * 1.2
+        return currency(minSellPrice)
       },
+    },
+    {
+      header: "Landed Price",
+      accessor: "landedPrice",
+      align: "right",
+      render: (row) => currency(row.landedPrice || row.averageCostPrice || row.costPrice || 0),
     },
   ]
 
@@ -124,27 +147,28 @@ export default function StockInHandReportPage() {
       subtext: "in inventory",
     },
     {
-      label: "Total Stock",
+      label: "Total Bought",
+      value: totals.totalBought.toLocaleString(),
+      subtext: "units purchased",
+    },
+    {
+      label: "Total Sold",
+      value: totals.totalSold.toLocaleString(),
+      subtext: "units sold",
+    },
+    {
+      label: "Remaining Stock",
       value: totals.totalStock.toLocaleString(),
-      subtext: "units",
-    },
-    {
-      label: "Stock Value",
-      value: currency(totals.totalValue),
       color: "text-blue-600",
-    },
-    {
-      label: "Low Stock Items",
-      value: totals.lowStock,
-      color: "text-red-600",
-      subtext: "need reorder",
+      subtext: "units in hand",
     },
   ]
 
   const totalsRow = {
     productName: "",
+    itemsBought: totals.totalBought,
+    itemsSold: totals.totalSold,
     currentStock: totals.totalStock,
-    totalValue: currency(totals.totalValue),
   }
 
   return (
@@ -154,6 +178,7 @@ export default function StockInHandReportPage() {
       dateRange={dateRange}
       onDateChange={setDateRange}
       onRefresh={refetch}
+      onExport={handleExport}
       loading={isLoading}
       summary={summary}
     >
