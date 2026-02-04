@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useSalesProductWiseReport } from "@/lib/hooks/useReports"
@@ -107,9 +108,21 @@ export default function SalesProductWiseReportPage() {
     {
       header: "Product Code",
       accessor: "productCode",
-      render: (row) => (
-        <span className="font-mono text-xs">{row.productCode || row.sku || "—"}</span>
-      ),
+      render: (row) => {
+        const productCode = row.productCode || row.sku || "—"
+        const productId = row.productId || row.product?._id
+        if (productId && productCode !== "—") {
+          return (
+            <Link
+              href={`/stock/${productId}/packets`}
+              className="font-mono text-xs text-blue-600 hover:text-blue-800 hover:underline"
+            >
+              {productCode}
+            </Link>
+          )
+        }
+        return <span className="font-mono text-xs">{productCode}</span>
+      },
     },
     {
       header: "Items Sold",
@@ -171,6 +184,8 @@ export default function SalesProductWiseReportPage() {
         loading={isLoading}
         showTotals={true}
         totalsRow={totalsRow}
+        totalColumns={[{ title: "Total", value: "totalPrice" }]}
+
       />
     </ReportLayout>
   )

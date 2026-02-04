@@ -4,11 +4,7 @@ import { useEffect, useMemo, useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-<<<<<<< HEAD
-import { PlusIcon, TrashIcon, UserPlusIcon, SearchIcon, Calendar, Tag, Users } from "lucide-react"
-=======
-import { PlusIcon, TrashIcon, UserPlusIcon, SearchIcon, X, ChevronDown, Scissors } from "lucide-react"
->>>>>>> d237026 (barcode and packet change)
+import { PlusIcon, TrashIcon, UserPlusIcon, SearchIcon, Calendar, Tag, Users, X, ChevronDown, Scissors } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -24,14 +20,11 @@ import { useBuyers } from "@/lib/hooks/useBuyers"
 import { MultiSelect } from "@/components/ui/multi-select"
 import { SEASON_OPTIONS, normalizeSeasonArray } from "@/lib/constants/seasons"
 import ProductImageGallery from "@/components/ui/ProductImageGallery"
-<<<<<<< HEAD
 import ProductSelectionModal from "@/components/modals/ProductSelectionModal"
 import BritishDatePicker from "@/components/BritishDatePicker"
-=======
 import PacketStockSelectionModal from "@/components/modals/PacketStockSelectionModal"
 import BreakPacketDialog from "@/components/modals/BreakPacketDialog"
 import { useBreakPacket } from "@/lib/hooks/usePacketStock"
->>>>>>> d237026 (barcode and packet change)
 
 // Helper to get image array from various sources
 const getImageArray = (row) => {
@@ -312,7 +305,7 @@ export default function SaleForm({ onSave }) {
         // Auto-calculate total when quantity or unitPrice changes
         const unitPrice = Number(updated.unitPrice || 0)
         const quantity = Number(updated.quantity || 0)
-        
+
         // For packet sales: total = packets × items per packet × price per item
         if (updated.isPacketSale && updated.totalItemsPerPacket) {
           updated.totalPrice = unitPrice * quantity * updated.totalItemsPerPacket
@@ -359,7 +352,7 @@ export default function SaleForm({ onSave }) {
     }
 
     const trimmedBarcode = barcode.trim().toUpperCase()
-    
+
     // Validate barcode format
     if (!trimmedBarcode.startsWith('PKT-') && !trimmedBarcode.startsWith('LSE-')) {
       setBarcodeError('Invalid barcode format. Expected PKT-XXXXXXXX or LSE-XXXXXXXX')
@@ -368,17 +361,17 @@ export default function SaleForm({ onSave }) {
 
     // Check if this barcode already exists in cart
     const existingRowIndex = rows.findIndex(row => row.packetBarcode === trimmedBarcode)
-    
+
     if (existingRowIndex !== -1) {
       // Barcode already in cart - increment quantity if within available limit
       const existingRow = rows[existingRowIndex]
       const newQty = (existingRow.quantity || 1) + 1
-      
+
       if (newQty > existingRow.availablePackets) {
         setBarcodeError(`Cannot add more. Max available: ${existingRow.availablePackets} packets`)
         return
       }
-      
+
       // Update quantity of existing row
       updateRow(existingRow.id, 'quantity', newQty)
       setBarcodeInput('') // Clear input
@@ -431,7 +424,7 @@ export default function SaleForm({ onSave }) {
 
       setRows((r) => [...r, newRow])
       setBarcodeInput('') // Clear input after successful scan
-      
+
     } catch (err) {
       console.error('Barcode lookup error:', err)
       const errorMessage = err.response?.data?.message || err.message || 'Failed to lookup barcode'
@@ -738,7 +731,7 @@ export default function SaleForm({ onSave }) {
                 Sale Type
               </Label>
               <Select value={saleType} onValueChange={setSaleType}>
-                <SelectTrigger 
+                <SelectTrigger
                   id="sale-type"
                   className="h-11 w-full rounded-lg border border-input bg-background text-base font-medium text-foreground hover:border-ring/50 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] transition-all duration-200"
                 >
@@ -760,68 +753,10 @@ export default function SaleForm({ onSave }) {
               </Label>
               <div className="flex gap-2">
                 <div className="flex-1 relative">
-<<<<<<< HEAD
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
-                    <SearchIcon className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <Input
-                    id="buyer"
-                    type="text"
-                    placeholder="Search customer..."
-                    value={customerSearch}
-                    onChange={e => setCustomerSearch(e.target.value)}
-                    className="h-11 w-full pl-10 pr-3 text-base font-medium rounded-lg border border-input bg-background"
-                    autoComplete="off"
-                  />
-                  {customerSearch && (
-                    <div className="absolute z-20 bg-background border border-border rounded-lg shadow-lg w-full mt-1 max-h-56 overflow-auto">
-                      {buyers.filter(b => {
-                        const search = customerSearch.toLowerCase();
-                        return (
-                          b.name?.toLowerCase().includes(search) ||
-                          b.company?.toLowerCase().includes(search) ||
-                          b.phone?.toLowerCase().includes(search) ||
-                          b.email?.toLowerCase().includes(search)
-                        );
-                      }).length === 0 ? (
-                        <div className="px-4 py-3 text-muted-foreground text-sm text-center">
-                          No customers found
-                        </div>
-                      ) : (
-                        buyers.filter(b => {
-                          const search = customerSearch.toLowerCase();
-                          return (
-                            b.name?.toLowerCase().includes(search) ||
-                            b.company?.toLowerCase().includes(search) ||
-                            b.phone?.toLowerCase().includes(search) ||
-                            b.email?.toLowerCase().includes(search)
-                          );
-                        }).map((b) => (
-                          <div
-                            key={b.id}
-                            className={`px-4 py-3 cursor-pointer transition-colors ${
-                              buyerId === String(b.id) 
-                                ? 'bg-primary/10 text-primary' 
-                                : 'hover:bg-muted'
-                            }`}
-                            onClick={() => {
-                              setBuyerId(String(b.id));
-                              setIsManualCustomer(false);
-                              setCustomerSearch(b.name);
-                            }}
-                          >
-                            <div className="font-medium">{b.name}</div>
-                            {b.company && (
-                              <div className="text-xs text-muted-foreground mt-0.5">{b.company}</div>
-                            )}
-                          </div>
-                        ))
-                      )}
-=======
                   {/* Selected customer display */}
                   {buyerId && !isManualCustomer ? (
-                    <div className="flex items-center justify-between h-10 px-3 border rounded-md bg-muted/30">
-                      <span className="font-medium text-sm truncate">
+                    <div className="flex items-center justify-between h-11 px-3 border border-input rounded-lg bg-muted/30">
+                      <span className="font-medium text-base truncate">
                         {buyers.find(b => String(b.id) === String(buyerId))?.name || 'Selected Customer'}
                         {buyers.find(b => String(b.id) === String(buyerId))?.company && (
                           <span className="text-muted-foreground ml-1">
@@ -837,11 +772,10 @@ export default function SaleForm({ onSave }) {
                           setBuyerId('')
                           setCustomerSearch('')
                         }}
-                        className="h-7 w-7 p-0 ml-2"
+                        className="h-8 w-8 p-0 ml-2"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-5 w-5" />
                       </Button>
->>>>>>> d237026 (barcode and packet change)
                     </div>
                   ) : (
                     /* Search input */
@@ -944,7 +878,7 @@ export default function SaleForm({ onSave }) {
                 >
                   <UserPlusIcon className="h-4 w-4" />
                 </Button>
-              </div>
+              </div >
               {isManualCustomer && (
                 <div className="mt-4 p-4 border border-border rounded-lg bg-muted/30 space-y-4">
                   <div className="flex items-center gap-2 pb-2 border-b border-border">
@@ -1004,14 +938,15 @@ export default function SaleForm({ onSave }) {
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
+              )
+              }
+            </div >
+          </div >
+        </div >
+      </section >
 
       {/* Section 2: Products Cart */}
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      < section className="rounded-lg border border-border bg-card p-6 shadow-sm" >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold">Products</h2>
           <Button
@@ -1113,58 +1048,58 @@ export default function SaleForm({ onSave }) {
                         </span>
                       </div>
                     ) : (
-                    <Input
-                      value={row.productName}
-                      onChange={(e) => {
-                        const name = e.target.value
-                        updateRow(row.id, "productName", name)
+                      <Input
+                        value={row.productName}
+                        onChange={(e) => {
+                          const name = e.target.value
+                          updateRow(row.id, "productName", name)
 
-                        if (nameLookupTimeoutRefs.current[row.id]) {
-                          clearTimeout(nameLookupTimeoutRefs.current[row.id])
-                        }
+                          if (nameLookupTimeoutRefs.current[row.id]) {
+                            clearTimeout(nameLookupTimeoutRefs.current[row.id])
+                          }
 
-                        if (name.trim().length >= 2) {
-                          nameLookupTimeoutRefs.current[row.id] = setTimeout(async () => {
-                            try {
-                              const response = await productsAPI.search(name.trim())
-                              const productsList = response.data?.data || response.data || []
+                          if (name.trim().length >= 2) {
+                            nameLookupTimeoutRefs.current[row.id] = setTimeout(async () => {
+                              try {
+                                const response = await productsAPI.search(name.trim())
+                                const productsList = response.data?.data || response.data || []
 
-                              let product = productsList.find(p =>
-                                p.name?.toLowerCase() === name.trim().toLowerCase()
-                              ) || productsList[0]
+                                let product = productsList.find(p =>
+                                  p.name?.toLowerCase() === name.trim().toLowerCase()
+                                ) || productsList[0]
 
-                              if (product) {
-                                const unitPrice = Number(
-                                  product.pricing?.sellingPrice || product.sellingPrice || product.unitPrice || 0
-                                )
+                                if (product) {
+                                  const unitPrice = Number(
+                                    product.pricing?.sellingPrice || product.sellingPrice || product.unitPrice || 0
+                                  )
 
-                                setRows(prev => prev.map(r =>
-                                  r.id === row.id ? {
-                                    ...r,
-                                    productId: product._id || product.id,
-                                    productName: product.name || name,
-                                    productCode: product.productCode || product.sku || r.productCode,
-                                    season: Array.isArray(product.season)
-                                      ? product.season
-                                      : product.season
-                                        ? [product.season]
-                                        : product.productType
-                                          ? (Array.isArray(product.productType) ? product.productType : [product.productType])
-                                          : (r.season || []),
-                                    unitPrice: Number(unitPrice || 0).toFixed(2),
-                                    photo: product.images?.[0] || product.image || r.photo
-                                  } : r
-                                ))
+                                  setRows(prev => prev.map(r =>
+                                    r.id === row.id ? {
+                                      ...r,
+                                      productId: product._id || product.id,
+                                      productName: product.name || name,
+                                      productCode: product.productCode || product.sku || r.productCode,
+                                      season: Array.isArray(product.season)
+                                        ? product.season
+                                        : product.season
+                                          ? [product.season]
+                                          : product.productType
+                                            ? (Array.isArray(product.productType) ? product.productType : [product.productType])
+                                            : (r.season || []),
+                                      unitPrice: Number(unitPrice || 0).toFixed(2),
+                                      photo: product.images?.[0] || product.image || r.photo
+                                    } : r
+                                  ))
+                                }
+                              } catch (err) {
+                                console.error('Product name lookup error:', err)
                               }
-                            } catch (err) {
-                              console.error('Product name lookup error:', err)
-                            }
-                          }, 500)
-                        }
-                      }}
-                      placeholder="Enter product name"
-                      className="h-8 text-sm"
-                    />
+                            }, 500)
+                          }
+                        }}
+                        placeholder="Enter product name"
+                        className="h-8 text-sm"
+                      />
                     )}
                   </td>
 
@@ -1173,53 +1108,53 @@ export default function SaleForm({ onSave }) {
                     {row.isPacketSale ? (
                       <span className="text-sm text-muted-foreground">{row.productCode}</span>
                     ) : (
-                    <Input
-                      value={row.productCode}
-                      onChange={(e) => {
-                        const code = e.target.value
-                        updateRow(row.id, "productCode", code)
+                      <Input
+                        value={row.productCode}
+                        onChange={(e) => {
+                          const code = e.target.value
+                          updateRow(row.id, "productCode", code)
 
-                        if (lookupTimeoutRefs.current[row.id]) {
-                          clearTimeout(lookupTimeoutRefs.current[row.id])
-                        }
+                          if (lookupTimeoutRefs.current[row.id]) {
+                            clearTimeout(lookupTimeoutRefs.current[row.id])
+                          }
 
-                        if (code.trim().length >= 2) {
-                          lookupTimeoutRefs.current[row.id] = setTimeout(async () => {
-                            try {
-                              const response = await productsAPI.lookupByCode(code.trim())
-                              const product = response.data?.data || response.data
+                          if (code.trim().length >= 2) {
+                            lookupTimeoutRefs.current[row.id] = setTimeout(async () => {
+                              try {
+                                const response = await productsAPI.lookupByCode(code.trim())
+                                const product = response.data?.data || response.data
 
-                              if (product) {
-                                const unitPrice = Number(
-                                  product.pricing?.sellingPrice || product.sellingPrice || product.unitPrice || 0
-                                )
+                                if (product) {
+                                  const unitPrice = Number(
+                                    product.pricing?.sellingPrice || product.sellingPrice || product.unitPrice || 0
+                                  )
 
-                                setRows(prev => prev.map(r =>
-                                  r.id === row.id ? {
-                                    ...r,
-                                    productId: product._id || product.id,
-                                    productName: product.name || r.productName,
-                                    productCode: product.productCode || product.sku || code,
-                                    season: Array.isArray(product.season)
-                                      ? product.season
-                                      : product.season
-                                        ? [product.season]
-                                        : product.productType
-                                          ? (Array.isArray(product.productType) ? product.productType : [product.productType])
-                                          : (r.season || []),
-                                    unitPrice: Number(unitPrice || 0).toFixed(2),
-                                    photo: product.images?.[0] || product.image || r.photo
-                                  } : r
-                                ))
+                                  setRows(prev => prev.map(r =>
+                                    r.id === row.id ? {
+                                      ...r,
+                                      productId: product._id || product.id,
+                                      productName: product.name || r.productName,
+                                      productCode: product.productCode || product.sku || code,
+                                      season: Array.isArray(product.season)
+                                        ? product.season
+                                        : product.season
+                                          ? [product.season]
+                                          : product.productType
+                                            ? (Array.isArray(product.productType) ? product.productType : [product.productType])
+                                            : (r.season || []),
+                                      unitPrice: Number(unitPrice || 0).toFixed(2),
+                                      photo: product.images?.[0] || product.image || r.photo
+                                    } : r
+                                  ))
+                                }
+                              } catch (err) {
+                                console.error('Product lookup error:', err)
                               }
-                            } catch (err) {
-                              console.error('Product lookup error:', err)
-                            }
-                          }, 500)
-                        }
-                      }}
-                      className="h-8 text-sm"
-                    />
+                            }, 500)
+                          }
+                        }}
+                        className="h-8 text-sm"
+                      />
                     )}
                   </td>
 
@@ -1260,26 +1195,26 @@ export default function SaleForm({ onSave }) {
                         <span className="text-xs text-muted-foreground">per item</span>
                       </div>
                     ) : (
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      step="0.01"
-                      min="0"
-                      value={row.unitPrice}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        // Allow only numbers and one decimal point
-                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                        updateRow(row.id, "unitPrice", sanitized === "" ? "" : Number(sanitized));
-                      }}
-                      onBlur={(e) => {
-                        const val = parseFloat(e.target.value)
-                        if (!isNaN(val)) {
-                          updateRow(row.id, "unitPrice", Number(val.toFixed(2)))
-                        }
-                      }}
-                      className="h-8 text-sm text-right tabular-nums"
-                    />
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        step="0.01"
+                        min="0"
+                        value={row.unitPrice}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Allow only numbers and one decimal point
+                          const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                          updateRow(row.id, "unitPrice", sanitized === "" ? "" : Number(sanitized));
+                        }}
+                        onBlur={(e) => {
+                          const val = parseFloat(e.target.value)
+                          if (!isNaN(val)) {
+                            updateRow(row.id, "unitPrice", Number(val.toFixed(2)))
+                          }
+                        }}
+                        className="h-8 text-sm text-right tabular-nums"
+                      />
                     )}
                   </td>
 
@@ -1307,18 +1242,18 @@ export default function SaleForm({ onSave }) {
                         </span>
                       </div>
                     ) : (
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      value={row.quantity}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        // Allow only numbers
-                        const sanitized = value.replace(/[^0-9]/g, '');
-                        updateRow(row.id, "quantity", sanitized === "" ? "" : Number(sanitized));
-                      }}
-                      className="h-8 text-sm text-right tabular-nums"
-                    />
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={row.quantity}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Allow only numbers
+                          const sanitized = value.replace(/[^0-9]/g, '');
+                          updateRow(row.id, "quantity", sanitized === "" ? "" : Number(sanitized));
+                        }}
+                        className="h-8 text-sm text-right tabular-nums"
+                      />
                     )}
                   </td>
 
@@ -1389,15 +1324,17 @@ export default function SaleForm({ onSave }) {
           </table>
         </div>
 
-        {rows.length > 0 && (
-          <div className="mt-3 text-xs text-muted-foreground">
-            <kbd className="px-2 py-1 bg-muted rounded text-xs">Tab</kbd> to navigate between fields
-          </div>
-        )}
-      </section>
+        {
+          rows.length > 0 && (
+            <div className="mt-3 text-xs text-muted-foreground">
+              <kbd className="px-2 py-1 bg-muted rounded text-xs">Tab</kbd> to navigate between fields
+            </div>
+          )
+        }
+      </section >
 
       {/* Section 3: Payment Summary */}
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      < section className="rounded-lg border border-border bg-card p-6 shadow-sm" >
         <h2 className="text-base font-semibold mb-4">Payment Summary</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1547,10 +1484,10 @@ export default function SaleForm({ onSave }) {
             </Button>
           </div>
         </div>
-      </section>
+      </section >
 
       {/* Add Buyer Dialog */}
-      <Dialog open={showAddBuyer} onOpenChange={setShowAddBuyer}>
+      < Dialog open={showAddBuyer} onOpenChange={setShowAddBuyer} >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add New Buyer</DialogTitle>
@@ -1631,26 +1568,27 @@ export default function SaleForm({ onSave }) {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* Packet Stock Selection Modal */}
-      <PacketStockSelectionModal
+      < PacketStockSelectionModal
         open={showProductModal}
-        onClose={() => setShowProductModal(false)}
+        onClose={() => setShowProductModal(false)
+        }
         onSelect={(cartRow) => {
           // Check if packet barcode already exists in cart
           const existingRowIndex = rows.findIndex(row => row.packetBarcode === cartRow.packetBarcode)
-          
+
           if (existingRowIndex !== -1) {
             // Barcode already in cart - increment quantity if within available limit
             const existingRow = rows[existingRowIndex]
             const newQty = (existingRow.quantity || 1) + 1
-            
+
             if (newQty > existingRow.availablePackets) {
               setError(`Cannot add more. Max available: ${existingRow.availablePackets} packets of ${existingRow.packetBarcode}`)
               return
             }
-            
+
             // Update quantity of existing row
             updateRow(existingRow.id, 'quantity', newQty)
           } else {
@@ -1697,6 +1635,6 @@ export default function SaleForm({ onSave }) {
         }}
         mode="sale"
       />
-    </div>
+    </div >
   )
 }

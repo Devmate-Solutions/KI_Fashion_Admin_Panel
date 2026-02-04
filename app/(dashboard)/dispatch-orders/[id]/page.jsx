@@ -1233,45 +1233,45 @@ export default function DispatchOrderDetailPage({ params }) {
       {/* Enhanced Header */}
       <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
               size="sm"
-            onClick={() => router.push("/dispatch-orders")}
+              onClick={() => router.push("/dispatch-orders")}
               className="hover:bg-muted transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Package className="h-6 w-6 text-primary" />
               </div>
-          <div>
+              <div>
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-              Dispatch Order: {dispatchOrder.orderNumber}
-            </h1>
+                  Dispatch Order: {dispatchOrder.orderNumber}
+                </h1>
                 <p className="text-sm text-muted-foreground mt-1">
                   {dispatchOrder.supplier?.name || dispatchOrder.supplier?.company || "Supplier"} • {dispatchOrder.dispatchDate ? new Date(dispatchOrder.dispatchDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "—"}
                 </p>
               </div>
+            </div>
           </div>
-        </div>
-        <Badge
+          <Badge
             className={cn(
               "px-4 py-2 text-sm font-semibold rounded-md border",
               statusStyles[dispatchOrder.status] || statusStyles.pending
             )}
-        >
-          {dispatchOrder.status?.replace(/_/g, " ").replace(/-/g, " ").toUpperCase()}
-        </Badge>
+          >
+            {dispatchOrder.status?.replace(/_/g, " ").replace(/-/g, " ").toUpperCase()}
+          </Badge>
         </div>
       </div>
 
       {/* Order Info - Enhanced Design */}
       <Card className="border border-border bg-card">
         <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <Info className="h-4 w-4 text-primary" />
             </div>
@@ -1280,366 +1280,366 @@ export default function DispatchOrderDetailPage({ params }) {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Supplier - Always Read-Only */}
-              <div className="space-y-1">
-                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Supplier (Not Editable)
-                </Label>
-                <p className="font-semibold text-base text-foreground">
-                  {dispatchOrder.supplier?.name ||
-                    dispatchOrder.supplier?.company ||
+            {/* Supplier - Always Read-Only */}
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Supplier (Not Editable)
+              </Label>
+              <p className="font-semibold text-base text-foreground">
+                {dispatchOrder.supplier?.name ||
+                  dispatchOrder.supplier?.company ||
+                  "—"}
+              </p>
+              {dispatchOrder.supplier?.phone && (
+                <p className="text-sm text-muted-foreground">
+                  {(dispatchOrder.supplier?.phoneAreaCode
+                    ? `${dispatchOrder.supplier.phoneAreaCode}-`
+                    : "") + dispatchOrder.supplier.phone}
+                </p>
+              )}
+              {dispatchOrder.supplier?.email && (
+                <p className="text-sm text-muted-foreground">
+                  {dispatchOrder.supplier.email}
+                </p>
+              )}
+            </div>
+
+            {/* Logistics Company - Double-click to edit for pending orders */}
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Logistics Company{" "}
+                {isPending && <span className="text-destructive">*</span>}
+              </Label>
+              {isPending && editingField === "logisticsCompany" ? (
+                <div className="flex gap-1">
+                  <Select
+                    value={editedLogisticsCompany || ""}
+                    onValueChange={setEditedLogisticsCompany}
+                    onOpenChange={(open) => {
+                      if (!open) {
+                        setEditingField(null);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-9 text-sm border-blue-500 border-2">
+                      <SelectValue placeholder="Select logistics company" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {logisticsCompanies.map((company) => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setEditingField(null)}
+                    className="h-9 px-2"
+                  >
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  </Button>
+                </div>
+              ) : (
+                <p
+                  className={cn(
+                    "font-semibold text-base text-foreground p-2 rounded-md transition-colors",
+                    isPending && "cursor-pointer hover:bg-muted border border-transparent hover:border-border"
+                  )}
+                  onDoubleClick={() =>
+                    isPending && setEditingField("logisticsCompany")
+                  }
+                  title={isPending ? "Double-click to edit" : ""}
+                >
+                  {logisticsCompanies.find(
+                    (c) => c.id === editedLogisticsCompany
+                  )?.name ||
+                    dispatchOrder.logisticsCompany?.name ||
                     "—"}
                 </p>
-                {dispatchOrder.supplier?.phone && (
-                  <p className="text-sm text-muted-foreground">
-                    {(dispatchOrder.supplier?.phoneAreaCode
-                      ? `${dispatchOrder.supplier.phoneAreaCode}-`
-                      : "") + dispatchOrder.supplier.phone}
-                  </p>
-                )}
-                {dispatchOrder.supplier?.email && (
-                  <p className="text-sm text-muted-foreground">
-                    {dispatchOrder.supplier.email}
-                  </p>
-                )}
-              </div>
+              )}
+            </div>
 
-              {/* Logistics Company - Double-click to edit for pending orders */}
-              <div className="space-y-1">
-                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Logistics Company{" "}
-                  {isPending && <span className="text-destructive">*</span>}
-                </Label>
-                {isPending && editingField === "logisticsCompany" ? (
-                  <div className="flex gap-1">
-                    <Select
-                      value={editedLogisticsCompany || ""}
-                      onValueChange={setEditedLogisticsCompany}
-                      onOpenChange={(open) => {
-                        if (!open) {
-                          setEditingField(null);
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="h-9 text-sm border-blue-500 border-2">
-                        <SelectValue placeholder="Select logistics company" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {logisticsCompanies.map((company) => (
-                          <SelectItem key={company.id} value={company.id}>
-                            {company.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setEditingField(null)}
-                      className="h-9 px-2"
-                    >
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    </Button>
-                  </div>
-                ) : (
-                  <p
-                    className={cn(
-                      "font-semibold text-base text-foreground p-2 rounded-md transition-colors",
-                      isPending && "cursor-pointer hover:bg-muted border border-transparent hover:border-border"
-                    )}
-                    onDoubleClick={() =>
-                      isPending && setEditingField("logisticsCompany")
-                    }
-                    title={isPending ? "Double-click to edit" : ""}
-                  >
-                    {logisticsCompanies.find(
-                      (c) => c.id === editedLogisticsCompany
-                    )?.name ||
-                      dispatchOrder.logisticsCompany?.name ||
-                      "—"}
-                  </p>
-                )}
-              </div>
-
-              {/* Dispatch Date - Enhanced Design */}
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
-                  <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  Date {isPending && <span className="text-destructive">*</span>}
-                </Label>
-                {isPending && editingField === "dispatchDate" ? (
-                  <div className="flex gap-2 items-center">
-                    <div className="relative flex-1 group">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
-                        <svg className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
+            {/* Dispatch Date - Enhanced Design */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+                <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Date {isPending && <span className="text-destructive">*</span>}
+              </Label>
+              {isPending && editingField === "dispatchDate" ? (
+                <div className="flex gap-2 items-center">
+                  <div className="relative flex-1 group">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                      <svg className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
                     <Input
                       type="date"
                       value={editedDispatchDate}
                       onChange={(e) => setEditedDispatchDate(e.target.value)}
                       onBlur={() => setEditingField(null)}
-                        className="h-11 pl-10 pr-3 text-sm font-medium border-primary focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                      className="h-11 pl-10 pr-3 text-sm font-medium border-primary focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
                       autoFocus
                     />
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setEditingField(null)}
-                      className="h-11 w-11 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
-                      title="Confirm"
-                    >
-                      <CheckCircle2 className="h-5 w-5" />
-                    </Button>
                   </div>
-                ) : (
-                  <div
-                    className={cn(
-                      "relative group",
-                      isPending && "cursor-pointer"
-                    )}
-                    onDoubleClick={() =>
-                      isPending && setEditingField("dispatchDate")
-                    }
-                    title={isPending ? "Double-click to edit" : ""}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setEditingField(null)}
+                    className="h-11 w-11 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
+                    title="Confirm"
                   >
-                    <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition-colors">
-                      <div className="flex-shrink-0">
-                        <svg className="h-5 w-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    <CheckCircle2 className="h-5 w-5" />
+                  </Button>
+                </div>
+              ) : (
+                <div
+                  className={cn(
+                    "relative group",
+                    isPending && "cursor-pointer"
+                  )}
+                  onDoubleClick={() =>
+                    isPending && setEditingField("dispatchDate")
+                  }
+                  title={isPending ? "Double-click to edit" : ""}
+                >
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition-colors">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <p className="font-semibold text-base text-foreground tabular-nums">
+                      {(() => {
+                        if (editedDispatchDate) {
+                          const [year, month, day] = editedDispatchDate.split("-");
+                          return `${day}/${month}/${year}`;
+                        }
+                        if (dispatchOrder.dispatchDate) {
+                          const date = new Date(dispatchOrder.dispatchDate);
+                          // Using UTC methods to avoid timezone shifts for these dates
+                          const day = String(date.getUTCDate()).padStart(2, '0');
+                          const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                          const year = date.getUTCFullYear();
+                          return `${day}/${month}/${year}`;
+                        }
+                        return "—";
+                      })()}
+                    </p>
+                    {isPending && (
+                      <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                        <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                       </div>
-                      <p className="font-semibold text-base text-foreground tabular-nums">
-                    {(() => {
-                      if (editedDispatchDate) {
-                        const [year, month, day] = editedDispatchDate.split("-");
-                        return `${day}/${month}/${year}`;
-                      }
-                      if (dispatchOrder.dispatchDate) {
-                        const date = new Date(dispatchOrder.dispatchDate);
-                        // Using UTC methods to avoid timezone shifts for these dates
-                        const day = String(date.getUTCDate()).padStart(2, '0');
-                        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-                        const year = date.getUTCFullYear();
-                        return `${day}/${month}/${year}`;
-                      }
-                      return "—";
-                    })()}
-                  </p>
-                      {isPending && (
-                        <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-                          <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Discount - Double-click to edit for pending orders */}
-              <div className="space-y-1">
-                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Discount
-                </Label>
-                {isPending && editingField === "discount" ? (
-                  <div className="flex gap-1">
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      min="0"
-                      step="0.01"
-                      value={editedDiscount}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        // Allow only numbers and one decimal point
-                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                        setEditedDiscount(sanitized);
-                      }}
-                      onBlur={() => setEditingField(null)}
-                      className="h-9 text-sm border-blue-500 border-2"
-                      placeholder="0.00"
-                      autoFocus
-                    />
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setEditingField(null)}
-                      className="h-9 px-2"
-                    >
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    </Button>
-                  </div>
-                ) : (
-                  <p
-                    className={cn(
-                      "font-semibold text-base text-foreground p-2 rounded-md transition-colors",
-                      isPending && "cursor-pointer hover:bg-muted border border-transparent hover:border-border"
                     )}
-                    onDoubleClick={() =>
-                      isPending && setEditingField("discount")
-                    }
-                    title={isPending ? "Double-click to edit" : ""}
-                  >
-                    {isPending
-                      ? (() => {
-                        if (
-                          dispatchOrder?.returnedItems &&
-                          dispatchOrder.returnedItems.length > 0
-                        ) {
-                          // Show the calculated proportional discount for pending orders with returns
-                          return confirmOrderSupplierCurrency.discount.toLocaleString(
-                            undefined,
-                            {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            }
-                          );
-                        }
-                        return editedDiscount;
-                      })()
-                      : (() => {
-                        // For display in Order Information, show discount in supplier currency (amount)
-                        // For pending orders: totalDiscount is stored in supplier currency
-
-                        const discountValue =
-                          dispatchOrder.totalDiscount || 0;
-                        // Format as number (supplier currency) without EUR symbol
-                        return discountValue.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        });
-                      })()}
-                  </p>
-                )}
-              </div>
-
-              {/* Total Boxes - Editable for pending orders */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Total Boxes
-                  </Label>
-                  {isPending && (
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="total-boxes-confirmed"
-                        checked={totalBoxesConfirmed}
-                        onCheckedChange={(checked) => {
-                          setTotalBoxesConfirmed(checked === true);
-                        }}
-                        className="h-4 w-4"
-                      />
-                      <Label
-                        htmlFor="total-boxes-confirmed"
-                        className="text-xs text-muted-foreground cursor-pointer"
-                      >
-                        Confirm
-                      </Label>
-                    </div>
-                  )}
+                  </div>
                 </div>
-                {isPending && editingField === "totalBoxes" ? (
-                  <div className="flex gap-1">
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      value={editedTotalBoxes}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        // Allow only numbers
-                        const sanitized = value.replace(/[^0-9]/g, '');
-                        setEditedTotalBoxes(sanitized);
-                        // Reset confirmation when value changes
-                        if (sanitized !== editedTotalBoxes) {
-                          setTotalBoxesConfirmed(false);
-                        }
-                      }}
-                      onBlur={() => setEditingField(null)}
-                      className="h-9 text-sm border-blue-500 border-2"
-                      placeholder="0"
-                      autoFocus
-                    />
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setEditingField(null)}
-                      className="h-9 px-2"
-                    >
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    </Button>
-                  </div>
-                ) : (
-                  <p
-                    className={cn(
-                      "font-semibold text-base text-foreground p-2 rounded-md transition-colors",
-                      isPending && "cursor-pointer hover:bg-muted border border-transparent hover:border-border"
-                    )}
-                    onDoubleClick={() =>
-                      isPending && setEditingField("totalBoxes")
-                    }
-                    title={isPending ? "Double-click to edit" : ""}
-                  >
-                    {isPending
-                      ? editedTotalBoxes
-                      : dispatchOrder.totalBoxes || 0}
-                  </p>
-                )}
-              </div>
-
-              {isConfirmed && (
-                <>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Exchange Rate
-                    </Label>
-                    <p className="font-semibold text-base text-foreground">
-                      {dispatchOrder.exchangeRate
-                        ? dispatchOrder.exchangeRate.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 4,
-                        })
-                        : "—"}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Percentage
-                    </Label>
-                    <p className="font-semibold text-base text-foreground">
-                      {dispatchOrder.percentage != null
-                        ? `${dispatchOrder.percentage}%`
-                        : "—"}
-                    </p>
-                  </div>
-                </>
-              )}
-              {isConfirmed && dispatchOrder.computedPaymentDetails && (
-                <>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Cash Payment
-                    </Label>
-                    <p className="font-semibold text-base text-foreground">
-                      {(dispatchOrder.computedPaymentDetails.cashPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Bank Payment
-                    </Label>
-                    <p className="font-semibold text-base text-foreground">
-                      {(dispatchOrder.computedPaymentDetails.bankPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                </>
               )}
             </div>
+
+            {/* Discount - Double-click to edit for pending orders */}
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Discount
+              </Label>
+              {isPending && editingField === "discount" ? (
+                <div className="flex gap-1">
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.01"
+                    value={editedDiscount}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow only numbers and one decimal point
+                      const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                      setEditedDiscount(sanitized);
+                    }}
+                    onBlur={() => setEditingField(null)}
+                    className="h-9 text-sm border-blue-500 border-2"
+                    placeholder="0.00"
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setEditingField(null)}
+                    className="h-9 px-2"
+                  >
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  </Button>
+                </div>
+              ) : (
+                <p
+                  className={cn(
+                    "font-semibold text-base text-foreground p-2 rounded-md transition-colors",
+                    isPending && "cursor-pointer hover:bg-muted border border-transparent hover:border-border"
+                  )}
+                  onDoubleClick={() =>
+                    isPending && setEditingField("discount")
+                  }
+                  title={isPending ? "Double-click to edit" : ""}
+                >
+                  {isPending
+                    ? (() => {
+                      if (
+                        dispatchOrder?.returnedItems &&
+                        dispatchOrder.returnedItems.length > 0
+                      ) {
+                        // Show the calculated proportional discount for pending orders with returns
+                        return confirmOrderSupplierCurrency.discount.toLocaleString(
+                          undefined,
+                          {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          }
+                        );
+                      }
+                      return editedDiscount;
+                    })()
+                    : (() => {
+                      // For display in Order Information, show discount in supplier currency (amount)
+                      // For pending orders: totalDiscount is stored in supplier currency
+
+                      const discountValue =
+                        dispatchOrder.totalDiscount || 0;
+                      // Format as number (supplier currency) without EUR symbol
+                      return discountValue.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      });
+                    })()}
+                </p>
+              )}
+            </div>
+
+            {/* Total Boxes - Editable for pending orders */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Total Boxes
+                </Label>
+                {isPending && (
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="total-boxes-confirmed"
+                      checked={totalBoxesConfirmed}
+                      onCheckedChange={(checked) => {
+                        setTotalBoxesConfirmed(checked === true);
+                      }}
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="total-boxes-confirmed"
+                      className="text-xs text-muted-foreground cursor-pointer"
+                    >
+                      Confirm
+                    </Label>
+                  </div>
+                )}
+              </div>
+              {isPending && editingField === "totalBoxes" ? (
+                <div className="flex gap-1">
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={editedTotalBoxes}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow only numbers
+                      const sanitized = value.replace(/[^0-9]/g, '');
+                      setEditedTotalBoxes(sanitized);
+                      // Reset confirmation when value changes
+                      if (sanitized !== editedTotalBoxes) {
+                        setTotalBoxesConfirmed(false);
+                      }
+                    }}
+                    onBlur={() => setEditingField(null)}
+                    className="h-9 text-sm border-blue-500 border-2"
+                    placeholder="0"
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setEditingField(null)}
+                    className="h-9 px-2"
+                  >
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  </Button>
+                </div>
+              ) : (
+                <p
+                  className={cn(
+                    "font-semibold text-base text-foreground p-2 rounded-md transition-colors",
+                    isPending && "cursor-pointer hover:bg-muted border border-transparent hover:border-border"
+                  )}
+                  onDoubleClick={() =>
+                    isPending && setEditingField("totalBoxes")
+                  }
+                  title={isPending ? "Double-click to edit" : ""}
+                >
+                  {isPending
+                    ? editedTotalBoxes
+                    : dispatchOrder.totalBoxes || 0}
+                </p>
+              )}
+            </div>
+
+            {isConfirmed && (
+              <>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Exchange Rate
+                  </Label>
+                  <p className="font-semibold text-base text-foreground">
+                    {dispatchOrder.exchangeRate
+                      ? dispatchOrder.exchangeRate.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 4,
+                      })
+                      : "—"}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Percentage
+                  </Label>
+                  <p className="font-semibold text-base text-foreground">
+                    {dispatchOrder.percentage != null
+                      ? `${dispatchOrder.percentage}%`
+                      : "—"}
+                  </p>
+                </div>
+              </>
+            )}
+            {isConfirmed && dispatchOrder.computedPaymentDetails && (
+              <>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Cash Payment
+                  </Label>
+                  <p className="font-semibold text-base text-foreground">
+                    {(dispatchOrder.computedPaymentDetails.cashPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Bank Payment
+                  </Label>
+                  <p className="font-semibold text-base text-foreground">
+                    {(dispatchOrder.computedPaymentDetails.bankPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -1656,671 +1656,671 @@ export default function DispatchOrderDetailPage({ params }) {
               </div>
             </div>
             <div className="text-sm text-muted-foreground font-medium">
-                {isPending && !dispatchOrder?.returnedItems?.length ? (
+              {isPending && !dispatchOrder?.returnedItems?.length ? (
                 <span>
                   {remainingItemsSummary.rows} items • {currency(remainingItemsSummary.value)}
                 </span>
               ) : (
                 <span>
                   {remainingItemsSummary.quantity} units remaining ({remainingItemsSummary.rows} products) • {currency(remainingItemsSummary.value)}
-                    {activeItemsWithDetails.some(
-                      (item) => item.totalReturned > 0
-                    ) && (
+                  {activeItemsWithDetails.some(
+                    (item) => item.totalReturned > 0
+                  ) && (
                       <span className="text-destructive ml-2">
                         ({activeItemsWithDetails.reduce(
-                            (sum, item) => sum + item.totalReturned,
-                            0
+                          (sum, item) => sum + item.totalReturned,
+                          0
                         )} returned)
-                        </span>
-                      )}
+                      </span>
+                    )}
                 </span>
-                )}
-              </div>
+              )}
             </div>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
               <thead className="bg-muted/30 border-b border-border sticky top-0 z-10">
-                    <tr>
-                      {isPending && (
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                          ✓
-                        </th>
-                      )}
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Image
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Product
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Code
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-24">
-                        Colors
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-24">
-                        Sizes
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-24">
-                        Season
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider w-16">
-                        Packets
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        {isPending ? "QTY" : "Remaining Qty"}
-                      </th>
-                      {!isPending && (
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                          Returned
-                        </th>
-                      )}
-                      {!isPending && (
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                          Original Qty
-                        </th>
-                      )}
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Cost Price
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Supplier Payment
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Landed Price
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Landed Total
-                      </th>
-                      {isPending && (
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                          Actions
-                        </th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {itemsWithDetails.map((item, idx) => {
-                      const itemData = editedItems[item.index] || item;
-                      const isVerified = itemVerifications[item.index] || false;
-                      const isRemoved = itemsToRemove.includes(item.index);
+                <tr>
+                  {isPending && (
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      ✓
+                    </th>
+                  )}
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Image
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Product
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Code
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-24">
+                    Colors
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-24">
+                    Sizes
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-24">
+                    Season
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider w-16">
+                    Packets
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    {isPending ? "QTY" : "Remaining Qty"}
+                  </th>
+                  {!isPending && (
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Returned
+                    </th>
+                  )}
+                  {!isPending && (
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Original Qty
+                    </th>
+                  )}
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Cost Price
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Supplier Payment
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Landed Price
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Landed Total
+                  </th>
+                  {isPending && (
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Actions
+                    </th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {itemsWithDetails.map((item, idx) => {
+                  const itemData = editedItems[item.index] || item;
+                  const isVerified = itemVerifications[item.index] || false;
+                  const isRemoved = itemsToRemove.includes(item.index);
 
-                      // Recalculate with edited values
-                      // ALWAYS use the remaining quantity (original/edited minus returns) for financial calculations
-                      // item.confirmedQty already contains the remaining amount (original - returned)
-                      const editedQuantity = item.confirmedQty ?? 0;
-                      // Get cost price from editedItems first (user edits), then from original item
-                      // Make sure we're getting the actual cost price, not any other numeric value
-                      const editedCostPrice = editedItems[item.index]?.costPrice !== undefined
-                        ? parseFloat(editedItems[item.index].costPrice) || 0
-                        : parseFloat(item.costPrice) || 0;
-                      // All financial calculations MUST use editedQuantity (which is confirmedQty)
-                      const supplierPaymentItemTotal =
-                        editedCostPrice * editedQuantity;
-                      const supplierPaymentAmount =
-                        editedCostPrice / currentExchangeRate;
-                      const landedPrice =
-                        truncateToTwoDecimals((editedCostPrice / currentExchangeRate) *
-                          (1 + currentPercentage / 100));
-                      const itemTotal = truncateToTwoDecimals(landedPrice * editedQuantity);
+                  // Recalculate with edited values
+                  // ALWAYS use the remaining quantity (original/edited minus returns) for financial calculations
+                  // item.confirmedQty already contains the remaining amount (original - returned)
+                  const editedQuantity = item.confirmedQty ?? 0;
+                  // Get cost price from editedItems first (user edits), then from original item
+                  // Make sure we're getting the actual cost price, not any other numeric value
+                  const editedCostPrice = editedItems[item.index]?.costPrice !== undefined
+                    ? parseFloat(editedItems[item.index].costPrice) || 0
+                    : parseFloat(item.costPrice) || 0;
+                  // All financial calculations MUST use editedQuantity (which is confirmedQty)
+                  const supplierPaymentItemTotal =
+                    editedCostPrice * editedQuantity;
+                  const supplierPaymentAmount =
+                    editedCostPrice / currentExchangeRate;
+                  const landedPrice =
+                    truncateToTwoDecimals((editedCostPrice / currentExchangeRate) *
+                      (1 + currentPercentage / 100));
+                  const itemTotal = truncateToTwoDecimals(landedPrice * editedQuantity);
 
-                      return (
-                        <tr
-                          key={item.index}
-                          className={cn(
-                            "transition-colors hover:bg-muted/20",
-                            isRemoved && "opacity-50 bg-destructive/5",
-                            isPending && !isVerified && "bg-amber-50/30",
-                            isPending && isVerified && "bg-emerald-50/20"
-                          )}
-                        >
-                          {isPending && (
-                            <td className="px-4 py-3 text-center">
-                              <input
-                                type="checkbox"
-                                checked={isVerified}
-                                onChange={(e) =>
-                                  setItemVerifications({
-                                    ...itemVerifications,
-                                    [item.index]: e.target.checked,
-                                  })
-                                }
-                                disabled={isRemoved}
-                                className="w-4 h-4 cursor-pointer"
-                              />
-                            </td>
-                          )}
-                          <td className="px-4 py-3">
-                            <ProductImageGallery
-                              images={getImageArray(item)}
-                              alt={itemData.productName || "Product"}
-                              size="sm"
-                              maxVisible={3}
-                              showCount={true}
+                  return (
+                    <tr
+                      key={item.index}
+                      className={cn(
+                        "transition-colors hover:bg-muted/20",
+                        isRemoved && "opacity-50 bg-destructive/5",
+                        isPending && !isVerified && "bg-amber-50/30",
+                        isPending && isVerified && "bg-emerald-50/20"
+                      )}
+                    >
+                      {isPending && (
+                        <td className="px-4 py-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isVerified}
+                            onChange={(e) =>
+                              setItemVerifications({
+                                ...itemVerifications,
+                                [item.index]: e.target.checked,
+                              })
+                            }
+                            disabled={isRemoved}
+                            className="w-4 h-4 cursor-pointer"
+                          />
+                        </td>
+                      )}
+                      <td className="px-4 py-3">
+                        <ProductImageGallery
+                          images={getImageArray(item)}
+                          alt={itemData.productName || "Product"}
+                          size="sm"
+                          maxVisible={3}
+                          showCount={true}
+                        />
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        {isPending && !isRemoved ? (
+                          <Input
+                            value={itemData.productName}
+                            onChange={(e) =>
+                              setEditedItems({
+                                ...editedItems,
+                                [item.index]: {
+                                  ...itemData,
+                                  productName: e.target.value,
+                                },
+                              })
+                            }
+                            className="h-8 text-sm min-w-[150px]"
+                          />
+                        ) : (
+                          <div className="font-medium">
+                            {itemData.productName}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        {isPending && !isRemoved ? (
+                          <Input
+                            value={itemData.productCode}
+                            onChange={(e) =>
+                              setEditedItems({
+                                ...editedItems,
+                                [item.index]: {
+                                  ...itemData,
+                                  productCode: e.target.value,
+                                },
+                              })
+                            }
+                            className="h-8 text-sm w-24"
+                          />
+                        ) : (
+                          <span className="font-mono text-xs font-medium text-foreground">{itemData.productCode}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 w-24 align-top">
+                        {isPending && !isRemoved ? (
+                          <div className="min-w-[100px]">
+                            <ArrayInput
+                              value={
+                                Array.isArray(itemData.primaryColor)
+                                  ? itemData.primaryColor
+                                  : itemData.primaryColor
+                                    ? [itemData.primaryColor]
+                                    : []
+                              }
+                              onChange={(colors) =>
+                                setEditedItems({
+                                  ...editedItems,
+                                  [item.index]: {
+                                    ...itemData,
+                                    primaryColor: colors,
+                                  },
+                                })
+                              }
+                              placeholder="Enter color..."
+                              disabled={isRemoved}
                             />
-                          </td>
-                          <td className="px-4 py-3 align-top">
-                            {isPending && !isRemoved ? (
-                              <Input
-                                value={itemData.productName}
-                                onChange={(e) =>
-                                  setEditedItems({
-                                    ...editedItems,
-                                    [item.index]: {
-                                      ...itemData,
-                                      productName: e.target.value,
-                                    },
-                                  })
-                                }
-                                className="h-8 text-sm min-w-[150px]"
-                              />
-                            ) : (
-                              <div className="font-medium">
-                                {itemData.productName}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 align-top">
-                            {isPending && !isRemoved ? (
-                              <Input
-                                value={itemData.productCode}
-                                onChange={(e) =>
-                                  setEditedItems({
-                                    ...editedItems,
-                                    [item.index]: {
-                                      ...itemData,
-                                      productCode: e.target.value,
-                                    },
-                                  })
-                                }
-                                className="h-8 text-sm w-24"
-                              />
-                            ) : (
-                              <span className="font-mono text-xs font-medium text-foreground">{itemData.productCode}</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 w-24 align-top">
-                            {isPending && !isRemoved ? (
-                              <div className="min-w-[100px]">
-                                <ArrayInput
-                                  value={
-                                    Array.isArray(itemData.primaryColor)
-                                      ? itemData.primaryColor
-                                      : itemData.primaryColor
-                                        ? [itemData.primaryColor]
-                                        : []
-                                  }
-                                  onChange={(colors) =>
-                                    setEditedItems({
-                                      ...editedItems,
-                                      [item.index]: {
-                                        ...itemData,
-                                        primaryColor: colors,
-                                      },
-                                    })
-                                  }
-                                  placeholder="Enter color..."
-                                  disabled={isRemoved}
-                                />
-                              </div>
-                            ) : (
-                              <div className="text-xs">
-                                {Array.isArray(itemData.primaryColor) &&
-                                  itemData.primaryColor.length > 0 ? (
-                                  <div className="flex flex-wrap gap-1">
-                                    {itemData.primaryColor.map((color, idx) => (
-                                      <span
-                                        key={idx}
-                                        className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px]"
-                                      >
-                                        {color}
-                                      </span>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground">
-                                    —
+                          </div>
+                        ) : (
+                          <div className="text-xs">
+                            {Array.isArray(itemData.primaryColor) &&
+                              itemData.primaryColor.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {itemData.primaryColor.map((color, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px]"
+                                  >
+                                    {color}
                                   </span>
-                                )}
+                                ))}
                               </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 w-24 align-top">
-                            {isPending && !isRemoved ? (
-                              <div className="min-w-[100px]">
-                                <ArrayInput
-                                  value={
-                                    Array.isArray(itemData.size)
-                                      ? itemData.size
-                                      : itemData.size
-                                        ? [itemData.size]
-                                        : []
-                                  }
-                                  onChange={(sizes) =>
-                                    setEditedItems({
-                                      ...editedItems,
-                                      [item.index]: {
-                                        ...itemData,
-                                        size: sizes,
-                                      },
-                                    })
-                                  }
-                                  placeholder="Enter size..."
-                                  disabled={isRemoved}
-                                />
-                              </div>
-                            ) : (
-                              <div className="text-xs">
-                                {Array.isArray(itemData.size) &&
-                                  itemData.size.length > 0 ? (
-                                  <div className="flex flex-wrap gap-1">
-                                    {itemData.size.map((s, idx) => (
-                                      <span
-                                        key={idx}
-                                        className="inline-block px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-[10px]"
-                                      >
-                                        {s}
-                                      </span>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground">
-                                    —
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 w-24 align-top">
-                            {isPending && !isRemoved ? (
-                              <div className="min-w-[120px]">
-                                <MultiSelect
-                                  options={SEASON_OPTIONS}
-                                  value={Array.isArray(itemData.season) ? itemData.season : []}
-                                  onChange={(seasons) =>
-                                    setEditedItems({
-                                      ...editedItems,
-                                      [item.index]: {
-                                        ...itemData,
-                                        season: seasons,
-                                      },
-                                    })
-                                  }
-                                  placeholder="Select seasons"
-                                  disabled={isRemoved}
-                                />
-                              </div>
-                            ) : (
-                              <div className="text-xs">
-                                {(() => {
-                                  // Ensure we only display seasons that are actually in the item data
-                                  // Filter out any invalid or unexpected values
-                                  const validSeasons = Array.isArray(item.season)
-                                    ? item.season.filter(s => s && typeof s === 'string')
-                                    : [];
-                                  return validSeasons.length > 0 ? (
-                                    <div className="flex flex-wrap gap-1">
-                                      {validSeasons.map((s, idx) => (
-                                        <span
-                                          key={idx}
-                                          className="inline-block px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded text-[10px]"
-                                        >
-                                          {s}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <span className="text-muted-foreground">
-                                      —
-                                    </span>
-                                  );
-                                })()}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 w-16 text-center">
-                            <div className="flex flex-col gap-1.5 items-center">
-                              {isPending ? (
-                                <>
-                                  {item.packets?.length > 0 ? (
-                                    <div className="flex items-center justify-center gap-1">
-                                      <span className="text-xs font-medium text-slate-600">
-                                        {item.packets[0].isLoose
-                                          ? null
-                                          : item.packets.length}
-                                      </span>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                          const modalItemId = String(
-                                            item.index ??
-                                            item.productCode ??
-                                            item.productName ??
-                                            "0"
-                                          );
-                                          setSelectedItemForPackets({
-                                            ...item,
-                                            ...itemData,
-                                            index: item.index,
-                                            modalItemId,
-                                          });
-                                          setPacketDialogOpen(true);
-                                        }}
-                                        className="h-6 w-6 p-0 hover:bg-slate-100 text-slate-500 hover:text-blue-600"
-                                        title="Edit Configuration"
-                                      >
-                                        <Pencil className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        const modalItemId = String(
-                                          item.index ??
-                                          item.productCode ??
-                                          item.productName ??
-                                          "0"
-                                        );
-                                        setSelectedItemForPackets({
-                                          ...item,
-                                          ...itemData,
-                                          index: item.index,
-                                          modalItemId,
-                                        });
-                                        setPacketDialogOpen(true);
-                                      }}
-                                      className="h-6 w-6 p-0 hover:bg-slate-100 text-slate-500 hover:text-blue-600"
-                                      title="Configure Packets"
-                                    >
-                                      <Package className="h-3.5 w-3.5 text-blue-500" />
-                                    </Button>
-                                  )}
-                                </>
-                              ) : item.useVariantTracking &&
-                                item.packets?.length > 0 ? (
-                                <div className="text-xs font-medium text-slate-600">
-                                  {item.packets[0].isLoose ? (
-                                    <span className="text-slate-500 italic">
-                                      Loose Items
-                                    </span>
-                                  ) : (
-                                    (() => {
-                                      // Calculate total items in packets
-                                      const totalInPackets =
-                                        item.packets.reduce((sum, p) => {
-                                          return (
-                                            sum +
-                                            (p.composition?.reduce(
-                                              (s, c) =>
-                                                s + (parseInt(c.quantity) || 0),
-                                              0
-                                            ) || 0)
-                                          );
-                                        }, 0);
-
-                                      // If items were returned, show adjusted packet info
-                                      const remainingQty =
-                                        item.confirmedQty || item.quantity;
-                                      const hasReturns = item.totalReturned > 0;
-
-                                      // Estimate remaining packets (proportional)
-                                      const returnRatio =
-                                        totalInPackets > 0
-                                          ? remainingQty / totalInPackets
-                                          : 1;
-                                      const estimatedRemainingPackets =
-                                        Math.ceil(
-                                          item.packets.length * returnRatio
-                                        );
-
-                                      return (
-                                        <div className="flex flex-col">
-                                          <span>
-                                            {hasReturns
-                                              ? estimatedRemainingPackets
-                                              : item.packets.length}{" "}
-                                            Packet
-                                            {(hasReturns
-                                              ? estimatedRemainingPackets
-                                              : item.packets.length) !== 1
-                                              ? "s"
-                                              : ""}
-                                          </span>
-                                          {hasReturns && (
-                                            <span className="text-[9px] text-amber-600 italic mt-0.5">
-                                              (from {item.packets.length}{" "}
-                                              original)
-                                            </span>
-                                          )}
-                                        </div>
-                                      );
-                                    })()
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">
-                                  —
-                                </span>
-                              )}
-
-                              {/* Breakdown Display - Adjusted for Returns */}
-                              {(() => {
-                                const packets = item.packets || [];
-                                if (packets.length === 0) return null;
-
-                                // Calculate original total from packets
-                                let originalTotal = 0;
-                                const originalBreakdown = {};
-                                packets.forEach((p) => {
-                                  p.composition?.forEach((c) => {
-                                    if (c.color && c.size && c.quantity > 0) {
-                                      const key = `${c.color}-${c.size}`;
-                                      const qty = parseInt(c.quantity) || 0;
-                                      originalBreakdown[key] =
-                                        (originalBreakdown[key] || 0) + qty;
-                                      originalTotal += qty;
-                                    }
-                                  });
-                                });
-
-                                if (originalTotal === 0) return null;
-
-                                // Calculate remaining quantity after returns
-                                const remainingQty =
-                                  item.confirmedQty || item.quantity;
-                                const returnRatio =
-                                  originalTotal > 0
-                                    ? remainingQty / originalTotal
-                                    : 1;
-
-                                // Calculate adjusted breakdown (proportional reduction)
-                                const adjustedBreakdown = {};
-                                Object.entries(originalBreakdown).forEach(
-                                  ([key, qty]) => {
-                                    // Proportionally reduce each color-size combination
-                                    const adjustedQty = Math.round(
-                                      qty * returnRatio
-                                    );
-                                    if (adjustedQty > 0) {
-                                      adjustedBreakdown[key] = adjustedQty;
-                                    }
-                                  }
-                                );
-
-                                const parts = Object.entries(adjustedBreakdown);
-                                if (parts.length === 0) return null;
-
-                                // Show indicator if items were returned
-                                const hasReturns = item.totalReturned > 0;
-
-                                return (
-                                  <div className="flex flex-col gap-1">
-                                    {hasReturns && (
-                                      <span className="text-[9px] text-amber-600 italic">
-                                        Adjusted for returns
-                                      </span>
-                                    )}
-                                    <div className="flex flex-wrap gap-1">
-                                      {parts.map(([key, qty]) => (
-                                        <span
-                                          key={key}
-                                          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200"
-                                        >
-                                          {key}: {qty}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-right align-top">
-                            <div className="flex flex-col items-end gap-1">
-                              {isPending && !isRemoved ? (
-                                <Input
-                                  type="text"
-                                  inputMode="numeric"
-                                  value={itemData.quantity}
-                                  onChange={(e) => {
-                                    const value = e.target.value;
-                                    // Allow only numbers
-                                    const sanitized = value.replace(/[^0-9]/g, '');
-                                    setEditedItems({
-                                      ...editedItems,
-                                      [item.index]: {
-                                        ...itemData,
-                                        quantity: sanitized,
-                                      },
-                                    });
-                                  }}
-                                  className="h-8 text-sm w-10 text-right"
-                                />
-                              ) : (
-                                <span className="font-semibold text-primary h-8 flex items-center">
-                                  {/* ALWAYS show remaining quantity (confirmedQty) which matches Return History */}
-                                  {item.confirmedQty ?? 0}
-                                </span>
-                              )}
-                              {isPending && item.totalReturned > 0 && (
-                                <span className="text-xs text-destructive font-medium">
-                                  -{item.totalReturned} returned
-                                </span>
-                              )}
-                              {isPending && (
-                                <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
-                                  rem: {item.confirmedQty}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          {!isPending && (
-                            <>
-                              <td className="px-4 py-3 text-right text-destructive font-semibold align-top">
-                                {item.totalReturned}
-                              </td>
-                              <td className="px-4 py-3 text-right font-medium text-muted-foreground align-top">
-                                {item.quantity}
-                              </td>
-                            </>
-                          )}
-                          <td className="px-4 py-3 text-right align-top">
-                            {isPending && !isRemoved ? (
-                              <Input
-                                type="text"
-                                inputMode="decimal"
-                                value={itemData.costPrice}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  // Allow only numbers and one decimal point
-                                  const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                                  setEditedItems({
-                                    ...editedItems,
-                                    [item.index]: {
-                                      ...itemData,
-                                      costPrice: sanitized,
-                                    },
-                                  });
-                                }}
-                                className="h-8 text-sm w-24 text-right"
-                              />
                             ) : (
                               <span className="text-muted-foreground">
-                                {item.costPrice?.toFixed(2) || "—"}
+                                —
                               </span>
                             )}
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold text-foreground align-top">
-                            {truncateToTwoDecimals(supplierPaymentItemTotal).toFixed(2) || "—"}
-                            {!isPending && item.totalReturned > 0 && (
-                              <div className="text-xs text-destructive mt-1">
-                                (was{" "}
-                                {truncateToTwoDecimals((item.costPrice || 0) * item.quantity).toFixed(2)}{" "}
-                                before returns)
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 w-24 align-top">
+                        {isPending && !isRemoved ? (
+                          <div className="min-w-[100px]">
+                            <ArrayInput
+                              value={
+                                Array.isArray(itemData.size)
+                                  ? itemData.size
+                                  : itemData.size
+                                    ? [itemData.size]
+                                    : []
+                              }
+                              onChange={(sizes) =>
+                                setEditedItems({
+                                  ...editedItems,
+                                  [item.index]: {
+                                    ...itemData,
+                                    size: sizes,
+                                  },
+                                })
+                              }
+                              placeholder="Enter size..."
+                              disabled={isRemoved}
+                            />
+                          </div>
+                        ) : (
+                          <div className="text-xs">
+                            {Array.isArray(itemData.size) &&
+                              itemData.size.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {itemData.size.map((s, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="inline-block px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-[10px]"
+                                  >
+                                    {s}
+                                  </span>
+                                ))}
                               </div>
+                            ) : (
+                              <span className="text-muted-foreground">
+                                —
+                              </span>
                             )}
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold text-primary align-top">
-                            {truncateToTwoDecimals(landedPrice).toFixed(2) || "—"}
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold text-primary align-top">
-                            {truncateToTwoDecimals(itemTotal).toFixed(2) || "—"}
-                            {!isPending && item.totalReturned > 0 && (
-                              <div className="text-xs text-destructive mt-1">
-                                (was{" "}
-                                {truncateToTwoDecimals(
-                                  ((item.costPrice || 0) /
-                                    currentExchangeRate) *
-                                  (1 + currentPercentage / 100) *
-                                  item.quantity
-                                )}{" "}
-                                before returns)
-                              </div>
-                            )}
-                          </td>
-                          {
-                            isPending && (
-                              <td className="px-4 py-3 text-center align-top">
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 w-24 align-top">
+                        {isPending && !isRemoved ? (
+                          <div className="min-w-[120px]">
+                            <MultiSelect
+                              options={SEASON_OPTIONS}
+                              value={Array.isArray(itemData.season) ? itemData.season : []}
+                              onChange={(seasons) =>
+                                setEditedItems({
+                                  ...editedItems,
+                                  [item.index]: {
+                                    ...itemData,
+                                    season: seasons,
+                                  },
+                                })
+                              }
+                              placeholder="Select seasons"
+                              disabled={isRemoved}
+                            />
+                          </div>
+                        ) : (
+                          <div className="text-xs">
+                            {(() => {
+                              // Ensure we only display seasons that are actually in the item data
+                              // Filter out any invalid or unexpected values
+                              const validSeasons = Array.isArray(item.season)
+                                ? item.season.filter(s => s && typeof s === 'string')
+                                : [];
+                              return validSeasons.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {validSeasons.map((s, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="inline-block px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded text-[10px]"
+                                    >
+                                      {s}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  —
+                                </span>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 w-16 text-center">
+                        <div className="flex flex-col gap-1.5 items-center">
+                          {isPending ? (
+                            <>
+                              {item.packets?.length > 0 ? (
+                                <div className="flex items-center justify-center gap-1">
+                                  <span className="text-xs font-medium text-slate-600">
+                                    {item.packets[0].isLoose
+                                      ? null
+                                      : item.packets.length}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      const modalItemId = String(
+                                        item.index ??
+                                        item.productCode ??
+                                        item.productName ??
+                                        "0"
+                                      );
+                                      setSelectedItemForPackets({
+                                        ...item,
+                                        ...itemData,
+                                        index: item.index,
+                                        modalItemId,
+                                      });
+                                      setPacketDialogOpen(true);
+                                    }}
+                                    className="h-6 w-6 p-0 hover:bg-slate-100 text-slate-500 hover:text-blue-600"
+                                    title="Edit Configuration"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              ) : (
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => {
-                                    if (isRemoved) {
-                                      setItemsToRemove(
-                                        itemsToRemove.filter(
-                                          (i) => i !== item.index
-                                        )
-                                      );
-                                    } else {
-                                      setItemsToRemove([
-                                        ...itemsToRemove,
-                                        item.index,
-                                      ]);
-                                    }
+                                    const modalItemId = String(
+                                      item.index ??
+                                      item.productCode ??
+                                      item.productName ??
+                                      "0"
+                                    );
+                                    setSelectedItemForPackets({
+                                      ...item,
+                                      ...itemData,
+                                      index: item.index,
+                                      modalItemId,
+                                    });
+                                    setPacketDialogOpen(true);
                                   }}
-                                  className="h-8 w-8 p-0"
+                                  className="h-6 w-6 p-0 hover:bg-slate-100 text-slate-500 hover:text-blue-600"
+                                  title="Configure Packets"
                                 >
-                                  <Trash2
-                                    className={`h-4 w-4 ${isRemoved
-                                      ? "text-green-600"
-                                      : "text-red-600"
-                                      }`}
-                                  />
+                                  <Package className="h-3.5 w-3.5 text-blue-500" />
                                 </Button>
-                              </td>
-                            )
-                          }
-                        </tr >
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                              )}
+                            </>
+                          ) : item.useVariantTracking &&
+                            item.packets?.length > 0 ? (
+                            <div className="text-xs font-medium text-slate-600">
+                              {item.packets[0].isLoose ? (
+                                <span className="text-slate-500 italic">
+                                  Loose Items
+                                </span>
+                              ) : (
+                                (() => {
+                                  // Calculate total items in packets
+                                  const totalInPackets =
+                                    item.packets.reduce((sum, p) => {
+                                      return (
+                                        sum +
+                                        (p.composition?.reduce(
+                                          (s, c) =>
+                                            s + (parseInt(c.quantity) || 0),
+                                          0
+                                        ) || 0)
+                                      );
+                                    }, 0);
+
+                                  // If items were returned, show adjusted packet info
+                                  const remainingQty =
+                                    item.confirmedQty || item.quantity;
+                                  const hasReturns = item.totalReturned > 0;
+
+                                  // Estimate remaining packets (proportional)
+                                  const returnRatio =
+                                    totalInPackets > 0
+                                      ? remainingQty / totalInPackets
+                                      : 1;
+                                  const estimatedRemainingPackets =
+                                    Math.ceil(
+                                      item.packets.length * returnRatio
+                                    );
+
+                                  return (
+                                    <div className="flex flex-col">
+                                      <span>
+                                        {hasReturns
+                                          ? estimatedRemainingPackets
+                                          : item.packets.length}{" "}
+                                        Packet
+                                        {(hasReturns
+                                          ? estimatedRemainingPackets
+                                          : item.packets.length) !== 1
+                                          ? "s"
+                                          : ""}
+                                      </span>
+                                      {hasReturns && (
+                                        <span className="text-[9px] text-amber-600 italic mt-0.5">
+                                          (from {item.packets.length}{" "}
+                                          original)
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })()
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              —
+                            </span>
+                          )}
+
+                          {/* Breakdown Display - Adjusted for Returns */}
+                          {(() => {
+                            const packets = item.packets || [];
+                            if (packets.length === 0) return null;
+
+                            // Calculate original total from packets
+                            let originalTotal = 0;
+                            const originalBreakdown = {};
+                            packets.forEach((p) => {
+                              p.composition?.forEach((c) => {
+                                if (c.color && c.size && c.quantity > 0) {
+                                  const key = `${c.color}-${c.size}`;
+                                  const qty = parseInt(c.quantity) || 0;
+                                  originalBreakdown[key] =
+                                    (originalBreakdown[key] || 0) + qty;
+                                  originalTotal += qty;
+                                }
+                              });
+                            });
+
+                            if (originalTotal === 0) return null;
+
+                            // Calculate remaining quantity after returns
+                            const remainingQty =
+                              item.confirmedQty || item.quantity;
+                            const returnRatio =
+                              originalTotal > 0
+                                ? remainingQty / originalTotal
+                                : 1;
+
+                            // Calculate adjusted breakdown (proportional reduction)
+                            const adjustedBreakdown = {};
+                            Object.entries(originalBreakdown).forEach(
+                              ([key, qty]) => {
+                                // Proportionally reduce each color-size combination
+                                const adjustedQty = Math.round(
+                                  qty * returnRatio
+                                );
+                                if (adjustedQty > 0) {
+                                  adjustedBreakdown[key] = adjustedQty;
+                                }
+                              }
+                            );
+
+                            const parts = Object.entries(adjustedBreakdown);
+                            if (parts.length === 0) return null;
+
+                            // Show indicator if items were returned
+                            const hasReturns = item.totalReturned > 0;
+
+                            return (
+                              <div className="flex flex-col gap-1">
+                                {hasReturns && (
+                                  <span className="text-[9px] text-amber-600 italic">
+                                    Adjusted for returns
+                                  </span>
+                                )}
+                                <div className="flex flex-wrap gap-1">
+                                  {parts.map(([key, qty]) => (
+                                    <span
+                                      key={key}
+                                      className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200"
+                                    >
+                                      {key}: {qty}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right align-top">
+                        <div className="flex flex-col items-end gap-1">
+                          {isPending && !isRemoved ? (
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              value={itemData.quantity}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                // Allow only numbers
+                                const sanitized = value.replace(/[^0-9]/g, '');
+                                setEditedItems({
+                                  ...editedItems,
+                                  [item.index]: {
+                                    ...itemData,
+                                    quantity: sanitized,
+                                  },
+                                });
+                              }}
+                              className="h-8 text-sm w-10 text-right"
+                            />
+                          ) : (
+                            <span className="font-semibold text-primary h-8 flex items-center">
+                              {/* ALWAYS show remaining quantity (confirmedQty) which matches Return History */}
+                              {item.confirmedQty ?? 0}
+                            </span>
+                          )}
+                          {isPending && item.totalReturned > 0 && (
+                            <span className="text-xs text-destructive font-medium">
+                              -{item.totalReturned} returned
+                            </span>
+                          )}
+                          {isPending && (
+                            <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+                              rem: {item.confirmedQty}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      {!isPending && (
+                        <>
+                          <td className="px-4 py-3 text-right text-destructive font-semibold align-top">
+                            {item.totalReturned}
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium text-muted-foreground align-top">
+                            {item.quantity}
+                          </td>
+                        </>
+                      )}
+                      <td className="px-4 py-3 text-right align-top">
+                        {isPending && !isRemoved ? (
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={itemData.costPrice}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              // Allow only numbers and one decimal point
+                              const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                              setEditedItems({
+                                ...editedItems,
+                                [item.index]: {
+                                  ...itemData,
+                                  costPrice: sanitized,
+                                },
+                              });
+                            }}
+                            className="h-8 text-sm w-24 text-right"
+                          />
+                        ) : (
+                          <span className="text-muted-foreground">
+                            {item.costPrice?.toFixed(2) || "—"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-foreground align-top">
+                        {truncateToTwoDecimals(supplierPaymentItemTotal).toFixed(2) || "—"}
+                        {!isPending && item.totalReturned > 0 && (
+                          <div className="text-xs text-destructive mt-1">
+                            (was{" "}
+                            {truncateToTwoDecimals((item.costPrice || 0) * item.quantity).toFixed(2)}{" "}
+                            before returns)
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-primary align-top">
+                        {truncateToTwoDecimals(landedPrice).toFixed(2) || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-primary align-top">
+                        {truncateToTwoDecimals(itemTotal).toFixed(2) || "—"}
+                        {!isPending && item.totalReturned > 0 && (
+                          <div className="text-xs text-destructive mt-1">
+                            (was{" "}
+                            {truncateToTwoDecimals(
+                              ((item.costPrice || 0) /
+                                currentExchangeRate) *
+                              (1 + currentPercentage / 100) *
+                              item.quantity
+                            )}{" "}
+                            before returns)
+                          </div>
+                        )}
+                      </td>
+                      {
+                        isPending && (
+                          <td className="px-4 py-3 text-center align-top">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (isRemoved) {
+                                  setItemsToRemove(
+                                    itemsToRemove.filter(
+                                      (i) => i !== item.index
+                                    )
+                                  );
+                                } else {
+                                  setItemsToRemove([
+                                    ...itemsToRemove,
+                                    item.index,
+                                  ]);
+                                }
+                              }}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Trash2
+                                className={`h-4 w-4 ${isRemoved
+                                  ? "text-green-600"
+                                  : "text-red-600"
+                                  }`}
+                              />
+                            </Button>
+                          </td>
+                        )
+                      }
+                    </tr >
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
 
@@ -2341,7 +2341,7 @@ export default function DispatchOrderDetailPage({ params }) {
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                   </div>
                   <div>
                     <CardTitle className="text-lg font-semibold">Confirm Dispatch Order</CardTitle>
@@ -2453,8 +2453,8 @@ export default function DispatchOrderDetailPage({ params }) {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between py-2">
                         <span className="text-sm font-medium text-muted-foreground">
-                        Supplier Payment Amount:
-                      </span>
+                          Supplier Payment Amount:
+                        </span>
                         <span className="text-base font-semibold text-foreground">
                           {truncateToTwoDecimals(confirmOrderSupplierCurrency.supplierPaymentAmount).toLocaleString(
                             undefined,
@@ -2464,12 +2464,12 @@ export default function DispatchOrderDetailPage({ params }) {
                             }
                           )}
                         </span>
-                    </div>
-                    {confirmOrderSupplierCurrency.discount > 0 && (
+                      </div>
+                      {confirmOrderSupplierCurrency.discount > 0 && (
                         <div className="flex items-center justify-between py-2 border-t border-border">
                           <span className="text-sm font-medium text-muted-foreground">
-                          Discount:
-                        </span>
+                            Discount:
+                          </span>
                           <span className="text-base font-semibold text-emerald-600">
                             -
                             {truncateToTwoDecimals(confirmOrderSupplierCurrency.discount).toLocaleString(
@@ -2480,12 +2480,12 @@ export default function DispatchOrderDetailPage({ params }) {
                               }
                             )}
                           </span>
-                      </div>
-                    )}
+                        </div>
+                      )}
                       <div className="flex items-center justify-between py-3 border-t border-border">
                         <span className="text-sm font-medium text-muted-foreground">
-                        Final Amount:
-                      </span>
+                          Final Amount:
+                        </span>
                         <span className="text-xl font-bold text-foreground">
                           {truncateToTwoDecimals(confirmOrderSupplierCurrency.finalAmount).toLocaleString(
                             undefined,
@@ -2498,32 +2498,32 @@ export default function DispatchOrderDetailPage({ params }) {
                       </div>
                       <div className="flex items-center justify-between py-2 border-t border-border">
                         <span className="text-sm font-medium text-muted-foreground">
-                        Payments:
-                      </span>
+                          Payments:
+                        </span>
                         <span className="text-base font-semibold text-foreground">
-                        {truncateToTwoDecimals(confirmOrderSupplierCurrency.payments).toLocaleString(
-                          undefined,
-                          { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                        )}
-                      </span>
-                    </div>
+                          {truncateToTwoDecimals(confirmOrderSupplierCurrency.payments).toLocaleString(
+                            undefined,
+                            { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                          )}
+                        </span>
+                      </div>
                       <div className="flex items-center justify-between py-3 border-t-2 border-border bg-muted/30 rounded-md px-4 -mx-4 -mb-4">
                         <span className="text-sm font-semibold text-foreground">
-                        Remaining Balance:
-                      </span>
-                      <span
+                          Remaining Balance:
+                        </span>
+                        <span
                           className={cn(
                             "text-xl font-bold",
                             confirmOrderSupplierCurrency.remainingBalance > 0
                               ? "text-destructive"
                               : "text-emerald-600"
                           )}
-                      >
-                        {truncateToTwoDecimals(Math.abs(confirmOrderSupplierCurrency.remainingBalance)).toLocaleString(
-                          undefined,
-                          { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                        )}
-                      </span>
+                        >
+                          {truncateToTwoDecimals(Math.abs(confirmOrderSupplierCurrency.remainingBalance)).toLocaleString(
+                            undefined,
+                            { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                          )}
+                        </span>
                       </div>
                     </div>
                   </CardContent>
@@ -2646,30 +2646,30 @@ export default function DispatchOrderDetailPage({ params }) {
                     <div className="flex items-center gap-2 mb-2">
                       <div className="h-8 w-8 rounded-md bg-blue-500/10 flex items-center justify-center">
                         <Banknote className="h-4 w-4 text-blue-600" />
-                    </div>
+                      </div>
                       <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Cash Payment
                       </Label>
                     </div>
                     <p className="text-xl font-bold text-foreground">
-                        {(dispatchOrder.computedPaymentDetails?.cashPayment || 0)
-                          .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </p>
-                    </div>
+                      {(dispatchOrder.computedPaymentDetails?.cashPayment || 0)
+                        .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
                   <div className="space-y-2 p-4 rounded-lg bg-muted/30 border border-border">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="h-8 w-8 rounded-md bg-indigo-500/10 flex items-center justify-center">
                         <CreditCard className="h-4 w-4 text-indigo-600" />
-                  </div>
+                      </div>
                       <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Bank Payment
                       </Label>
                     </div>
                     <p className="text-xl font-bold text-foreground">
-                        {(dispatchOrder.computedPaymentDetails?.bankPayment || 0)
-                          .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </p>
-                    </div>
+                      {(dispatchOrder.computedPaymentDetails?.bankPayment || 0)
+                        .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
                   <div className="space-y-2 p-4 rounded-lg bg-muted/30 border border-border">
                     <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-2">
                       Remaining Balance
@@ -2696,7 +2696,7 @@ export default function DispatchOrderDetailPage({ params }) {
             </Card>
           )}
 
-         
+
 
           {/* Standalone Supplier Payment Modal */}
           {isConfirmed && dispatchOrder?.supplier && (
@@ -2732,51 +2732,51 @@ export default function DispatchOrderDetailPage({ params }) {
                     <p className="text-sm text-muted-foreground mt-1">{paymentHistory.length} payment{paymentHistory.length !== 1 ? 's' : ''} recorded</p>
                   </div>
                   <Badge variant="outline" className="bg-muted border-border">
-                      {paymentHistory.length}
-                    </Badge>
-                  </div>
+                    {paymentHistory.length}
+                  </Badge>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
                     <thead className="bg-muted/30 border-b border-border sticky top-0 z-10">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Method</th>
                         <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</th>
-                          </tr>
-                        </thead>
+                      </tr>
+                    </thead>
                     <tbody className="divide-y divide-border">
-                          {paymentHistory.map((payment, idx) => (
-                            <tr
-                              key={idx}
+                      {paymentHistory.map((payment, idx) => (
+                        <tr
+                          key={idx}
                           className="transition-colors hover:bg-muted/20"
-                            >
+                        >
                           <td className="px-4 py-3 font-medium text-foreground">
-                                {new Date(payment.date).toLocaleDateString(
+                            {new Date(payment.date).toLocaleDateString(
                               "en-GB",
                               { day: '2-digit', month: 'short', year: 'numeric' }
-                                )}
-                              </td>
+                            )}
+                          </td>
                           <td className="px-4 py-3">
                             <Badge variant="outline" className="bg-muted border-border">
-                                  {payment.paymentMethod === "cash"
-                                    ? "Cash"
-                                    : "Bank"}
-                                </Badge>
-                              </td>
+                              {payment.paymentMethod === "cash"
+                                ? "Cash"
+                                : "Bank"}
+                            </Badge>
+                          </td>
                           <td className="px-4 py-3 text-right font-semibold text-foreground">
-                                {currency(payment.credit || 0)}
-                              </td>
+                            {currency(payment.credit || 0)}
+                          </td>
                           <td className="px-4 py-3 text-muted-foreground">
                             {payment.description || "—"}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -2797,13 +2797,13 @@ export default function DispatchOrderDetailPage({ params }) {
                     <p className="text-sm text-muted-foreground mt-1">{dispatchOrder.returns.length} return{dispatchOrder.returns.length !== 1 ? 's' : ''} recorded</p>
                   </div>
                   <Badge variant="outline" className="bg-muted border-border">
-                      {dispatchOrder.returns.length}
-                    </Badge>
-                  </div>
+                    {dispatchOrder.returns.length}
+                  </Badge>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
                     <thead className="bg-muted/30 border-b border-border sticky top-0 z-10">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</th>
@@ -2812,87 +2812,87 @@ export default function DispatchOrderDetailPage({ params }) {
                         <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Items</th>
                         <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Qty</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Details</th>
-                          </tr>
-                        </thead>
+                      </tr>
+                    </thead>
                     <tbody className="divide-y divide-border">
-                          {dispatchOrder.returns.map((returnDoc, idx) => (
-                            <tr
-                              key={idx}
+                      {dispatchOrder.returns.map((returnDoc, idx) => (
+                        <tr
+                          key={idx}
                           className="transition-colors hover:bg-muted/20"
-                            >
+                        >
                           <td className="px-4 py-3 font-medium text-foreground">
-                                {new Date(
-                                  returnDoc.returnedAt
+                            {new Date(
+                              returnDoc.returnedAt
                             ).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' })}
-                              </td>
+                          </td>
                           <td className="px-4 py-3 text-muted-foreground">
-                                {returnDoc.returnedBy?.name || "—"}
-                              </td>
+                            {returnDoc.returnedBy?.name || "—"}
+                          </td>
                           <td className="px-4 py-3 text-right font-semibold text-foreground">
-                                {(() => {
-                                  // Calculate return value correctly: sum of (costPrice * returnedQuantity) for each item
-                                  let calculatedValue = 0;
-                                  if (returnDoc.items && dispatchOrder?.items) {
-                                    returnDoc.items.forEach((returnItem) => {
-                                      const originalItem = dispatchOrder.items[returnItem.itemIndex];
-                                      if (originalItem) {
-                                        const costPrice = parseFloat(originalItem.costPrice) || 0;
-                                        const returnedQty = returnItem.returnedQuantity || 0;
-                                        calculatedValue += costPrice * returnedQty;
-                                      }
-                                    });
+                            {(() => {
+                              // Calculate return value correctly: sum of (costPrice * returnedQuantity) for each item
+                              let calculatedValue = 0;
+                              if (returnDoc.items && dispatchOrder?.items) {
+                                returnDoc.items.forEach((returnItem) => {
+                                  const originalItem = dispatchOrder.items[returnItem.itemIndex];
+                                  if (originalItem) {
+                                    const costPrice = parseFloat(originalItem.costPrice) || 0;
+                                    const returnedQty = returnItem.returnedQuantity || 0;
+                                    calculatedValue += costPrice * returnedQty;
                                   }
-                                  // Use calculated value if available, otherwise fallback to backend value
-                                  const value = calculatedValue > 0 ? calculatedValue : (returnDoc.totalReturnValue || 0);
-                                  // Format number without currency symbol
-                                  return value.toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  });
-                                })()}
-                              </td>
-                              <td className="px-4 py-3 text-right font-semibold text-foreground">
-                                {returnDoc.items?.length || 0}
-                              </td>
-                              <td className="px-4 py-3 text-right font-semibold text-foreground">
-                                {(() => {
-                                  // Calculate total quantity of returned items
-                                  const totalQty = returnDoc.items?.reduce((sum, item) => {
-                                    return sum + (item.returnedQuantity || 0);
-                                  }, 0) || 0;
-                                  return totalQty;
-                                })()}
-                              </td>
-                              <td className="px-4 py-3">
-                                <Accordion type="single" collapsible>
-                                  <AccordionItem
-                                    value={`return-details-${idx}`}
-                                    className="border-0"
-                                  >
-                                    <AccordionTrigger className="py-1 text-xs hover:no-underline">
-                                      View details
-                                    </AccordionTrigger>
-                                    <AccordionContent className="pb-2">
-                                      <div className="space-y-1 text-xs text-muted-foreground">
-                                        {returnDoc.items?.map(
-                                          (item, itemIdx) => (
-                                            <div key={itemIdx}>
-                                              Item {item.itemIndex}:{" "}
-                                              {item.returnedQuantity} qty -{" "}
-                                              {item.reason || "No reason"}
-                                            </div>
-                                          )
-                                        )}
-                                      </div>
-                                    </AccordionContent>
-                                  </AccordionItem>
-                                </Accordion>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                                });
+                              }
+                              // Use calculated value if available, otherwise fallback to backend value
+                              const value = calculatedValue > 0 ? calculatedValue : (returnDoc.totalReturnValue || 0);
+                              // Format number without currency symbol
+                              return value.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              });
+                            })()}
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-foreground">
+                            {returnDoc.items?.length || 0}
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-foreground">
+                            {(() => {
+                              // Calculate total quantity of returned items
+                              const totalQty = returnDoc.items?.reduce((sum, item) => {
+                                return sum + (item.returnedQuantity || 0);
+                              }, 0) || 0;
+                              return totalQty;
+                            })()}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Accordion type="single" collapsible>
+                              <AccordionItem
+                                value={`return-details-${idx}`}
+                                className="border-0"
+                              >
+                                <AccordionTrigger className="py-1 text-xs hover:no-underline">
+                                  View details
+                                </AccordionTrigger>
+                                <AccordionContent className="pb-2">
+                                  <div className="space-y-1 text-xs text-muted-foreground">
+                                    {returnDoc.items?.map(
+                                      (item, itemIdx) => (
+                                        <div key={itemIdx}>
+                                          Item {item.itemIndex}:{" "}
+                                          {item.returnedQuantity} qty -{" "}
+                                          {item.reason || "No reason"}
+                                        </div>
+                                      )
+                                    )}
+                                  </div>
+                                </AccordionContent>
+                              </AccordionItem>
+                            </Accordion>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -3208,7 +3208,7 @@ export default function DispatchOrderDetailPage({ params }) {
                     </>
                   )}
                 </Button>
-            </div>
+              </div>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -3276,6 +3276,7 @@ export default function DispatchOrderDetailPage({ params }) {
         open={showBarcodePrintModal}
         onClose={() => setShowBarcodePrintModal(false)}
         dispatchOrderId={dispatchOrderId}
+        autoPrint={true}
       />
     </div >
   );

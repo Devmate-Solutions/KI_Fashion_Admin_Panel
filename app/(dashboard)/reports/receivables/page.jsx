@@ -130,6 +130,8 @@ export default function ReceivablesReportPage() {
         loading={isLoading}
         showTotals={true}
         totalsRow={totalsRow}
+        totalColumns={[{ title: "Total", value: "remainingBalance" }]}
+
       />
     </ReportLayout>
   )

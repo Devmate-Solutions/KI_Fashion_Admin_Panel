@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
@@ -93,7 +94,21 @@ export default function ProfitLossReportPage() {
     {
       header: "Product Code",
       accessor: "productCode",
-      render: (row) => row.productCode || "—",
+      render: (row) => {
+        const productCode = row.productCode || "—"
+        const productId = row.productId
+        if (productId && productCode !== "—") {
+          return (
+            <Link
+              href={`/stock/${productId}/packets`}
+              className="font-mono text-xs text-blue-600 hover:text-blue-800 hover:underline"
+            >
+              {productCode}
+            </Link>
+          )
+        }
+        return <span className="font-mono text-xs">{productCode}</span>
+      },
     },
     {
       header: "Items Sold",
@@ -135,9 +150,8 @@ export default function ProfitLossReportPage() {
         const isLoss = pnl < 0
         return (
           <span
-            className={`font-semibold ${
-              isProfit ? "text-green-600" : isLoss ? "text-red-600" : "text-gray-600"
-            }`}
+            className={`font-semibold ${isProfit ? "text-green-600" : isLoss ? "text-red-600" : "text-gray-600"
+              }`}
           >
             {isProfit ? "+" : ""}{currency(pnl)}
           </span>
@@ -193,6 +207,8 @@ export default function ProfitLossReportPage() {
         loading={isLoading}
         showTotals={true}
         totalsRow={totalsRow}
+        totalColumns={[{ title: "Total", value: "pnl" }]}
+
       />
     </ReportLayout>
   )

@@ -21,6 +21,21 @@ import { Badge } from "@/components/ui/badge"
 import { useQueryClient } from "@tanstack/react-query"
 import toast from "react-hot-toast"
 import SupplierPaymentModal from "@/components/modals/SupplierPaymentModal"
+import { Check, ChevronsUpDown } from "lucide-react"
+import { cn } from "@/lib/utils"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
 function formatNumber(n) {
   const num = Number(n || 0)
@@ -42,7 +57,7 @@ function formatDateTime(_date) {
   const date = d.toLocaleDateString('en-GB');
   return `${date} ${time}`;
   // return new Date(_date).toLocaleDateString('en-GB');
-} 
+}
 
 export default function SupplierLedgerPage() {
   const [selectedSupplierId, setSelectedSupplierId] = useState("") // Default to empty - require supplier selection
@@ -66,6 +81,10 @@ export default function SupplierLedgerPage() {
   // Filter for Tab 1 - Supplier Ledger
   const [ledgerSupplierFilter, setLedgerSupplierFilter] = useState("")
   const [ledgerFilterBy, setLedgerFilterBy] = useState("all")
+  const [ledgerSearch, setLedgerSearch] = useState("")
+  const [supplierOpen, setSupplierOpen] = useState(false)
+  const [pendingPaymentSupplierOpen, setPendingPaymentSupplierOpen] = useState(false)
+  const [paymentHistorySupplierOpen, setPaymentHistorySupplierOpen] = useState(false)
 
   // Filters for Tab 2 (Pending Payments)
   const [dateFrom, setDateFrom] = useState("")
@@ -166,7 +185,7 @@ export default function SupplierLedgerPage() {
   // Map pending balances with entry numbers from ledger data
   const pendingBalancesWithEntryNumbers = useMemo(() => {
     const entries = allLedgerData?.entries || ledgerData?.entries || []
-    
+
     // Create a map: referenceId -> entryNumber for purchase entries
     const purchaseEntryMap = new Map()
     entries.forEach(entry => {
@@ -183,10 +202,10 @@ export default function SupplierLedgerPage() {
       const refIdOrId = balance.referenceId || balance.id
       const balanceRefId = refIdOrId
         ? (typeof refIdOrId === 'object' && refIdOrId !== null
-            ? refIdOrId._id?.toString() || refIdOrId.toString()
-            : refIdOrId.toString())
+          ? refIdOrId._id?.toString() || refIdOrId.toString()
+          : refIdOrId.toString())
         : null
-      
+
       return {
         ...balance,
         entryNumber: balanceRefId ? (purchaseEntryMap.get(balanceRefId) || '-') : '-'
@@ -863,8 +882,8 @@ export default function SupplierLedgerPage() {
               // Try to extract order number from description
               const description = entry.description || entry.notes || ''
               // Pattern: "Return from Dispatch Order DO-1234" or "Order: DO-1234"
-              const orderMatch = description.match(/(?:Order|Dispatch Order):?\s*([A-Z0-9-]+)/i) || 
-                               description.match(/Dispatch Order\s+([A-Z0-9-]+)/i)
+              const orderMatch = description.match(/(?:Order|Dispatch Order):?\s*([A-Z0-9-]+)/i) ||
+                description.match(/Dispatch Order\s+([A-Z0-9-]+)/i)
               if (orderMatch && orderMatch[1]) {
                 readableReference = orderMatch[1]
               } else {
@@ -1187,6 +1206,20 @@ export default function SupplierLedgerPage() {
     []
   )
 
+  const filteredLedgerTransactions = useMemo(() => {
+    if (!ledgerSearch) return allLedgerTransactions
+
+    const lowerSearch = ledgerSearch.toLowerCase()
+    return allLedgerTransactions.filter(item =>
+      (item.description && item.description.toLowerCase().includes(lowerSearch)) ||
+      (item.reference && item.reference.toLowerCase().includes(lowerSearch)) ||
+      (item.supplier && item.supplier.toLowerCase().includes(lowerSearch)) ||
+      (item.entryNumber && item.entryNumber.toString().toLowerCase().includes(lowerSearch)) ||
+      (item.debit && item.debit.toString().includes(lowerSearch)) ||
+      (item.credit && item.credit.toString().includes(lowerSearch))
+    )
+  }, [allLedgerTransactions, ledgerSearch])
+
   const ledgerTabContent = (
     <div className="space-y-6">
       {/* Filters & Search Bar - Unified */}
@@ -1199,45 +1232,88 @@ export default function SupplierLedgerPage() {
           </div>
 
           {/* Select Supplier */}
-              <Select
-                value={ledgerSupplierFilter}
-                onValueChange={(value) => {
-                  setLedgerSupplierFilter(value)
-                  if (value && value !== 'all') {
-                    setSelectedSupplierId(value)
-                  }
-                }}
+          {/* Select Supplier (Combobox) */}
+          <Popover open={supplierOpen} onOpenChange={setSupplierOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={supplierOpen}
+                className="w-full sm:w-[250px] justify-between"
                 disabled={allSuppliersLoading}
               >
-            <SelectTrigger className="h-10 w-full sm:w-[220px] border-border">
-                  <SelectValue placeholder="Select a supplier..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {dropdownSuppliers.map((supplier) => (
-                    <SelectItem key={supplier.id} value={String(supplier.id)}>
-                      {supplier.name} {supplier.company ? `(${supplier.company})` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {ledgerSupplierFilter
+                  ? (() => {
+                    const supplier = dropdownSuppliers.find((s) => String(s.id) === ledgerSupplierFilter)
+                    return supplier ? `${supplier.name} ${supplier.company ? `(${supplier.company})` : ''}` : "Select supplier..."
+                  })()
+                  : "Select supplier..."}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[300px] p-0 bg-white dark:bg-zinc-950">
+              <Command>
+                <CommandInput placeholder="Search supplier name or ID..." />
+                <CommandList>
+                  <CommandEmpty>No supplier found.</CommandEmpty>
+                  <CommandGroup>
+                    {dropdownSuppliers.map((supplier) => (
+                      <CommandItem
+                        key={supplier.id}
+                        value={`${supplier.name} ${supplier.company || ''} ${supplier.supplierId || ''} ${supplier.legacyId || ''} ${String(supplier.id).slice(-6)}`}
+                        onSelect={() => {
+                          const val = String(supplier.id)
+                          setLedgerSupplierFilter(val === ledgerSupplierFilter ? "" : val)
+                          if (val && val !== 'all') {
+                            setSelectedSupplierId(val)
+                          } else {
+                            setSelectedSupplierId("")
+                          }
+                          setSupplierOpen(false)
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            ledgerSupplierFilter === String(supplier.id) ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        <div className="flex flex-col">
+                          <span className="font-medium">{supplier.name}</span>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {supplier.supplierId ? (
+                              <span className="font-mono bg-muted px-1 rounded">{supplier.supplierId}</span>
+                            ) : supplier.legacyId ? (
+                              <span className="font-mono bg-muted px-1 rounded">{supplier.legacyId}</span>
+                            ) : null}
+                            {supplier.company && <span>{supplier.company}</span>}
+                          </div>
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
 
           {/* Filter By */}
-            {ledgerSupplierFilter && ledgerSupplierFilter !== 'all' && (
-                <Select
-                  value={ledgerFilterBy}
-                  onValueChange={setLedgerFilterBy}
-                >
+          {ledgerSupplierFilter && ledgerSupplierFilter !== 'all' && (
+            <Select
+              value={ledgerFilterBy}
+              onValueChange={setLedgerFilterBy}
+            >
               <SelectTrigger className="h-10 w-full sm:w-[180px] border-border">
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="bank">Bank</SelectItem>
-                    <SelectItem value="discount">Discount</SelectItem>
-                    <SelectItem value="return">Return</SelectItem>
-                  </SelectContent>
-                </Select>
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="cash">Cash</SelectItem>
+                <SelectItem value="bank">Bank</SelectItem>
+                <SelectItem value="discount">Discount</SelectItem>
+                <SelectItem value="return">Return</SelectItem>
+              </SelectContent>
+            </Select>
           )}
 
           {/* Search Section */}
@@ -1261,10 +1337,10 @@ export default function SupplierLedgerPage() {
               >
                 Search
               </Button>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
+      </div>
 
       {/* Content Section */}
       <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
@@ -1281,19 +1357,19 @@ export default function SupplierLedgerPage() {
         </div>
 
         <div className="p-6">
-        {!ledgerSupplierFilter || ledgerSupplierFilter === 'all' ? (
+          {!ledgerSupplierFilter || ledgerSupplierFilter === 'all' ? (
             <div className="p-12 text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
                 <Building2 className="w-8 h-8 text-muted-foreground" />
-            </div>
+              </div>
               <p className="text-sm font-medium text-foreground mb-1">Select a supplier to view ledger</p>
               <p className="text-xs text-muted-foreground">Choose a supplier from the dropdown above to see their complete transaction history</p>
-          </div>
-        ) : allLedgerLoading ? (
+            </div>
+          ) : allLedgerLoading ? (
             <div className="p-12 flex flex-col items-center justify-center">
               <Loader2 className="animate-spin h-8 w-8 text-primary mb-4" />
               <p className="text-sm text-muted-foreground">Loading ledger entries...</p>
-          </div>
+            </div>
           ) : filteredLedgerTransactions.length === 0 ? (
             <div className="p-12 text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
@@ -1303,16 +1379,16 @@ export default function SupplierLedgerPage() {
               <p className="text-xs text-muted-foreground">
                 {ledgerSearch ? 'Try adjusting your search or filters' : 'No ledger entries found for this supplier'}
               </p>
-          </div>
-        ) : (
-          <>
+            </div>
+          ) : (
+            <>
               {/* Stats Cards - Enhanced */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
                   <div className="flex items-center justify-between mb-3">
                     <div className="h-10 w-10 rounded-lg bg-muted/50 flex items-center justify-center">
                       <FileText className="h-5 w-5 text-muted-foreground" />
-              </div>
+                    </div>
                   </div>
                   <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
                     Total Entries
@@ -1321,35 +1397,30 @@ export default function SupplierLedgerPage() {
                     {filteredLedgerTransactions.length}
                   </div>
                 </div>
-                <div className={`rounded-lg border p-5 shadow-sm ${
-                  (calculatedTotalBalance || 0) <= 0 
-                    ? 'border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-emerald-50/30' 
-                    : 'border-red-200 bg-gradient-to-br from-red-50/50 to-red-50/30'
-                }`}>
+                <div className={`rounded-lg border p-5 shadow-sm ${(calculatedTotalBalance || 0) <= 0
+                  ? 'border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-emerald-50/30'
+                  : 'border-red-200 bg-gradient-to-br from-red-50/50 to-red-50/30'
+                  }`}>
                   <div className="flex items-center justify-between mb-3">
-                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                      (calculatedTotalBalance || 0) <= 0 ? 'bg-emerald-100' : 'bg-red-100'
-                    }`}>
-                      <DollarSign className={`h-5 w-5 ${
-                        (calculatedTotalBalance || 0) <= 0 ? 'text-emerald-600' : 'text-red-600'
-                      }`} />
+                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${(calculatedTotalBalance || 0) <= 0 ? 'bg-emerald-100' : 'bg-red-100'
+                      }`}>
+                      <DollarSign className={`h-5 w-5 ${(calculatedTotalBalance || 0) <= 0 ? 'text-emerald-600' : 'text-red-600'
+                        }`} />
                     </div>
                   </div>
                   <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
                     Supplier Balance
                   </div>
-                  <div className={`text-2xl font-bold tabular-nums ${
-                    (calculatedTotalBalance || 0) <= 0 ? 'text-emerald-700' : 'text-red-700'
-                  }`}>
+                  <div className={`text-2xl font-bold tabular-nums ${(calculatedTotalBalance || 0) <= 0 ? 'text-emerald-700' : 'text-red-700'
+                    }`}>
                     £{formatNumber(Math.abs(calculatedTotalBalance || 0))}
                   </div>
-                  <div className={`text-xs mt-1 ${
-                    (calculatedTotalBalance || 0) <= 0 ? 'text-emerald-600/80' : 'text-red-600/80'
-                  }`}>
+                  <div className={`text-xs mt-1 ${(calculatedTotalBalance || 0) <= 0 ? 'text-emerald-600/80' : 'text-red-600/80'
+                    }`}>
                     {(calculatedTotalBalance || 0) > 0 ? 'Amount owed to supplier' : 'Credit with supplier'}
                   </div>
+                </div>
               </div>
-            </div>
 
               {/* Table */}
               <DataTable
@@ -1361,8 +1432,8 @@ export default function SupplierLedgerPage() {
                 pageSize={50}
                 disableSorting={true}
               />
-          </>
-        )}
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -1526,31 +1597,67 @@ export default function SupplierLedgerPage() {
   }
 
   const paymentSelector = (
-          <Select
-            value={selectedSupplierId}
-            onValueChange={(value) => {
-              setSelectedSupplierId(value)
-              setSelectedDispatchOrderId('none')
-            }}
-            disabled={allSuppliersLoading}
-          >
-      <SelectTrigger id="supplier-select" className="h-10 border-border">
-              <SelectValue placeholder="Choose a supplier..." />
-            </SelectTrigger>
-            <SelectContent>
-              {allSuppliersLoading ? (
-                <SelectItem value="loading" disabled>Loading suppliers...</SelectItem>
-              ) : dropdownSuppliers.length === 0 ? (
-                <SelectItem value="none" disabled>No suppliers found</SelectItem>
-              ) : (
-                dropdownSuppliers.map((supplier) => (
-                  <SelectItem key={supplier.id} value={String(supplier.id)}>
-                    {supplier.name} {supplier.company ? `(${supplier.company})` : ''}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+    <Popover open={pendingPaymentSupplierOpen} onOpenChange={setPendingPaymentSupplierOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={pendingPaymentSupplierOpen}
+          className="w-full justify-between bg-background"
+          disabled={allSuppliersLoading}
+        >
+          {selectedSupplierId && selectedSupplierId !== 'all'
+            ? (() => {
+              const supplier = dropdownSuppliers.find((s) => String(s.id) === selectedSupplierId)
+              return supplier
+                ? `${supplier.name} ${supplier.supplierId ? `(${supplier.supplierId})` : ''}`
+                : "Select supplier..."
+            })()
+            : "Select supplier..."}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[400px] p-0 bg-white dark:bg-zinc-950">
+        <Command>
+          <CommandInput placeholder="Search name, company, or ID..." />
+          <CommandList>
+            <CommandEmpty>No supplier found.</CommandEmpty>
+            <CommandGroup>
+              {dropdownSuppliers.map((supplier) => (
+                <CommandItem
+                  key={supplier.id}
+                  value={`${supplier.name} ${supplier.company || ''} ${supplier.supplierId || ''} ${supplier.legacyId || ''} ${String(supplier.id).slice(-6)}`}
+                  onSelect={() => {
+                    const val = String(supplier.id)
+                    setSelectedSupplierId(val)
+                    setSelectedDispatchOrderId('none')
+                    setPendingPaymentSupplierOpen(false)
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      selectedSupplierId === String(supplier.id) ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  <div className="flex flex-col">
+                    <span className="font-medium">{supplier.name}</span>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {supplier.supplierId ? (
+                        <span className="font-mono bg-muted px-1 rounded">{supplier.supplierId}</span>
+                      ) : supplier.legacyId ? (
+                        <span className="font-mono bg-muted px-1 rounded">{supplier.legacyId}</span>
+                      ) : null}
+                      {supplier.company && <span>{supplier.company}</span>}
+                    </div>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   )
 
   const paymentDetails = (
@@ -1562,8 +1669,8 @@ export default function SupplierLedgerPage() {
             <div className="flex items-center justify-between mb-3">
               <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
                 <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+              </div>
             </div>
-          </div>
             <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
               Total Paid
             </div>
@@ -1593,9 +1700,9 @@ export default function SupplierLedgerPage() {
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-semibold text-foreground">Select Supplier:</span>
-        </div>
+          </div>
           <div className="flex-1 min-w-[250px]">
-          {paymentSelector}
+            {paymentSelector}
           </div>
         </div>
       </div>
@@ -1733,14 +1840,14 @@ export default function SupplierLedgerPage() {
               <div className="flex items-center justify-between mb-4">
                 <div className="h-12 w-12 rounded-xl bg-emerald-100/90 backdrop-blur-sm flex items-center justify-center ring-2 ring-emerald-200/40 shadow-sm group-hover:ring-emerald-300/60 transition-all">
                   <DollarSign className="h-6 w-6 text-emerald-600" />
-            </div>
-          </div>
+                </div>
+              </div>
               <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-emerald-700/80">
                 Total Payments
-            </div>
+              </div>
               <div className="text-3xl font-bold text-emerald-700 tabular-nums mb-1.5">
                 £{formatNumber(paymentSummary.total)}
-          </div>
+              </div>
               <div className="text-xs font-medium text-emerald-600/70">All-time payment total</div>
             </div>
           </div>
@@ -1796,7 +1903,7 @@ export default function SupplierLedgerPage() {
                 Payments This Month
               </div>
               <div className="text-3xl font-bold tabular-nums text-foreground mb-1.5">
-              {paymentSummary.countThisMonth}
+                {paymentSummary.countThisMonth}
               </div>
               <div className="text-xs font-medium text-muted-foreground">Current month</div>
             </div>
@@ -1813,143 +1920,143 @@ export default function SupplierLedgerPage() {
               <div className="h-12 w-12 rounded-xl bg-primary/10 backdrop-blur-sm flex items-center justify-center ring-1 ring-primary/20 shadow-sm">
                 <FileText className="h-6 w-6 text-primary" />
               </div>
-          <div>
+              <div>
                 <h2 className="font-semibold text-xl text-foreground tracking-tight">Payment History</h2>
-            <p className="text-sm text-muted-foreground mt-1">Select a supplier to view their payment history</p>
+                <p className="text-sm text-muted-foreground mt-1">Select a supplier to view their payment history</p>
               </div>
-          </div>
-          {paymentHistorySupplier && paymentHistorySupplier !== 'all' && (
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
+            </div>
+            {paymentHistorySupplier && paymentHistorySupplier !== 'all' && (
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
                   <Button size="sm" className="gap-2 h-10 px-5 shadow-sm hover:shadow-md transition-all bg-primary hover:bg-primary/90">
                     <Plus className="h-4 w-4" />
-                  Add Payment
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Payment</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  {supplierDetails && supplierDetails.balance > 0 && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <p className="text-sm text-blue-900">
-                        <span className="font-medium">Remaining Balance:</span> {formatNumber(supplierDetails.balance)}
-                      </p>
-                    </div>
-                  )}
-                  {selectedDispatchOrder && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                      <p className="text-sm text-amber-900">
-                        <span className="font-medium">Paying for:</span> {selectedDispatchOrder.orderNumber}
-                        <span className="ml-2">(Remaining: {formatNumber(selectedDispatchOrder.remainingBalance)})</span>
-                      </p>
-                    </div>
-                  )}
-                  <div>
-                    <Label htmlFor="amount">Payment Amount <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="amount"
-                      type="text"
-                      inputMode="decimal"
-                      step="0.01"
-                      min="0.01"
-                      max={selectedDispatchOrder ? selectedDispatchOrder.remainingBalance : (supplierDetails?.balance || undefined)}
-                      value={paymentForm.amount}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        // Allow only numbers and one decimal point
-                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                        setPaymentForm({ ...paymentForm, amount: sanitized });
-                      }}
-                      placeholder="Enter payment amount"
-                      disabled={isSubmittingPayment}
-                    />
-                    {supplierDetails && supplierDetails.balance > 0 && !selectedDispatchOrder && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Maximum: {formatNumber(supplierDetails.balance)}
-                      </p>
+                    Add Payment
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add Payment</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    {supplierDetails && supplierDetails.balance > 0 && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-sm text-blue-900">
+                          <span className="font-medium">Remaining Balance:</span> {formatNumber(supplierDetails.balance)}
+                        </p>
+                      </div>
                     )}
-                  </div>
-                  <div>
-                    <Label htmlFor="date">Date</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={paymentForm.date}
-                      onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
-                      disabled={isSubmittingPayment}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="method">Payment Method <span className="text-red-500">*</span></Label>
-                    <Select
-                      value={paymentForm.method}
-                      onValueChange={(value) => setPaymentForm({ ...paymentForm, method: value })}
-                      disabled={isSubmittingPayment}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select method" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="bank">Bank Transfer</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      value={paymentForm.description}
-                      onChange={(e) => setPaymentForm({ ...paymentForm, description: e.target.value })}
-                      placeholder="Enter description (optional)"
-                      disabled={isSubmittingPayment}
-                    />
-                  </div>
-
-                  {/* Dispatch Order Selector */}
-                  {unpaidDispatchOrders.length > 0 && (
+                    {selectedDispatchOrder && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <p className="text-sm text-amber-900">
+                          <span className="font-medium">Paying for:</span> {selectedDispatchOrder.orderNumber}
+                          <span className="ml-2">(Remaining: {formatNumber(selectedDispatchOrder.remainingBalance)})</span>
+                        </p>
+                      </div>
+                    )}
                     <div>
-                      <Label htmlFor="dispatch-order-select">Link to Dispatch Order (Optional)</Label>
+                      <Label htmlFor="amount">Payment Amount <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="amount"
+                        type="text"
+                        inputMode="decimal"
+                        step="0.01"
+                        min="0.01"
+                        max={selectedDispatchOrder ? selectedDispatchOrder.remainingBalance : (supplierDetails?.balance || undefined)}
+                        value={paymentForm.amount}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Allow only numbers and one decimal point
+                          const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                          setPaymentForm({ ...paymentForm, amount: sanitized });
+                        }}
+                        placeholder="Enter payment amount"
+                        disabled={isSubmittingPayment}
+                      />
+                      {supplierDetails && supplierDetails.balance > 0 && !selectedDispatchOrder && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Maximum: {formatNumber(supplierDetails.balance)}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="date">Date</Label>
+                      <Input
+                        id="date"
+                        type="date"
+                        value={paymentForm.date}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
+                        disabled={isSubmittingPayment}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="method">Payment Method <span className="text-red-500">*</span></Label>
                       <Select
-                        value={selectedDispatchOrderId}
-                        onValueChange={setSelectedDispatchOrderId}
+                        value={paymentForm.method}
+                        onValueChange={(value) => setPaymentForm({ ...paymentForm, method: value })}
                         disabled={isSubmittingPayment}
                       >
-                        <SelectTrigger id="dispatch-order-select">
-                          <SelectValue placeholder="Select dispatch order..." />
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select method" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">None (General Payment)</SelectItem>
-                          {unpaidDispatchOrders.map((order) => (
-                            <SelectItem key={order._id} value={order._id}>
-                              {order.orderNumber} - Remaining: {formatNumber(order.remainingBalance)}
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="cash">Cash</SelectItem>
+                          <SelectItem value="bank">Bank Transfer</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                  )}
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmittingPayment}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleAddPayment} disabled={isSubmittingPayment}>
-                    {isSubmittingPayment ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Recording...
-                      </>
-                    ) : (
-                      'Record Payment'
+                    <div>
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        value={paymentForm.description}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, description: e.target.value })}
+                        placeholder="Enter description (optional)"
+                        disabled={isSubmittingPayment}
+                      />
+                    </div>
+
+                    {/* Dispatch Order Selector */}
+                    {unpaidDispatchOrders.length > 0 && (
+                      <div>
+                        <Label htmlFor="dispatch-order-select">Link to Dispatch Order (Optional)</Label>
+                        <Select
+                          value={selectedDispatchOrderId}
+                          onValueChange={setSelectedDispatchOrderId}
+                          disabled={isSubmittingPayment}
+                        >
+                          <SelectTrigger id="dispatch-order-select">
+                            <SelectValue placeholder="Select dispatch order..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None (General Payment)</SelectItem>
+                            {unpaidDispatchOrders.map((order) => (
+                              <SelectItem key={order._id} value={order._id}>
+                                {order.orderNumber} - Remaining: {formatNumber(order.remainingBalance)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     )}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmittingPayment}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleAddPayment} disabled={isSubmittingPayment}>
+                      {isSubmittingPayment ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Recording...
+                        </>
+                      ) : (
+                        'Record Payment'
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
         </div>
 
@@ -1967,145 +2074,185 @@ export default function SupplierLedgerPage() {
                 <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <span className="whitespace-nowrap">Select Supplier</span>
               </Label>
-            <Select
-              value={paymentHistorySupplier}
-              onValueChange={(value) => {
-                setPaymentHistorySupplier(value)
-                setSelectedSupplierId(value)
-              }}
-              disabled={allSuppliersLoading}
-            >
-                <SelectTrigger id="payment-history-supplier" className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg">
-                <SelectValue placeholder="Select a supplier..." />
-              </SelectTrigger>
-              <SelectContent>
-                {dropdownSuppliers.map((supplier) => (
-                  <SelectItem key={supplier.id} value={String(supplier.id)}>
-                    {supplier.name} {supplier.company ? `(${supplier.company})` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              <Popover open={paymentHistorySupplierOpen} onOpenChange={setPaymentHistorySupplierOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={paymentHistorySupplierOpen}
+                    className="h-[44px] w-full justify-between border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg"
+                    disabled={allSuppliersLoading}
+                  >
+                    {paymentHistorySupplier
+                      ? (() => {
+                        const supplier = dropdownSuppliers.find((s) => String(s.id) === paymentHistorySupplier)
+                        return supplier ? `${supplier.name} ${supplier.company ? `(${supplier.company})` : ''}` : "Select supplier..."
+                      })()
+                      : "Select supplier..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0 bg-white dark:bg-zinc-950">
+                  <Command>
+                    <CommandInput placeholder="Search supplier..." />
+                    <CommandList>
+                      <CommandEmpty>No supplier found.</CommandEmpty>
+                      <CommandGroup>
+                        {dropdownSuppliers.map((supplier) => (
+                          <CommandItem
+                            key={supplier.id}
+                            value={`${supplier.name} ${supplier.company || ''} ${supplier.supplierId || ''} ${supplier.legacyId || ''} ${String(supplier.id).slice(-6)}`}
+                            onSelect={() => {
+                              const val = String(supplier.id)
+                              setPaymentHistorySupplier(val)
+                              setSelectedSupplierId(val)
+                              setPaymentHistorySupplierOpen(false)
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                paymentHistorySupplier === String(supplier.id) ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <span className="font-medium">{supplier.name}</span>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                {supplier.supplierId ? (
+                                  <span className="font-mono bg-muted px-1 rounded">{supplier.supplierId}</span>
+                                ) : supplier.legacyId ? (
+                                  <span className="font-mono bg-muted px-1 rounded">{supplier.legacyId}</span>
+                                ) : null}
+                                {supplier.company && <span>{supplier.company}</span>}
+                              </div>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
 
             <div className="flex flex-col min-w-0">
               <Label htmlFor="payment-history-date-from" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
                 <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <span className="whitespace-nowrap">Date From</span>
               </Label>
-            <Input
-              id="payment-history-date-from"
-              type="date"
-              value={paymentHistoryDateFrom}
-              onChange={(e) => setPaymentHistoryDateFrom(e.target.value)}
+              <Input
+                id="payment-history-date-from"
+                type="date"
+                value={paymentHistoryDateFrom}
+                onChange={(e) => setPaymentHistoryDateFrom(e.target.value)}
                 className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-100"
                 style={{ paddingRight: '2.5rem' }}
-            />
-          </div>
+              />
+            </div>
 
             <div className="flex flex-col min-w-0">
               <Label htmlFor="payment-history-date-to" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
                 <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <span className="whitespace-nowrap">Date To</span>
               </Label>
-            <Input
-              id="payment-history-date-to"
-              type="date"
-              value={paymentHistoryDateTo}
-              onChange={(e) => setPaymentHistoryDateTo(e.target.value)}
+              <Input
+                id="payment-history-date-to"
+                type="date"
+                value={paymentHistoryDateTo}
+                onChange={(e) => setPaymentHistoryDateTo(e.target.value)}
                 className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-100"
                 style={{ paddingRight: '2.5rem' }}
-            />
-          </div>
+              />
+            </div>
 
             <div className="flex flex-col min-w-0">
               <Label htmlFor="payment-history-method" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
                 <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <span className="whitespace-nowrap">Payment Method</span>
               </Label>
-            <Select
-              value={paymentHistoryMethodFilter}
-              onValueChange={setPaymentHistoryMethodFilter}
-            >
+              <Select
+                value={paymentHistoryMethodFilter}
+                onValueChange={setPaymentHistoryMethodFilter}
+              >
                 <SelectTrigger id="payment-history-method" className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg">
-                <SelectValue placeholder="All Methods" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Methods</SelectItem>
-                <SelectItem value="cash">Cash</SelectItem>
-                <SelectItem value="bank">Bank</SelectItem>
-              </SelectContent>
-            </Select>
+                  <SelectValue placeholder="All Methods" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Methods</SelectItem>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="bank">Bank</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
 
         {/* Payment History Table */}
         <div className="px-6 py-6 bg-background">
-        {!paymentHistorySupplier || paymentHistorySupplier === 'all' ? (
+          {!paymentHistorySupplier || paymentHistorySupplier === 'all' ? (
             <div className="flex flex-col items-center justify-center py-20 px-4">
               <div className="relative mb-6">
                 <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl animate-pulse"></div>
                 <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-muted/90 via-muted/70 to-muted/50 backdrop-blur-sm ring-2 ring-border/60 shadow-lg">
                   <Users className="w-12 h-12 text-muted-foreground" />
-            </div>
+                </div>
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2.5">No supplier selected</h3>
               <p className="text-sm text-muted-foreground text-center max-w-md leading-relaxed">
                 Select a supplier from the dropdown above to view their complete payment history and transaction records
               </p>
-          </div>
-        ) : paymentHistoryLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 px-4">
-            <div className="relative mb-6">
-              <div className="absolute inset-0 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
-              <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background backdrop-blur-sm ring-2 ring-primary/20 shadow-lg">
-                <Loader2 className="w-12 h-12 text-primary animate-spin" />
-              </div>
             </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2.5">Loading payment history</h3>
-            <p className="text-sm text-muted-foreground">Please wait while we fetch the records...</p>
-          </div>
-        ) : paymentHistoryTransactions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 px-4">
-            <div className="relative mb-6">
-              <div className="absolute inset-0 bg-muted/30 rounded-full blur-3xl"></div>
-              <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-muted/90 via-muted/70 to-muted/50 backdrop-blur-sm ring-2 ring-border/60 shadow-lg">
-                <FileText className="w-12 h-12 text-muted-foreground" />
+          ) : paymentHistoryLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
+                <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background backdrop-blur-sm ring-2 ring-primary/20 shadow-lg">
+                  <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                </div>
               </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2.5">Loading payment history</h3>
+              <p className="text-sm text-muted-foreground">Please wait while we fetch the records...</p>
             </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2.5">No payment history found</h3>
-            <p className="text-sm text-muted-foreground text-center max-w-md mb-5 leading-relaxed">
-              {paymentHistoryDateFrom || paymentHistoryDateTo || paymentHistoryMethodFilter !== 'all' 
-                ? 'Try adjusting your filters to see more results' 
-                : 'No payment records found for this supplier'}
-            </p>
-            {(paymentHistoryDateFrom || paymentHistoryDateTo || paymentHistoryMethodFilter !== 'all') && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 h-10 px-5 shadow-sm hover:shadow-md transition-all rounded-lg"
-                onClick={() => {
-                  setPaymentHistoryDateFrom('')
-                  setPaymentHistoryDateTo('')
-                  setPaymentHistoryMethodFilter('all')
-                }}
-              >
-                <RotateCcw className="h-4 w-4" />
-                Clear Filters
-              </Button>
-            )}
-          </div>
-        ) : (
+          ) : paymentHistoryTransactions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-muted/30 rounded-full blur-3xl"></div>
+                <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-muted/90 via-muted/70 to-muted/50 backdrop-blur-sm ring-2 ring-border/60 shadow-lg">
+                  <FileText className="w-12 h-12 text-muted-foreground" />
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2.5">No payment history found</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-md mb-5 leading-relaxed">
+                {paymentHistoryDateFrom || paymentHistoryDateTo || paymentHistoryMethodFilter !== 'all'
+                  ? 'Try adjusting your filters to see more results'
+                  : 'No payment records found for this supplier'}
+              </p>
+              {(paymentHistoryDateFrom || paymentHistoryDateTo || paymentHistoryMethodFilter !== 'all') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 h-10 px-5 shadow-sm hover:shadow-md transition-all rounded-lg"
+                  onClick={() => {
+                    setPaymentHistoryDateFrom('')
+                    setPaymentHistoryDateTo('')
+                    setPaymentHistoryMethodFilter('all')
+                  }}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+          ) : (
             <DataTable
               columns={paymentHistoryColumns}
               data={paymentHistoryTransactions}
               hideActions
-            enableSearch={false}
+              enableSearch={false}
               paginate={true}
               pageSize={50}
             />
-        )}
+          )}
         </div>
       </div>
     </div>
@@ -2127,18 +2274,18 @@ export default function SupplierLedgerPage() {
   ]
 
   // Search state for Supplier Ledger tab
-  const [ledgerSearch, setLedgerSearch] = useState("")
+  // const [ledgerSearch, setLedgerSearch] = useState("")
 
   // Filter ledger transactions by search
-  const filteredLedgerTransactions = useMemo(() => {
-    if (!ledgerSearch) return allLedgerTransactions
-    const searchLower = ledgerSearch.toLowerCase()
-    return allLedgerTransactions.filter(entry => 
-      entry.supplier?.toLowerCase().includes(searchLower) ||
-      entry.reference?.toLowerCase().includes(searchLower) ||
-      entry.type?.toLowerCase().includes(searchLower)
-    )
-  }, [allLedgerTransactions, ledgerSearch])
+  // const filteredLedgerTransactions = useMemo(() => {
+  //   if (!ledgerSearch) return allLedgerTransactions
+  //   const searchLower = ledgerSearch.toLowerCase()
+  //   return allLedgerTransactions.filter(entry =>
+  //     entry.supplier?.toLowerCase().includes(searchLower) ||
+  //     entry.reference?.toLowerCase().includes(searchLower) ||
+  //     entry.type?.toLowerCase().includes(searchLower)
+  //   )
+  // }, [allLedgerTransactions, ledgerSearch])
 
   return (
     <div className="space-y-6">

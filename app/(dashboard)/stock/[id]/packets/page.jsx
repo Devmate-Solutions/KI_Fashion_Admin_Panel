@@ -317,7 +317,7 @@ export default function ProductPacketsPage({ params }) {
         accessor: "suggestedSellingPrice",
         render: (row) => (
           <div className="text-right tabular-nums">
-            {currency(row.suggestedSellingPrice || 0)}
+            {currency(row.landedPricePerPacket || 0)}
           </div>
         ),
       },

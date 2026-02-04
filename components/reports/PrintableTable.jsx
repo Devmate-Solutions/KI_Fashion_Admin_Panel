@@ -12,11 +12,14 @@ export default function PrintableTable({
   data,
   loading = false,
   enableSearch = true,
-  enableSort = true,
+  enableSort = false,
   enableColumnFilters = true,
   pageSize = 50,
   showTotals = false,
   totalsRow = null,
+  grandTotalSection = null,
+  searchableColumns,
+  totalColumns = [],
 }) {
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState({ key: null, dir: "asc" })
@@ -27,23 +30,24 @@ export default function PrintableTable({
     const safeData = Array.isArray(data) ? data : []
     const safeColumns = Array.isArray(columns) ? columns : []
 
+
     // Global search filter
     const q = normalize(query)
     let base = q
-      ? safeData.filter((row) =>
-          safeColumns.some((c) => c.accessor && normalize(row[c.accessor]).includes(q))
-        )
+      ? safeData.filter((row) => searchableColumns.some((key) => normalize(row[key]).includes(q))
+      )
       : safeData
 
+
     // Column-specific filters
-    if (enableColumnFilters) {
-      Object.entries(columnFilters).forEach(([key, filterValue]) => {
-        if (filterValue && filterValue.trim()) {
-          const fv = normalize(filterValue)
-          base = base.filter((row) => normalize(row[key]).includes(fv))
-        }
-      })
-    }
+    // if (enableColumnFilters) {
+    //   Object.entries(columnFilters).forEach(([key, filterValue]) => {
+    //     if (filterValue && filterValue.trim()) {
+    //       const fv = normalize(filterValue)
+    //       base = base.filter((row) => normalize(row[key]).includes(fv))
+    //     }
+    //   })
+    // }
 
     // Sorting
     if (enableSort && sort.key) {
@@ -89,6 +93,28 @@ export default function PrintableTable({
 
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden">
+      {/* Top Totals Summary Bar - Above Search (compact horizontal display) */}
+      {showTotals && totalsRow && (
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2.5 border-b border-border bg-muted/60 print:bg-gray-100">
+          {/* {JSON.stringify(totalsRow)} */}
+          <span className="font-semibold text-sm text-foreground">{totalColumns[0].title}:</span>
+          {/* {Array.isArray(grandTotalSection) &&
+            grandTotalSection.map((c) => {
+              const value = grandTotalSection[c]
+              if (value === undefined || value === "" || value === null) return null
+              return (
+                
+              )
+            })}
+             */}
+          <div className="flex items-center gap-1.5 text-sm">
+            <span className="text-muted-foreground"></span>
+            <span className="font-semibold tabular-nums">{totalsRow[totalColumns[0].value]}</span>
+          </div>
+          {/* {JSON.stringify(totalsRow.remaining)} */}
+        </div>
+      )}
+
       {/* Search - Hidden in print */}
       {enableSearch && (
         <div className="no-print flex items-center gap-2 p-3 border-b border-border bg-muted/30">
@@ -117,9 +143,8 @@ export default function PrintableTable({
                 columns.map((c) => (
                   <th
                     key={c.accessor || c.header}
-                    className={`px-3 py-2.5 text-left font-semibold text-xs uppercase tracking-wider text-muted-foreground border-b border-border ${
-                      c.align === "right" ? "text-right" : ""
-                    } ${c.align === "center" ? "text-center" : ""}`}
+                    className={`px-3 py-2.5 text-left font-semibold text-xs uppercase tracking-wider text-muted-foreground border-b border-border ${c.align === "right" ? "text-right" : ""
+                      } ${c.align === "center" ? "text-center" : ""}`}
                   >
                     {enableSort && c.accessor ? (
                       <button
@@ -143,32 +168,6 @@ export default function PrintableTable({
                   </th>
                 ))}
             </tr>
-            
-            {/* Column Filters Row */}
-            {/* {enableColumnFilters && (
-              <tr className="no-print bg-muted/30">
-                {Array.isArray(columns) &&
-                  columns.map((c) => (
-                    <th
-                      key={`filter-${c.accessor || c.header}`}
-                      className="px-2 py-1.5 border-b border-border"
-                    >
-                      {c.accessor && c.filterable !== false ? (
-                        <div className="relative">
-                          <Filter className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
-                          <input
-                            type="text"
-                            className="w-full h-7 pl-7 pr-2 text-xs rounded border border-input bg-background outline-none focus:ring-1 focus:ring-ring"
-                            placeholder={`Filter...`}
-                            value={columnFilters[c.accessor] || ""}
-                            onChange={(e) => handleColumnFilterChange(c.accessor, e.target.value)}
-                          />
-                        </div>
-                      ) : null}
-                    </th>
-                  ))}
-              </tr>
-            )} */}
           </thead>
           <tbody>
             {Array.isArray(slice) && slice.length > 0 ? (
@@ -181,9 +180,8 @@ export default function PrintableTable({
                     columns.map((c) => (
                       <td
                         key={c.accessor || c.header}
-                        className={`px-3 py-2.5 ${
-                          c.align === "right" ? "text-right tabular-nums" : ""
-                        } ${c.align === "center" ? "text-center" : ""}`}
+                        className={`px-3 py-2.5 ${c.align === "right" ? "text-right tabular-nums" : ""
+                          } ${c.align === "center" ? "text-center" : ""}`}
                       >
                         {c.render ? c.render(row) : String(row[c.accessor] ?? "—")}
                       </td>
@@ -200,17 +198,16 @@ export default function PrintableTable({
                 </td>
               </tr>
             )}
-            
-            {/* Totals Row */}
+
+            {/* Bottom Totals Row - Inside Table (at end of data) */}
             {showTotals && totalsRow && (
               <tr className="bg-muted/50 font-semibold border-t-2 border-border print:bg-gray-100">
                 {Array.isArray(columns) &&
                   columns.map((c, idx) => (
                     <td
                       key={c.accessor || c.header}
-                      className={`px-3 py-2.5 ${
-                        c.align === "right" ? "text-right tabular-nums" : ""
-                      } ${c.align === "center" ? "text-center" : ""}`}
+                      className={`px-3 py-2.5 ${c.align === "right" ? "text-right tabular-nums" : ""
+                        } ${c.align === "center" ? "text-center" : ""}`}
                     >
                       {idx === 0 ? "TOTAL" : totalsRow[c.accessor] ?? ""}
                     </td>

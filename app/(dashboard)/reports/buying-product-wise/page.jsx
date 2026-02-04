@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useBuyingProductWiseReport } from "@/lib/hooks/useReports"
@@ -14,7 +15,7 @@ function formatNumber(n) {
 
 // Format with pound symbol
 function currency(n) {
-  return `£${formatNumber(n)}`
+  return `${formatNumber(n)}`
 }
 
 function formatDate(date) {
@@ -84,7 +85,7 @@ export default function BuyingProductWiseReportPage() {
   }
 
   const columns = [
-     {
+    {
       header: "TC",
       accessor: "tc",
       render: (row) => <span className="font-mono text-xs">{row.tc}</span>,
@@ -99,12 +100,12 @@ export default function BuyingProductWiseReportPage() {
       accessor: "transactionType",
       render: () => "Buying",
     },
-   
+
     {
       header: "Supplier Name",
       accessor: "supplierName",
     },
-     {
+    {
       header: "Product",
       accessor: "productName",
       render: (row) => (
@@ -114,9 +115,21 @@ export default function BuyingProductWiseReportPage() {
     {
       header: "Product Code",
       accessor: "productCode",
-      render: (row) => (
-        <span className="font-mono text-xs">{row.productCode || row.sku || "—"}</span>
-      ),
+      render: (row) => {
+        const productCode = row.productCode || row.sku || "—"
+        const productId = row.productId || row.product?._id
+        if (productId && productCode !== "—") {
+          return (
+            <Link
+              href={`/stock/${productId}/packets`}
+              className="font-mono text-xs text-blue-600 hover:text-blue-800 hover:underline"
+            >
+              {productCode}
+            </Link>
+          )
+        }
+        return <span className="font-mono text-xs">{productCode}</span>
+      },
     },
     {
       header: "Items Bought",
@@ -161,6 +174,12 @@ export default function BuyingProductWiseReportPage() {
     totalPrice: currency(totals.cost),
   }
 
+  const grandTotalSection = {
+    supplierName: "",
+    quantity: totals.remaining,
+    totalPrice: currency(totals.cost),
+  }
+
   return (
     <ReportLayout
       title="Daily Buying Product Wise Report"
@@ -178,6 +197,9 @@ export default function BuyingProductWiseReportPage() {
         loading={isLoading}
         showTotals={true}
         totalsRow={totalsRow}
+        grandTotalSection={totalsRow}
+        totalColumns={[{ title: "Total", value: "totalPrice" }]}
+
       />
     </ReportLayout>
   )

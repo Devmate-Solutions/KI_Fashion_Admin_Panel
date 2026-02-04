@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Printer, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { dispatchOrdersAPI } from "@/lib/api/endpoints/dispatchOrders";
+import { toast } from "sonner";
 
 // Normalize barcode data from API to component format
 const normalizeBarcodeData = (apiData) => {
@@ -32,13 +33,37 @@ const normalizeBarcodeData = (apiData) => {
       type: item.type,
       packetNumber: item.packetNumber,
       composition: item.composition,
+      quantity: item.quantity || 1, // Quantity for label duplication
       generatedAt: item.generatedAt,
+      // Keep original fields for print
+      data: item.data,
+      dataUrl: item.dataUrl,
     })),
   };
 };
 
-export default function BarcodePrintModal({ open, onClose, dispatchOrderId }) {
+// Expand barcodes based on quantity (e.g., qty=5 → 5 identical labels)
+const expandBarcodesByQuantity = (barcodes) => {
+  if (!barcodes || !Array.isArray(barcodes)) return [];
+
+  return barcodes.flatMap((barcode) => {
+    const qty = barcode.quantity || 1;
+    return Array(qty).fill(null).map((_, index) => ({
+      ...barcode,
+      labelIndex: index + 1, // 1-based index for display
+      totalLabels: qty,
+    }));
+  });
+};
+
+export default function BarcodePrintModal({
+  open,
+  onClose,
+  dispatchOrderId,
+  autoPrint = false // Auto-trigger print when data loads
+}) {
   const printRef = useRef(null);
+  const [hasPrinted, setHasPrinted] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["barcode-data", dispatchOrderId],
@@ -53,17 +78,38 @@ export default function BarcodePrintModal({ open, onClose, dispatchOrderId }) {
     enabled: open && !!dispatchOrderId,
   });
 
-  const _data = data?.data
+  const _data = data?.data;
 
-  const handlePrint = () => {
-    const printContent = printRef.current;
-    if (!printContent || !_data) return;
+  // Expand barcodes by quantity for printing
+  const expandedBarcodes = _data?.barcodes
+    ? expandBarcodesByQuantity(_data.barcodes)
+    : [];
 
-    const printWindow = window.open("", "_blank", "width=900,height=700");
+  // Calculate total labels to print
+  const totalLabels = expandedBarcodes.length;
+
+  const handlePrint = useCallback(() => {
+    if (!_data || expandedBarcodes.length === 0) return;
+
+    const printWindow = window.open("", "_blank", "width=400,height=600");
     if (!printWindow) {
-      alert("Please allow popups for printing");
+      toast.error("Please allow popups for printing");
       return;
     }
+
+    // Generate HTML for each label (thermal roll format - single column)
+    const labelsHtml = expandedBarcodes.map((item, idx) => `
+      <div class="barcode-label">
+        <div class="barcode-image">
+          <img src="${item.dataUrl || item.barcodeImage}" alt="${item.data || item.barcodeNumber}" />
+        </div>
+        <div class="barcode-number">${item.data || item.barcodeNumber}</div>
+        <div class="product-info">
+          <div class="product-name">${item.productName || ''}</div>
+          <div class="product-code">${item.productCode || ''}</div>
+        </div>
+      </div>
+    `).join('');
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -71,166 +117,123 @@ export default function BarcodePrintModal({ open, onClose, dispatchOrderId }) {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Barcodes - Order ${_data?.orderNumber || ""}</title>
+        <title>Barcode Labels - Order ${_data?.orderNumber || ""}</title>
         <style>
+          /* Thermal label roll styling - 50mm width */
           @page {
-            size: A4;
-            margin: 10mm;
+            size: 50mm auto;
+            margin: 1mm;
           }
           
           * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
           }
           
           body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 15px;
             background: white;
+            width: 48mm;
           }
           
-          .print-header {
+          .barcode-label {
+            width: 48mm;
+            padding: 2mm;
             text-align: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #333;
+            page-break-after: always;
+            border-bottom: 1px dashed #ccc;
           }
           
-          .print-header h1 {
-            margin: 0 0 5px 0;
-            font-size: 20px;
-            color: #333;
-          }
-          
-          .print-header p {
-            margin: 0;
-            color: #666;
-            font-size: 12px;
-          }
-          
-          .barcode-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-          }
-          
-          .barcode-item {
-            background: white;
-            border: 2px solid #333;
-            border-radius: 6px;
-            padding: 10px;
-            text-align: center;
-            page-break-inside: avoid;
-          }
-          
-          .barcode-number {
-            font-size: 14px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 8px;
-            font-family: 'Courier New', monospace;
-            letter-spacing: 1px;
+          .barcode-label:last-child {
+            page-break-after: auto;
+            border-bottom: none;
           }
           
           .barcode-image {
-            margin: 8px 0;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 50px;
+            margin-bottom: 1mm;
           }
           
           .barcode-image img {
-            max-width: 100%;
+            max-width: 44mm;
             height: auto;
           }
           
+          .barcode-number {
+            font-size: 8pt;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.5px;
+            margin-bottom: 1mm;
+          }
+          
           .product-info {
-            margin-top: 8px;
-            padding-top: 8px;
             border-top: 1px solid #ddd;
+            padding-top: 1mm;
           }
           
           .product-name {
-            font-size: 11px;
+            font-size: 7pt;
             font-weight: 600;
-            color: #333;
-            margin-bottom: 2px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
           }
           
           .product-code {
-            font-size: 10px;
+            font-size: 6pt;
             color: #666;
             font-family: 'Courier New', monospace;
           }
           
-          .badge {
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 9px;
-            font-weight: 600;
-            margin-top: 4px;
-          }
-          
-          .badge-packet {
-            background: #e3f2fd;
-            color: #1976d2;
-          }
-          
-          .badge-loose {
-            background: #fff3e0;
-            color: #f57c00;
-          }
-          
           @media print {
             body {
-              padding: 0;
+              width: 48mm;
             }
             
-            .barcode-item {
-              border-width: 1px;
+            .barcode-label {
+              border-bottom: none;
             }
           }
         </style>
       </head>
       <body>
-        <div class="print-header">
-          <h1>Barcode Labels</h1>
-          <p>Order: ${_data?.orderNumber || "N/A"} | Supplier: ${_data?.supplierName || "N/A"} | Total Labels: ${_data?.barcodes?.length || 0}</p>
-        </div>
-        
-        <div class="barcode-grid">
-          ${(_data?.barcodes || []).map(item => `
-            <div class="barcode-item">
-              <div class="barcode-number">${item.data || item.barcodeNumber}</div>
-              <div class="barcode-image">
-                <img src="${item.dataUrl || item.barcodeImage}" alt="${item.data || item.barcodeNumber}" />
-              </div>
-              <div class="product-info">
-                <div class="product-name">${item.productName}</div>
-                <div class="product-code">SKU: ${item.productCode}</div>
-                <span class="badge ${item.isLoose ? 'badge-loose' : 'badge-packet'}">
-                  ${item.isLoose ? 'LOOSE' : 'PACKET'}
-                </span>
-              </div>
-            </div>
-          `).join('')}
-        </div>
+        ${labelsHtml}
       </body>
       </html>
     `);
 
     printWindow.document.close();
-    
+
     // Wait for images to load then print
     setTimeout(() => {
       printWindow.print();
+      setHasPrinted(true);
     }, 500);
-  };
+  }, [_data, expandedBarcodes]);
+
+  // Auto-print when data loads (if autoPrint is enabled)
+  useEffect(() => {
+    if (autoPrint && open && _data?.barcodes?.length > 0 && !hasPrinted && !isLoading) {
+      // Small delay to ensure modal is fully rendered
+      const timer = setTimeout(() => {
+        handlePrint();
+        toast.success(`Printing ${totalLabels} barcode labels...`);
+      }, 800);
+
+      return () => clearTimeout(timer);
+    }
+  }, [autoPrint, open, _data, hasPrinted, isLoading, handlePrint, totalLabels]);
+
+  // Reset hasPrinted when modal closes
+  useEffect(() => {
+    if (!open) {
+      setHasPrinted(false);
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -262,10 +265,20 @@ export default function BarcodePrintModal({ open, onClose, dispatchOrderId }) {
             <>
               <div className="text-center mb-4 pb-2 border-b">
                 <p className="text-sm text-muted-foreground">
-                  Supplier: {_data.supplierName} | Total Labels: {_data.barcodes.length}
+                  Supplier: {_data.supplierName} | Unique Barcodes: {_data.barcodes.length} | <strong>Total Labels to Print: {totalLabels}</strong>
                 </p>
+                {autoPrint && !hasPrinted && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    Auto-printing enabled - print dialog will open automatically...
+                  </p>
+                )}
+                {hasPrinted && (
+                  <p className="text-xs text-green-600 mt-1">
+                    ✓ Print dialog opened
+                  </p>
+                )}
               </div>
-              
+
               <div className="grid grid-cols-3 gap-3">
                 {_data.barcodes.map((item, idx) => (
                   <div
@@ -277,8 +290,8 @@ export default function BarcodePrintModal({ open, onClose, dispatchOrderId }) {
                     </div>
                     <div className="flex justify-center items-center min-h-[50px] my-2">
                       {item.dataUrl ? (
-                        <img 
-                          src={item.dataUrl} 
+                        <img
+                          src={item.dataUrl}
                           alt={item.data}
                           className="max-w-full h-auto"
                         />
@@ -293,12 +306,11 @@ export default function BarcodePrintModal({ open, onClose, dispatchOrderId }) {
                       <div className="text-xs text-muted-foreground font-mono">
                         SKU: {item.productCode}
                       </div>
-                      {/* <Badge 
-                        variant={item.isLoose ? "secondary" : "default"}
-                        className="mt-1 text-[10px]"
-                      >
-                        {item.isLoose ? "LOOSE" : "PACKET"}
-                      </Badge> */}
+                      {item.quantity > 1 && (
+                        <Badge variant="secondary" className="mt-1 text-[10px]">
+                          Qty: {item.quantity} labels
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -307,18 +319,23 @@ export default function BarcodePrintModal({ open, onClose, dispatchOrderId }) {
           )}
         </div>
 
-        <div className="flex-shrink-0 flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={onClose}>
-            <X className="h-4 w-4 mr-2" />
-            Close
-          </Button>
-          <Button 
-            onClick={handlePrint} 
-            disabled={isLoading || !_data?.barcodes?.length}
-          >
-            <Printer className="h-4 w-4 mr-2" />
-            Print Labels
-          </Button>
+        <div className="flex-shrink-0 flex justify-between items-center pt-4 border-t">
+          <div className="text-sm text-muted-foreground">
+            {totalLabels > 0 && `${totalLabels} label(s) will be printed`}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>
+              <X className="h-4 w-4 mr-2" />
+              Close
+            </Button>
+            <Button
+              onClick={handlePrint}
+              disabled={isLoading || !_data?.barcodes?.length}
+            >
+              <Printer className="h-4 w-4 mr-2" />
+              Print Labels ({totalLabels})
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

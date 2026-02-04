@@ -14,7 +14,7 @@ import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { paymentAPI } from "@/lib/api/endpoints/payments"
 import { salesAPI } from "@/lib/api/endpoints/sales"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { Loader2, FileText, Users, Search, Filter, TrendingUp, DollarSign, Clock, Plus, CheckCircle2, Plus, Printer, RotateCcw, Receipt, FileText, X } from "lucide-react"
+import { Loader2, FileText, Users, Search, Filter, TrendingUp, DollarSign, Clock, Plus, CheckCircle2, Printer, RotateCcw, Receipt, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import toast from "react-hot-toast"
 import Tabs from "@/components/tabs"
@@ -70,7 +70,7 @@ export default function CustomerLedgerPage() {
   // Fetch active buyers for dropdowns
   const { data: buyers = [], isLoading: buyersLoading, error: buyersError } = useBuyers({ limit: 500 })
   const dropdownBuyers = buyers
-  
+
   console.log(`Customer Ledger: Loaded ${dropdownBuyers.length} buyers for dropdown`)
 
   const comboboxOptions = useMemo(() => {
@@ -131,12 +131,12 @@ export default function CustomerLedgerPage() {
     queryFn: async () => {
       console.log('🔍 Payment Receipts Query Starting...')
       console.log('🔍 selectedBuyerId:', selectedBuyerId)
-      
+
       if (!selectedBuyerId) {
         console.log('❌ No selectedBuyerId - returning empty')
         return { payments: [] }
       }
-      
+
       try {
         if (selectedBuyerId === 'all') {
           // Fetch all customer payments
@@ -146,7 +146,7 @@ export default function CustomerLedgerPage() {
           console.log('📥 response.data:', response.data)
           console.log('📥 response.data?.data:', response.data?.data)
           console.log('📥 response.data?.data?.payments:', response.data?.data?.payments)
-          
+
           // Response structure from backend: { data: { success: true, data: { payments: [], pagination: {} } } }
           // axios wraps it in response.data
           const paymentsData = response.data?.data
@@ -168,12 +168,12 @@ export default function CustomerLedgerPage() {
           console.warn('⚠️ Final response structure:', JSON.stringify(response?.data || response, null, 2))
           return { payments: [] }
         }
-        
+
         // Fetch single customer payments
         console.log(`📡 Calling paymentAPI.getCustomerPayments for ${selectedBuyerId}...`)
         const response = await paymentAPI.getCustomerPayments(selectedBuyerId, { limit: 500 })
         console.log(`📥 Customer ${selectedBuyerId} payments response:`, response)
-        
+
         const paymentsData = response.data?.data
         if (paymentsData && Array.isArray(paymentsData.payments)) {
           console.log(`✅ Found ${paymentsData.payments.length} payments for customer ${selectedBuyerId}`)
@@ -196,7 +196,7 @@ export default function CustomerLedgerPage() {
     retry: 1,
     staleTime: 10 * 1000 // 10 seconds
   })
-  
+
   // Debug logging for query state
   console.log('📊 Payment Receipts Query State:', {
     status,
@@ -233,7 +233,7 @@ export default function CustomerLedgerPage() {
       console.log('⚠ allLedgerTransactions: No ledger entries available')
       return []
     }
-    
+
     console.log(`✓ allLedgerTransactions: Processing ${allLedgerData.entries.length} ledger entries`)
 
     let filteredEntries = allLedgerData.entries.filter(entry =>
@@ -241,7 +241,7 @@ export default function CustomerLedgerPage() {
       entry.transactionType === 'receipt' ||
       entry.transactionType === 'adjustment'
     )
-    
+
     console.log(`✓ Filtered to ${filteredEntries.length} transactions (sale/receipt/adjustment only)`)
 
     const mappedItems = filteredEntries.map(entry => {
@@ -353,9 +353,9 @@ export default function CustomerLedgerPage() {
       console.log('⚠ paymentReceiptsTransactions: No payments data available')
       return []
     }
-    
+
     console.log(`✓ paymentReceiptsTransactions: Processing ${paymentReceiptsData.payments.length} payment receipts`)
-    
+
     return paymentReceiptsData.payments.map(payment => ({
       id: payment._id,
       paymentNumber: payment.paymentNumber,
@@ -397,13 +397,13 @@ export default function CustomerLedgerPage() {
     try {
       await paymentAPI.reversePayment(selectedPayment.paymentNumber, reversalReason.trim())
       toast.success(`Payment ${selectedPayment.paymentNumber} has been reversed`)
-      
+
       // Refresh data
       refetchPayments()
       queryClient.invalidateQueries({ queryKey: ['ledger'] })
       queryClient.invalidateQueries({ queryKey: ['buyers'] })
       queryClient.invalidateQueries({ queryKey: ['sales'] })
-      
+
       setReversalDialogOpen(false)
       setSelectedPayment(null)
       setReversalReason('')
@@ -617,7 +617,7 @@ export default function CustomerLedgerPage() {
   const filteredLedgerTransactions = useMemo(() => {
     if (!ledgerSearch) return allLedgerTransactions
     const searchLower = ledgerSearch.toLowerCase()
-    return allLedgerTransactions.filter(entry => 
+    return allLedgerTransactions.filter(entry =>
       entry.buyer?.toLowerCase().includes(searchLower) ||
       entry.reference?.toLowerCase().includes(searchLower) ||
       entry.type?.toLowerCase().includes(searchLower)
@@ -626,9 +626,9 @@ export default function CustomerLedgerPage() {
 
   const paymentReceiptsColumns = useMemo(() => {
     const baseColumns = [
-      { 
-        header: "Receipt #", 
-        accessor: "paymentNumber", 
+      {
+        header: "Receipt #",
+        accessor: "paymentNumber",
         render: (row) => (
           <span className="font-mono font-medium text-blue-600">{row.paymentNumber}</span>
         )
@@ -648,7 +648,7 @@ export default function CustomerLedgerPage() {
     }
 
     const remainingColumns = [
-      { 
+      {
         header: "Type",
         accessor: "paymentDirection",
         render: (row) => (
@@ -657,27 +657,27 @@ export default function CustomerLedgerPage() {
           </Badge>
         )
       },
-      { 
-        header: "Debit", 
-        accessor: "debitAmount", 
+      {
+        header: "Debit",
+        accessor: "debitAmount",
         render: (row) => (
           <span className={row.paymentDirection === 'debit' ? "text-red-600 font-bold" : "text-muted-foreground"}>
             {row.paymentDirection === 'debit' ? `£${formatNumber(row.totalAmount)}` : '-'}
           </span>
         )
       },
-      { 
-        header: "Credit", 
-        accessor: "creditAmount", 
+      {
+        header: "Credit",
+        accessor: "creditAmount",
         render: (row) => (
           <span className={row.paymentDirection !== 'debit' ? "text-green-600 font-bold" : "text-muted-foreground"}>
             {row.paymentDirection !== 'debit' ? `£${formatNumber(row.totalAmount)}` : '-'}
           </span>
         )
       },
-      { 
-        header: "Balance", 
-        accessor: "balanceAfter", 
+      {
+        header: "Balance",
+        accessor: "balanceAfter",
         render: (row) => (
           <span className={`font-bold tabular-nums ${row.balanceAfter > 0 ? 'text-red-600' : row.balanceAfter < 0 ? 'text-green-600' : ''}`}>
             £{formatNumber(Math.abs(row.balanceAfter))}
@@ -685,16 +685,16 @@ export default function CustomerLedgerPage() {
           </span>
         )
       },
-      { 
-        header: "Method", 
-        accessor: "paymentMethod", 
+      {
+        header: "Method",
+        accessor: "paymentMethod",
         render: (row) => (
           <Badge variant="outline" className="capitalize">{row.paymentMethod}</Badge>
         )
       },
-      { 
-        header: "Status", 
-        accessor: "status", 
+      {
+        header: "Status",
+        accessor: "status",
         render: (row) => (
           <Badge variant={row.status === 'active' ? 'success' : 'destructive'}>
             {row.status.toUpperCase()}
@@ -737,7 +737,7 @@ export default function CustomerLedgerPage() {
   // Calculate buyer balance map from ledger data for the modal
   const buyerBalanceMap = useMemo(() => {
     const balanceMap = {}
-    
+
     // Use balance from dropdownBuyers (from API)
     if (dropdownBuyers && dropdownBuyers.length > 0) {
       for (const buyer of dropdownBuyers) {
@@ -745,7 +745,7 @@ export default function CustomerLedgerPage() {
         balanceMap[buyerId] = buyer.balance || 0
       }
     }
-    
+
     return balanceMap
   }, [dropdownBuyers])
 
@@ -1133,11 +1133,11 @@ export default function CustomerLedgerPage() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Customer Ledger</h1>
             <p className="text-sm text-muted-foreground">Manage customer accounts, payments, and balances</p>
           </div>
-        <Button onClick={() => setPaymentModalOpen(true)} className="bg-green-600 hover:bg-green-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Payment
-        </Button>
-      </div>
+          <Button onClick={() => setPaymentModalOpen(true)} className="bg-green-600 hover:bg-green-700">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Payment
+          </Button>
+        </div>
       </header>
 
       <Tabs
@@ -1249,11 +1249,11 @@ export default function CustomerLedgerPage() {
                       <Users className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-semibold text-foreground">Select Customer:</span>
                     </div>
-                    <Select 
-                      value={selectedBuyerId} 
+                    <Select
+                      value={selectedBuyerId}
                       onValueChange={(val) => {
-                      setSelectedBuyerId(val)
-                      setSelectedSaleId('none')
+                        setSelectedBuyerId(val)
+                        setSelectedSaleId('none')
                       }}
                     >
                       <SelectTrigger className="h-10 w-[300px] border-border">
@@ -1266,19 +1266,19 @@ export default function CustomerLedgerPage() {
                       </SelectContent>
                     </Select>
 
-                  {selectedBuyerId && selectedBuyerId !== 'all' && (
-                      <Button 
+                    {selectedBuyerId && selectedBuyerId !== 'all' && (
+                      <Button
                         onClick={() => {
-                      setPaymentForm({ amount: '', date: '', description: '', method: 'cash' })
-                      setSelectedSaleId('none')
-                      setIsDialogOpen(true)
+                          setPaymentForm({ amount: '', date: '', description: '', method: 'cash' })
+                          setSelectedSaleId('none')
+                          setIsDialogOpen(true)
                         }}
                         className="ml-auto gap-2 h-10"
                       >
                         <Plus className="h-4 w-4" />
                         Record Payment
-                    </Button>
-                  )}
+                      </Button>
+                    )}
                   </div>
                 </div>
 
@@ -1349,14 +1349,13 @@ export default function CustomerLedgerPage() {
                       )}
                     </p>
                   </div>
-     
+
                   {selectedBuyerId && selectedBuyerId !== 'all' ? (
                     <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
                       <p className="text-sm text-blue-700">Current Balance</p>
-                      <p className={`text-2xl font-bold ${
-                        paymentReceiptsTransactions[0]?.balanceAfter > 0 ? 'text-red-600' : 
-                        paymentReceiptsTransactions[0]?.balanceAfter < 0 ? 'text-green-600' : 'text-blue-700'
-                      }`}>
+                      <p className={`text-2xl font-bold ${paymentReceiptsTransactions[0]?.balanceAfter > 0 ? 'text-red-600' :
+                          paymentReceiptsTransactions[0]?.balanceAfter < 0 ? 'text-green-600' : 'text-blue-700'
+                        }`}>
                         £{formatNumber(Math.abs(paymentReceiptsTransactions[0]?.balanceAfter || 0))}
                         {paymentReceiptsTransactions[0]?.balanceAfter < 0 && (
                           <span className="text-sm font-normal ml-1">(Credit)</span>
@@ -1383,9 +1382,9 @@ export default function CustomerLedgerPage() {
                       <p className="text-sm mt-2 text-muted-foreground">
                         {paymentReceiptsError.response?.data?.message || paymentReceiptsError.message || 'Failed to fetch data'}
                       </p>
-                      <Button 
-                        onClick={() => refetchPayments()} 
-                        variant="outline" 
+                      <Button
+                        onClick={() => refetchPayments()}
+                        variant="outline"
                         className="mt-4"
                       >
                         <RotateCcw className="h-4 w-4 mr-2" />
@@ -1399,8 +1398,8 @@ export default function CustomerLedgerPage() {
                       <p className="text-sm mt-2">Add a payment to create a receipt.</p>
                     </div>
                   ) : (
-                    <DataTable 
-                      columns={paymentReceiptsColumns} 
+                    <DataTable
+                      columns={paymentReceiptsColumns}
                       data={paymentReceiptsTransactions}
                       paginate={false}
                     />
@@ -1474,7 +1473,7 @@ export default function CustomerLedgerPage() {
                 </div>
               </div>
             )}
-            
+
             <div className="space-y-2">
               <Label className="text-sm font-semibold">Payment Amount</Label>
               <Input
@@ -1517,9 +1516,9 @@ export default function CustomerLedgerPage() {
               />
             </div>
 
-            <Button 
-              className="w-full h-11 mt-6 gap-2" 
-              onClick={handleAddPayment} 
+            <Button
+              className="w-full h-11 mt-6 gap-2"
+              onClick={handleAddPayment}
               disabled={isSubmittingPayment}
             >
               {isSubmittingPayment ? (
@@ -1530,7 +1529,7 @@ export default function CustomerLedgerPage() {
               ) : (
                 <>
                   <CheckCircle2 className="h-4 w-4" />
-              Confirm Payment
+                  Confirm Payment
                 </>
               )}
             </Button>

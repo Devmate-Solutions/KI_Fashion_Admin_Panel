@@ -125,6 +125,12 @@ export default function DailyBuyingReportPage() {
       align: "right",
       render: (row) => currency(row.cashPayment || 0),
     },
+    {
+      header: "Remaining",
+      accessor: "remaining",
+      align: "right",
+      render: (row) => currency(row.supplierPaymentTotal - (row.bankPayment + row.cashPayment) || 0),
+    },
   ]
 
   const summary = [
@@ -156,6 +162,7 @@ export default function DailyBuyingReportPage() {
     totalAfterDiscount: currency(totals.total),
     bankPayment: currency(totals.bankPayment),
     cashPayment: currency(totals.cashPayment),
+    remaining: currency(totals.balance),
   }
 
   return (
@@ -175,6 +182,8 @@ export default function DailyBuyingReportPage() {
         loading={isLoading}
         showTotals={true}
         totalsRow={totalsRow}
+        totalColumns={[{ title: "Total", value: "remaining" }]}
+
       />
     </ReportLayout>
   )

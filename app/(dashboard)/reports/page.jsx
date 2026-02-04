@@ -122,15 +122,6 @@ const reportCategories = [
 
 export default function ReportsPage() {
   return (
-<<<<<<< HEAD
-    <div className="space-y-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Reports & Analytics</h1>
-          <p className="text-sm text-muted-foreground">Comprehensive business insights and performance metrics</p>
-        </div>
-        <Button onClick={handleRefreshAll} className="h-9 sm:h-10">Refresh All</Button>
-=======
     <div className="p-4 md:p-6 max-w-[1600px] mx-auto">
       {/* Header */}
       <header className="mb-6">
@@ -138,7 +129,6 @@ export default function ReportsPage() {
         <p className="text-sm text-muted-foreground mt-1">
           Generate detailed reports with date filtering and print functionality
         </p>
->>>>>>> d237026 (barcode and packet change)
       </header>
 
       {/* Report Categories */}

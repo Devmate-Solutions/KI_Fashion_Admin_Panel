@@ -60,7 +60,7 @@ const reportLinks = [
   { href: "/reports/stock-in-hand", label: "Stock in Hand" },
   { href: "/reports/receivables", label: "Receivables Report" },
   { href: "/reports/payables", label: "Payables Report" },
-  {href: "/reports/profit-loss", label: "Comparison Report (PNL)"}
+  { href: "/reports/profit-loss", label: "Comparison Report (PNL)" }
   // { href: "/reports/sales-returns", label: "Sales Returns (Invoice Wise)" },
   // { href: "/reports/sales-returns-product-wise", label: "Sales Returns (Product Wise)" },
   // { href: "/reports/buying-returns-product-wise", label: "Buying Returns (Product Wise)" },
@@ -90,7 +90,7 @@ export default function Sidebar() {
       window.localStorage.setItem("sidebar:collapsed", String(collapsed));
       // Update body data attribute for main content margin adjustment
       document.body.setAttribute('data-sidebar-collapsed', String(collapsed));
-    } catch {}
+    } catch { }
   }, [collapsed]);
 
   return (
@@ -106,9 +106,8 @@ export default function Sidebar() {
 
       {/* Mobile Sidebar */}
       <aside
-        className={`md:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-100 transform transition-transform duration-300 ease-in-out ${
-          open ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`md:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-100 transform transition-transform duration-300 ease-in-out ${open ? "translate-x-0" : "-translate-x-full"
+          }`}
         aria-label="Main navigation"
       >
         <div className="flex items-center justify-between px-6 py-6 border-b border-slate-50">
@@ -143,23 +142,21 @@ export default function Sidebar() {
                 (it.href !== "/home" && pathname.startsWith(it.href + "/"));
               const Icon = it.icon;
               return (
-                <li key={it.href}>
+                <li key={idx}>
                   <Link
-                    href={it.href}
+                    href={""}
                     prefetch={true}
                     onClick={() => setOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 text-sm transition-all rounded-xl relative group min-h-[44px] ${
-                      active
-                        ? "bg-blue-600 text-white shadow-lg shadow-blue-100 font-bold"
-                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                    }`}
+                    className={`flex items-center gap-3 px-4 py-3 text-sm transition-all rounded-xl relative group min-h-[44px] ${active
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-100 font-bold"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                      }`}
                   >
                     <Icon
-                      className={`h-5 w-5 shrink-0 ${
-                        active
-                          ? "text-white"
-                          : "text-slate-400 group-hover:text-slate-900"
-                      }`}
+                      className={`h-5 w-5 shrink-0 ${active
+                        ? "text-white"
+                        : "text-slate-400 group-hover:text-slate-900"
+                        }`}
                       aria-hidden="true"
                     />
                     <span className="truncate">{it.label}</span>
@@ -176,171 +173,163 @@ export default function Sidebar() {
 
       {/* Desktop Sidebar */}
       <aside
-        className={`border-r border-slate-100 bg-white text-slate-900 hidden md:flex md:flex-col transition-all duration-300 ${
-          collapsed ? "w-20" : "w-64"
-        }`}
+        className={`border-r border-slate-100 bg-white text-slate-900 hidden md:flex md:flex-col transition-all duration-300 ${collapsed ? "w-20" : "w-64"
+          }`}
         aria-label="Main navigation"
         data-collapsed={collapsed}
       >
-      <div className="flex items-center justify-between px-6 py-6 border-b border-slate-50">
-        <span
-          className={`text-sm font-black uppercase tracking-widest text-blue-600 ${
-            collapsed ? "sr-only" : ""
-          }`}
-        >
-          KI CRM
-        </span>
-        <button
-          type="button"
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          onClick={() => setCollapsed((v) => !v)}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-slate-50 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-all duration-200 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-        >
-          <PanelLeft
-            className={`h-4 w-4 transition-transform ${
-              collapsed ? "rotate-180" : ""
-            }`}
-          />
-        </button>
-      </div>
+        <div className="flex items-center justify-between px-6 py-6 border-b border-slate-50">
+          <span
+            className={`text-sm font-black uppercase tracking-widest text-blue-600 ${collapsed ? "sr-only" : ""
+              }`}
+          >
+            KI CRM
+          </span>
+          <button
+            type="button"
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => setCollapsed((v) => !v)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-slate-50 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-all duration-200 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+          >
+            <PanelLeft
+              className={`h-4 w-4 transition-transform ${collapsed ? "rotate-180" : ""
+                }`}
+            />
+          </button>
+        </div>
 
-      <nav className="flex-1 overflow-y-auto custom-scrollbar">
-        <ul className="py-6 px-3 space-y-1">
-          {items.map((it, idx) => {
-            if (it.type === "separator") {
-              return !collapsed ? (
-                <li
-                  key={`sep-${idx}`}
-                  className="pt-6 pb-2 px-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400"
-                >
-                  {it.label}
-                </li>
-              ) : (
-                <li
-                  key={`sep-${idx}`}
-                  className="h-px bg-slate-50 my-4 mx-4"
-                ></li>
-              );
-            }
+        <nav className="flex-1 overflow-y-auto custom-scrollbar">
+          <ul className="py-6 px-3 space-y-1">
+            {items.map((it, idx) => {
+              if (it.type === "separator") {
+                return !collapsed ? (
+                  <li
+                    key={`sep-${idx}`}
+                    className="pt-6 pb-2 px-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400"
+                  >
+                    {it.label}
+                  </li>
+                ) : (
+                  <li
+                    key={`sep-${idx}`}
+                    className="h-px bg-slate-50 my-4 mx-4"
+                  ></li>
+                );
+              }
 
-            // Reports collapsible menu
-            if (it.type === "reports") {
-              const anyReportActive = pathname?.startsWith('/reports');
-              const Icon = it.icon;
-              
-              return (
-                <li key="reports-collapsible">
-                  <Collapsible.Root open={reportsOpen} onOpenChange={setReportsOpen}>
-                    <Collapsible.Trigger asChild>
-                      <button
-                        type="button"
-                        title={it.label}
-                        aria-label={it.label}
-                        className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-all rounded-xl relative group
-                          ${
-                            anyReportActive
+              // Reports collapsible menu
+              if (it.type === "reports") {
+                const anyReportActive = pathname?.startsWith('/reports');
+                const Icon = it.icon;
+
+                return (
+                  <li key="reports-collapsible">
+                    <Collapsible.Root open={reportsOpen} onOpenChange={setReportsOpen}>
+                      <Collapsible.Trigger asChild>
+                        <button
+                          type="button"
+                          title={it.label}
+                          aria-label={it.label}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-all rounded-xl relative group
+                          ${anyReportActive
                               ? "bg-blue-600 text-white shadow-lg shadow-blue-100 font-bold"
                               : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                          }`}
-                      >
-                        <Icon
-                          className={`h-5 w-5 shrink-0 ${
-                            anyReportActive
+                            }`}
+                        >
+                          <Icon
+                            className={`h-5 w-5 shrink-0 ${anyReportActive
                               ? "text-white"
                               : "text-slate-400 group-hover:text-slate-900"
-                          }`}
-                          aria-hidden="true"
-                        />
-                        {!collapsed && (
-                          <>
-                            <span className="truncate flex-1 text-left">{it.label}</span>
-                            {reportsOpen ? (
-                              <ChevronDown className="h-4 w-4 shrink-0" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4 shrink-0" />
-                            )}
-                          </>
-                        )}
-                        {anyReportActive && !collapsed && (
-                          <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white/40"></div>
-                        )}
-                      </button>
-                    </Collapsible.Trigger>
-                    
-                    {!collapsed && (
-                      <Collapsible.Content className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
-                        <ul className="mt-1 space-y-1">
-                          {reportLinks.map((report) => {
-                            const active = pathname === report.href;
-                            return (
-                              <li key={report.href}>
-                                <Link
-                                  href={report.href}
-                                  prefetch={true}
-                                  title={report.label}
-                                  aria-label={report.label}
-                                  className={`flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all rounded-xl relative
-                                    ${
-                                      active
+                              }`}
+                            aria-hidden="true"
+                          />
+                          {!collapsed && (
+                            <>
+                              <span className="truncate flex-1 text-left">{it.label}</span>
+                              {reportsOpen ? (
+                                <ChevronDown className="h-4 w-4 shrink-0" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 shrink-0" />
+                              )}
+                            </>
+                          )}
+                          {anyReportActive && !collapsed && (
+                            <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white/40"></div>
+                          )}
+                        </button>
+                      </Collapsible.Trigger>
+
+                      {!collapsed && (
+                        <Collapsible.Content className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+                          <ul className="mt-1 space-y-1">
+                            {reportLinks.map((report) => {
+                              const active = pathname === report.href;
+                              return (
+                                <li key={report.href}>
+                                  <Link
+                                    href={report.href}
+                                    prefetch={true}
+                                    title={report.label}
+                                    aria-label={report.label}
+                                    className={`flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all rounded-xl relative
+                                    ${active
                                         ? "bg-blue-50 text-blue-700 font-semibold"
                                         : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                                    }`}
-                                >
-                                  <span className="truncate text-xs">{report.label}</span>
-                                  {active && (
-                                    <div className="absolute left-6 w-1.5 h-1.5 rounded-full bg-blue-600"></div>
-                                  )}
-                                </Link>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </Collapsible.Content>
-                    )}
-                  </Collapsible.Root>
-                </li>
-              );
-            }
+                                      }`}
+                                  >
+                                    <span className="truncate text-xs">{report.label}</span>
+                                    {active && (
+                                      <div className="absolute left-6 w-1.5 h-1.5 rounded-full bg-blue-600"></div>
+                                    )}
+                                  </Link>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </Collapsible.Content>
+                      )}
+                    </Collapsible.Root>
+                  </li>
+                );
+              }
 
-            const active =
-              pathname === it.href ||
-              (it.href !== "/home" && pathname.startsWith(it.href + "/"));
-            const Icon = it.icon;
-            return (
-              <li key={it.href}>
-                <Link
-                  href={it.href}
-                  prefetch={true}
-                  title={it.label}
-                  aria-label={it.label}
-                  className={`flex items-center gap-3 px-4 py-3 text-sm transition-all duration-200 ease-in-out rounded-md relative group min-h-[44px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500
-                    ${
-                      active
+              const active =
+                pathname === it.href ||
+                (it.href !== "/home" && pathname.startsWith(it.href + "/"));
+              const Icon = it.icon;
+              return (
+                <li key={it.href || it.name || index}>
+                  <Link
+                    href={it.href || '#'}
+                    prefetch={true}
+                    title={it.label}
+                    aria-label={it.label}
+                    className={`flex items-center gap-3 px-4 py-3 text-sm transition-all duration-200 ease-in-out rounded-md relative group min-h-[44px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500
+                    ${active
                         ? "bg-blue-600 text-white font-bold"
                         : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                    }`}
-                >
-                  <Icon
-                    className={`h-5 w-5 shrink-0 ${
-                      active
+                      }`}
+                  >
+                    <Icon
+                      className={`h-5 w-5 shrink-0 ${active
                         ? "text-white"
                         : "text-slate-400 group-hover:text-slate-900"
-                    }`}
-                    aria-hidden="true"
-                  />
-                  {!collapsed && <span className="truncate">{it.label}</span>}
-                  {active && !collapsed && (
-                    <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white/40"></div>
-                  )}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+                        }`}
+                      aria-hidden="true"
+                    />
+                    {!collapsed && <span className="truncate">{it.label}</span>}
+                    {active && !collapsed && (
+                      <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white/40"></div>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
 
-      <style jsx global>{`
+        <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;
         }

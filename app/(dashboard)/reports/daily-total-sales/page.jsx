@@ -80,7 +80,7 @@ export default function DailySalesReportPage() {
       render: () => "Sale Invoice",
     },
     {
-      header: "Invoice Date",
+      header: "Date",
       accessor: "saleDate",
       render: (row) => formatDate(row.saleDate),
     },

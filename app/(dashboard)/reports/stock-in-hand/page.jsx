@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useStockInHandReport } from "@/lib/hooks/useReports"
@@ -75,9 +76,21 @@ export default function StockInHandReportPage() {
     {
       header: "Product Code",
       accessor: "productCode",
-      render: (row) => (
-        <span className="font-mono text-xs">{row.productCode || row.sku || "—"}</span>
-      ),
+      render: (row) => {
+        const productCode = row.productCode || row.sku || "—"
+        const productId = row.productId || row._id
+        if (productId && productCode !== "—") {
+          return (
+            <Link
+              href={`/stock/${productId}/packets`}
+              className="font-mono text-xs text-blue-600 hover:text-blue-800 hover:underline"
+            >
+              {productCode}
+            </Link>
+          )
+        }
+        return <span className="font-mono text-xs">{productCode}</span>
+      },
     },
     {
       header: "Product Description",
@@ -169,6 +182,9 @@ export default function StockInHandReportPage() {
     itemsBought: totals.totalBought,
     itemsSold: totals.totalSold,
     currentStock: totals.totalStock,
+    totalValue: totals.totalValue,
+    landedPrice: totals.totalValue,
+    minSellPrice: totals.totalValue,
   }
 
   return (
@@ -188,6 +204,8 @@ export default function StockInHandReportPage() {
         loading={isLoading}
         showTotals={true}
         totalsRow={totalsRow}
+        totalColumns={[{ title: "Total", value: "minSellPrice" }]}
+
       />
     </ReportLayout>
   )

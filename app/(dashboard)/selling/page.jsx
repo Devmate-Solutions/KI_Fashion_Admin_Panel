@@ -311,18 +311,6 @@ export default function SellingPage() {
   }
 
   return (
-<<<<<<< HEAD
-    <div className="space-y-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Selling</h1>
-          <p className="text-sm text-muted-foreground">Manage customer sales and monitor payment status.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <div className="flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1.5">
-            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" aria-hidden="true"></span>
-            <span className="text-muted-foreground">Connected</span>
-=======
     <div className="mx-auto max-w-[1600px] p-4">
       {/* Page header to match other sections */}
       <header className="mb-4">
@@ -332,8 +320,8 @@ export default function SellingPage() {
             <p className="text-sm text-muted-foreground">Manage customer sales and monitor payment status.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <Button 
-              onClick={() => setPaymentModalOpen(true)} 
+            <Button
+              onClick={() => setPaymentModalOpen(true)}
               className="bg-green-600 hover:bg-green-700 text-white text-sm"
               size="sm"
             >
@@ -347,11 +335,7 @@ export default function SellingPage() {
             <span className="rounded-full border border-border px-3 py-1">
               Total: {sellingRows.length || 0}
             </span>
->>>>>>> d237026 (barcode and packet change)
           </div>
-          <span className="rounded-full border border-border bg-muted/50 px-3 py-1.5 text-muted-foreground">
-            Total: {sellingRows.length || 0}
-          </span>
         </div>
       </header>
 

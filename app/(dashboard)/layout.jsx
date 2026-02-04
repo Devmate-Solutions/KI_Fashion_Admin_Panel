@@ -15,7 +15,7 @@ export default function RootLayout({ children }) {
                 <TopBar />
                 <div className="flex min-h-0 flex-1 overflow-hidden">
                     <Sidebar />
-                    <main className="flex-1 min-w-0 overflow-y-auto transition-all duration-300">
+                    <main className="flex-1 min-w-0 overflow-y-auto transition-all duration-300 p-2">
                         {children}
                         <Toaster
                             position="top-right"

@@ -14,6 +14,7 @@ import {
   useUpdatePayment,
   useDeleteSale,
 } from "@/lib/hooks/useSales";
+import CreateSaleReturnModal from "@/components/modals/CreateSaleReturnModal";
 import { useAuthStore } from "@/store/store";
 import {
   Select,
@@ -62,6 +63,7 @@ import {
   FileText,
   Printer,
   AlertCircle,
+  RefreshCcw 
 } from "lucide-react";
 import toast from "react-hot-toast";
 import ProductImageGallery from "@/components/ui/ProductImageGallery";
@@ -123,7 +125,7 @@ export default function SaleDetailPage({ params }) {
   const saleId = id;
   const { data: saleResponse, isLoading } = useSale(saleId);
   const sale = saleResponse?.data || saleResponse;
-  
+
   const updatePaymentMutation = useUpdatePayment();
   const markDeliveredMutation = useMarkDelivered();
   const deleteMutation = useDeleteSale();
@@ -141,6 +143,9 @@ export default function SaleDetailPage({ params }) {
 
   // Delete dialog state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  // Return dialog state
+  const [showReturnModal, setShowReturnModal] = useState(false);
 
   // Calculate totals
   const financials = useMemo(() => {
@@ -299,10 +304,10 @@ export default function SaleDetailPage({ params }) {
             <p className="text-sm text-muted-foreground">
               {sale.saleDate
                 ? new Date(sale.saleDate).toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
                 : "—"}
               {sale.invoiceNumber && ` • Invoice: ${sale.invoiceNumber}`}
             </p>
@@ -560,9 +565,8 @@ export default function SaleDetailPage({ params }) {
                     {sale.items?.map((item, idx) => (
                       <tr
                         key={idx}
-                        className={`border-b border-purple-100 ${
-                          idx % 2 === 0 ? "bg-white" : "bg-purple-50/20"
-                        }`}
+                        className={`border-b border-purple-100 ${idx % 2 === 0 ? "bg-white" : "bg-purple-50/20"
+                          }`}
                       >
                         <td className="p-2">
                           <ProductImageGallery
@@ -655,11 +659,10 @@ export default function SaleDetailPage({ params }) {
                   Remaining Balance
                 </Label>
                 <p
-                  className={`font-bold text-xl ${
-                    (financials?.remainingBalance || 0) > 0
-                      ? "text-red-600"
-                      : "text-green-600"
-                  }`}
+                  className={`font-bold text-xl ${(financials?.remainingBalance || 0) > 0
+                    ? "text-red-600"
+                    : "text-green-600"
+                    }`}
                 >
                   {currency(financials?.remainingBalance || 0)}
                 </p>
@@ -667,15 +670,18 @@ export default function SaleDetailPage({ params }) {
             </div>
           </div>
         </CardContent>
-          <CardFooter className="flex gap-2 flex-wrap border-t border-amber-200 bg-amber-50/30 rounded-b-lg">
-            {sale.paymentStatus !== "paid" && (
-              <Button onClick={() => setShowPaymentDialog(true)} className="bg-green-600 hover:bg-green-700">
-                <Banknote className="h-4 w-4 mr-2" />
-                Add Payment
-              </Button>
-            )}
-            {/* Mark Delivered, View Invoice and Delete Sale buttons hidden for simplified view */}
-          </CardFooter>
+        <CardFooter className="flex gap-2 flex-wrap border-t border-amber-200 bg-amber-50/30 rounded-b-lg">
+          <Button onClick={() => setShowPaymentDialog(true)} className="bg-green-600 hover:bg-green-700">
+            <Banknote className="h-4 w-4 mr-2" />
+            Add Payment
+          </Button>
+
+          <Button onClick={() => setShowReturnModal(true)} variant="outline" className="border-blue-200 text-blue-700 hover:bg-blue-50">
+            <RefreshCcw className="h-4 w-4 mr-2" />
+            Create Return
+          </Button>
+          {/* Mark Delivered, View Invoice and Delete Sale buttons hidden for simplified view */}
+        </CardFooter>
       </Card>
 
       {/* Payment Dialog */}
@@ -854,7 +860,15 @@ export default function SaleDetailPage({ params }) {
             </Button>
           </DialogFooter>
         </DialogContent>
+
       </Dialog>
-    </div>
+
+      {/* Create Return Modal */}
+      <CreateSaleReturnModal
+        open={showReturnModal}
+        onClose={() => setShowReturnModal(false)}
+        sale={sale}
+      />
+    </div >
   );
 }
