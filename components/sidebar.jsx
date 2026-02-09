@@ -24,6 +24,7 @@ import {
   ChevronRight,
   X,
   Menu,
+  RotateCcw,
 } from "lucide-react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 
@@ -33,6 +34,9 @@ const items = [
   { href: "/stock", label: "Stock & Inventory", icon: Boxes },
   { href: "/buying", label: "Buying & Sourcing", icon: ShoppingBag },
   { href: "/selling", label: "Selling", icon: BookUser },
+  { type: "separator", label: "Returns" },
+  { href: "/stock/return", label: "Buying Returns", icon: RotateCcw },
+  { href: "/selling/return", label: "Sale Returns", icon: RotateCcw },
   { type: "separator", label: "Finance & Accounts" },
   // { href: "/cash-tracking", label: "Cash Tracking", icon: Wallet },
   { href: "/expenses", label: "Expenses", icon: FileText },

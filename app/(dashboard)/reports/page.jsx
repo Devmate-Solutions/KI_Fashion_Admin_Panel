@@ -14,6 +14,7 @@ import {
   FileText,
   DollarSign,
   CreditCard,
+  PackageSearch,
 } from "lucide-react"
 
 const reportCategories = [
@@ -108,6 +109,13 @@ const reportCategories = [
         href: "/reports/stock-in-hand",
         icon: Boxes,
         color: "text-emerald-600 bg-emerald-50",
+      },
+      {
+        name: "Packet Reconciliation",
+        description: "Compare inventory vs packet stock to find discrepancies",
+        href: "/reports/packet-reconciliation",
+        icon: PackageSearch,
+        color: "text-amber-600 bg-amber-50",
       },
       {
         name: "Daily Activity Report",

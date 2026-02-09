@@ -12,7 +12,7 @@ import { useBuyers } from "@/lib/hooks/useBuyers"
 import SaleReturnDetailModal from "@/components/modals/SaleReturnDetailModal"
 import CustomerPaymentModal from "@/components/modals/CustomerPaymentModal"
 import ProductImageGallery from "@/components/ui/ProductImageGallery"
-import { Plus } from "lucide-react"
+import { Plus, RotateCcw } from "lucide-react"
 
 // Helper to get image array from various sources
 const getImageArray = (item) => {
@@ -358,19 +358,29 @@ export default function SellingPage() {
               </div>
             ),
           },
-          /* {
-            label: "Returns",
+          {
+            label: "Sale Returns",
             content: (
               <div className="space-y-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold">Return History</h2>
+                  <Button
+                    onClick={() => router.push('/selling/return')}
+                    className="bg-rose-600 hover:bg-rose-700"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Create Sale Return
+                  </Button>
+                </div>
                 <DataTable
-                  title="Sale Returns"
+                  title="Return History"
                   columns={salesReturnColumns}
                   data={salesReturnRows}
                   loading={salesReturnLoading}
                 />
               </div>
             ),
-          }, */
+          },
         ]}
       />
 

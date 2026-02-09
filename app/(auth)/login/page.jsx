@@ -62,7 +62,6 @@ function LoginFormInner() {
 
   // Handle form submission
   const onSubmit = async (data) => {
-    console.log("Form submitted with data:", data); // Debug log
     setError(null);
 
     try {
