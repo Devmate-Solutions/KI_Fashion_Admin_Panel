@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,81 +13,58 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Package, Trash2, Search, ChevronDown, X } from "lucide-react";
-import { suppliersAPI } from "@/lib/api/endpoints/suppliers";
+import { Loader2, Package, Trash2, Search } from "lucide-react";
 import { returnsAPI } from "@/lib/api/endpoints/returns";
 import { dispatchOrdersAPI } from "@/lib/api/endpoints/dispatchOrders";
 import { useCreateProductReturn } from "@/lib/hooks/useReturns";
 import toast from "react-hot-toast";
-import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function BuyingReturnModal({ open, onClose, onSuccess }) {
-  const [suppliers, setSuppliers] = useState([]);
-  const [loadingSuppliers, setLoadingSuppliers] = useState(true);
-  const [selectedSupplierId, setSelectedSupplierId] = useState("");
-  const [products, setProducts] = useState([]);
-  const [loadingProducts, setLoadingProducts] = useState(false);
+  // Universal search states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [loadingSearch, setLoadingSearch] = useState(false);
+  const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
+  
+  // Selected items and form states
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [notes, setNotes] = useState("");
   const [validationError, setValidationError] = useState(null);
 
-  // Search and dropdown states
-  const [supplierSearch, setSupplierSearch] = useState("");
-  const [supplierDropdownOpen, setSupplierDropdownOpen] = useState(false);
-  const [productSearch, setProductSearch] = useState("");
-  const [productDropdownOpen, setProductDropdownOpen] = useState(false);
-
   const createReturnMutation = useCreateProductReturn();
 
-  // Load suppliers
+  // Debounced universal search
   useEffect(() => {
     if (!open) return;
-
-    const loadSuppliers = async () => {
-      try {
-        setLoadingSuppliers(true);
-        const response = await suppliersAPI.getAll();
-        const suppliersList = response.data?.data || response.data || [];
-        setSuppliers(suppliersList);
-      } catch (error) {
-        console.error("Error loading suppliers:", error);
-        toast.error("Failed to load suppliers");
-      } finally {
-        setLoadingSuppliers(false);
-      }
-    };
-
-    loadSuppliers();
-  }, [open]);
-
-  // Load products when supplier changes
-  useEffect(() => {
-    if (!selectedSupplierId) {
-      setProducts([]);
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      setSearchResults([]);
       return;
     }
 
-    const loadProducts = async () => {
+    const searchTimeout = setTimeout(async () => {
       try {
-        setLoadingProducts(true);
-        const response = await returnsAPI.getProductsForReturn({
-          supplierId: selectedSupplierId,
-          search: "",
-        });
-        const productsList = response.data?.data || response.data || [];
-        setProducts(productsList);
+        setLoadingSearch(true);
+        const response = await returnsAPI.universalSearch(searchQuery.trim(), 30);
+        const data = response.data || {};
+        
+        // Combine packets and products into unified results
+        const packets = (data.packets || []).map(p => ({ ...p, resultType: 'packet' }));
+        const products = (data.products || []).map(p => ({ ...p, resultType: 'product' }));
+        const combined = [...packets, ...products];
+        
+        setSearchResults(combined);
       } catch (error) {
-        console.error("Error loading products:", error);
-        toast.error("Failed to load products");
-        setProducts([]);
+        console.error("Error searching:", error);
+        toast.error("Search failed");
+        setSearchResults([]);
       } finally {
-        setLoadingProducts(false);
+        setLoadingSearch(false);
       }
-    };
+    }, 300); // 300ms debounce
 
-    loadProducts();
-  }, [selectedSupplierId]);
+    return () => clearTimeout(searchTimeout);
+  }, [searchQuery, open]);
 
   // Show validation error toast when validationError changes
   useEffect(() => {
@@ -97,165 +74,115 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
     }
   }, [validationError]);
 
-  // Get selected supplier
-  const selectedSupplier = useMemo(() => {
-    return suppliers.find((s) => s._id === selectedSupplierId);
-  }, [suppliers, selectedSupplierId]);
-
-  // Filter suppliers based on search
-  const filteredSuppliers = useMemo(() => {
-    if (!supplierSearch.trim()) return suppliers;
-    const query = supplierSearch.toLowerCase();
-    return suppliers.filter(
-      (s) =>
-        (s.name || "").toLowerCase().includes(query) ||
-        (s.company || "").toLowerCase().includes(query) ||
-        (s.email || "").toLowerCase().includes(query)
-    );
-  }, [suppliers, supplierSearch]);
-
-  // Flatten product options with batch info
-  const productOptions = useMemo(() => {
-    const options = [];
-
-    products.forEach((product) => {
-      if (!product.batches || product.batches.length === 0) return;
-
-      product.batches.forEach((batch) => {
-        const dateStr = batch.confirmedAt
-          ? new Date(batch.confirmedAt).toLocaleDateString()
-          : "Unknown Date";
-        const orderNumber = batch.orderNumber || "Manual Entry";
-
-        options.push({
-          id: `${product._id}|${batch.batchId}`,
-          productId: product._id,
-          batchId: batch.batchId,
-          productName: product.name,
-          productCode: product.productCode || product.sku || "",
-          orderNumber: orderNumber,
-          dateStr: dateStr,
-          dispatchOrderId: batch.dispatchOrderId,
-          remainingQuantity: batch.remainingQuantity,
-          costPrice: batch.costPrice || 0,
-        });
-      });
-    });
-
-    return options;
-  }, [products]);
-
-  // Filter product options based on search and already selected products
-  const filteredProductOptions = useMemo(() => {
-    let options = productOptions;
-
-    // If products are already selected, only show from the same dispatch order
-    if (selectedProducts.length > 0) {
-      const lockedOrderId = selectedProducts[0].dispatchOrderId;
-      options = options.filter((opt) => opt.dispatchOrderId === lockedOrderId);
-    }
-
-    // Filter by search query
-    if (productSearch.trim()) {
-      const query = productSearch.toLowerCase();
-      options = options.filter(
-        (opt) =>
-          opt.productName.toLowerCase().includes(query) ||
-          opt.productCode.toLowerCase().includes(query) ||
-          opt.orderNumber.toLowerCase().includes(query)
-      );
-    }
-
-    // Filter out already selected products
-    options = options.filter((opt) => {
-      return !selectedProducts.some(
-        (p) => p.productId === opt.productId && p.batchId === opt.batchId
-      );
-    });
-
-    return options;
-  }, [productOptions, selectedProducts, productSearch]);
-
   // Reset form when modal closes
   useEffect(() => {
     if (!open) {
-      setSelectedSupplierId("");
-      setProducts([]);
+      setSearchQuery("");
+      setSearchResults([]);
       setSelectedProducts([]);
       setNotes("");
-      setSupplierSearch("");
-      setProductSearch("");
-      setSupplierDropdownOpen(false);
-      setProductDropdownOpen(false);
+      setSearchDropdownOpen(false);
     }
   }, [open]);
 
-  // Reset selected products when supplier changes
-  useEffect(() => {
-    setSelectedProducts([]);
-    setProductSearch("");
-  }, [selectedSupplierId]);
+  const addProductToReturn = (result) => {
+    // For packet type results
+    if (result.resultType === 'packet') {
+      const uniqueId = `packet_${result._id}`;
+      
+      if (selectedProducts.some((p) => p.uniqueId === uniqueId)) {
+        toast.error("Item already added");
+        return;
+      }
 
-  const selectSupplier = (supplier) => {
-    setSelectedSupplierId(supplier._id);
-    setSupplierSearch("");
-    setSupplierDropdownOpen(false);
-  };
+      // Extract dispatch order if available (packets may not always have DO)
+      const dispatchOrderId = result.dispatchOrderId || null;
+      
+      if (selectedProducts.length > 0 && selectedProducts[0].dispatchOrderId !== dispatchOrderId) {
+        toast.error("You can only return items from one Dispatch Order at a time.");
+        return;
+      }
 
-  const clearSupplier = () => {
-    setSelectedSupplierId("");
-    setSupplierSearch("");
-  };
+      setSelectedProducts((prev) => [
+        ...prev,
+        {
+          uniqueId,
+          returnType: 'packet',
+          packetStockId: result._id,
+          barcode: result.barcode,
+          productId: result.productId,
+          supplierId: result.supplierId,
+          supplierName: result.supplierName,
+          dispatchOrderId,
+          orderNumber: dispatchOrderId ? "Via Dispatch" : "Packet Stock",
+          productName: result.productName,
+          productCode: result.productCode,
+          currentStock: result.availablePackets,
+          costPrice: result.isLoose ? result.pricePerItem : result.costPricePerPacket,
+          isLoose: result.isLoose,
+          totalItemsPerPacket: result.totalItemsPerPacket,
+          quantity: 1,
+          reason: "",
+        },
+      ]);
+    } 
+    // For product type results
+    else if (result.resultType === 'product') {
+      // For product returns, we need to handle batches
+      // We'll use the first available batch for simplicity
+      const batch = result.batches && result.batches.length > 0 ? result.batches[0] : null;
+      
+      if (!batch) {
+        toast.error("No available batches for this product");
+        return;
+      }
 
-  const addProductToReturn = (option) => {
-    if (
-      selectedProducts.some(
-        (p) => p.productId === option.productId && p.batchId === option.batchId
-      )
-    ) {
-      toast.error("Item already added");
-      return;
+      const uniqueId = `product_${result.productId}_${batch.batchId || 'default'}`;
+      
+      if (selectedProducts.some((p) => p.uniqueId === uniqueId)) {
+        toast.error("Item already added");
+        return;
+      }
+
+      const dispatchOrderId = batch.dispatchOrderId || null;
+      
+      if (selectedProducts.length > 0 && selectedProducts[0].dispatchOrderId !== dispatchOrderId) {
+        toast.error("You can only return items from one Dispatch Order at a time.");
+        return;
+      }
+
+      setSelectedProducts((prev) => [
+        ...prev,
+        {
+          uniqueId,
+          returnType: 'product',
+          productId: result.productId,
+          batchId: batch.batchId,
+          supplierId: result.supplierId,
+          supplierName: result.supplierName,
+          dispatchOrderId,
+          orderNumber: batch.orderNumber || "Manual Entry",
+          productName: result.productName,
+          productCode: result.productCode,
+          currentStock: batch.remainingQuantity || result.availableStock,
+          costPrice: batch.costPrice || result.averageCostPrice || 0,
+          quantity: 1,
+          reason: "",
+        },
+      ]);
     }
 
-    if (
-      selectedProducts.length > 0 &&
-      selectedProducts[0].dispatchOrderId !== option.dispatchOrderId
-    ) {
-      toast.error(
-        "You can only return items from one Dispatch Order at a time."
-      );
-      return;
-    }
-
-    setSelectedProducts((prev) => [
-      ...prev,
-      {
-        productId: option.productId,
-        batchId: option.batchId,
-        dispatchOrderId: option.dispatchOrderId,
-        orderNumber: option.orderNumber,
-        productName: option.productName,
-        productCode: option.productCode,
-        currentStock: option.remainingQuantity,
-        costPrice: option.costPrice,
-        quantity: 1,
-        reason: "",
-      },
-    ]);
-
-    setProductSearch("");
-    setProductDropdownOpen(false);
+    setSearchQuery("");
+    setSearchDropdownOpen(false);
   };
 
-  const updateProduct = (productId, batchId, field, value, allowZero = false) => {
+  const updateProduct = (uniqueId, field, value, allowZero = false) => {
     // Validate BEFORE updating state to avoid calling toast during render
     if (field === "quantity") {
       const numValue = Number(value);
 
       // Validate using current state (read, don't update yet)
-      const product = selectedProducts.find(
-        (p) => p.productId === productId && p.batchId === batchId
-      );
+      const product = selectedProducts.find((p) => p.uniqueId === uniqueId);
 
       if (product) {
         if (numValue > product.currentStock) {
@@ -275,16 +202,14 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
     // Update state only if validation passes (or for non-quantity fields)
     setSelectedProducts((prev) =>
       prev.map((p) => {
-        if (p.productId !== productId || p.batchId !== batchId) return p;
+        if (p.uniqueId !== uniqueId) return p;
         return { ...p, [field]: value };
       })
     );
   };
 
-  const removeProduct = (productId, batchId) => {
-    setSelectedProducts((prev) =>
-      prev.filter((p) => !(p.productId === productId && p.batchId === batchId))
-    );
+  const removeProduct = (uniqueId) => {
+    setSelectedProducts((prev) => prev.filter((p) => p.uniqueId !== uniqueId));
   };
 
   const calculateTotal = () => {
@@ -295,13 +220,16 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
   };
 
   const handleSubmit = async () => {
-    if (!selectedSupplierId) {
-      toast.error("Please select a supplier");
+    if (selectedProducts.length === 0) {
+      toast.error("Please add at least one product");
       return;
     }
 
-    if (selectedProducts.length === 0) {
-      toast.error("Please add at least one product");
+    // Extract supplierId from first selected product
+    const supplierId = selectedProducts[0]?.supplierId;
+    
+    if (!supplierId) {
+      toast.error("Invalid supplier information");
       return;
     }
 
@@ -325,7 +253,7 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
       } else {
         // Fallback to product-level return if no dispatch order ID (legacy/manual data without DO)
         const payload = {
-          supplierId: selectedSupplierId,
+          supplierId: supplierId,
           items: selectedProducts.map((p) => ({
             productId: p.productId,
             batchId: p.batchId,
@@ -361,76 +289,81 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Supplier Selection - Simple Searchable Dropdown */}
+          {/* Universal Search - Search by supplier, product name, SKU, code, or barcode */}
           <div className="space-y-2">
-            <Label className="text-base font-medium">Supplier *</Label>
+            <Label className="text-base font-medium">Search Products to Return</Label>
             <div className="relative">
-              {selectedSupplier ? (
-                // Selected supplier display
-                <div className="flex items-center justify-between h-11 px-3 border rounded-md bg-muted/30">
-                  <span className="font-medium">
-                    {selectedSupplier.name || selectedSupplier.company}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearSupplier}
-                    className="h-7 w-7 p-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                // Search input
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder={
-                      loadingSuppliers
-                        ? "Loading suppliers..."
-                        : "Search suppliers by name..."
-                    }
-                    value={supplierSearch}
-                    onChange={(e) => {
-                      setSupplierSearch(e.target.value);
-                      setSupplierDropdownOpen(true);
-                    }}
-                    onFocus={() => setSupplierDropdownOpen(true)}
-                    disabled={loadingSuppliers}
-                    className="pl-9 h-11"
-                  />
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                </div>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by supplier name, product name, SKU, code, or barcode..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (e.target.value.trim().length >= 2) {
+                    setSearchDropdownOpen(true);
+                  }
+                }}
+                onFocus={() => {
+                  if (searchQuery.trim().length >= 2) {
+                    setSearchDropdownOpen(true);
+                  }
+                }}
+                className="pl-9 h-11"
+              />
+              {loadingSearch && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
               )}
 
-              {/* Supplier dropdown */}
-              {supplierDropdownOpen && !selectedSupplier && (
+              {/* Search results dropdown */}
+              {searchDropdownOpen && searchQuery.trim().length >= 2 && (
                 <div className="absolute z-50 w-full mt-1 bg-white dark:bg-zinc-900 border rounded-md shadow-lg">
-                  <ScrollArea className="max-h-[250px]">
-                    {filteredSuppliers.length === 0 ? (
-                      <div className="p-3 text-sm text-muted-foreground text-center">
-                        {suppliers.length === 0
-                          ? "No suppliers available"
-                          : "No suppliers match your search"}
+                  <ScrollArea className="max-h-[350px]">
+                    {loadingSearch ? (
+                      <div className="p-4 text-sm text-muted-foreground text-center">
+                        <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
+                        Searching...
+                      </div>
+                    ) : searchResults.length === 0 ? (
+                      <div className="p-4 text-sm text-muted-foreground text-center">
+                        No products found matching "{searchQuery}"
                       </div>
                     ) : (
                       <div className="py-1">
-                        {filteredSuppliers.map((supplier) => (
+                        {searchResults.map((result) => (
                           <button
-                            key={supplier._id}
+                            key={result._id}
                             type="button"
-                            onClick={() => selectSupplier(supplier)}
-                            className="w-full px-3 py-2 text-left hover:bg-accent transition-colors flex flex-col"
+                            onClick={() => addProductToReturn(result)}
+                            className="w-full px-3 py-2.5 text-left hover:bg-accent transition-colors border-b last:border-b-0"
                           >
-                            <span className="font-medium">
-                              {supplier.name || supplier.company || "Unknown"}
-                            </span>
-                            {supplier.email && (
-                              <span className="text-xs text-muted-foreground">
-                                {supplier.email}
-                              </span>
-                            )}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-sm truncate">
+                                  {result.productName}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-0.5">
+                                  {result.productCode && (
+                                    <span>Code: {result.productCode}</span>
+                                  )}
+                                  {result.barcode && (
+                                    <span className="ml-2">
+                                      Barcode: {result.barcode}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-0.5">
+                                  Supplier: <span className="font-medium">{result.supplierName}</span>
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-1 shrink-0">
+                                <Badge variant="outline" className="text-[10px]">
+                                  {result.resultType === 'packet' ? 'PACKET' : 'PRODUCT'}
+                                </Badge>
+                                <div className="text-xs text-muted-foreground">
+                                  Stock: {result.availablePackets || result.availableStock || 0}
+                                </div>
+                              </div>
+                            </div>
                           </button>
                         ))}
                       </div>
@@ -439,100 +372,29 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
                 </div>
               )}
             </div>
+            
             {/* Click outside to close */}
-            {supplierDropdownOpen && (
+            {searchDropdownOpen && (
               <div
                 className="fixed inset-0 z-40"
-                onClick={() => setSupplierDropdownOpen(false)}
+                onClick={() => setSearchDropdownOpen(false)}
               />
             )}
+
+            {/* Info message when items are selected */}
+            {selectedProducts.length > 0 && selectedProducts[0].dispatchOrderId && (
+              <p className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-md border border-amber-200">
+                ★ Restricted to Order: <strong>{selectedProducts[0].orderNumber}</strong> — 
+                Clear table to select from a different order
+              </p>
+            )}
+            
+            {selectedProducts.length > 0 && selectedProducts[0].supplierName && (
+              <p className="text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-md border border-blue-200">
+                Supplier: <strong>{selectedProducts[0].supplierName}</strong>
+              </p>
+            )}
           </div>
-
-          {/* Product Selection - Simple Searchable Dropdown */}
-          {selectedSupplierId && (
-            <div className="space-y-2">
-              <Label className="text-base font-medium">Add Product</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder={
-                    loadingProducts
-                      ? "Loading products..."
-                      : "Search products by name, code, or order..."
-                  }
-                  value={productSearch}
-                  onChange={(e) => {
-                    setProductSearch(e.target.value);
-                    setProductDropdownOpen(true);
-                  }}
-                  onFocus={() => setProductDropdownOpen(true)}
-                  disabled={loadingProducts}
-                  className="pl-9 h-11"
-                />
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-
-                {/* Product dropdown */}
-                {productDropdownOpen && (
-                  <div className="absolute z-50 w-full mt-1 bg-white dark:bg-zinc-900 border rounded-md shadow-lg">
-                    <ScrollArea className="max-h-[300px]">
-                      {filteredProductOptions.length === 0 ? (
-                        <div className="p-3 text-sm text-muted-foreground text-center">
-                          {products.length === 0
-                            ? "No products available for returns from this supplier"
-                            : productSearch
-                              ? "No products match your search"
-                              : "All available products have been added"}
-                        </div>
-                      ) : (
-                        <div className="py-1">
-                          {filteredProductOptions.map((option) => (
-                            <button
-                              key={option.id}
-                              type="button"
-                              onClick={() => addProductToReturn(option)}
-                              className="w-full px-3 py-2.5 text-left hover:bg-accent transition-colors border-b last:border-b-0"
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium text-sm">
-                                  {option.productName}
-                                </span>
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] ml-2"
-                                >
-                                  {option.orderNumber}
-                                </Badge>
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-1">
-                                Code: {option.productCode || "—"} | Qty:{" "}
-                                {option.remainingQuantity} | Cost:{" "}
-                                {option.costPrice?.toFixed(2)}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </ScrollArea>
-                  </div>
-                )}
-              </div>
-              {/* Click outside to close */}
-              {productDropdownOpen && (
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setProductDropdownOpen(false)}
-                />
-              )}
-
-              {selectedProducts.length > 0 && (
-                <p className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-md border border-amber-200">
-                  ★ Restricted to Order:{" "}
-                  <strong>{selectedProducts[0].orderNumber}</strong> — Clear
-                  table to select a different order
-                </p>
-              )}
-            </div>
-          )}
 
           {/* Selected Products Table */}
           {selectedProducts.length > 0 && (
@@ -555,7 +417,7 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
                 <tbody>
                   {selectedProducts.map((product) => (
                     <tr
-                      key={`${product.productId}-${product.batchId}`}
+                      key={product.uniqueId}
                       className="border-t hover:bg-muted/30"
                     >
                       <td className="p-3">
@@ -565,6 +427,9 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {product.productCode}
+                            {product.barcode && (
+                              <span className="ml-2">• Barcode: {product.barcode}</span>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -588,8 +453,7 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
                             // Allow empty string temporarily while user is typing
                             if (value === "") {
                               updateProduct(
-                                product.productId,
-                                product.batchId,
+                                product.uniqueId,
                                 "quantity",
                                 0,
                                 true // Allow 0 temporarily
@@ -600,8 +464,7 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
                             const sanitized = value.replace(/[^0-9]/g, "");
                             if (sanitized === "") {
                               updateProduct(
-                                product.productId,
-                                product.batchId,
+                                product.uniqueId,
                                 "quantity",
                                 0,
                                 true // Allow 0 temporarily
@@ -610,8 +473,7 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
                             }
                             const numValue = Number(sanitized);
                             updateProduct(
-                              product.productId,
-                              product.batchId,
+                              product.uniqueId,
                               "quantity",
                               numValue,
                               false // Validate normally for typed numbers
@@ -623,8 +485,7 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
                             // If empty or invalid, set to 1
                             if (!value || isNaN(numValue) || numValue < 1) {
                               updateProduct(
-                                product.productId,
-                                product.batchId,
+                                product.uniqueId,
                                 "quantity",
                                 1,
                                 false // Don't allow 0 on blur
@@ -645,9 +506,7 @@ export default function BuyingReturnModal({ open, onClose, onSuccess }) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() =>
-                            removeProduct(product.productId, product.batchId)
-                          }
+                          onClick={() => removeProduct(product.uniqueId)}
                           className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                         >
                           <Trash2 className="h-4 w-4" />
