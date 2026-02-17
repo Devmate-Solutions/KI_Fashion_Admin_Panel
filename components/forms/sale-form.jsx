@@ -686,9 +686,9 @@ export default function SaleForm({ onSave }) {
       )}
 
       {/* Section 1: Selling Details - Enhanced Design */}
-      <section className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+      <section className="rounded-lg border border-border bg-card shadow-sm overflow-visible">
         {/* Header */}
-        <div className="flex items-center gap-3 px-6 py-4 bg-muted/30 border-b border-border">
+        <div className="flex items-center gap-3 px-6 py-4 bg-muted/30 border-b border-border rounded-t-lg">
           <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
             <Tag className="h-5 w-5 text-primary" />
           </div>
@@ -699,7 +699,7 @@ export default function SaleForm({ onSave }) {
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6 overflow-visible">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Sale Date */}
             <div className="space-y-2">

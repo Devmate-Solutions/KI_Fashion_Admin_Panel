@@ -19,9 +19,9 @@ const getImageArray = (item) => {
   return [];
 };
 
-function currency(n) {
+function formatNumber(n) {
   const num = Number(n || 0)
-  return `£${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 export default function ReturnDetailModal({ open, onClose, returnId, returnData }) {
@@ -97,23 +97,30 @@ export default function ReturnDetailModal({ open, onClose, returnId, returnData 
             <div>
               <p className="text-sm text-muted-foreground">Total Return Value</p>
               <p className="text-lg font-semibold">
-                {currency(returnInfo.totalReturnValue || 0)}
+                {formatNumber(returnInfo.totalReturnValue || 0)}
               </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Dispatch Order</p>
-              {returnInfo.dispatchOrder?._id ? (
-                <a
-                  href={`/dispatch-orders/${returnInfo.dispatchOrder._id}`}
-                  className="text-blue-600 hover:underline font-medium"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    router.push(`/dispatch-orders/${returnInfo.dispatchOrder._id}`)
-                    onClose()
-                  }}
-                >
-                  {returnInfo.dispatchOrder?.orderNumber || "View Order →"}
-                </a>
+              {returnInfo.dispatchOrder?.orderNumber || returnInfo.dispatchOrder?._id ? (
+                <div className="flex flex-col gap-1">
+                  <p className="font-medium">
+                    {returnInfo.dispatchOrder?.orderNumber || "—"}
+                  </p>
+                  {returnInfo.dispatchOrder?._id && (
+                    <a
+                      href={`/dispatch-orders/${returnInfo.dispatchOrder._id}`}
+                      className="text-xs text-blue-600 hover:underline"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        router.push(`/dispatch-orders/${returnInfo.dispatchOrder._id}`)
+                        onClose()
+                      }}
+                    >
+                      View Order →
+                    </a>
+                  )}
+                </div>
               ) : (
                 <p className="font-medium">—</p>
               )}
@@ -133,7 +140,6 @@ export default function ReturnDetailModal({ open, onClose, returnId, returnData 
                     <th className="text-right p-3 font-medium">Original Qty</th>
                     <th className="text-right p-3 font-medium">Returned Qty</th>
                     <th className="text-right p-3 font-medium">Cost Price</th>
-                    <th className="text-right p-3 font-medium">Landed Price</th>
                     <th className="text-right p-3 font-medium">Line Total</th>
                     <th className="text-left p-3 font-medium">Reason</th>
                   </tr>
@@ -141,7 +147,7 @@ export default function ReturnDetailModal({ open, onClose, returnId, returnData 
                 <tbody>
                   {returnInfo.items && returnInfo.items.length > 0 ? (
                     returnInfo.items.map((item, idx) => {
-                      const lineTotal = (item.landedPrice || item.costPrice || 0) * (item.returnedQuantity || 0)
+                      const lineTotal = (item.costPrice || 0) * (item.returnedQuantity || 0)
                       // Get product from dispatchOrder items using itemIndex
                       const dispatchOrderItem = returnInfo.dispatchOrder?.items?.[item.itemIndex];
                       const product = dispatchOrderItem?.product || item.product || null;
@@ -164,19 +170,18 @@ export default function ReturnDetailModal({ open, onClose, returnId, returnData 
                               <div className="text-xs text-muted-foreground">{item.product.sku}</div>
                             )}
                           </td>
-                          <td className="p-3">{item.itemIndex}</td>
+                          <td className="p-3">{item.itemIndex ?? "—"}</td>
                           <td className="p-3 text-right tabular-nums">{item.originalQuantity || 0}</td>
                           <td className="p-3 text-right tabular-nums font-medium">{item.returnedQuantity || 0}</td>
-                          <td className="p-3 text-right tabular-nums">{currency(item.costPrice || 0)}</td>
-                          <td className="p-3 text-right tabular-nums">{currency(item.landedPrice || item.costPrice || 0)}</td>
-                          <td className="p-3 text-right tabular-nums font-medium">{currency(lineTotal)}</td>
+                          <td className="p-3 text-right tabular-nums">{formatNumber(item.costPrice || 0)}</td>
+                          <td className="p-3 text-right tabular-nums font-medium">{formatNumber(lineTotal)}</td>
                           <td className="p-3 text-muted-foreground">{item.reason || "—"}</td>
                         </tr>
                       )
                     })
                   ) : (
                     <tr>
-                      <td colSpan={9} className="p-4 text-center text-muted-foreground">
+                      <td colSpan={8} className="p-4 text-center text-muted-foreground">
                         No items returned
                       </td>
                     </tr>

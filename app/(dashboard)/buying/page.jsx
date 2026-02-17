@@ -539,7 +539,7 @@ export default function BuyingPage() {
   }
 
   // Buying Return
-  const { data: returnsData, isLoading: returnsLoading } = useReturns()
+  const { data: returnsData, isLoading: returnsLoading, refetch: refetchReturns } = useReturns({ limit: 100 })
   const buyingReturnRows = returnsData || []
 
   const buyingReturnColumns = useMemo(
@@ -557,11 +557,26 @@ export default function BuyingPage() {
         header: "Buying Date",
         accessor: "dispatchOrder.purchaseDate",
         render: (r) => {
-          // Prioritize purchaseDate, then createdAt, then dispatchDate
-          const dateValue = r.dispatchOrder?.purchaseDate ||
+          // First try dispatch order dates
+          let dateValue = r.dispatchOrder?.purchaseDate ||
             r.dispatchOrder?.createdAt ||
-            r.dispatchOrder?.dispatchDate ||
-            r.dispatchOrder?.confirmedAt
+            r.dispatchOrder?.confirmedAt ||
+            r.dispatchOrder?.dispatchDate;
+          
+          // Fallback to batch deduction dates if no dispatch order
+          if (!dateValue && r.items?.[0]?.batchDeductions?.[0]) {
+            // Use the date from first batch deduction
+            const firstBatch = r.items[0].batchDeductions[0];
+            if (firstBatch.createdAt) {
+              dateValue = firstBatch.createdAt;
+            }
+          }
+          
+          // Last resort: use return date
+          if (!dateValue) {
+            dateValue = r.returnedAt;
+          }
+          
           return (
             <span>
               {dateValue ? new Date(dateValue).toLocaleDateString('en-GB') : "—"}
@@ -592,29 +607,6 @@ export default function BuyingPage() {
           <span className="tabular-nums font-medium">
             {currency(r.totalReturnValue || 0)}
           </span>
-        ),
-      },
-      {
-        header: "Dispatch Order",
-        accessor: "dispatchOrder",
-        render: (r) => (
-          <div className="flex flex-col">
-            <span className="font-medium text-sm">
-              {r.dispatchOrder?.orderNumber || "—"}
-            </span>
-            {r.dispatchOrder?._id && (
-              <a
-                href={`/dispatch-orders/${r.dispatchOrder._id}`}
-                className="text-xs text-blue-600 hover:underline mt-1"
-                onClick={(e) => {
-                  e.preventDefault()
-                  router.push(`/dispatch-orders/${r.dispatchOrder._id}`)
-                }}
-              >
-                View Order →
-              </a>
-            )}
-          </div>
         ),
       },
     ],
@@ -733,6 +725,7 @@ export default function BuyingPage() {
                   columns={buyingReturnColumns}
                   data={buyingReturnRows}
                   loading={returnsLoading}
+                  onRowClick={(row) => setSelectedReturn(row)}
                 />
               </div>
             ),
@@ -754,7 +747,7 @@ export default function BuyingPage() {
         onClose={() => setShowReturnModal(false)}
         onSuccess={() => {
           setShowReturnModal(false)
-          // TODO: Add refetch/refresh logic for returns data
+          refetchReturns() // Refresh the returns list
         }}
       />
 
