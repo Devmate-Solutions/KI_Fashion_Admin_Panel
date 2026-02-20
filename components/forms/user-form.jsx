@@ -211,7 +211,7 @@ export function UserForm({ open, onClose, onSubmit, initialData = null, loading 
                 <SelectItem value="employee">Employee</SelectItem>
                 <SelectItem value="accountant">Accountant</SelectItem>
                 <SelectItem value="supplier">Supplier</SelectItem>
-                <SelectItem value="distributor">Distributor</SelectItem>
+                <SelectItem value="distributor">Buyer</SelectItem>
               </SelectContent>
             </Select>
           </div>

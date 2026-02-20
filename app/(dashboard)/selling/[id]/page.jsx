@@ -347,7 +347,7 @@ export default function SaleDetailPage({ params }) {
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-blue-600" />
               <span className="font-semibold text-blue-900">
-                Customer Information
+                Buyer Information
               </span>
               {customer?.type === "manual" && (
                 <Badge className="bg-blue-500/15 text-blue-600 border-blue-200 text-xs ml-2">
@@ -360,7 +360,7 @@ export default function SaleDetailPage({ params }) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
               <div>
                 <Label className="text-xs text-muted-foreground">
-                  Customer Name
+                  Buyer Name
                 </Label>
                 <p className="font-medium text-sm">{customer?.name || "—"}</p>
               </div>
@@ -827,7 +827,7 @@ export default function SaleDetailPage({ params }) {
               </span>
             </p>
             <p className="text-sm text-muted-foreground">
-              Customer:{" "}
+              Buyer:{" "}
               <span className="font-medium text-foreground">
                 {customer?.name}
               </span>

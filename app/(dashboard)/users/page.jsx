@@ -442,13 +442,13 @@ export default function UsersPage() {
       )
     },
     {
-      label: "Distributors",
+      label: "Buyers",
       content: (
         <div className="space-y-4">
           <div className="flex justify-end">
             <Button onClick={() => setOpenAddForm(true)}>
               <Plus className="w-4 h-4 mr-2" />
-              Create Distributor
+              Create Buyer
             </Button>
           </div>
           <DataTable

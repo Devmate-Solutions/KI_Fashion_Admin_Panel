@@ -146,10 +146,10 @@ export function DistributorForm({ open, onClose, onSubmit, initialData = null, l
             </div>
             <div>
               <DialogTitle className="text-xl font-semibold">
-                {initialData ? 'Edit Distributor' : 'Add New Distributor'}
+                {initialData ? 'Edit Buyer' : 'Add New Buyer'}
               </DialogTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                {initialData ? 'Update distributor information and contact details' : 'Create a new distributor account with company details'}
+                {initialData ? 'Update buyer information and contact details' : 'Create a new buyer account with company details'}
               </p>
             </div>
           </div>
@@ -164,7 +164,7 @@ export function DistributorForm({ open, onClose, onSubmit, initialData = null, l
                 value={formData.name}
                 onChange={(e) => handleChange('name', e.target.value)}
                 className={`h-11 ${errors.name ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
-                placeholder="Enter distributor name"
+                placeholder="Enter buyer name"
               />
               {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
             </div>
@@ -294,7 +294,7 @@ export function DistributorForm({ open, onClose, onSubmit, initialData = null, l
                 Saving...
               </>
             ) : (
-              initialData ? 'Update Distributor' : 'Create Distributor'
+              initialData ? 'Update Buyer' : 'Create Buyer'
             )}
           </Button>
         </DialogFooter>

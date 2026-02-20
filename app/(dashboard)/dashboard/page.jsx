@@ -53,7 +53,7 @@ export default function HomePage() {
       ),
     },
     {
-      label: "Sales by Customer",
+      label: "Sales by Buyer",
       content: (
         <div className="rounded-[4px] border border-border p-4">
           <ol className="text-sm space-y-2">

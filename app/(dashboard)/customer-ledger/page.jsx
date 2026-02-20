@@ -639,7 +639,7 @@ export default function CustomerLedgerPage() {
     // Add Customer column when viewing all customers
     if (selectedBuyerId === 'all') {
       baseColumns.push({
-        header: "Customer",
+        header: "Buyer",
         accessor: "customerName",
         render: (row) => (
           <span className="font-medium">{row.customerName}</span>
@@ -1143,7 +1143,7 @@ export default function CustomerLedgerPage() {
       <Tabs
         tabs={[
           {
-            label: "Customer Ledger",
+            label: "Buyer Ledger",
             content: (
               <div className="space-y-6">
                 {/* Filters */}
@@ -1159,8 +1159,8 @@ export default function CustomerLedgerPage() {
                         options={comboboxOptions}
                         value={selectedBuyerId}
                         onValueChange={setSelectedBuyerId}
-                        placeholder="Search Customer..."
-                        searchPlaceholder="Type customer name..."
+                        placeholder="Search Buyers..."
+                        searchPlaceholder="Type buyer name..."
                         loading={buyersLoading}
                       />
                     )}

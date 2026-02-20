@@ -672,7 +672,7 @@ export function EditBuyerForm({ open, buyer, onClose, onSubmit, loading = false 
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">Customer Type</label>
+                  <label className="block text-sm font-medium mb-1">Buyer Type</label>
                   <select
                     value={formData.customerType}
                     onChange={(e) => handleChange('customerType', e.target.value)}
@@ -681,7 +681,7 @@ export function EditBuyerForm({ open, buyer, onClose, onSubmit, loading = false 
                   >
                     <option value="retail">Retail</option>
                     <option value="wholesale">Wholesale</option>
-                    <option value="distributor">Distributor</option>
+                    {/* <option value="distributor">Distributor</option> */}
                   </select>
                 </div>
 

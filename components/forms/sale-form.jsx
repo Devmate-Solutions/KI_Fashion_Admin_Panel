@@ -745,11 +745,10 @@ export default function SaleForm({ onSave }) {
               </Select>
             </div>
 
-            {/* Customer / Distributor */}
+            {/* Customer / Buyer */}
             <div className="space-y-2">
               <Label htmlFor="buyer" className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                Customer / Distributor
+                Buyer
               </Label>
               <div className="flex gap-2">
                 <div className="flex-1 relative">
@@ -757,7 +756,7 @@ export default function SaleForm({ onSave }) {
                   {buyerId && !isManualCustomer ? (
                     <div className="flex items-center justify-between h-11 px-3 border border-input rounded-lg bg-muted/30">
                       <span className="font-medium text-base truncate">
-                        {buyers.find(b => String(b.id) === String(buyerId))?.name || 'Selected Customer'}
+                        {buyers.find(b => String(b.id) === String(buyerId))?.name || 'Selected Buyer'}
                         {buyers.find(b => String(b.id) === String(buyerId))?.company && (
                           <span className="text-muted-foreground ml-1">
                             ({buyers.find(b => String(b.id) === String(buyerId))?.company})
@@ -883,11 +882,11 @@ export default function SaleForm({ onSave }) {
                 <div className="mt-4 p-4 border border-border rounded-lg bg-muted/30 space-y-4">
                   <div className="flex items-center gap-2 pb-2 border-b border-border">
                     <Users className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-semibold text-foreground">Manual Customer Details</span>
+                    <span className="text-sm font-semibold text-foreground">Manual Buyer Details</span>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="manual-name" className="text-sm font-semibold text-foreground">
-                      Customer Name <span className="text-destructive">*</span>
+                      Buyer Name <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="manual-name"

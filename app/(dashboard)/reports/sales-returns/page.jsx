@@ -65,7 +65,7 @@ export default function SalesReturnsReportPage() {
       ),
     },
     {
-      header: "Customer",
+      header: "Buyer",
       accessor: "buyer",
       render: (row) => row.buyer?.name || row.buyer?.company || "—",
     },

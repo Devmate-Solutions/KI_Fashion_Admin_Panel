@@ -74,7 +74,7 @@ export default function SellingPage() {
         ),
       },
       {
-        header: "Customer",
+        header: "Buyer",
         accessor: "customerName",
         render: (row) => (
           <span className="font-medium">

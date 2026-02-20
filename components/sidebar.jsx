@@ -40,7 +40,7 @@ const items = [
   { type: "separator", label: "Finance & Accounts" },
   // { href: "/cash-tracking", label: "Cash Tracking", icon: Wallet },
   { href: "/expenses", label: "Expenses", icon: FileText },
-  { href: "/customer-ledger", label: "Customer Ledger", icon: BookUser },
+  { href: "/customer-ledger", label: "Buyer Ledger", icon: BookUser },
   { href: "/supplier-ledger", label: "Supplier Ledger", icon: Users },
   { type: "separator", label: "Reports & Analytics" },
   { type: "reports", label: "Reports", icon: BarChart3 },

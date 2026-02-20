@@ -31,7 +31,7 @@ const reportCategories = [
       },
       {
         name: "Receivables Report",
-        description: "Customer outstanding amounts and aging",
+        description: "Buyer outstanding amounts and aging",
         href: "/reports/receivables",
         icon: DollarSign,
         color: "text-blue-600 bg-blue-50",
