@@ -1991,6 +1991,7 @@ export default function DispatchOrderDetailPage({ params }) {
                                       ? null
                                       : item.packets.length}
                                   </span>
+                                  
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -2171,9 +2172,10 @@ export default function DispatchOrderDetailPage({ params }) {
                                       key={key}
                                       className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200"
                                     >
-                                      {key}: {qty}
+                                      {key}: {qty/packets.length}
                                     </span>
                                   ))}
+                                  {/* {JSON.stringify(originalBreakdown)} */}
                                 </div>
                               </div>
                             );
@@ -2620,7 +2622,7 @@ export default function DispatchOrderDetailPage({ params }) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <DollarSign className="h-5 w-5 text-primary" />
+                      {/* <DollarSign className="h-5 w-5 text-primary" /> */}
                     </div>
                     <div>
                       <CardTitle className="text-lg font-semibold">Payment Details</CardTitle>
