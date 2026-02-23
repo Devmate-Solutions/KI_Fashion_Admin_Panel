@@ -66,7 +66,9 @@ function LoginFormInner() {
 
     try {
       await login(data.email, data.password);
-      router.push('/dispatch-orders');
+      // Honour the ?redirect param set by the middleware, fall back to /dispatch-orders
+      const redirectTo = searchParams.get('redirect') || '/dispatch-orders';
+      router.push(redirectTo);
     } catch (err) {
       console.error("Login error:", err); // Debug log
       setError(err.message || 'Login failed. Please check your credentials.');

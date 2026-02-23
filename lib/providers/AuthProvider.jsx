@@ -55,7 +55,7 @@ export function AuthProvider({ children }) {
     
     // If not authenticated and trying to access protected route
     if (!isAuthenticated && !isPublicPath) {
-      router.push('/login');
+      router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
       return;
     } 
     

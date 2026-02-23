@@ -20,8 +20,16 @@ export const useAuthStore = create((set, get) => ({
       const response = await authService.login({ email, password });
       
       // Check if user has CRM portal access
+      // Use role-based check (aligned with middleware's hasCrmAccess logic):
+      // If the user has an explicitly restricted role, deny access.
+      // Otherwise allow - the middleware will enforce the same rule server-side.
+      const crmRestrictedRoles = ['supplier', 'distributor', 'buyer'];
       const portalAccess = response.user?.portalAccess || [];
-      if (!portalAccess.includes('crm')) {
+      const hasCrmAccess =
+        portalAccess.includes('crm') ||
+        !crmRestrictedRoles.includes(response.user?.role);
+
+      if (!hasCrmAccess) {
         // Clear any token that might have been set
         authService.logout();
         const errorMessage = 'Access denied. This account does not have permission to access the CRM dashboard.';
