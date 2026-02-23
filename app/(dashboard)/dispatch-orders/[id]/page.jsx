@@ -2109,54 +2109,24 @@ export default function DispatchOrderDetailPage({ params }) {
                             </span>
                           )}
 
-                          {/* Breakdown Display - Adjusted for Returns */}
+                          {/* Breakdown Display - Per Packet */}
                           {(() => {
                             const packets = item.packets || [];
                             if (packets.length === 0) return null;
 
-                            // Calculate original total from packets
-                            let originalTotal = 0;
-                            const originalBreakdown = {};
-                            packets.forEach((p) => {
-                              p.composition?.forEach((c) => {
-                                if (c.color && c.size && c.quantity > 0) {
-                                  const key = `${c.color}-${c.size}`;
-                                  const qty = parseInt(c.quantity) || 0;
-                                  originalBreakdown[key] =
-                                    (originalBreakdown[key] || 0) + qty;
-                                  originalTotal += qty;
-                                }
-                              });
+                            // Use first packet's composition as the per-packet breakdown.
+                            // All packets share the same template, so packets[0] represents any single packet.
+                            const perPacketBreakdown = {};
+                            packets[0]?.composition?.forEach((c) => {
+                              if (c.color && c.size && c.quantity > 0) {
+                                const key = `${c.color}-${c.size}`;
+                                perPacketBreakdown[key] = parseInt(c.quantity) || 0;
+                              }
                             });
 
-                            if (originalTotal === 0) return null;
-
-                            // Calculate remaining quantity after returns
-                            const remainingQty =
-                              item.confirmedQty || item.quantity;
-                            const returnRatio =
-                              originalTotal > 0
-                                ? remainingQty / originalTotal
-                                : 1;
-
-                            // Calculate adjusted breakdown (proportional reduction)
-                            const adjustedBreakdown = {};
-                            Object.entries(originalBreakdown).forEach(
-                              ([key, qty]) => {
-                                // Proportionally reduce each color-size combination
-                                const adjustedQty = Math.round(
-                                  qty * returnRatio
-                                );
-                                if (adjustedQty > 0) {
-                                  adjustedBreakdown[key] = adjustedQty;
-                                }
-                              }
-                            );
-
-                            const parts = Object.entries(adjustedBreakdown);
+                            const parts = Object.entries(perPacketBreakdown);
                             if (parts.length === 0) return null;
 
-                            // Show indicator if items were returned
                             const hasReturns = item.totalReturned > 0;
 
                             return (
@@ -2172,10 +2142,9 @@ export default function DispatchOrderDetailPage({ params }) {
                                       key={key}
                                       className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200"
                                     >
-                                      {key}: {qty/packets.length}
+                                      {key}: {qty}
                                     </span>
                                   ))}
-                                  {/* {JSON.stringify(originalBreakdown)} */}
                                 </div>
                               </div>
                             );
