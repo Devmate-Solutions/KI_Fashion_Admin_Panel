@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Image as ImageIcon, Loader2 } from "lucide-react";
 import { Button } from "./button";
 import ImageLightbox from "./ImageLightbox";
@@ -21,6 +21,7 @@ interface ProductImageGalleryProps {
 /**
  * ProductImageGallery - Displays a thumbnail gallery of product images
  * Supports lazy loading: shows primary image initially, fetches full gallery on click
+ * When images array is empty but productId is provided, auto-fetches from product API
  */
 export default function ProductImageGallery({
   images = [],
@@ -43,9 +44,30 @@ export default function ProductImageGallery({
     ? images.filter(img => img && typeof img === 'string' && img.trim() !== '') 
     : [];
 
+  // Auto-fetch product images when no direct images are provided but productId is available
+  useEffect(() => {
+    if (imageArray.length === 0 && productId && !fullGalleryImages && !isLoadingGallery) {
+      setIsLoadingGallery(true);
+      apiClient.get(`/products/${productId}/images`)
+        .then((response) => {
+          const galleryImages: string[] = response.data?.data?.images || [];
+          if (galleryImages.length > 0) {
+            setFullGalleryImages(galleryImages);
+          }
+        })
+        .catch((error) => {
+          console.warn('Failed to auto-fetch product images for gallery:', error);
+        })
+        .finally(() => {
+          setIsLoadingGallery(false);
+        });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId, imageArray.length]);
+
   // Use full gallery images if loaded, otherwise use the initial images
   const displayImages = fullGalleryImages || imageArray;
-  const displayCount = totalImages || imageArray.length;
+  const displayCount = totalImages || displayImages.length;
 
   const handleImageError = (index: number) => {
     console.warn(`Failed to load image at index ${index}:`, displayImages[index]);
@@ -85,8 +107,8 @@ export default function ProductImageGallery({
     setLightboxOpen(true);
   };
 
-  if (imageArray.length === 0) {
-    // No images - show placeholder
+  if (displayImages.length === 0) {
+    // No images and nothing loading - show placeholder or loading spinner
     const sizeClasses = {
       sm: "h-12 w-12",
       md: "h-16 w-16",
@@ -94,12 +116,16 @@ export default function ProductImageGallery({
     };
     return (
       <div className={cn(sizeClasses[size], "flex items-center justify-center rounded border border-border bg-muted")}>
-        <span className="text-xs text-muted-foreground">No Image</span>
+        {isLoadingGallery ? (
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        ) : (
+          <span className="text-xs text-muted-foreground">No Image</span>
+        )}
       </div>
     );
   }
 
-  if (imageArray.length === 1) {
+  if (displayImages.length === 1) {
     // Single image - show it with optional count badge (may have more images to load)
     const sizeClasses = {
       sm: "h-12 w-12",
@@ -128,7 +154,7 @@ export default function ProductImageGallery({
           )}
           {!imageFailed ? (
             <img
-              src={imageArray[0]}
+              src={displayImages[0]}
               alt={alt}
               loading="lazy"
               decoding="async"
@@ -151,8 +177,8 @@ export default function ProductImageGallery({
   }
 
   // Multiple images - show thumbnail grid
-  const visibleImages = imageArray.slice(0, maxVisible);
-  const remainingCount = imageArray.length - maxVisible;
+  const visibleImages = displayImages.slice(0, maxVisible);
+  const remainingCount = displayImages.length - maxVisible;
 
   const sizeClasses = {
     sm: {

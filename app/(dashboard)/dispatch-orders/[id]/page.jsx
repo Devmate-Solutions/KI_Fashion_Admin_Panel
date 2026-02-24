@@ -78,13 +78,21 @@ import { cn } from "@/lib/utils";
 
 // Helper to get image array from various sources
 const getImageArray = (item) => {
+  // Check populated product images first (available for confirmed orders)
   if (Array.isArray(item.product?.images) && item.product.images.length > 0) {
     return item.product.images;
   }
-  if (item.productImage) {
-    return Array.isArray(item.productImage)
-      ? item.productImage
-      : [item.productImage];
+  // Check productImage array (stored on dispatch order item, uploaded by supplier)
+  if (Array.isArray(item.productImage) && item.productImage.length > 0) {
+    return item.productImage.filter(url => url && typeof url === 'string' && url.trim() !== '');
+  }
+  // Backward-compat: single string productImage
+  if (typeof item.productImage === 'string' && item.productImage.trim() !== '') {
+    return [item.productImage];
+  }
+  // Check item.images field (populated by editedItems spread in itemsWithDetails)
+  if (Array.isArray(item.images) && item.images.length > 0) {
+    return item.images.filter(url => url && typeof url === 'string' && url.trim() !== '');
   }
   return [];
 };
@@ -272,7 +280,11 @@ export default function DispatchOrderDetailPage({ params }) {
               ? [item.size]
               : [],
           season: itemSeason, // Use only the explicitly extracted season
-          images: item.productImage || item.product?.images || [],
+          images: (Array.isArray(item.productImage) && item.productImage.length > 0)
+            ? item.productImage
+            : (Array.isArray(item.product?.images) && item.product.images.length > 0)
+              ? item.product.images
+              : [],
           packets: item.packets || [],
           useVariantTracking: item.useVariantTracking || false,
           boxStr: item.boxes?.map((b) => b.boxNumber).join(", ") || "",
@@ -812,6 +824,14 @@ export default function DispatchOrderDetailPage({ params }) {
     editedTotalBoxes,
   ]);
 
+  // Strip GCS signed-URL query params (e.g. ?X-Goog-Signature=...) so only the base URL
+  // is stored in the database. This prevents expired signed URLs from being persisted,
+  // which would break image loading on subsequent page visits.
+  const normalizeImageUrl = (url) => {
+    if (!url || typeof url !== 'string') return url;
+    return url.split('?')[0];
+  };
+
   const handleSubmitApproval = useCallback(() => {
     console.log("handleSubmitApproval called");
     if (!dispatchOrderId) {
@@ -854,6 +874,16 @@ export default function DispatchOrderDetailPage({ params }) {
           itemPackets = editedItems[idx].packets;
         }
 
+        // Preserve images: use editedItems.images if non-empty, otherwise fall back to item.productImage.
+        // Normalize URLs by stripping signed-URL query params (?X-Goog-Signature=...) so that
+        // only the base GCS path is stored in the DB — prevents expired signed URLs persisting.
+        const resolvedProductImage =
+          (Array.isArray(itemData.images) && itemData.images.length > 0)
+            ? itemData.images.map(normalizeImageUrl).filter(Boolean)
+            : (Array.isArray(item.productImage) && item.productImage.length > 0)
+              ? item.productImage.map(normalizeImageUrl).filter(Boolean)
+              : [];
+
         finalItems.push({
           ...item,
           productName: itemData.productName,
@@ -863,7 +893,7 @@ export default function DispatchOrderDetailPage({ params }) {
           primaryColor: itemData.primaryColor,
           size: itemData.size,
           season: itemData.season,
-          productImage: itemData.images,
+          productImage: resolvedProductImage,
           packets: itemPackets,
           boxes: itemData.boxStr
             ? itemData.boxStr
@@ -977,6 +1007,16 @@ export default function DispatchOrderDetailPage({ params }) {
             ? [itemData.season].filter(s => s)
             : [];
 
+        // Preserve images: use editedItems.images if non-empty, otherwise fall back to item.productImage.
+        // Normalize URLs by stripping signed-URL query params (?X-Goog-Signature=...) so that
+        // only the base GCS path is stored in the DB — prevents expired signed URLs persisting.
+        const resolvedProductImage =
+          (Array.isArray(itemData.images) && itemData.images.length > 0)
+            ? itemData.images.map(normalizeImageUrl).filter(Boolean)
+            : (Array.isArray(item.productImage) && item.productImage.length > 0)
+              ? item.productImage.map(normalizeImageUrl).filter(Boolean)
+              : [];
+
         finalItems.push({
           ...item,
           productName: itemData.productName,
@@ -986,7 +1026,7 @@ export default function DispatchOrderDetailPage({ params }) {
           primaryColor: itemData.primaryColor,
           size: itemData.size,
           season: finalSeason, // Explicitly use only itemData.season, never fallback
-          productImage: itemData.images,
+          productImage: resolvedProductImage,
           packets: itemPackets, // Include edited packets
           boxes: itemData.boxStr
             ? itemData.boxStr
@@ -1795,6 +1835,7 @@ export default function DispatchOrderDetailPage({ params }) {
                       <td className="px-4 py-3">
                         <ProductImageGallery
                           images={getImageArray(item)}
+                          productId={item.product?._id?.toString()}
                           alt={itemData.productName || "Product"}
                           size="sm"
                           maxVisible={3}
@@ -2920,6 +2961,7 @@ export default function DispatchOrderDetailPage({ params }) {
                             <td className="px-4 py-3">
                               <ProductImageGallery
                                 images={getImageArray(item)}
+                                productId={item.product?._id?.toString()}
                                 alt={item.productName || "Product"}
                                 size="sm"
                                 maxVisible={3}
