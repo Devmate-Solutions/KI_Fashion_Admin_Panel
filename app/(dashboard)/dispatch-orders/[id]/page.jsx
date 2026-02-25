@@ -64,8 +64,11 @@ import {
   Edit,
   AlertCircle,
   Pencil,
+  ImagePlus,
+  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { dispatchOrdersAPI } from "@/lib/api/endpoints/dispatchOrders";
 import ProductImageGallery from "@/components/ui/ProductImageGallery";
 import PacketCompositionView from "@/components/ui/PacketCompositionView";
 import ArrayInput from "@/components/ui/ArrayInput";
@@ -151,6 +154,8 @@ export default function DispatchOrderDetailPage({ params }) {
   const [itemsToRemove, setItemsToRemove] = useState([]); // [itemIndex]
   const [newItems, setNewItems] = useState([]); // [{productName, productCode, quantity, costPrice, primaryColor, images}]
   const [showAddItemForm, setShowAddItemForm] = useState(false);
+  // Per-row image uploading state {itemIndex: boolean}
+  const [imageUploading, setImageUploading] = useState({});
 
   // Track which order field is being edited (for double-click editing)
   const [editingField, setEditingField] = useState(null); // 'logisticsCompany', 'dispatchDate', 'discount', null
@@ -1832,15 +1837,92 @@ export default function DispatchOrderDetailPage({ params }) {
                           />
                         </td>
                       )}
-                      <td className="px-4 py-3">
-                        <ProductImageGallery
-                          images={getImageArray(item)}
-                          productId={item.product?._id?.toString()}
-                          alt={itemData.productName || "Product"}
-                          size="sm"
-                          maxVisible={3}
-                          showCount={true}
-                        />
+                      <td className="px-4 py-3 align-top">
+                        {isPending && !isRemoved ? (
+                          /* Editable image cell for pending orders */
+                          <div className="flex flex-col gap-1.5 min-w-[80px]">
+                            {/* Thumbnails with remove button */}
+                            {(itemData.images || []).map((url, imgIdx) => (
+                              <div key={imgIdx} className="relative group w-14 h-14 flex-shrink-0">
+                                <img
+                                  src={url}
+                                  alt={`Image ${imgIdx + 1}`}
+                                  className="w-14 h-14 object-cover rounded border border-border"
+                                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newImages = (itemData.images || []).filter((_, i) => i !== imgIdx);
+                                    setEditedItems({
+                                      ...editedItems,
+                                      [item.index]: { ...itemData, images: newImages },
+                                    });
+                                  }}
+                                  className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title="Remove image"
+                                >
+                                  <X className="h-2.5 w-2.5" />
+                                </button>
+                              </div>
+                            ))}
+                            {/* Add image button */}
+                            <label
+                              className="w-14 h-14 flex items-center justify-center rounded border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 cursor-pointer transition-colors flex-shrink-0"
+                              title="Add image"
+                            >
+                              {imageUploading[item.index] ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                              ) : (
+                                <ImagePlus className="h-4 w-4 text-muted-foreground" />
+                              )}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="sr-only"
+                                disabled={imageUploading[item.index]}
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  // Reset input so same file can be re-selected if needed
+                                  e.target.value = "";
+                                  setImageUploading((prev) => ({ ...prev, [item.index]: true }));
+                                  try {
+                                    const result = await dispatchOrdersAPI.uploadItemImage(
+                                      dispatchOrderId,
+                                      item.index,
+                                      file
+                                    );
+                                    const newUrl = result?.imageUrl || result?.url;
+                                    if (!newUrl) throw new Error("No image URL returned");
+                                    const currentImages = itemData.images || [];
+                                    setEditedItems({
+                                      ...editedItems,
+                                      [item.index]: {
+                                        ...itemData,
+                                        images: [...currentImages, newUrl],
+                                      },
+                                    });
+                                    toast.success("Image uploaded");
+                                  } catch (err) {
+                                    toast.error(err?.response?.data?.message || err?.message || "Image upload failed");
+                                  } finally {
+                                    setImageUploading((prev) => ({ ...prev, [item.index]: false }));
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+                        ) : (
+                          <ProductImageGallery
+                            images={getImageArray(item)}
+                            productId={item.product?._id?.toString()}
+                            alt={itemData.productName || "Product"}
+                            size="sm"
+                            maxVisible={3}
+                            showCount={true}
+                          />
+                        )}
                       </td>
                       <td className="px-4 py-3 align-top">
                         {isPending && !isRemoved ? (

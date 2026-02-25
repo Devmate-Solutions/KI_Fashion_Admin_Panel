@@ -1251,10 +1251,7 @@ export default function CustomerLedgerPage() {
                     </div>
                     <Select
                       value={selectedBuyerId}
-                      onValueChange={(val) => {
-                        setSelectedBuyerId(val)
-                        setSelectedSaleId('none')
-                      }}
+                      onValueChange={setSelectedBuyerId}
                     >
                       <SelectTrigger className="h-10 w-[300px] border-border">
                         <SelectValue placeholder="Select Customer" />
@@ -1268,11 +1265,7 @@ export default function CustomerLedgerPage() {
 
                     {selectedBuyerId && selectedBuyerId !== 'all' && (
                       <Button
-                        onClick={() => {
-                          setPaymentForm({ amount: '', date: '', description: '', method: 'cash' })
-                          setSelectedSaleId('none')
-                          setIsDialogOpen(true)
-                        }}
+                        onClick={() => setPaymentModalOpen(true)}
                         className="ml-auto gap-2 h-10"
                       >
                         <Plus className="h-4 w-4" />
@@ -1445,95 +1438,63 @@ export default function CustomerLedgerPage() {
 
       {/* Reversal Confirmation Dialog */}
       <Dialog open={reversalDialogOpen} onOpenChange={setReversalDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]" className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <div className="flex items-center gap-3 mb-2">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-primary" />
+              <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+                <RotateCcw className="h-5 w-5 text-destructive" />
               </div>
-              <DialogTitle className="text-xl">Record Payment</DialogTitle>
+              <DialogTitle className="text-xl">Reverse Payment</DialogTitle>
             </div>
+            <DialogDescription>
+              This action will reverse the payment and cannot be undone.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-5 py-4">
-            {selectedSale && (
+          <div className="space-y-4 py-4">
+            {selectedPayment && (
               <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-muted-foreground">Sale Number:</span>
-                  <span className="text-sm font-medium text-foreground">{selectedSale.saleNumber}</span>
+                  <span className="text-sm font-semibold text-muted-foreground">Payment #:</span>
+                  <span className="text-sm font-medium">{selectedPayment.paymentNumber}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-muted-foreground">Total Amount:</span>
-                  <span className="text-sm font-bold text-foreground">£{formatNumber(selectedSale.grandTotal)}</span>
-                </div>
-                <div className="flex items-center justify-between pt-2 border-t border-border">
-                  <span className="text-sm font-semibold text-muted-foreground">Remaining:</span>
-                  <span className="text-sm font-bold text-red-600">
-                    £{formatNumber(selectedSale.grandTotal - (selectedSale.cashPayment || 0) - (selectedSale.bankPayment || 0))}
-                  </span>
+                  <span className="text-sm font-semibold text-muted-foreground">Amount:</span>
+                  <span className="text-sm font-bold">£{formatNumber(selectedPayment.totalAmount)}</span>
                 </div>
               </div>
             )}
-
             <div className="space-y-2">
-              <Label className="text-sm font-semibold">Payment Amount</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={paymentForm.amount}
-                onChange={e => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))}
-                className="h-11"
-                placeholder="0.00"
+              <Label className="text-sm font-semibold">Reason for Reversal *</Label>
+              <Textarea
+                value={reversalReason}
+                onChange={e => setReversalReason(e.target.value)}
+                placeholder="Please provide a reason for reversing this payment..."
+                className="min-h-[100px]"
               />
             </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">Date</Label>
-              <Input
-                type="date"
-                value={paymentForm.date}
-                onChange={e => setPaymentForm(prev => ({ ...prev, date: e.target.value }))}
-                className="h-11"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">Payment Method</Label>
-              <Select value={paymentForm.method} onValueChange={val => setPaymentForm(prev => ({ ...prev, method: val }))}>
-                <SelectTrigger className="h-11">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="bank">Bank</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">Description (Optional)</Label>
-              <Input
-                value={paymentForm.description}
-                onChange={e => setPaymentForm(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Add a note about this payment"
-                className="h-11"
-              />
-            </div>
-
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReversalDialogOpen(false)} disabled={isReversing}>
+              Cancel
+            </Button>
             <Button
-              className="w-full h-11 mt-6 gap-2"
-              onClick={handleAddPayment}
-              disabled={isSubmittingPayment}
+              variant="destructive"
+              onClick={handleReversePayment}
+              disabled={isReversing || !reversalReason.trim()}
             >
-              {isSubmittingPayment ? (
+              {isReversing ? (
                 <>
-                  <Loader2 className="animate-spin h-4 w-4" />
-                  Processing...
+                  <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                  Reversing...
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="h-4 w-4" />
-                  Confirm Payment
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Confirm Reversal
                 </>
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
