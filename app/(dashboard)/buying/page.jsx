@@ -647,7 +647,7 @@ export default function BuyingPage() {
               <p className="text-sm text-muted-foreground mt-1">Manage supplier purchases and monitor payment status.</p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          {/* <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true"></span>
               <span className="text-xs font-medium text-foreground">Connected</span>
@@ -668,7 +668,7 @@ export default function BuyingPage() {
               <span className="text-xs font-semibold text-foreground">Delivered: </span>
               <span className="text-xs font-bold text-emerald-600">{deliveryMetrics.delivered || 0}</span>
             </div>
-          </div>
+          </div> */}
         </div>
       </header>
 
