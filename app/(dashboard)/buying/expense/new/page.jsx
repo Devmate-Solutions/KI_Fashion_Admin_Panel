@@ -11,7 +11,6 @@ export default function NewExpensePage() {
   const handleSave = useCallback(async (expenseData) => {
     // TODO: This will be integrated with useCreateExpense hook later
     // For now, just log the data and navigate back
-    console.log("Expense data to save:", expenseData)
 
     // Show success notification
     toast.success('Expense form data collected! API integration pending.', {

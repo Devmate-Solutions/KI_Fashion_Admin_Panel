@@ -838,15 +838,15 @@ export default function DispatchOrderDetailPage({ params }) {
   };
 
   const handleSubmitApproval = useCallback(() => {
-    console.log("handleSubmitApproval called");
+     
     if (!dispatchOrderId) {
-      console.log("No dispatch order ID");
+       
       return;
     }
 
     // Validate before submitting
     const { isValid, errors } = validateOrderBeforeConfirm();
-    console.log("Validation result:", { isValid, errors });
+     
 
     if (!isValid) {
       toast.error(
@@ -863,7 +863,7 @@ export default function DispatchOrderDetailPage({ params }) {
       return;
     }
 
-    console.log("Validation passed, preparing approval submission...");
+     
 
     // Prepare items array with edited values and exclude removed items
     const finalItems = [];
@@ -932,7 +932,7 @@ export default function DispatchOrderDetailPage({ params }) {
       isTotalBoxesConfirmed: totalBoxesConfirmed,
     };
 
-    console.log("Calling submitApprovalMutation with data:", approvalData);
+     
 
     submitApprovalMutation.mutate(approvalData, {
       onSuccess: () => {
@@ -964,15 +964,15 @@ export default function DispatchOrderDetailPage({ params }) {
   ]);
 
   const handleConfirm = useCallback(() => {
-    console.log("handleConfirm called");
+     
     if (!dispatchOrderId) {
-      console.log("No dispatch order ID");
+       
       return;
     }
 
     // Validate before confirming
     const { isValid, errors } = validateOrderBeforeConfirm();
-    console.log("Validation result:", { isValid, errors });
+     
 
     if (!isValid) {
       toast.error(
@@ -989,7 +989,7 @@ export default function DispatchOrderDetailPage({ params }) {
       return;
     }
 
-    console.log("Validation passed, preparing confirmation...");
+     
 
     // Prepare items array with edited values and exclude removed items
     const finalItems = [];
@@ -1068,7 +1068,7 @@ export default function DispatchOrderDetailPage({ params }) {
       isTotalBoxesConfirmed: totalBoxesConfirmed,
     };
 
-    console.log("Calling confirmMutation with data:", confirmData);
+     
 
     confirmMutation.mutate(confirmData, {
       onSuccess: () => {
@@ -2649,7 +2649,7 @@ export default function DispatchOrderDetailPage({ params }) {
                 {isSuperAdmin && (dispatchOrder?.status === 'pending' || dispatchOrder?.status === 'pending-approval') && (
                   <Button
                     onClick={() => {
-                      console.log("Confirm button clicked");
+                       
                       handleConfirm();
                     }}
                     disabled={
@@ -2678,7 +2678,7 @@ export default function DispatchOrderDetailPage({ params }) {
                 {isAdmin && (dispatchOrder?.status === 'pending' || dispatchOrder?.status === 'pending-approval') && (
                   <Button
                     onClick={() => {
-                      console.log("Submit Approval button clicked");
+                       
                       handleSubmitApproval();
                     }}
                     disabled={

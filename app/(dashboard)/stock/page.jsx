@@ -2308,7 +2308,7 @@ export default function StockPage() {
         packetStock={packetToBreak}
         mode="inventory"
         onSuccess={(result) => {
-          console.log("Packet broken successfully:", result);
+           
           setPacketToBreak(null);
         }}
       />

@@ -75,12 +75,7 @@ function LoginFormInner() {
     }
   };
 
-  // Debug info in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log("Form values:", formValues);
-    console.log("Form errors:", errors);
-    console.log("Is submitting:", isSubmitting);
-  }
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 py-12">

@@ -69,10 +69,10 @@ export default function BarcodePrintModal({
     queryKey: ["barcode-data", dispatchOrderId],
     queryFn: async () => {
       const response = await dispatchOrdersAPI.getBarcodeData(dispatchOrderId);
-      console.log("[BarcodePrintModal] API Response:", response);
-      console.log("[BarcodePrintModal] Response data:", response.data);
+       
+       
       const normalized = normalizeBarcodeData(response.data);
-      console.log("[BarcodePrintModal] Normalized data:", normalized);
+       
       return normalized;
     },
     enabled: open && !!dispatchOrderId,

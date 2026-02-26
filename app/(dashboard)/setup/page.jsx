@@ -69,11 +69,11 @@ export default function SetupPage() {
 
   // Handle buyer CRUD operations
   const handleAddBuyer = async (formData) => {
-    console.log('handleAddBuyer called with:', formData);
+     
     try {
-      console.log('Calling createBuyerMutation.mutateAsync...');
+       
       const result = await createBuyerMutation.mutateAsync(formData);
-      console.log('Create buyer success:', result);
+       
       setOpenAddBuyerForm(false);
     } catch (error) {
       console.error('Error creating buyer:', error);
@@ -100,12 +100,12 @@ export default function SetupPage() {
   }
 
   const handleDeleteBuyer = async (buyer) => {
-    console.log('handleDeleteBuyer called with buyer:', buyer);
+     
     if (window.confirm(`Are you sure you want to delete buyer "${buyer.name}"? This will deactivate the buyer.`)) {
       try {
-        console.log('Calling deleteBuyerMutation.mutateAsync with id:', buyer.id);
+         
         const result = await deleteBuyerMutation.mutateAsync(buyer.id);
-        console.log('Delete buyer success:', result);
+         
       } catch (error) {
         console.error('Error deleting buyer:', error);
         console.error('Error response:', error.response?.data);
@@ -115,10 +115,10 @@ export default function SetupPage() {
 
   // Handle supplier CRUD operations
   const handleAddSupplier = async (formData) => {
-    console.log('handleAddSupplier called with:', formData);
+     
     try {
       const result = await createSupplierMutation.mutateAsync(formData);
-      console.log('Create supplier success:', result);
+       
       setOpenAddSupplierForm(false);
     } catch (error) {
       console.error('Error creating supplier:', error);
@@ -144,11 +144,11 @@ export default function SetupPage() {
   }
 
   const handleDeleteSupplier = async (supplier) => {
-    console.log('handleDeleteSupplier called with supplier:', supplier);
+     
     if (window.confirm(`Are you sure you want to delete supplier "${supplier.name}"? This will deactivate the supplier.`)) {
       try {
         const result = await deleteSupplierMutation.mutateAsync(supplier.id);
-        console.log('Delete supplier success:', result);
+         
       } catch (error) {
         console.error('Error deleting supplier:', error);
       }

@@ -18,10 +18,10 @@ export default function PacketLabelPrintModal({ open, onClose, packetId, packet 
     queryKey: ["barcode-label", packetId],
     queryFn: async () => {
       const response = await packetStockAPI.getBarcodeLabel(packetId);
-      console.log("[PacketLabelPrintModal] API Response:", response);
+       
       // Extract nested data: axios returns { data: { success, data: {...} } }
       const labelData = response.data?.data || response.data;
-      console.log("[PacketLabelPrintModal] Label data:", labelData);
+       
       return labelData;
     },
     enabled: open && !!packetId,

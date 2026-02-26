@@ -71,7 +71,6 @@ export default function CustomerLedgerPage() {
   const { data: buyers = [], isLoading: buyersLoading, error: buyersError } = useBuyers({ limit: 500 })
   const dropdownBuyers = buyers
 
-  console.log(`Customer Ledger: Loaded ${dropdownBuyers.length} buyers for dropdown`)
 
   const comboboxOptions = useMemo(() => {
     const options = dropdownBuyers.map(b => ({
@@ -129,83 +128,51 @@ export default function CustomerLedgerPage() {
   const { data: paymentReceiptsData, isLoading: paymentReceiptsLoading, refetch: refetchPayments, error: paymentReceiptsError, isError, isFetching, status } = useQuery({
     queryKey: ['payments', 'customer', selectedBuyerId],
     queryFn: async () => {
-      console.log('🔍 Payment Receipts Query Starting...')
-      console.log('🔍 selectedBuyerId:', selectedBuyerId)
 
       if (!selectedBuyerId) {
-        console.log('❌ No selectedBuyerId - returning empty')
         return { payments: [] }
       }
 
       try {
         if (selectedBuyerId === 'all') {
           // Fetch all customer payments
-          console.log('📡 Calling paymentAPI.getAllPayments...')
           const response = await paymentAPI.getAllPayments({ limit: 1000 })
-          console.log('📥 Full API response:', response)
-          console.log('📥 response.data:', response.data)
-          console.log('📥 response.data?.data:', response.data?.data)
-          console.log('📥 response.data?.data?.payments:', response.data?.data?.payments)
 
           // Response structure from backend: { data: { success: true, data: { payments: [], pagination: {} } } }
           // axios wraps it in response.data
           const paymentsData = response.data?.data
           if (paymentsData && Array.isArray(paymentsData.payments)) {
-            console.log(`✅ Found ${paymentsData.payments.length} payments for all customers`)
             return paymentsData
           }
           // Fallback for different response structure
           if (response.data && Array.isArray(response.data.payments)) {
-            console.log(`✅ Found ${response.data.payments.length} payments (fallback structure)`)
             return response.data
           }
           // Another fallback - check if response itself has payments
           if (response && Array.isArray(response.payments)) {
-            console.log(`✅ Found ${response.payments.length} payments (direct structure)`)
             return response
           }
-          console.warn('⚠️ No payments found in response - returning empty array')
-          console.warn('⚠️ Final response structure:', JSON.stringify(response?.data || response, null, 2))
           return { payments: [] }
         }
 
         // Fetch single customer payments
-        console.log(`📡 Calling paymentAPI.getCustomerPayments for ${selectedBuyerId}...`)
         const response = await paymentAPI.getCustomerPayments(selectedBuyerId, { limit: 500 })
-        console.log(`📥 Customer ${selectedBuyerId} payments response:`, response)
 
         const paymentsData = response.data?.data
         if (paymentsData && Array.isArray(paymentsData.payments)) {
-          console.log(`✅ Found ${paymentsData.payments.length} payments for customer ${selectedBuyerId}`)
           return paymentsData
         }
         if (response.data && Array.isArray(response.data.payments)) {
-          console.log(`✅ Found ${response.data.payments.length} payments (fallback structure)`)
           return response.data
         }
-        console.warn('⚠️ No payments found for customer - returning empty array')
         return { payments: [] }
       } catch (error) {
-        console.error('❌ Error fetching payment receipts:', error)
-        console.error('❌ Error details:', error.response?.data)
-        console.error('❌ Error status:', error.response?.status)
         throw error
       }
     },
     enabled: !!selectedBuyerId,
     retry: 1,
     staleTime: 10 * 1000 // 10 seconds
-  })
-
-  // Debug logging for query state
-  console.log('📊 Payment Receipts Query State:', {
-    status,
-    isLoading: paymentReceiptsLoading,
-    isFetching,
-    isError,
-    error: paymentReceiptsError,
-    dataExists: !!paymentReceiptsData,
-    paymentsCount: paymentReceiptsData?.payments?.length ?? 'N/A'
   })
 
   // --- Calculations ---
@@ -230,11 +197,9 @@ export default function CustomerLedgerPage() {
   // Transform ledger data for Tab 0 (All Transactions)
   const allLedgerTransactions = useMemo(() => {
     if (!allLedgerData?.entries) {
-      console.log('⚠ allLedgerTransactions: No ledger entries available')
       return []
     }
 
-    console.log(`✓ allLedgerTransactions: Processing ${allLedgerData.entries.length} ledger entries`)
 
     let filteredEntries = allLedgerData.entries.filter(entry =>
       entry.transactionType === 'sale' ||
@@ -242,7 +207,6 @@ export default function CustomerLedgerPage() {
       entry.transactionType === 'adjustment'
     )
 
-    console.log(`✓ Filtered to ${filteredEntries.length} transactions (sale/receipt/adjustment only)`)
 
     const mappedItems = filteredEntries.map(entry => {
       const buyer = entry.entityId || {}
@@ -350,11 +314,9 @@ export default function CustomerLedgerPage() {
   // Payment Receipts Transactions (from Payment model)
   const paymentReceiptsTransactions = useMemo(() => {
     if (!paymentReceiptsData?.payments) {
-      console.log('⚠ paymentReceiptsTransactions: No payments data available')
       return []
     }
 
-    console.log(`✓ paymentReceiptsTransactions: Processing ${paymentReceiptsData.payments.length} payment receipts`)
 
     return paymentReceiptsData.payments.map(payment => ({
       id: payment._id,
