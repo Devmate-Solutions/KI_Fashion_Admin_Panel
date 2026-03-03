@@ -1386,9 +1386,9 @@ export default function SupplierLedgerPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="h-10 w-10 rounded-lg bg-muted/50 flex items-center justify-center">
+                    {/* <div className="h-10 w-10 rounded-lg bg-muted/50 flex items-center justify-center">
                       <FileText className="h-5 w-5 text-muted-foreground" />
-                    </div>
+                    </div> */}
                   </div>
                   <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
                     Total Entries
@@ -1402,18 +1402,18 @@ export default function SupplierLedgerPage() {
                   : 'border-red-200 bg-gradient-to-br from-red-50/50 to-red-50/30'
                   }`}>
                   <div className="flex items-center justify-between mb-3">
-                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${(calculatedTotalBalance || 0) <= 0 ? 'bg-emerald-100' : 'bg-red-100'
+                    {/* <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${(calculatedTotalBalance || 0) <= 0 ? 'bg-emerald-100' : 'bg-red-100'
                       }`}>
                       <DollarSign className={`h-5 w-5 ${(calculatedTotalBalance || 0) <= 0 ? 'text-emerald-600' : 'text-red-600'
                         }`} />
-                    </div>
+                    </div> */}
                   </div>
                   <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
                     Supplier Balance
                   </div>
                   <div className={`text-2xl font-bold tabular-nums ${(calculatedTotalBalance || 0) <= 0 ? 'text-emerald-700' : 'text-red-700'
                     }`}>
-                    £{formatNumber(Math.abs(calculatedTotalBalance || 0))}
+                    {formatNumber(Math.abs(calculatedTotalBalance || 0))}
                   </div>
                   <div className={`text-xs mt-1 ${(calculatedTotalBalance || 0) <= 0 ? 'text-emerald-600/80' : 'text-red-600/80'
                     }`}>
@@ -1667,28 +1667,28 @@ export default function SupplierLedgerPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="rounded-lg border border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-emerald-50/30 p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+              {/* <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
                 <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-              </div>
+              </div> */}
             </div>
             <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
               Total Paid
             </div>
             <div className="text-2xl font-bold text-emerald-700 tabular-nums">
-              £{formatNumber(pendingTotals.totalPaid || 0)}
+              {formatNumber(pendingTotals.totalPaid || 0)}
             </div>
           </div>
           <div className="rounded-lg border border-red-200 bg-gradient-to-br from-red-50/50 to-red-50/30 p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <div className="h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center">
+              {/* <div className="h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center">
                 <Clock className="h-5 w-5 text-red-600" />
-              </div>
+              </div> */}
             </div>
             <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
               Total Pending
             </div>
             <div className="text-2xl font-bold text-red-700 tabular-nums">
-              £{formatNumber(Math.abs(calculatedTotalPendingFromRemaining || 0))}
+              {formatNumber(Math.abs(calculatedTotalPendingFromRemaining || 0))}
             </div>
           </div>
         </div>
@@ -1846,7 +1846,7 @@ export default function SupplierLedgerPage() {
                 Total Payments
               </div>
               <div className="text-3xl font-bold text-emerald-700 tabular-nums mb-1.5">
-                £{formatNumber(paymentSummary.total)}
+                {formatNumber(paymentSummary.total)}
               </div>
               <div className="text-xs font-medium text-emerald-600/70">All-time payment total</div>
             </div>
@@ -1865,7 +1865,7 @@ export default function SupplierLedgerPage() {
                 Cash Payments
               </div>
               <div className="text-3xl font-bold tabular-nums text-foreground mb-1.5">
-                £{formatNumber(paymentSummary.cash)}
+                {formatNumber(paymentSummary.cash)}
               </div>
               <div className="text-xs font-medium text-muted-foreground">Cash transactions</div>
             </div>
@@ -1884,7 +1884,7 @@ export default function SupplierLedgerPage() {
                 Bank Payments
               </div>
               <div className="text-3xl font-bold tabular-nums text-foreground mb-1.5">
-                £{formatNumber(paymentSummary.bank)}
+                {formatNumber(paymentSummary.bank)}
               </div>
               <div className="text-xs font-medium text-muted-foreground">Bank transfers</div>
             </div>

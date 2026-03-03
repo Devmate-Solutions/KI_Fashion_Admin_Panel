@@ -64,7 +64,8 @@ const reportLinks = [
   { href: "/reports/stock-in-hand", label: "Stock in Hand" },
   { href: "/reports/receivables", label: "Receivables Report" },
   { href: "/reports/payables", label: "Payables Report" },
-  { href: "/reports/profit-loss", label: "Comparison Report (PNL)" }
+  { href: "/reports/profit-loss", label: "Comparison Report (PNL)" },
+  { href: "/reports/cash-in-hand", label: "Cash in Hand Report" },
   // { href: "/reports/sales-returns", label: "Sales Returns (Invoice Wise)" },
   // { href: "/reports/sales-returns-product-wise", label: "Sales Returns (Product Wise)" },
   // { href: "/reports/buying-returns-product-wise", label: "Buying Returns (Product Wise)" },

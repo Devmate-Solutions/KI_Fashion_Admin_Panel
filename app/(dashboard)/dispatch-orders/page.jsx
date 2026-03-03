@@ -94,20 +94,13 @@ export default function DispatchOrdersPage() {
       },
     },
     {
-      header: "Logistics",
-      accessor: "logisticsCompany",
-      render: (row) => {
-        const logistics = row.logisticsCompany || {}
-        return <span className="font-medium text-foreground">{logistics.name || "—"}</span>
-      },
-    },
-    {
       header: "Boxes",
       accessor: "totalBoxes",
       render: (row) => (
         <span className="font-semibold text-foreground tabular-nums">{row.totalBoxes || 0}</span>
       ),
     },
+   
     {
       header: "Quantity",
       accessor: "totalQuantity",
@@ -145,6 +138,14 @@ export default function DispatchOrdersPage() {
             )}
           </div>
         )
+      },
+    },
+     {
+      header: "Logistics",
+      accessor: "logisticsCompany",
+      render: (row) => {
+        const logistics = row.logisticsCompany || {}
+        return <span className="font-medium text-foreground text-gray-400">{logistics.name || "—"}</span>
       },
     },
     {

@@ -224,7 +224,7 @@ export default function PacketLabelPrintModal({ open, onClose, packetId, packet 
               {compositionText}
             </div>
             
-            <Badge 
+            {/* <Badge 
               variant={data.isLoose ? "secondary" : "default"}
               className="mb-2"
             >
@@ -233,7 +233,7 @@ export default function PacketLabelPrintModal({ open, onClose, packetId, packet 
             
             <div className="text-lg font-bold text-green-700">
               £{(data.suggestedSellingPrice || 0).toFixed(2)}
-            </div>
+            </div> */}
           </div>
         ) : null}
 

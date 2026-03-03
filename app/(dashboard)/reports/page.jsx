@@ -15,6 +15,7 @@ import {
   DollarSign,
   CreditCard,
   PackageSearch,
+  Wallet,
 } from "lucide-react"
 
 const reportCategories = [
@@ -42,6 +43,13 @@ const reportCategories = [
         href: "/reports/payables",
         icon: CreditCard,
         color: "text-orange-600 bg-orange-50",
+      },
+      {
+        name: "Cash in Hand Report",
+        description: "Daily cash flow: sales in, supplier payments & expenses out",
+        href: "/reports/cash-in-hand",
+        icon: Wallet,
+        color: "text-green-700 bg-green-50",
       },
     ],
   },

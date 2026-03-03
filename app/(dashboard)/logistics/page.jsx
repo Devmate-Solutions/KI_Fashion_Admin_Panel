@@ -1,54 +1,26 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
-import { logisticsCompaniesAPI } from "@/lib/api/endpoints/logisticsCompanies"
+import { useState, useMemo } from "react"
+import {
+  useLogisticsCompanies,
+  useCreateLogisticsCompany,
+  useUpdateLogisticsCompany,
+  useDeleteLogisticsCompany,
+} from "@/lib/hooks/useLogisticsCompanies"
 import { LogisticsCompanyForm } from "@/components/forms/logistics-company-form"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import toast from "react-hot-toast"
 import DataTable from "@/components/data-table"
 import { Phone, Mail } from "lucide-react"
 
 export default function LogisticsPage() {
-  const [companies, setCompanies] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
   const [openAddForm, setOpenAddForm] = useState(false)
-  const [isCreating, setIsCreating] = useState(false)
-  const [error, setError] = useState(null)
   const [editingCompany, setEditingCompany] = useState(null)
 
-  // Fetch logistics companies
-  useEffect(() => {
-    fetchCompanies()
-  }, [])
-
-  const fetchCompanies = async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
-      const response = await logisticsCompaniesAPI.getAll({ isActive: 'true', limit: 100 })
-      // Handle different response structures
-      let companiesList = []
-      if (response?.data?.data) {
-        companiesList = Array.isArray(response.data.data) ? response.data.data : []
-      } else if (response?.data?.rows) {
-        companiesList = Array.isArray(response.data.rows) ? response.data.rows : []
-      } else if (Array.isArray(response?.data)) {
-        companiesList = response.data
-      } else if (Array.isArray(response)) {
-        companiesList = response
-      }
-      setCompanies(companiesList)
-    } catch (error) {
-      console.error('Error fetching logistics companies:', error)
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to load logistics companies'
-      setError(errorMessage)
-      toast.error(errorMessage)
-      setCompanies([])
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const { data: companies = [], isLoading, error } = useLogisticsCompanies({ isActive: 'true', limit: 100 })
+  const createMutation = useCreateLogisticsCompany()
+  const updateMutation = useUpdateLogisticsCompany()
+  const deleteMutation = useDeleteLogisticsCompany()
 
   const columns = useMemo(
     () => [
@@ -128,19 +100,9 @@ export default function LogisticsPage() {
   )
 
   const handleAdd = async (formData) => {
-    try {
-      setIsCreating(true)
-      await logisticsCompaniesAPI.create(formData)
-      toast.success('Logistics company created successfully')
-      setOpenAddForm(false)
-      fetchCompanies() // Refresh list
-    } catch (error) {
-      console.error('Error creating logistics company:', error)
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to create logistics company'
-      toast.error(errorMessage)
-    } finally {
-      setIsCreating(false)
-    }
+    createMutation.mutate(formData, {
+      onSuccess: () => setOpenAddForm(false),
+    })
   }
 
   const handleEdit = (item) => {
@@ -148,32 +110,14 @@ export default function LogisticsPage() {
   }
 
   const handleUpdate = async (formData) => {
-    try {
-      setIsCreating(true)
-      await logisticsCompaniesAPI.update(editingCompany._id || editingCompany.id, formData)
-      toast.success('Logistics company updated successfully')
-      setEditingCompany(null)
-      fetchCompanies() // Refresh list
-    } catch (error) {
-      console.error('Error updating logistics company:', error)
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to update logistics company'
-      toast.error(errorMessage)
-    } finally {
-      setIsCreating(false)
-    }
+    updateMutation.mutate({ id: editingCompany._id || editingCompany.id, ...formData }, {
+      onSuccess: () => setEditingCompany(null),
+    })
   }
 
   const handleDelete = async (item) => {
     if (window.confirm(`Are you sure you want to delete "${item.name}"?`)) {
-      try {
-        await logisticsCompaniesAPI.delete(item._id || item.id)
-        toast.success('Logistics company deleted successfully')
-        fetchCompanies() // Refresh list
-      } catch (error) {
-        console.error('Error deleting logistics company:', error)
-        const errorMessage = error.response?.data?.message || error.message || 'Failed to delete logistics company'
-        toast.error(errorMessage)
-      }
+      deleteMutation.mutate(item._id || item.id)
     }
   }
 
@@ -191,15 +135,7 @@ export default function LogisticsPage() {
 
       {error && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-sm text-red-600">{error}</p>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="mt-2"
-            onClick={fetchCompanies}
-          >
-            Retry
-          </Button>
+          <p className="text-sm text-red-600">{error.message || 'Failed to load logistics companies'}</p>
         </div>
       )}
 
@@ -215,7 +151,7 @@ export default function LogisticsPage() {
         open={openAddForm}
         onClose={() => setOpenAddForm(false)}
         onSubmit={handleAdd}
-        loading={isCreating}
+        loading={createMutation.isPending}
         isEdit={false}
       />
 
@@ -223,7 +159,7 @@ export default function LogisticsPage() {
         open={!!editingCompany}
         onClose={() => setEditingCompany(null)}
         onSubmit={handleUpdate}
-        loading={isCreating}
+        loading={updateMutation.isPending}
         initialData={editingCompany}
         isEdit={true}
       />
