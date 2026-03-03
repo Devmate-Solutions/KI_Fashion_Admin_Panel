@@ -16,7 +16,9 @@ import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { dispatchOrdersAPI } from "@/lib/api/endpoints/dispatchOrders"
 import { balancesAPI } from "@/lib/api/endpoints/balances"
 import { useQuery } from "@tanstack/react-query"
-import { Loader2, Plus, FileText, Users, Search, Filter, Building2, DollarSign, Clock, CheckCircle2, RotateCcw, Calendar } from "lucide-react"
+import { Loader2, Plus, FileText, Users, Search, Filter, Building2, DollarSign, Clock, CheckCircle2, RotateCcw, Calendar, Download } from "lucide-react"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 import { Badge } from "@/components/ui/badge"
 import { useQueryClient } from "@tanstack/react-query"
 import toast from "react-hot-toast"
@@ -110,10 +112,13 @@ export default function SupplierLedgerPage() {
   const suppliers = suppliersWithUsers
   const dropdownSuppliers = allSuppliers
 
-  // Fetch supplier ledger entries for Tab 1 (only when a supplier is selected)
+  // Fetch supplier ledger entries for Tab 1 (when a supplier or "all" is selected)
   const ledgerFilterParams = useMemo(() => {
-    if (!ledgerSupplierFilter || ledgerSupplierFilter === 'all') {
+    if (!ledgerSupplierFilter) {
       return null // Don't fetch if no supplier selected
+    }
+    if (ledgerSupplierFilter === 'all') {
+      return { limit: 500 } // Fetch all suppliers
     }
     return { supplierId: ledgerSupplierFilter, limit: 100 }
   }, [ledgerSupplierFilter])
@@ -705,32 +710,7 @@ export default function SupplierLedgerPage() {
           )
         }
       },
-      {
-        header: "Action",
-        accessor: "action",
-        render: (row) => (
-          row.status !== 'paid' ? (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleMarkAsPaid(row)}
-              className="h-8"
-              disabled={isMarkingAsPaid}
-            >
-              {isMarkingAsPaid ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                'Make Payment'
-              )}
-            </Button>
-          ) : (
-            <span className="text-sm text-muted-foreground">-</span>
-          )
-        )
-      }
+      
     )
 
     return columns
@@ -1220,6 +1200,152 @@ export default function SupplierLedgerPage() {
     )
   }, [allLedgerTransactions, ledgerSearch])
 
+  // PDF Export for Supplier Ledger
+  const handleExportLedgerPDF = () => {
+    if (!filteredLedgerTransactions.length) {
+      toast.error('No ledger data to export')
+      return
+    }
+
+    const isAll = ledgerSupplierFilter === 'all'
+    const supplierName = isAll
+      ? 'All Suppliers'
+      : (() => {
+          const s = dropdownSuppliers.find(s => String(s.id) === ledgerSupplierFilter)
+          return s ? `${s.name}${s.company ? ` (${s.company})` : ''}` : 'Supplier'
+        })()
+
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    const pageWidth = doc.internal.pageSize.getWidth()
+
+    // Header
+    doc.setFontSize(18)
+    doc.setFont('helvetica', 'bold')
+    doc.text('KI Fashion', 14, 18)
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Supplier Ledger Report', 14, 26)
+
+    doc.setFontSize(10)
+    doc.text(`Supplier: ${supplierName}`, 14, 34)
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`, 14, 40)
+
+    // Summary box
+    const totalEntries = filteredLedgerTransactions.length
+    const balance = calculatedTotalBalance || 0
+    const totalDebit = filteredLedgerTransactions.reduce((sum, r) => sum + (r.debit || 0), 0)
+    const totalCash = filteredLedgerTransactions.reduce((sum, r) => sum + (r.cashPaid || 0), 0)
+    const totalBank = filteredLedgerTransactions.reduce((sum, r) => sum + (r.bankPaid || 0), 0)
+    const totalReturn = filteredLedgerTransactions.reduce((sum, r) => sum + (r.returnAmount || 0), 0)
+
+    doc.setDrawColor(200)
+    doc.setFillColor(248, 249, 250)
+    doc.roundedRect(14, 44, pageWidth - 28, 14, 2, 2, 'FD')
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`Total Entries: ${totalEntries}`, 20, 52)
+    doc.text(`Total Debit: ${formatNumber(totalDebit)}`, 75, 52)
+    doc.text(`Cash Paid: ${formatNumber(totalCash)}`, 130, 52)
+    doc.text(`Bank Paid: ${formatNumber(totalBank)}`, 180, 52)
+    doc.text(`Returns: ${formatNumber(totalReturn)}`, 225, 52)
+    const balLabel = balance > 0 ? `Balance: ${formatNumber(Math.abs(balance))} DR` : `Balance: ${formatNumber(Math.abs(balance))} CR`
+    doc.setTextColor(balance > 0 ? 200 : 0, balance > 0 ? 0 : 128, 0)
+    doc.text(balLabel, pageWidth - 14, 52, { align: 'right' })
+    doc.setTextColor(0, 0, 0)
+
+    // Table
+    const tableData = filteredLedgerTransactions.map(row => [
+      row.entryNumber || '-',
+      (() => {
+        const dateTime = row.createdAt || row.date
+        if (!dateTime) return '-'
+        const d = new Date(dateTime)
+        return `${d.toLocaleDateString('en-GB')} ${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true })}`
+      })(),
+      row.supplier || '-',
+      row.type || '-',
+      row.reference || '-',
+      row.debit > 0 ? formatNumber(row.debit) : '-',
+      row.cashPaid > 0 ? formatNumber(row.cashPaid) : '-',
+      row.bankPaid > 0 ? formatNumber(row.bankPaid) : '-',
+      row.returnAmount > 0 ? formatNumber(row.returnAmount) : '-',
+      row.discount > 0 ? formatNumber(row.discount) : '-',
+      formatNumber(row.balance),
+    ])
+
+    autoTable(doc, {
+      startY: 62,
+      head: [['Entry #', 'Date', 'Supplier', 'Type', 'Reference', 'Debit (Owe)', 'Cash Paid', 'Bank Paid', 'Return', 'Discount', 'Balance']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [30, 41, 59],
+        textColor: 255,
+        fontSize: 7.5,
+        fontStyle: 'bold',
+        halign: 'center',
+        cellPadding: 2,
+      },
+      bodyStyles: {
+        fontSize: 7,
+        cellPadding: 1.8,
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 18 },
+        1: { cellWidth: 32 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 32 },
+        4: { cellWidth: 24 },
+        5: { halign: 'right', cellWidth: 22 },
+        6: { halign: 'right', cellWidth: 22 },
+        7: { halign: 'right', cellWidth: 22 },
+        8: { halign: 'right', cellWidth: 20 },
+        9: { halign: 'right', cellWidth: 20 },
+        10: { halign: 'right', fontStyle: 'bold', cellWidth: 24 },
+      },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { left: 14, right: 14 },
+      didParseCell: function (data) {
+        // Color debit cells red
+        if (data.section === 'body' && data.column.index === 5 && data.cell.raw !== '-') {
+          data.cell.styles.textColor = [220, 38, 38]
+        }
+        // Color cash paid blue
+        if (data.section === 'body' && data.column.index === 6 && data.cell.raw !== '-') {
+          data.cell.styles.textColor = [37, 99, 235]
+        }
+        // Color bank paid purple
+        if (data.section === 'body' && data.column.index === 7 && data.cell.raw !== '-') {
+          data.cell.styles.textColor = [147, 51, 234]
+        }
+        // Color return orange
+        if (data.section === 'body' && data.column.index === 8 && data.cell.raw !== '-') {
+          data.cell.styles.textColor = [234, 88, 12]
+        }
+        // Color discount green
+        if (data.section === 'body' && data.column.index === 9 && data.cell.raw !== '-') {
+          data.cell.styles.textColor = [22, 163, 74]
+        }
+      },
+    })
+
+    // Footer
+    const pageCount = doc.internal.getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i)
+      const pageH = doc.internal.pageSize.getHeight()
+      doc.setFontSize(7)
+      doc.setTextColor(150)
+      doc.text('This is a computer-generated report and does not require a signature.', 14, pageH - 8)
+      doc.text(`Page ${i} of ${pageCount}`, pageWidth - 14, pageH - 8, { align: 'right' })
+    }
+
+    const dateStr = new Date().toISOString().slice(0, 10)
+    const safeName = supplierName.replace(/[^a-zA-Z0-9]/g, '_')
+    doc.save(`Supplier_Ledger_${safeName}_${dateStr}.pdf`)
+    toast.success('PDF report downloaded')
+  }
+
   const ledgerTabContent = (
     <div className="space-y-6">
       {/* Filters & Search Bar - Unified */}
@@ -1243,10 +1369,12 @@ export default function SupplierLedgerPage() {
                 disabled={allSuppliersLoading}
               >
                 {ledgerSupplierFilter
-                  ? (() => {
-                    const supplier = dropdownSuppliers.find((s) => String(s.id) === ledgerSupplierFilter)
-                    return supplier ? `${supplier.name} ${supplier.company ? `(${supplier.company})` : ''}` : "Select supplier..."
-                  })()
+                  ? ledgerSupplierFilter === 'all'
+                    ? "All Suppliers"
+                    : (() => {
+                      const supplier = dropdownSuppliers.find((s) => String(s.id) === ledgerSupplierFilter)
+                      return supplier ? `${supplier.name} ${supplier.company ? `(${supplier.company})` : ''}` : "Select supplier..."
+                    })()
                   : "Select supplier..."}
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
@@ -1257,6 +1385,26 @@ export default function SupplierLedgerPage() {
                 <CommandList>
                   <CommandEmpty>No supplier found.</CommandEmpty>
                   <CommandGroup>
+                    <CommandItem
+                      key="all"
+                      value="all suppliers"
+                      onSelect={() => {
+                        setLedgerSupplierFilter(ledgerSupplierFilter === 'all' ? '' : 'all')
+                        setSelectedSupplierId('')
+                        setSupplierOpen(false)
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          ledgerSupplierFilter === 'all' ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-primary" />
+                        <span className="font-semibold">All Suppliers</span>
+                      </div>
+                    </CommandItem>
                     {dropdownSuppliers.map((supplier) => (
                       <CommandItem
                         key={supplier.id}
@@ -1298,7 +1446,7 @@ export default function SupplierLedgerPage() {
           </Popover>
 
           {/* Filter By */}
-          {ledgerSupplierFilter && ledgerSupplierFilter !== 'all' && (
+          {ledgerSupplierFilter && (
             <Select
               value={ledgerFilterBy}
               onValueChange={setLedgerFilterBy}
@@ -1317,7 +1465,7 @@ export default function SupplierLedgerPage() {
           )}
 
           {/* Search Section */}
-          {ledgerSupplierFilter && ledgerSupplierFilter !== 'all' && (
+          {ledgerSupplierFilter && (
             <div className="flex gap-2 sm:ml-auto w-full sm:w-auto">
               <div className="relative flex-1 sm:flex-initial">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
@@ -1345,19 +1493,32 @@ export default function SupplierLedgerPage() {
       {/* Content Section */}
       <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
         <div className="p-6 border-b border-border">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <FileText className="h-5 w-5 text-primary" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <FileText className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-lg text-foreground">Complete Ledger History</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Select a supplier to view their complete accounting record</p>
+              </div>
             </div>
-            <div>
-              <h2 className="font-semibold text-lg text-foreground">Complete Ledger History</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">Select a supplier to view their complete accounting record</p>
-            </div>
+            {ledgerSupplierFilter && filteredLedgerTransactions.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportLedgerPDF}
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Export PDF
+              </Button>
+            )}
           </div>
         </div>
 
         <div className="p-6">
-          {!ledgerSupplierFilter || ledgerSupplierFilter === 'all' ? (
+          {!ledgerSupplierFilter ? (
             <div className="p-12 text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
                 <Building2 className="w-8 h-8 text-muted-foreground" />
@@ -1409,7 +1570,7 @@ export default function SupplierLedgerPage() {
                     </div> */}
                   </div>
                   <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
-                    Supplier Balance
+                    {ledgerSupplierFilter === 'all' ? 'Total Supplier Balance' : 'Supplier Balance'}
                   </div>
                   <div className={`text-2xl font-bold tabular-nums ${(calculatedTotalBalance || 0) <= 0 ? 'text-emerald-700' : 'text-red-700'
                     }`}>
@@ -1417,7 +1578,9 @@ export default function SupplierLedgerPage() {
                   </div>
                   <div className={`text-xs mt-1 ${(calculatedTotalBalance || 0) <= 0 ? 'text-emerald-600/80' : 'text-red-600/80'
                     }`}>
-                    {(calculatedTotalBalance || 0) > 0 ? 'Amount owed to supplier' : 'Credit with supplier'}
+                    {(calculatedTotalBalance || 0) > 0
+                      ? ledgerSupplierFilter === 'all' ? 'Total owed to all suppliers' : 'Amount owed to supplier'
+                      : ledgerSupplierFilter === 'all' ? 'Total credit with all suppliers' : 'Credit with supplier'}
                   </div>
                 </div>
               </div>

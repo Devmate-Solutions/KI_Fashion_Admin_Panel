@@ -29,7 +29,7 @@ import {
 import * as Collapsible from "@radix-ui/react-collapsible";
 
 const items = [
-  // { href: "/home", label: "Dashboard", icon: Home },
+  { href: "/home", label: "Dashboard", icon: Home },
   { href: "/dispatch-orders", label: "Dispatch Orders", icon: Truck },
   { href: "/stock", label: "Stock & Inventory", icon: Boxes },
   { href: "/buying", label: "Buying & Sourcing", icon: ShoppingBag },
@@ -67,8 +67,8 @@ const reportLinks = [
   { href: "/reports/profit-loss", label: "Comparison Report (PNL)" },
   { href: "/reports/cash-in-hand", label: "Cash in Hand Report" },
   // { href: "/reports/sales-returns", label: "Sales Returns (Invoice Wise)" },
-  // { href: "/reports/sales-returns-product-wise", label: "Sales Returns (Product Wise)" },
-  // { href: "/reports/buying-returns-product-wise", label: "Buying Returns (Product Wise)" },
+  { href: "/reports/sales-returns-product-wise", label: "Sales Returns (Product Wise)" },
+  { href: "/reports/buying-returns-product-wise", label: "Buying Returns (Product Wise)" },
 ];
 
 export default function Sidebar() {

@@ -9,7 +9,6 @@ import {
   useSuppliersReport,
   useCustomersReport,
 } from "@/lib/hooks/useReports";
-import { useExpenses } from "@/lib/hooks/useExpenses";
 import {
   useAllSupplierLedgers,
   useAllBuyerLedgers,
@@ -18,25 +17,20 @@ import { useDailyCashSummary } from "@/lib/hooks/useCashTracking";
 import { useRouter } from "next/navigation";
 import Tabs from "../../../components/tabs";
 import ProductImageGallery from "@/components/ui/ProductImageGallery";
+import StatCard from "@/components/ui/StatCard";
+import QuickAction from "@/components/ui/QuickAction";
 import {
   TrendingUp,
   TrendingDown,
-  ShoppingBag,
-  DollarSign,
   Users,
   Package,
-  ArrowUpRight,
-  ArrowDownRight,
   Wallet,
   Calendar,
   ChevronRight,
   AlertTriangle,
-  History,
   CheckCircle2,
-  FileText,
   Loader2,
   Plus,
-  ArrowRight,
   Monitor,
   Activity,
   CreditCard,
@@ -50,8 +44,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useMemo, useState, useEffect } from "react";
-import React from "react";
+import { useMemo } from "react";
 import {
   XAxis,
   YAxis,
@@ -61,7 +54,6 @@ import {
   AreaChart,
   Area,
 } from "recharts";
-import { cn } from "@/lib/utils";
 
 // Helper to get image array
 const getImageArray = (item) => {
@@ -88,180 +80,6 @@ function currency(n) {
   })}`;
 }
 
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  trend,
-  trendValue,
-  loading,
-  color = "primary",
-  onClick,
-  description,
-}) {
-  if (loading) {
-    return (
-      <Card className="border-none shadow-sm bg-white/80 backdrop-blur-sm">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between pb-2">
-            <div className="h-4 bg-slate-100 rounded w-20 animate-pulse"></div>
-            <div className="h-10 w-10 bg-slate-50 rounded-lg animate-pulse"></div>
-          </div>
-          <div className="mt-2 h-10 bg-slate-100 rounded w-32 animate-pulse"></div>
-          <div className="mt-4 h-4 bg-slate-100 rounded w-24 animate-pulse"></div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const themes = {
-    primary: {
-      icon: "text-blue-600 bg-blue-50/50",
-      border: "border-blue-100/50",
-      glow: "group-hover:shadow-blue-500/10",
-    },
-    success: {
-      icon: "text-emerald-600 bg-emerald-50/50",
-      border: "border-emerald-100/50",
-      glow: "group-hover:shadow-emerald-500/10",
-    },
-    warning: {
-      icon: "text-amber-600 bg-amber-50/50",
-      border: "border-amber-100/50",
-      glow: "group-hover:shadow-amber-500/10",
-    },
-    danger: {
-      icon: "text-rose-600 bg-rose-50/50",
-      border: "border-rose-100/50",
-      glow: "group-hover:shadow-rose-500/10",
-    },
-    purple: {
-      icon: "text-purple-600 bg-purple-50/50",
-      border: "border-purple-100/50",
-      glow: "group-hover:shadow-purple-500/10",
-    },
-  };
-
-  const theme = themes[color] || themes.primary;
-
-  return (
-    <Card
-      className={cn(
-        "border border-slate-100/80 bg-white transition-all duration-300 cursor-pointer group overflow-hidden relative active:scale-[0.98]",
-        theme.glow
-      )}
-      onClick={onClick}
-    >
-      {/* Background Decorative Gradient */}
-      <div
-        className={cn(
-          "absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-[0.03] transition-transform duration-500 group-hover:scale-150",
-          theme.icon
-        )}
-      ></div>
-
-      <CardContent className="p-6 relative z-10">
-        <div className="flex items-center justify-between space-y-0 pb-2">
-          <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-              {label}
-            </p>
-            {description && (
-              <p className="text-[10px] text-slate-400 mt-0.5">{description}</p>
-            )}
-          </div>
-          <div
-            className={cn(
-              "p-2.5 rounded-lg transition-all duration-300 group-hover:rotate-12 group-hover:scale-110",
-              theme.icon
-            )}
-          >
-            <Icon className="h-5 w-5 transition-transform duration-300" />
-          </div>
-        </div>
-
-        <div className="flex items-baseline justify-between mt-3">
-          <h3 className="text-3xl font-black tracking-tight text-slate-900 leading-none">
-            {value}
-          </h3>
-        </div>
-
-        {trendValue ? (
-          <div className="flex items-center mt-5">
-            <div
-              className={cn(
-                "flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold",
-                trend === "up"
-                  ? "text-emerald-700 bg-emerald-50"
-                  : "text-rose-700 bg-rose-50"
-              )}
-            >
-              {trend === "up" ? (
-                <ArrowUpRight className="h-3 w-3 mr-0.5" />
-              ) : (
-                <ArrowDownRight className="h-3 w-3 mr-0.5" />
-              )}
-              {trendValue}
-            </div>
-            <span className="text-[10px] text-slate-400 ml-2 font-medium">
-              this week
-            </span>
-          </div>
-        ) : (
-          <div className="flex items-center mt-5 text-[10px] text-slate-400 font-medium group-hover:text-slate-600 transition-colors">
-            View details{" "}
-            <ArrowRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function QuickAction({
-  label,
-  icon: Icon,
-  onClick,
-  color = "blue",
-  description,
-}) {
-  const themes = {
-    blue: "from-blue-500 to-indigo-600 shadow-blue-200 text-white hover:shadow-blue-300",
-    purple:
-      "from-purple-500 to-violet-600 shadow-purple-200 text-white hover:shadow-purple-300",
-    emerald:
-      "from-emerald-500 to-teal-600 shadow-emerald-200 text-white hover:shadow-emerald-300",
-    slate:
-      "from-slate-700 to-slate-900 shadow-slate-200 text-white hover:shadow-slate-300",
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex flex-col items-start gap-3 p-5 rounded-lg bg-gradient-to-br transition-all duration-300 active:scale-[0.98] text-left group overflow-hidden relative w-full",
-        themes[color] || themes.blue
-      )}
-      data-click-scale
-    >
-      <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
-        <Icon className="h-24 w-24" />
-      </div>
-      <div className="p-2 rounded-lg bg-white/20 backdrop-blur-md">
-        <Icon className="h-5 w-5" />
-      </div>
-      <div>
-        <span className="font-bold text-base block">{label}</span>
-        {description && (
-          <span className="text-[11px] text-white/70 block mt-0.5 leading-tight">
-            {description}
-          </span>
-        )}
-      </div>
-    </button>
-  );
-}
-
 export default function HomePage() {
   const router = useRouter();
   const today = new Date().toISOString().split("T")[0];
@@ -272,18 +90,15 @@ export default function HomePage() {
   const { data: salesData, isLoading: salesLoading } = useSalesReport();
   const { data: financialData, isLoading: financialLoading } =
     useFinancialReport();
-  const { data: suppliersData, isLoading: suppliersLoading } =
-    useSuppliersReport();
+  const { data: suppliersData } = useSuppliersReport();
   const { data: customersData, isLoading: customersLoading } =
     useCustomersReport();
   const { data: inventoryData, isLoading: inventoryLoading } = useInventoryList(
     { limit: 100 }
   );
   const { data: cashData, isLoading: cashLoading } = useDailyCashSummary(today);
-  const { data: supplierLedgerData, isLoading: supplierLedgerLoading } =
-    useAllSupplierLedgers({ limit: 10 });
-  const { data: buyerLedgerData, isLoading: buyerLedgerLoading } =
-    useAllBuyerLedgers({ limit: 10 });
+  const { data: supplierLedgerData } = useAllSupplierLedgers({ limit: 10 });
+  const { data: buyerLedgerData } = useAllBuyerLedgers({ limit: 10 });
 
   const inventoryItems = inventoryData?.items || [];
   const totalStockValue = inventoryItems.reduce(
@@ -303,16 +118,34 @@ export default function HomePage() {
     }));
   }, [salesData]);
 
+  // Merge ledger entries for recent activity
+  const recentEntries = useMemo(() => {
+    return [
+      ...(supplierLedgerData?.entries || []).map((entry) => ({
+        ...entry,
+        partyType: "Supplier",
+        partyName:
+          entry.supplier?.name || entry.supplier?.company || "Unknown",
+      })),
+      ...(buyerLedgerData?.entries || []).map((entry) => ({
+        ...entry,
+        partyType: "Customer",
+        partyName:
+          entry.buyer?.name || entry.buyer?.company || "Unknown",
+      })),
+    ]
+      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+      .slice(0, 5);
+  }, [supplierLedgerData, buyerLedgerData]);
+
   const overviewTab = (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-6">
       {/* Headline Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total Monthly Revenue"
           value={currency(dashboardData?.totalSales?.thisMonth || 0)}
           icon={TrendingUp}
-          trend="up"
-          trendValue="14.2%"
           loading={dashboardLoading}
           color="primary"
           description="Net sales after returns"
@@ -350,11 +183,12 @@ export default function HomePage() {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         {/* Main Analytics Section */}
         <div className="xl:col-span-8 space-y-6">
+          {/* Sales Chart */}
           <Card className="border border-border bg-card overflow-hidden rounded-lg">
             <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 p-4 sm:p-8 pb-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
+                  <div className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
                   <CardTitle className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
                     Sales Intelligence
                   </CardTitle>
@@ -363,20 +197,12 @@ export default function HomePage() {
                   Revenue trend analysis for the current week
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg">
-                <Badge
-                  variant="ghost"
-                  className="bg-white text-blue-600 shadow-sm text-[10px] font-bold border-none"
-                >
-                  WEEKLY
-                </Badge>
-                <Badge
-                  variant="ghost"
-                  className="text-slate-400 text-[10px] font-bold border-none"
-                >
-                  MONTHLY
-                </Badge>
-              </div>
+              <Badge
+                variant="ghost"
+                className="bg-slate-50 text-blue-600 text-[10px] font-bold border-none px-3 py-1"
+              >
+                WEEKLY
+              </Badge>
             </CardHeader>
             <CardContent className="p-4 sm:p-8 pt-4">
               <div className="h-[240px] sm:h-[320px] w-full">
@@ -388,49 +214,23 @@ export default function HomePage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData}>
                       <defs>
-                        <linearGradient
-                          id="salesGradient"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="5%"
-                            stopColor="#3b82f6"
-                            stopOpacity={0.12}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor="#3b82f6"
-                            stopOpacity={0}
-                          />
+                        <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.12} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid
-                        strokeDasharray="4 4"
-                        vertical={false}
-                        stroke="#f1f5f9"
-                      />
+                      <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
                       <XAxis
                         dataKey="name"
                         axisLine={false}
                         tickLine={false}
-                        tick={{
-                          fill: "#94a3b8",
-                          fontSize: 11,
-                          fontWeight: 600,
-                        }}
+                        tick={{ fill: "#94a3b8", fontSize: 11, fontWeight: 600 }}
                         dy={15}
                       />
                       <YAxis
                         axisLine={false}
                         tickLine={false}
-                        tick={{
-                          fill: "#94a3b8",
-                          fontSize: 11,
-                          fontWeight: 600,
-                        }}
+                        tick={{ fill: "#94a3b8", fontSize: 11, fontWeight: 600 }}
                         tickFormatter={(value) => `£${value}`}
                         dx={-10}
                       />
@@ -468,7 +268,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          {/* Financial Log */}
+          {/* Recent Activity */}
           <Card className="border border-border bg-card rounded-lg overflow-hidden">
             <CardHeader className="p-8 pb-4">
               <div className="flex items-center justify-between">
@@ -505,65 +305,43 @@ export default function HomePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {[
-                      ...(supplierLedgerData?.entries || []).map((entry) => ({
-                        ...entry,
-                        partyType: "Supplier",
-                        partyName:
-                          entry.supplier?.name ||
-                          entry.supplier?.company ||
-                          "Unknown",
-                      })),
-                      ...(buyerLedgerData?.entries || []).map((entry) => ({
-                        ...entry,
-                        partyType: "Customer",
-                        partyName:
-                          entry.buyer?.name ||
-                          entry.buyer?.company ||
-                          "Unknown",
-                      })),
-                    ]
-                      .sort(
-                        (a, b) => new Date(b.date || 0) - new Date(a.date || 0)
-                      )
-                      .slice(0, 5)
-                      .map((entry, idx) => (
-                        <tr
-                          key={idx}
-                          className="hover:bg-slate-50/30 transition-all duration-150 ease-in-out group"
-                        >
-                          <td className="px-8 py-5">
-                            <div className="flex flex-col">
-                              <span className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                                {entry.partyName}
-                              </span>
-                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter mt-0.5">
-                                {entry.date
-                                  ? new Date(entry.date).toLocaleDateString(
-                                      "en-GB",
-                                      { day: "2-digit", month: "short" }
-                                    )
-                                  : "—"}{" "}
-                                • {entry.partyType}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-8 py-5">
-                            <Badge
-                              variant="outline"
-                              className="rounded-lg text-[9px] font-black uppercase tracking-widest border-slate-100 bg-white shadow-sm px-2"
-                            >
-                              {entry.type || "General"}
-                            </Badge>
-                          </td>
-                          <td className="px-8 py-5 text-right font-black text-slate-900 tabular-nums">
-                            {entry.debit ? currency(entry.debit) : "—"}
-                          </td>
-                          <td className="px-8 py-5 text-right font-black text-emerald-600 tabular-nums">
-                            {entry.credit ? currency(entry.credit) : "—"}
-                          </td>
-                        </tr>
-                      ))}
+                    {recentEntries.map((entry, idx) => (
+                      <tr
+                        key={idx}
+                        className="hover:bg-slate-50/30 transition-all duration-150 ease-in-out group"
+                      >
+                        <td className="px-8 py-5">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                              {entry.partyName}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter mt-0.5">
+                              {entry.date
+                                ? new Date(entry.date).toLocaleDateString(
+                                    "en-GB",
+                                    { day: "2-digit", month: "short" }
+                                  )
+                                : "—"}{" "}
+                              • {entry.partyType}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-8 py-5">
+                          <Badge
+                            variant="outline"
+                            className="rounded-lg text-[9px] font-black uppercase tracking-widest border-slate-100 bg-white shadow-sm px-2"
+                          >
+                            {entry.type || "General"}
+                          </Badge>
+                        </td>
+                        <td className="px-8 py-5 text-right font-black text-slate-900 tabular-nums">
+                          {entry.debit ? currency(entry.debit) : "—"}
+                        </td>
+                        <td className="px-8 py-5 text-right font-black text-emerald-600 tabular-nums">
+                          {entry.credit ? currency(entry.credit) : "—"}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -571,9 +349,9 @@ export default function HomePage() {
           </Card>
         </div>
 
-        {/* Sidebar Analytics */}
+        {/* Sidebar */}
         <div className="xl:col-span-4 space-y-6">
-          {/* Action Center */}
+          {/* Quick Actions */}
           <div className="grid grid-cols-1 gap-4">
             <QuickAction
               label="Inventory Approval"
@@ -598,7 +376,7 @@ export default function HomePage() {
             />
           </div>
 
-          {/* Critical Alerts */}
+          {/* Stock Alerts */}
           <Card className="border border-border bg-card rounded-lg overflow-hidden">
             <CardHeader className="p-6 pb-2">
               <div className="flex items-center justify-between">
@@ -623,7 +401,7 @@ export default function HomePage() {
                   .map((item, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center gap-4 p-5 hover:bg-rose-50/30 transition-all duration-200 ease-in-out cursor-pointer group hover:shadow-sm rounded-lg mx-2"
+                      className="flex items-center gap-4 p-5 hover:bg-rose-50/30 transition-all duration-200 cursor-pointer group rounded-lg mx-2"
                       onClick={() => router.push("/stock")}
                     >
                       <div className="h-12 w-12 rounded-lg overflow-hidden border border-slate-100 bg-white flex-shrink-0 group-hover:scale-105 transition-transform">
@@ -642,7 +420,7 @@ export default function HomePage() {
                           Stock level: {item.currentStock}
                         </p>
                       </div>
-                      <div className="h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-white group-hover:shadow-md group-hover:scale-110 transition-all duration-200 ease-in-out">
+                      <div className="h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-white group-hover:shadow-md group-hover:scale-110 transition-all duration-200">
                         <Plus className="h-4 w-4 text-slate-300 group-hover:text-blue-500 transition-colors duration-200" />
                       </div>
                     </div>
@@ -672,43 +450,17 @@ export default function HomePage() {
               )}
             </CardContent>
           </Card>
-
-          {/* Performance Summary */}
-          <Card className="border border-border bg-gradient-to-br from-indigo-600 to-blue-700 rounded-lg text-white">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-black tracking-tight">
-                Monthly Target
-              </CardTitle>
-              <CardDescription className="text-white/60 text-xs font-medium">
-                Progress towards sales objective
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4 pt-4">
-                <div className="flex items-center justify-between text-sm font-black">
-                  <span>£45,000.00</span>
-                  <span className="text-white/60">78%</span>
-                </div>
-                <div className="h-3 w-full bg-white/10 rounded-full overflow-hidden shadow-inner">
-                  <div className="h-full bg-white shadow-[0_0_15px_rgba(255,255,255,0.5)] rounded-full w-[78%] transition-all duration-1000 ease-out"></div>
-                </div>
-                <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest text-center">
-                  £12,450 remaining to reach goal
-                </p>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
   );
 
   const tabs = [
-    { label: "Executive Overview", content: overviewTab },
+    { label: "Overview", content: overviewTab },
     {
-      label: "Inventory Insights",
+      label: "Inventory",
       content: (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <StatCard
               label="Stock Valuation"
@@ -767,7 +519,7 @@ export default function HomePage() {
                     {inventoryItems.slice(0, 15).map((item, idx) => (
                       <tr
                         key={idx}
-                        className="hover:bg-slate-50/30 transition-all duration-150 ease-in-out border-b border-slate-50 last:border-0"
+                        className="hover:bg-slate-50/30 transition-all duration-150 border-b border-slate-50 last:border-0"
                       >
                         <td className="px-8 py-4">
                           <div className="flex items-center gap-4">
@@ -815,9 +567,9 @@ export default function HomePage() {
       ),
     },
     {
-      label: "Balance Control",
+      label: "Balances",
       content: (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <StatCard
               label="Active Accounts"
@@ -870,7 +622,7 @@ export default function HomePage() {
                     .map((customer, idx) => (
                       <div
                         key={idx}
-                        className="px-8 py-5 flex items-center justify-between hover:bg-slate-50/30 transition-all duration-150 ease-in-out rounded-lg mx-2"
+                        className="px-8 py-5 flex items-center justify-between hover:bg-slate-50/30 transition-all duration-150 rounded-lg mx-2"
                       >
                         <span className="font-bold text-slate-900">
                           {customer.name || customer.company || "Unknown"}
@@ -900,7 +652,7 @@ export default function HomePage() {
                     .map((supplier, idx) => (
                       <div
                         key={idx}
-                        className="px-8 py-5 flex items-center justify-between hover:bg-slate-50/30 transition-all duration-150 ease-in-out rounded-lg mx-2"
+                        className="px-8 py-5 flex items-center justify-between hover:bg-slate-50/30 transition-all duration-150 rounded-lg mx-2"
                       >
                         <span className="font-bold text-slate-900">
                           {supplier.supplierName ||
@@ -923,7 +675,7 @@ export default function HomePage() {
 
   return (
     <div className="space-y-8">
-      {/* Dynamic Header */}
+      {/* Header */}
       <header className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
@@ -932,11 +684,11 @@ export default function HomePage() {
             </div>
             <div className="space-y-1">
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground leading-none">
-                Command Center
+                Dashboard
               </h1>
               <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true"></span>
-                LIVE SYSTEM MONITOR • SUPER ADMIN
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
+                Live overview
               </p>
             </div>
           </div>
@@ -955,7 +707,7 @@ export default function HomePage() {
           </div>
           <Button
             variant="default"
-            className="h-10 sm:h-11 px-4 sm:px-6 rounded-lg font-semibold text-sm bg-primary hover:bg-primary/90 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="h-10 sm:h-11 px-4 sm:px-6 rounded-lg font-semibold text-sm"
             onClick={() => router.push("/dispatch-orders")}
           >
             <Plus className="h-4 w-4 mr-2" /> New Dispatch
@@ -963,37 +715,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Modern Tab System Styling */}
-      <div className="dashboard-tabs">
-        <Tabs tabs={tabs} />
-      </div>
-
-      <style jsx global>{`
-        .dashboard-tabs [role="tablist"] {
-          background: #f1f5f9;
-          padding: 6px;
-          border-radius: 20px;
-          gap: 4px;
-          margin-bottom: 32px;
-          display: inline-flex;
-          border: 1px solid #e2e8f0;
-        }
-        .dashboard-tabs [role="tab"] {
-          border-radius: 16px;
-          padding: 10px 24px;
-          font-size: 12px;
-          font-weight: 800;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          color: #64748b;
-        }
-        .dashboard-tabs [role="tab"][aria-selected="true"] {
-          background: white;
-          color: #0f172a;
-          shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        }
-      `}</style>
+      <Tabs tabs={tabs} />
     </div>
   );
 }

@@ -187,11 +187,23 @@ export default function LogisticsLedgerPage() {
         readableReference = entry.reference || entry.referenceNumber
       }
 
+      // Extract supplier name from reference (DispatchOrder)
+      let supplierName = '-'
+      if (entry.referenceId && typeof entry.referenceId === 'object' && entry.referenceId !== null) {
+        if (entry.referenceId.supplierName) {
+          supplierName = entry.referenceId.supplierName
+          if (entry.referenceId.supplierCompany) {
+            supplierName += ` (${entry.referenceId.supplierCompany})`
+          }
+        }
+      }
+
       return {
         id: entry._id || entry.id,
         date: entry.date || entry.createdAt,
         company: company.name || 'Unknown Company',
         companyId: company._id || company.id,
+        supplierName,
         type: typeLabel,
         transactionType: entry.transactionType || entry.type,
         description: entry.description || entry.notes || '-',
@@ -346,10 +358,10 @@ export default function LogisticsLedgerPage() {
         )
       },
       {
-        header: "Type",
-        accessor: "type",
+        header: "Supplier",
+        accessor: "supplierName",
         render: (row) => (
-          <span>{row.type}</span>
+          <span className="text-sm">{row.supplierName || '-'}</span>
         )
       },
       {
@@ -373,8 +385,8 @@ export default function LogisticsLedgerPage() {
         accessor: "description",
         render: (row) => (
           <span className="font-medium block max-w-[250px] truncate" title={row.description || ''}>
-          {row.description || '-'}
-        </span>
+            {row.description || '-'}
+          </span>
         )
       },
       {
@@ -459,7 +471,7 @@ export default function LogisticsLedgerPage() {
         header: "Reference",
         accessor: "reference",
         render: (row) => (
-          <span className="font-medium text-blue-600 cursor-pointer hover:underline">
+          <span className="font-medium  text-blue-600 cursor-pointer hover:underline">
             {row.reference || '-'}
           </span>
         )
@@ -746,82 +758,82 @@ export default function LogisticsLedgerPage() {
               <div className="h-12 w-12 rounded-xl bg-primary/10 backdrop-blur-sm flex items-center justify-center ring-1 ring-primary/20 shadow-sm">
                 <FileText className="h-6 w-6 text-primary" />
               </div>
-          <div>
+              <div>
                 <h2 className="font-semibold text-xl text-foreground tracking-tight">Complete Ledger History</h2>
-            <p className="text-sm text-muted-foreground mt-1">Select a company to view their complete accounting record</p>
+                <p className="text-sm text-muted-foreground mt-1">Select a company to view their complete accounting record</p>
               </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="w-[250px]">
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="w-[250px]">
                 <Label htmlFor="ledger-company-filter" className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
                   <Users className="h-3.5 w-3.5 text-muted-foreground" />
                   Select Company
                 </Label>
-              <Select
-                value={ledgerCompanyFilter}
-                onValueChange={(value) => {
-                  setLedgerCompanyFilter(value)
-                  if (value && value !== 'all') {
-                    setSelectedCompanyId(value)
-                  }
-                }}
-                disabled={allCompaniesLoading}
-              >
+                <Select
+                  value={ledgerCompanyFilter}
+                  onValueChange={(value) => {
+                    setLedgerCompanyFilter(value)
+                    if (value && value !== 'all') {
+                      setSelectedCompanyId(value)
+                    }
+                  }}
+                  disabled={allCompaniesLoading}
+                >
                   <SelectTrigger id="ledger-company-filter" className="h-11 border-border/60 bg-background/50 backdrop-blur-sm hover:bg-background transition-colors">
-                  <SelectValue placeholder="Select a company..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {allCompanies.map((company) => (
-                    <SelectItem key={company._id || company.id} value={company._id || company.id}>
-                      {company.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {ledgerCompanyFilter && ledgerCompanyFilter !== 'all' && (
-              <div className="w-[200px]">
+                    <SelectValue placeholder="Select a company..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allCompanies.map((company) => (
+                      <SelectItem key={company._id || company.id} value={company._id || company.id}>
+                        {company.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {ledgerCompanyFilter && ledgerCompanyFilter !== 'all' && (
+                <div className="w-[200px]">
                   <Label htmlFor="ledger-type-filter" className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
                     <Filter className="h-3.5 w-3.5 text-muted-foreground" />
                     Filter By
                   </Label>
-                <Select
-                  value={ledgerTypeFilter}
-                  onValueChange={setLedgerTypeFilter}
-                >
+                  <Select
+                    value={ledgerTypeFilter}
+                    onValueChange={setLedgerTypeFilter}
+                  >
                     <SelectTrigger id="ledger-type-filter" className="h-11 border-border/60 bg-background/50 backdrop-blur-sm hover:bg-background transition-colors">
-                    <SelectValue placeholder="All Transactions" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Transactions</SelectItem>
-                    <SelectItem value="charge">Logistics Charges</SelectItem>
-                    <SelectItem value="cash">Payments - Cash</SelectItem>
-                    <SelectItem value="bank">Payments - Bank</SelectItem>
-                    <SelectItem value="adjustment">Debit Adjustment</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+                      <SelectValue placeholder="All Transactions" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Transactions</SelectItem>
+                      <SelectItem value="charge">Logistics Charges</SelectItem>
+                      <SelectItem value="cash">Payments - Cash</SelectItem>
+                      <SelectItem value="bank">Payments - Bank</SelectItem>
+                      <SelectItem value="adjustment">Debit Adjustment</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         {/* Content Section */}
         <div className="p-6">
-        {!ledgerCompanyFilter || ledgerCompanyFilter === 'all' ? (
+          {!ledgerCompanyFilter || ledgerCompanyFilter === 'all' ? (
             <div className="flex flex-col items-center justify-center py-20 px-4">
               <div className="relative mb-6">
                 <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl"></div>
                 <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-muted/90 via-muted/70 to-muted/50 backdrop-blur-sm ring-2 ring-border/60 shadow-lg">
                   <Truck className="w-12 h-12 text-muted-foreground" />
-            </div>
+                </div>
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2.5">Select a company to view ledger</h3>
               <p className="text-sm text-muted-foreground text-center max-w-md leading-relaxed">
                 Choose a logistics company from the dropdown above to see their complete transaction history
               </p>
-          </div>
-        ) : allLedgerLoading ? (
+            </div>
+          ) : allLedgerLoading ? (
             <div className="flex flex-col items-center justify-center py-20 px-4">
               <div className="relative mb-6">
                 <div className="absolute inset-0 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
@@ -831,8 +843,8 @@ export default function LogisticsLedgerPage() {
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2.5">Loading ledger entries</h3>
               <p className="text-sm text-muted-foreground">Please wait while we fetch the records...</p>
-          </div>
-        ) : allLedgerError ? (
+            </div>
+          ) : allLedgerError ? (
             <div className="flex flex-col items-center justify-center py-20 px-4 text-red-600">
               <div className="relative mb-6">
                 <div className="absolute inset-0 bg-red-500/5 rounded-full blur-3xl"></div>
@@ -842,9 +854,9 @@ export default function LogisticsLedgerPage() {
               </div>
               <h3 className="text-lg font-semibold text-red-700 mb-2.5">Error loading ledger entries</h3>
               <p className="text-sm text-red-600 text-center max-w-md">{allLedgerError.message || 'Unknown error'}</p>
-            <p className="text-xs text-muted-foreground mt-2">Check console for details</p>
-          </div>
-        ) : allLedgerTransactions.length === 0 ? (
+              <p className="text-xs text-muted-foreground mt-2">Check console for details</p>
+            </div>
+          ) : allLedgerTransactions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 px-4">
               <div className="relative mb-6">
                 <div className="absolute inset-0 bg-muted/30 rounded-full blur-3xl"></div>
@@ -854,18 +866,16 @@ export default function LogisticsLedgerPage() {
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2.5">No ledger entries found</h3>
               <p className="text-sm text-muted-foreground text-center max-w-md">No transaction records found for this company matching the selected filters.</p>
-          </div>
-        ) : (
-          <>
+            </div>
+          ) : (
+            <>
               {/* Summary Cards */}
-            <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="relative rounded-lg border border-border/60 bg-gradient-to-br from-card via-background to-card p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
                   <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-primary/5 blur-xl group-hover:bg-primary/10 transition-all"></div>
                   <div className="relative z-10">
                     <div className="flex items-center justify-between mb-4">
-                      <div className="h-12 w-12 rounded-xl bg-muted/60 backdrop-blur-sm flex items-center justify-center ring-1 ring-border/50">
-                        <FileText className="h-6 w-6 text-muted-foreground" />
-              </div>
+                     
                     </div>
                     <div className="text-[10px] font-semibold uppercase tracking-[0.15em] mb-2 text-muted-foreground">
                       Total Entries
@@ -880,9 +890,7 @@ export default function LogisticsLedgerPage() {
                   <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-primary/5 blur-xl group-hover:bg-primary/10 transition-all"></div>
                   <div className="relative z-10">
                     <div className="flex items-center justify-between mb-4">
-                      <div className="h-12 w-12 rounded-xl bg-muted/60 backdrop-blur-sm flex items-center justify-center ring-1 ring-border/50">
-                        <DollarSign className="h-6 w-6 text-muted-foreground" />
-                      </div>
+
                     </div>
                     <div className="text-[10px] font-semibold uppercase tracking-[0.15em] mb-2 text-muted-foreground">
                       Company Balance
@@ -894,23 +902,22 @@ export default function LogisticsLedgerPage() {
                       {calculatedTotalBalance <= 0 ? 'Credit with company' : 'Amount owed to company'}
                     </div>
                   </div>
+                </div>
               </div>
-            </div>
-
               {/* Data Table */}
               <div className="rounded-lg border border-border/60 bg-card shadow-sm overflow-hidden">
-              <DataTable
-                columns={allLedgerColumns}
-                data={allLedgerTransactions}
-                hideActions
-                enableSearch={true}
-                paginate={true}
-                pageSize={50}
-                disableSorting={true}
-              />
-            </div>
-          </>
-        )}
+                <DataTable
+                  columns={allLedgerColumns}
+                  data={allLedgerTransactions}
+                  hideActions
+                  enableSearch={true}
+                  paginate={true}
+                  pageSize={50}
+                  disableSorting={true}
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -1115,14 +1122,14 @@ export default function LogisticsLedgerPage() {
               <div className="flex items-center justify-between mb-4">
                 <div className="h-12 w-12 rounded-xl bg-emerald-100/90 backdrop-blur-sm flex items-center justify-center ring-2 ring-emerald-200/40 shadow-sm group-hover:ring-emerald-300/60 transition-all">
                   <DollarSign className="h-6 w-6 text-emerald-600" />
-            </div>
-          </div>
+                </div>
+              </div>
               <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-emerald-700/80">
                 Total Payments
-            </div>
+              </div>
               <div className="text-3xl font-bold text-emerald-700 tabular-nums mb-1.5">
                 £{formatNumber(paymentSummary.total)}
-          </div>
+              </div>
               <div className="text-xs font-medium text-emerald-600/70">All-time payment total</div>
             </div>
           </div>
@@ -1178,7 +1185,7 @@ export default function LogisticsLedgerPage() {
                 Payments This Month
               </div>
               <div className="text-3xl font-bold tabular-nums text-foreground mb-1.5">
-              {paymentSummary.countThisMonth}
+                {paymentSummary.countThisMonth}
               </div>
               <div className="text-xs font-medium text-muted-foreground">Current month</div>
             </div>
@@ -1195,10 +1202,10 @@ export default function LogisticsLedgerPage() {
               <div className="h-12 w-12 rounded-xl bg-primary/10 backdrop-blur-sm flex items-center justify-center ring-1 ring-primary/20 shadow-sm">
                 <FileText className="h-6 w-6 text-primary" />
               </div>
-          <div>
+              <div>
                 <h2 className="font-semibold text-xl text-foreground tracking-tight">Payment History</h2>
-            <p className="text-sm text-muted-foreground mt-1">Select a company to view their payment history</p>
-          </div>
+                <p className="text-sm text-muted-foreground mt-1">Select a company to view their payment history</p>
+              </div>
             </div>
           </div>
         </div>
@@ -1217,95 +1224,95 @@ export default function LogisticsLedgerPage() {
                 <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <span className="whitespace-nowrap">Select Company</span>
               </Label>
-            <Select
-              value={paymentHistoryCompany}
-              onValueChange={(value) => {
-                setPaymentHistoryCompany(value)
-                setSelectedCompanyId(value)
-              }}
-              disabled={allCompaniesLoading}
-            >
+              <Select
+                value={paymentHistoryCompany}
+                onValueChange={(value) => {
+                  setPaymentHistoryCompany(value)
+                  setSelectedCompanyId(value)
+                }}
+                disabled={allCompaniesLoading}
+              >
                 <SelectTrigger id="payment-history-company" className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg">
-                <SelectValue placeholder="Select a company..." />
-              </SelectTrigger>
-              <SelectContent>
-                {allCompanies.map((company) => (
-                  <SelectItem key={company._id || company.id} value={company._id || company.id}>
-                    {company.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                  <SelectValue placeholder="Select a company..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {allCompanies.map((company) => (
+                    <SelectItem key={company._id || company.id} value={company._id || company.id}>
+                      {company.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             <div className="flex flex-col min-w-0">
               <Label htmlFor="payment-history-date-from" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
                 <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <span className="whitespace-nowrap">Date From</span>
               </Label>
-            <Input
-              id="payment-history-date-from"
-              type="date"
-              value={paymentHistoryDateFrom}
-              onChange={(e) => setPaymentHistoryDateFrom(e.target.value)}
+              <Input
+                id="payment-history-date-from"
+                type="date"
+                value={paymentHistoryDateFrom}
+                onChange={(e) => setPaymentHistoryDateFrom(e.target.value)}
                 className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-100"
                 style={{ paddingRight: '2.5rem' }}
-            />
-          </div>
+              />
+            </div>
 
             <div className="flex flex-col min-w-0">
               <Label htmlFor="payment-history-date-to" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
                 <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <span className="whitespace-nowrap">Date To</span>
               </Label>
-            <Input
-              id="payment-history-date-to"
-              type="date"
-              value={paymentHistoryDateTo}
-              onChange={(e) => setPaymentHistoryDateTo(e.target.value)}
+              <Input
+                id="payment-history-date-to"
+                type="date"
+                value={paymentHistoryDateTo}
+                onChange={(e) => setPaymentHistoryDateTo(e.target.value)}
                 className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-100"
                 style={{ paddingRight: '2.5rem' }}
-            />
-          </div>
+              />
+            </div>
 
             <div className="flex flex-col min-w-0">
               <Label htmlFor="payment-history-method" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
                 <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <span className="whitespace-nowrap">Payment Method</span>
               </Label>
-            <Select
-              value={paymentHistoryMethodFilter}
-              onValueChange={setPaymentHistoryMethodFilter}
-            >
+              <Select
+                value={paymentHistoryMethodFilter}
+                onValueChange={setPaymentHistoryMethodFilter}
+              >
                 <SelectTrigger id="payment-history-method" className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg">
-                <SelectValue placeholder="All Methods" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Methods</SelectItem>
-                <SelectItem value="cash">Cash</SelectItem>
-                <SelectItem value="bank">Bank</SelectItem>
-              </SelectContent>
-            </Select>
+                  <SelectValue placeholder="All Methods" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Methods</SelectItem>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="bank">Bank</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
 
         {/* Payment History Table */}
         <div className="px-6 py-6 bg-background">
-        {!paymentHistoryCompany || paymentHistoryCompany === 'all' ? (
+          {!paymentHistoryCompany || paymentHistoryCompany === 'all' ? (
             <div className="flex flex-col items-center justify-center py-20 px-4">
               <div className="relative mb-6">
                 <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl"></div>
                 <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-muted/90 via-muted/70 to-muted/50 backdrop-blur-sm ring-2 ring-border/60 shadow-lg">
                   <Users className="w-12 h-12 text-muted-foreground" />
-            </div>
+                </div>
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2.5">No company selected</h3>
               <p className="text-sm text-muted-foreground text-center max-w-md leading-relaxed">
                 Select a company from the dropdown above to view their complete payment history and transaction records
               </p>
-          </div>
-        ) : paymentHistoryLoading ? (
+            </div>
+          ) : paymentHistoryLoading ? (
             <div className="flex flex-col items-center justify-center py-20 px-4">
               <div className="relative mb-6">
                 <div className="absolute inset-0 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
@@ -1315,8 +1322,8 @@ export default function LogisticsLedgerPage() {
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2.5">Loading payment history</h3>
               <p className="text-sm text-muted-foreground">Please wait while we fetch the records...</p>
-          </div>
-        ) : paymentHistoryTransactions.length === 0 ? (
+            </div>
+          ) : paymentHistoryTransactions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 px-4">
               <div className="relative mb-6">
                 <div className="absolute inset-0 bg-muted/30 rounded-full blur-3xl"></div>
@@ -1326,27 +1333,27 @@ export default function LogisticsLedgerPage() {
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2.5">No payment history found</h3>
               <p className="text-sm text-muted-foreground text-center max-w-md mb-5 leading-relaxed">
-                {paymentHistoryDateFrom || paymentHistoryDateTo || paymentHistoryMethodFilter !== 'all' 
-                  ? 'Try adjusting your filters to see more results' 
+                {paymentHistoryDateFrom || paymentHistoryDateTo || paymentHistoryMethodFilter !== 'all'
+                  ? 'Try adjusting your filters to see more results'
                   : 'No payment records found for this company'}
               </p>
-            {(paymentHistoryDateFrom || paymentHistoryDateTo || paymentHistoryMethodFilter !== 'all') && (
-              <Button
-                variant="outline"
-                size="sm"
+              {(paymentHistoryDateFrom || paymentHistoryDateTo || paymentHistoryMethodFilter !== 'all') && (
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="gap-2 h-10 px-5 shadow-sm hover:shadow-md transition-all rounded-lg"
-                onClick={() => {
-                  setPaymentHistoryDateFrom('')
-                  setPaymentHistoryDateTo('')
-                  setPaymentHistoryMethodFilter('all')
-                }}
-              >
+                  onClick={() => {
+                    setPaymentHistoryDateFrom('')
+                    setPaymentHistoryDateTo('')
+                    setPaymentHistoryMethodFilter('all')
+                  }}
+                >
                   <RotateCcw className="h-4 w-4" />
-                Clear Filters
-              </Button>
-            )}
-          </div>
-        ) : (
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+          ) : (
             <DataTable
               columns={paymentHistoryColumns}
               data={paymentHistoryTransactions}
@@ -1355,7 +1362,7 @@ export default function LogisticsLedgerPage() {
               paginate={true}
               pageSize={50}
             />
-        )}
+          )}
         </div>
       </div>
     </div>
@@ -1385,11 +1392,11 @@ export default function LogisticsLedgerPage() {
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <Truck className="h-5 w-5 text-primary" />
             </div>
-        <div>
+            <div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Logistics Ledger</h1>
               <p className="text-sm text-muted-foreground mt-1">
-            Track and manage payments to logistics companies based on boxes delivered
-          </p>
+                Track and manage payments to logistics companies based on boxes delivered
+              </p>
             </div>
           </div>
         </div>
