@@ -16,7 +16,7 @@ import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { dispatchOrdersAPI } from "@/lib/api/endpoints/dispatchOrders"
 import { balancesAPI } from "@/lib/api/endpoints/balances"
 import { useQuery } from "@tanstack/react-query"
-import { Loader2, Plus, FileText, Users, Search, Filter, Building2, DollarSign, Clock, CheckCircle2, RotateCcw, Calendar, Download } from "lucide-react"
+import { Loader2, Plus, FileText, Users, Search, Filter, Building2, Clock, CheckCircle2, RotateCcw, Calendar, Download } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { Badge } from "@/components/ui/badge"
@@ -1562,13 +1562,7 @@ export default function SupplierLedgerPage() {
                   ? 'border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-emerald-50/30'
                   : 'border-red-200 bg-gradient-to-br from-red-50/50 to-red-50/30'
                   }`}>
-                  <div className="flex items-center justify-between mb-3">
-                    {/* <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${(calculatedTotalBalance || 0) <= 0 ? 'bg-emerald-100' : 'bg-red-100'
-                      }`}>
-                      <DollarSign className={`h-5 w-5 ${(calculatedTotalBalance || 0) <= 0 ? 'text-emerald-600' : 'text-red-600'
-                        }`} />
-                    </div> */}
-                  </div>
+
                   <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
                     {ledgerSupplierFilter === 'all' ? 'Total Supplier Balance' : 'Supplier Balance'}
                   </div>
@@ -2000,11 +1994,6 @@ export default function SupplierLedgerPage() {
             <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-emerald-200/20 blur-2xl group-hover:bg-emerald-200/30 transition-all"></div>
             <div className="absolute -bottom-6 -left-6 h-20 w-20 rounded-full bg-emerald-100/15 blur-xl"></div>
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="h-12 w-12 rounded-xl bg-emerald-100/90 backdrop-blur-sm flex items-center justify-center ring-2 ring-emerald-200/40 shadow-sm group-hover:ring-emerald-300/60 transition-all">
-                  <DollarSign className="h-6 w-6 text-emerald-600" />
-                </div>
-              </div>
               <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-emerald-700/80">
                 Total Payments
               </div>
@@ -2019,11 +2008,6 @@ export default function SupplierLedgerPage() {
           <div className="relative rounded-lg border border-border/60 bg-gradient-to-br from-background via-card/50 to-background p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
             <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-primary/5 blur-xl group-hover:bg-primary/10 transition-all"></div>
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="h-12 w-12 rounded-xl bg-muted/70 backdrop-blur-sm flex items-center justify-center ring-1 ring-border/60 shadow-sm">
-                  <DollarSign className="h-6 w-6 text-muted-foreground" />
-                </div>
-              </div>
               <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-muted-foreground">
                 Cash Payments
               </div>
@@ -2330,7 +2314,6 @@ export default function SupplierLedgerPage() {
 
             <div className="flex flex-col min-w-0">
               <Label htmlFor="payment-history-method" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
-                <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <span className="whitespace-nowrap">Payment Method</span>
               </Label>
               <Select

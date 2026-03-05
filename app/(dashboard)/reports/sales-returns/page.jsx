@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useSalesReturnsReport } from "@/lib/hooks/useReports"
@@ -54,9 +55,21 @@ export default function SalesReturnsReportPage() {
     {
       header: "Sale #",
       accessor: "sale",
-      render: (row) => (
-        <span className="font-mono text-xs">{row.sale?.saleNumber || "—"}</span>
-      ),
+      render: (row) => {
+        const displayText = row.sale?.saleNumber || "—"
+        const saleId = row.sale?._id
+        if (saleId && displayText !== "—") {
+          return (
+            <Link
+              href={`/selling/${saleId}`}
+              className="font-mono text-xs text-blue-600 hover:underline"
+            >
+              {displayText}
+            </Link>
+          )
+        }
+        return <span className="font-mono text-xs">{displayText}</span>
+      },
     },
     {
       header: "Buyer",

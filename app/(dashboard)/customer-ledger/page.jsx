@@ -14,7 +14,7 @@ import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { paymentAPI } from "@/lib/api/endpoints/payments"
 import { salesAPI } from "@/lib/api/endpoints/sales"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { Loader2, FileText, Users, Search, Filter, TrendingUp, DollarSign, Clock, Plus, CheckCircle2, Printer, RotateCcw, Receipt, X } from "lucide-react"
+import { Loader2, FileText, Users, Search, Filter, TrendingUp, Clock, Plus, CheckCircle2, Printer, RotateCcw, Receipt, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import toast from "react-hot-toast"
 import Tabs from "@/components/tabs"
@@ -516,7 +516,7 @@ export default function CustomerLedgerPage() {
     { header: "Type", accessor: "type", render: (row) => <span>{row.type}</span> },
     {
       header: "Reference", accessor: "reference", render: (row) => (
-        row.referenceId ? <Link href={`/sales/${row.referenceId}`} className="text-blue-600 hover:underline">{row.reference}</Link> : row.reference
+        row.referenceId ? <Link href={`/selling/${row.referenceId}`} className="text-blue-600 hover:underline">{row.reference}</Link> : row.reference
       )
     },
     {

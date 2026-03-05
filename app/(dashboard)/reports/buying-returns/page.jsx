@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useBuyingReturnsReport } from "@/lib/hooks/useReports"
@@ -60,11 +61,21 @@ export default function BuyingReturnsReportPage() {
     {
       header: "Order #",
       accessor: "dispatchOrder",
-      render: (row) => (
-        <span className="font-mono text-xs">
-          {row.dispatchOrder?.orderNumber || row.dispatchOrder?._id?.slice(-8) || "—"}
-        </span>
-      ),
+      render: (row) => {
+        const displayText = row.dispatchOrder?.orderNumber || row.dispatchOrder?._id?.slice(-8) || "—"
+        const orderId = row.dispatchOrder?._id
+        if (orderId && displayText !== "—") {
+          return (
+            <Link
+              href={`/dispatch-orders/${orderId}`}
+              className="font-mono text-xs text-blue-600 hover:underline"
+            >
+              {displayText}
+            </Link>
+          )
+        }
+        return <span className="font-mono text-xs">{displayText}</span>
+      },
     },
     {
       header: "Supplier",

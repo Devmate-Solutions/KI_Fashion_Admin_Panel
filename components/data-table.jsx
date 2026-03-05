@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo, useState, useEffect } from "react"
+import React, { useMemo, useState, useEffect } from "react"
+import { ChevronRight, ChevronDown } from "lucide-react"
 
 function normalize(v) {
   return String(v ?? "").toLowerCase()
@@ -25,12 +26,16 @@ export default function DataTable({
   totalItems,
   onPageChange,
   onSearch,
-  disableSorting = false, // New prop to disable column sorting
+  disableSorting = false,
+  expandableRow = false,
+  renderExpandedRow,
+  expandedRowAsColumns = false,
 }) {
   const [query, setQuery] = useState("")
   const [internalPage, setInternalPage] = useState(1)
   const [sort, setSort] = useState({ key: null, dir: "asc" })
   const [pageInput, setPageInput] = useState("")
+  const [expandedRowId, setExpandedRowId] = useState(null)
 
   const page = manualPagination ? currentPage : internalPage
   const setPage = manualPagination ? (onPageChange || (() => { })) : setInternalPage
@@ -165,6 +170,9 @@ export default function DataTable({
             <table className="w-full text-sm min-w-[640px]">
               <thead className="bg-muted/30 sticky top-0 z-10">
                 <tr className="border-b border-border">
+                  {expandableRow && (
+                    <th className="px-2 py-2.5 sm:py-3 w-8"></th>
+                  )}
                   {Array.isArray(columns) && columns.map((c) => (
                     <th key={c.accessor || c.header} className="px-3 sm:px-4 py-2.5 sm:py-3 text-left font-semibold text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                       {disableSorting ? (
@@ -191,18 +199,44 @@ export default function DataTable({
               </thead>
               <tbody className="divide-y divide-border">
                 {Array.isArray(slice) && slice.map((row, idx) => {
-                  // Use rowId first, then id, then fallback to index with row identifier
                   const uniqueKey = row.rowId || row.id || row._id || `row-${idx}-${row.purchaseNumber || row.orderNumber || ''}`
+                  const isExpanded = expandableRow && expandedRowId === uniqueKey
+                  const totalColSpan = (Array.isArray(columns) ? columns.length : 0) + (expandableRow ? 1 : 0) + ((!hideActions && (onEdit || onDelete)) ? 1 : 0)
                   return (
+                  <React.Fragment key={uniqueKey}>
                   <tr
-                    key={uniqueKey}
-                    className={`hover:bg-muted/20 transition-all duration-150 ease-in-out ${onRowClick ? 'cursor-pointer' : ''}`}
-                    onClick={() => onRowClick && onRowClick(row)}
+                    className={`hover:bg-muted/20 transition-all duration-150 ease-in-out ${onRowClick || expandableRow ? 'cursor-pointer' : ''} ${isExpanded ? 'bg-muted/10 align-top' : ''}`}
+                    onClick={() => {
+                      if (expandableRow) {
+                        setExpandedRowId(isExpanded ? null : uniqueKey)
+                      } else if (onRowClick) {
+                        onRowClick(row)
+                      }
+                    }}
+                    aria-expanded={expandableRow ? isExpanded : undefined}
                     data-row-id={row.rowId || row.id || row._id}
                   >
+                    {expandableRow && (
+                      <td className="px-2 py-2.5 sm:py-3 w-8">
+                        <button
+                          className="p-0.5 rounded hover:bg-muted transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setExpandedRowId(isExpanded ? null : uniqueKey)
+                          }}
+                          aria-label={isExpanded ? "Collapse row" : "Expand row"}
+                          tabIndex={0}
+                        >
+                          {/* {isExpanded
+                            ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            : <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          } */}
+                        </button>
+                      </td>
+                    )}
                     {Array.isArray(columns) && columns.map((c) => (
                       <td key={c.accessor || c.header} className="px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm whitespace-nowrap">
-                        {c.render ? c.render(row) : String(row[c.accessor] ?? "")}
+                        {c.render ? c.render(row, { isExpanded }) : String(row[c.accessor] ?? "")}
                       </td>
                     ))}
                     {!hideActions && (onEdit || onDelete) && (
@@ -236,11 +270,27 @@ export default function DataTable({
                       </td>
                     )}
                   </tr>
+                  {isExpanded && renderExpandedRow && (
+                    expandedRowAsColumns ? (
+                      <tr>
+                        {renderExpandedRow(row)}
+                      </tr>
+                    ) : (
+                      <tr>
+                        <td colSpan={totalColSpan} className="p-0 border-t-0">
+                          <div className="px-4 py-3 bg-muted/5 border-l-4 border-primary">
+                            {renderExpandedRow(row)}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  )}
+                  </React.Fragment>
                   )
                 })}
                 {(!Array.isArray(slice) || slice.length === 0) && (
                   <tr>
-                    <td colSpan={(Array.isArray(columns) ? columns.length : 0) + ((!hideActions && (onEdit || onDelete)) ? 1 : 0)} className="px-4 py-8 sm:py-12 text-center text-muted-foreground text-sm">
+                    <td colSpan={(Array.isArray(columns) ? columns.length : 0) + (expandableRow ? 1 : 0) + ((!hideActions && (onEdit || onDelete)) ? 1 : 0)} className="px-4 py-8 sm:py-12 text-center text-muted-foreground text-sm">
                       No results found.
                     </td>
                   </tr>

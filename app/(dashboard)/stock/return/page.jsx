@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { Search, RotateCcw, Package, DollarSign, Archive, ArrowRight, RefreshCw, X } from "lucide-react";
+import { Search, RotateCcw, Package, Archive, ArrowRight, RefreshCw, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

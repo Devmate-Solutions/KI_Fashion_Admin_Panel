@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useDailySalesReport } from "@/lib/hooks/useReports"
@@ -63,9 +64,20 @@ export default function DailySalesReportPage() {
     {
       header: "ID",
       accessor: "saleNumber",
-      render: (row) => (
-        <span className="font-mono text-xs">{row.saleNumber || "—"}</span>
-      ),
+      render: (row) => {
+        const displayText = row.saleNumber || "—"
+        if (row._id && displayText !== "—") {
+          return (
+            <Link
+              href={`/selling/${row._id}`}
+              className="font-mono text-xs text-blue-600 hover:underline"
+            >
+              {displayText}
+            </Link>
+          )
+        }
+        return <span className="font-mono text-xs">{displayText}</span>
+      },
     },
     {
       header: "Transaction Type",

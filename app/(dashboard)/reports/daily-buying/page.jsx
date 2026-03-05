@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useDailyBuyingReport } from "@/lib/hooks/useReports"
@@ -69,9 +70,20 @@ export default function DailyBuyingReportPage() {
     {
       header: "ID",
       accessor: "orderNumber",
-      render: (row) => (
-        <span className="font-mono text-xs">{row.orderNumber || row._id?.slice(-8) || "—"}</span>
-      ),
+      render: (row) => {
+        const displayText = row.orderNumber || row._id?.slice(-8) || "—"
+        if (row._id && displayText !== "—") {
+          return (
+            <Link
+              href={`/dispatch-orders/${row._id}`}
+              className="font-mono text-xs text-blue-600 hover:underline"
+            >
+              {displayText}
+            </Link>
+          )
+        }
+        return <span className="font-mono text-xs">{displayText}</span>
+      },
     },
     {
       header: "Transaction Type",

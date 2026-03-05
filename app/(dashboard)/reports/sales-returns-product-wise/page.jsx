@@ -44,6 +44,7 @@ export default function SalesReturnsProductWiseReportPage() {
             sno: flatData.length + 1,
             returnDate: ret.returnedAt || ret.createdAt,
             saleNumber: ret.sale?.saleNumber || "—",
+            saleId: ret.sale?._id,
             buyerName: ret.buyer?.name || ret.buyer?.company || "—",
             returnStatus: ret.status || "—",
             productCode: item.product?.productCode || item.product?.sku || "—",
@@ -76,7 +77,21 @@ export default function SalesReturnsProductWiseReportPage() {
     {
       header: "Sale #",
       accessor: "saleNumber",
-      render: (row) => <span className="font-mono text-xs">{row.saleNumber}</span>,
+      render: (row) => {
+        const displayText = row.saleNumber
+        const saleId = row.saleId
+        if (saleId && displayText && displayText !== "—") {
+          return (
+            <Link
+              href={`/selling/${saleId}`}
+              className="font-mono text-xs text-blue-600 hover:underline"
+            >
+              {displayText}
+            </Link>
+          )
+        }
+        return <span className="font-mono text-xs">{displayText}</span>
+      },
     },
     {
       header: "Buyer",

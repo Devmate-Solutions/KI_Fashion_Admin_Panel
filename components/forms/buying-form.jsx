@@ -17,7 +17,6 @@ import {
   X,
   Image as ImageIcon,
   Plus,
-  DollarSign,
   Percent,
   Wallet,
   Building2,
@@ -2070,9 +2069,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       <section className="rounded-lg border border-border bg-card overflow-hidden">
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-muted/40 to-muted/20 border-b border-border">
-          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 ring-1 ring-primary/20">
-            <DollarSign className="h-5 w-5 text-primary" />
-          </div>
           <div>
             <h2 className="text-lg font-semibold text-foreground">Payment Summary</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Review and complete payment details</p>
@@ -2105,9 +2101,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               <div className="relative">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-md bg-primary/20 flex items-center justify-center">
-                      <DollarSign className="h-4 w-4 text-primary" />
-                    </div>
                     <span className="text-sm font-semibold text-foreground">Final Amount</span>
                   </div>
                 </div>
@@ -2267,11 +2260,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                       <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center ring-2 ring-emerald-200">
                         <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                       </div>
-                    ) : (
-                      <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center ring-2 ring-amber-200">
-                        <DollarSign className="h-5 w-5 text-amber-600" />
-                      </div>
-                    )}
+                    ) : null}
                     <div>
                       <span className={`text-sm font-semibold block ${
                         totals.remaining > 0 ? "text-amber-900" : "text-emerald-900"

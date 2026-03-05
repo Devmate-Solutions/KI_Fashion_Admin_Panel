@@ -12,7 +12,6 @@ import {
   Activity,
   RotateCcw,
   FileText,
-  DollarSign,
   CreditCard,
   PackageSearch,
   Wallet,
@@ -34,7 +33,6 @@ const reportCategories = [
         name: "Receivables Report",
         description: "Buyer outstanding amounts and aging",
         href: "/reports/receivables",
-        icon: DollarSign,
         color: "text-blue-600 bg-blue-50",
       },
       {
@@ -163,9 +161,11 @@ export default function ReportsPage() {
                     <Card className="h-full hover:shadow-md hover:border-primary/50 transition-all cursor-pointer group">
                       <CardHeader className="pb-3">
                         <div className="flex items-start gap-3">
-                          <div className={`p-2 rounded-lg ${report.color}`}>
-                            <Icon className="h-5 w-5" />
-                          </div>
+                          {Icon && (
+                            <div className={`p-2 rounded-lg ${report.color}`}>
+                              <Icon className="h-5 w-5" />
+                            </div>
+                          )}
                           <div className="flex-1 min-w-0">
                             <CardTitle className="text-base group-hover:text-primary transition-colors">
                               {report.name}

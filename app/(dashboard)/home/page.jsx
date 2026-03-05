@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useInventoryList } from "@/lib/hooks/useInventory";
 import {
@@ -181,10 +182,7 @@ export default function HomePage() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        {/* Main Analytics Section */}
-        
 
-       
       </div>
     </div>
   );
@@ -265,13 +263,33 @@ export default function HomePage() {
                                 maxVisible={1}
                               />
                             </div>
-                            <span className="font-bold text-slate-900">
-                              {item.productName}
-                            </span>
+                            {item.productId ? (
+                              <Link
+                                href={`/stock/${item.productId}/packets`}
+                                className="font-bold text-slate-900 hover:text-blue-600 hover:underline"
+                              >
+                                {item.productName}
+                              </Link>
+                            ) : (
+                              <span className="font-bold text-slate-900">
+                                {item.productName}
+                              </span>
+                            )}
                           </div>
                         </td>
-                        <td className="px-8 py-4 font-bold text-slate-400 font-mono text-[11px]">
-                          {item.sku}
+                        <td className="px-8 py-4">
+                          {item.productId ? (
+                            <Link
+                              href={`/stock/${item.productId}/packets`}
+                              className="font-bold text-slate-400 font-mono text-[11px] hover:text-blue-600 hover:underline"
+                            >
+                              {item.sku}
+                            </Link>
+                          ) : (
+                            <span className="font-bold text-slate-400 font-mono text-[11px]">
+                              {item.sku}
+                            </span>
+                          )}
                         </td>
                         <td className="px-8 py-4 text-right font-black text-slate-900 tabular-nums">
                           {item.currentStock}

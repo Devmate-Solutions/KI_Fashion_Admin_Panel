@@ -718,7 +718,7 @@ export default function ProductPacketsPage({ params }) {
                     {packets.map((packet, idx) => (
                       <tr
                         key={packet._id}
-                        className={`border-b hover:bg-muted/30 cursor-pointer ${
+                        className={`border-b hover:bg-muted/30 text-left cursor-pointer ${
                           idx % 2 === 0 ? "bg-white" : "bg-muted/10"
                         }`}
                         onClick={() => setSelectedPacket(packet)}

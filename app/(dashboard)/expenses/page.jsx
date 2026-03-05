@@ -17,7 +17,7 @@ import {
   useRejectExpense,
 } from "@/lib/hooks/useExpenses"
 import { useCostTypes } from "@/lib/hooks/useCostTypes"
-import { Plus, Trash2, Check, X, Edit, Filter, RotateCcw, DollarSign, Wallet, Building2, Clock, Search, TrendingUp, Package, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Plus, Trash2, Check, X, Edit, Filter, RotateCcw, Wallet, Building2, Clock, Search, TrendingUp, Package, AlertCircle, CheckCircle2 } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -327,9 +327,6 @@ export default function ExpensesPage() {
         {/* Total Expenses */}
         <div className="rounded-lg border border-border bg-card p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
-            <div className="h-10 w-10 rounded-lg bg-muted/50 flex items-center justify-center">
-              <DollarSign className="h-5 w-5 text-muted-foreground" />
-            </div>
           </div>
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
             Total Expenses

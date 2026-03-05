@@ -17,7 +17,6 @@ import {
   UserCog,
   Package,
   Truck,
-  DollarSign,
   Wallet,
   FileText,
   ChevronDown,

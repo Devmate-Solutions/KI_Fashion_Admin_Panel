@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import Link from "next/link"
 import Tabs from "@/components/tabs"
 import DataTable from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
@@ -100,7 +101,17 @@ export default function SellingPage() {
                         showCount={true}
                       />
                       <div className="text-xs leading-tight">
-                        <div className="font-semibold text-sm">{item.product?.name || item.productCode || "—"}</div>
+                        {item.product?._id || item.productId ? (
+                          <Link
+                            href={`/stock/${item.product?._id || item.productId}/packets`}
+                            className="font-semibold text-sm text-blue-600 hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {item.product?.name || item.productCode || "—"}
+                          </Link>
+                        ) : (
+                          <div className="font-semibold text-sm">{item.product?.name || item.productCode || "—"}</div>
+                        )}
                         {item.isPacketSale ? (
                           <div className="text-[10px] text-blue-600 font-medium">
                             Packet: {item.packetBarcode || '—'}

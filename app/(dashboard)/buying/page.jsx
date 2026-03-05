@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState, useEffect } from "react"
+import Link from "next/link"
 import Tabs from "@/components/tabs"
 import DataTable from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
@@ -227,7 +228,17 @@ export default function BuyingPage() {
                   showCount={true}
                 />
                 <div className="flex flex-col gap-0.5">
-                  <div className="font-semibold text-sm text-foreground">{row.productName || "—"}</div>
+                  {row.productId ? (
+                    <Link
+                      href={`/stock/${row.productId}/packets`}
+                      className="font-semibold text-sm text-blue-600 hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {row.productName || "—"}
+                    </Link>
+                  ) : (
+                    <div className="font-semibold text-sm text-foreground">{row.productName || "—"}</div>
+                  )}
                   <div className="text-xs text-muted-foreground font-medium">{row.productCode || "—"}</div>
                   {row.quantity && (
                     <div className="text-xs text-muted-foreground font-medium">
@@ -552,6 +563,25 @@ export default function BuyingPage() {
             {r._id ? String(r._id).slice(-8) : "—"}
           </span>
         ),
+      },
+      {
+        header: "Order #",
+        accessor: "dispatchOrder",
+        render: (r) => {
+          const displayText = r.dispatchOrder?.orderNumber || r.dispatchOrder?._id?.slice(-8) || "—"
+          const orderId = r.dispatchOrder?._id
+          if (orderId && displayText !== "—") {
+            return (
+              <Link
+                href={`/dispatch-orders/${orderId}`}
+                className="font-mono text-xs text-blue-600 hover:underline"
+              >
+                {displayText}
+              </Link>
+            )
+          }
+          return <span className="font-mono text-xs">{displayText}</span>
+        },
       },
       {
         header: "Buying Date",

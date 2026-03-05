@@ -44,6 +44,7 @@ import { toast } from "react-hot-toast";
 import { Boxes, Loader2, MoveRight, RefreshCcw, Package, Barcode, Printer, QrCode, Copy, Check, Scissors, Trash2, ScanLine } from "lucide-react";
 import ProductImageGallery from "@/components/ui/ProductImageGallery";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import TruncatedBadgeList from "@/components/ui/TruncatedBadgeList";
 import BreakPacketDialog from "@/components/modals/BreakPacketDialog";
 
 const MOVEMENT_LIMIT = 20;
@@ -144,42 +145,32 @@ const inventoryColumns = [
   {
     header: "Season",
     accessor: "season",
-    render: (row) => {
+    render: (row, { isExpanded } = {}) => {
       const season = row.product?.season;
       const seasons = Array.isArray(season) ? season : season ? [season] : [];
-
-      if (seasons.length === 0) {
-        return <span className="text-muted-foreground">—</span>;
+      if (isExpanded) {
+        return (
+          <div className="flex flex-wrap gap-1">
+            {seasons.map((s, idx) => (
+              <span key={idx} className="inline-block px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded text-[10px] font-medium">{s}</span>
+            ))}
+          </div>
+        );
       }
-
-      return (
-        <div className="flex flex-wrap gap-1">
-          {seasons.map((s, idx) => (
-            <span
-              key={idx}
-              className="inline-block px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded text-[10px] font-medium"
-            >
-              {s}
-            </span>
-          ))}
-        </div>
-      );
+      return <TruncatedBadgeList items={seasons} max={3} colorClass="bg-purple-100 text-purple-800" />;
     },
   },
   {
     header: "Size",
     accessor: "size",
-    render: (row) => {
+    render: (row, { isExpanded } = {}) => {
       let sizes = [];
-
-      // Check product size array first (primary source after schema update)
       const productSize = row.product?.size;
       if (Array.isArray(productSize) && productSize.length > 0) {
         sizes = productSize;
       } else if (productSize) {
         sizes = [productSize];
       } else if (
-        // Fallback to variant composition
         row.raw?.variantComposition &&
         Array.isArray(row.raw.variantComposition) &&
         row.raw.variantComposition.length > 0
@@ -190,43 +181,32 @@ const inventoryColumns = [
         });
         sizes = Array.from(sizeSet);
       } else {
-        // Final fallback to inventory record level
         const size = row.raw?.size;
         sizes = Array.isArray(size) ? size : size ? [size] : [];
       }
-
-      if (sizes.length === 0) {
-        return <span className="text-muted-foreground">—</span>;
+      if (isExpanded) {
+        return (
+          <div className="flex flex-wrap gap-1">
+            {sizes.map((s, idx) => (
+              <span key={idx} className="inline-block px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-[10px] font-medium">{s}</span>
+            ))}
+          </div>
+        );
       }
-
-      return (
-        <div className="flex flex-wrap gap-1">
-          {sizes.map((s, idx) => (
-            <span
-              key={idx}
-              className="inline-block px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-[10px] font-medium"
-            >
-              {s}
-            </span>
-          ))}
-        </div>
-      );
+      return <TruncatedBadgeList items={sizes} max={3} colorClass="bg-green-100 text-green-800" />;
     },
   },
   {
     header: "Color",
     accessor: "color",
-    render: (row) => {
+    render: (row, { isExpanded } = {}) => {
       let colors = [];
-
-      // Check product color array first (primary source after schema update)
       const productColor = row.product?.color;
       if (Array.isArray(productColor) && productColor.length > 0) {
         colors = productColor;
       } else if (productColor) {
         colors = [productColor];
       } else if (
-        // Fallback to variant composition
         row.raw?.variantComposition &&
         Array.isArray(row.raw.variantComposition) &&
         row.raw.variantComposition.length > 0
@@ -237,30 +217,22 @@ const inventoryColumns = [
         });
         colors = Array.from(colorSet);
       } else {
-        // Final fallback to inventory record level
         const color =
           row.raw?.primaryColor ||
           row.raw?.color ||
           row.product?.specifications?.color;
         colors = Array.isArray(color) ? color : color ? [color] : [];
       }
-
-      if (colors.length === 0) {
-        return <span className="text-muted-foreground">—</span>;
+      if (isExpanded) {
+        return (
+          <div className="flex flex-wrap gap-1">
+            {colors.map((c, idx) => (
+              <span key={idx} className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px] font-medium">{c}</span>
+            ))}
+          </div>
+        );
       }
-
-      return (
-        <div className="flex flex-wrap gap-1">
-          {colors.map((c, idx) => (
-            <span
-              key={idx}
-              className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px] font-medium"
-            >
-              {c}
-            </span>
-          ))}
-        </div>
-      );
+      return <TruncatedBadgeList items={colors} max={3} colorClass="bg-blue-100 text-blue-800" />;
     },
   },
   {
@@ -1163,6 +1135,7 @@ export default function StockPage() {
         loading={inventoryLoading || inventoryFetching}
         enableSearch={false}
         paginate={false}
+        expandableRow={true}
       />
     </div>
   );

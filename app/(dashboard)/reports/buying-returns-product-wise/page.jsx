@@ -38,6 +38,7 @@ export default function BuyingReturnsProductWiseReportPage() {
             sno: flatData.length + 1,
             returnDate: ret.returnedAt || ret.createdAt,
             orderNumber: ret.dispatchOrder?.orderNumber || "—",
+            dispatchOrderId: ret.dispatchOrder?._id,
             supplierName: ret.supplier?.name || ret.supplier?.company || "—",
             productCode: item.product?.productCode || item.product?.sku || "—",
             productName: item.product?.name || "—",
@@ -74,7 +75,21 @@ export default function BuyingReturnsProductWiseReportPage() {
     {
       header: "Order #",
       accessor: "orderNumber",
-      render: (row) => <span className="font-mono text-xs">{row.orderNumber}</span>,
+      render: (row) => {
+        const displayText = row.orderNumber
+        const orderId = row.dispatchOrderId
+        if (orderId && displayText && displayText !== "—") {
+          return (
+            <Link
+              href={`/dispatch-orders/${orderId}`}
+              className="font-mono text-xs text-blue-600 hover:underline"
+            >
+              {displayText}
+            </Link>
+          )
+        }
+        return <span className="font-mono text-xs">{displayText}</span>
+      },
     },
     {
       header: "Supplier",

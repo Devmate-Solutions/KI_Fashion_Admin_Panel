@@ -15,7 +15,7 @@ import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { balancesAPI } from "@/lib/api/endpoints/balances"
 import { logisticsCompaniesAPI } from "@/lib/api/endpoints/logisticsCompanies"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { Loader2, Plus, FileText, Truck, DollarSign, Building2, Clock, Users, Filter, Calendar, RotateCcw } from "lucide-react"
+import { Loader2, Plus, FileText, Truck, Building2, Clock, Users, Filter, Calendar, RotateCcw } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import toast from "react-hot-toast"
 import LogisticsPaymentModal from "@/components/modals/LogisticsPaymentModal"
@@ -1119,11 +1119,6 @@ export default function LogisticsLedgerPage() {
             <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-emerald-200/20 blur-2xl group-hover:bg-emerald-200/30 transition-all"></div>
             <div className="absolute -bottom-6 -left-6 h-20 w-20 rounded-full bg-emerald-100/15 blur-xl"></div>
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="h-12 w-12 rounded-xl bg-emerald-100/90 backdrop-blur-sm flex items-center justify-center ring-2 ring-emerald-200/40 shadow-sm group-hover:ring-emerald-300/60 transition-all">
-                  <DollarSign className="h-6 w-6 text-emerald-600" />
-                </div>
-              </div>
               <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-emerald-700/80">
                 Total Payments
               </div>
@@ -1138,11 +1133,6 @@ export default function LogisticsLedgerPage() {
           <div className="relative rounded-lg border border-border/60 bg-gradient-to-br from-background via-card/50 to-background p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
             <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-primary/5 blur-xl group-hover:bg-primary/10 transition-all"></div>
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="h-12 w-12 rounded-xl bg-muted/70 backdrop-blur-sm flex items-center justify-center ring-1 ring-border/60 shadow-sm">
-                  <DollarSign className="h-6 w-6 text-muted-foreground" />
-                </div>
-              </div>
               <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-muted-foreground">
                 Cash Payments
               </div>
@@ -1277,7 +1267,6 @@ export default function LogisticsLedgerPage() {
 
             <div className="flex flex-col min-w-0">
               <Label htmlFor="payment-history-method" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
-                <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <span className="whitespace-nowrap">Payment Method</span>
               </Label>
               <Select

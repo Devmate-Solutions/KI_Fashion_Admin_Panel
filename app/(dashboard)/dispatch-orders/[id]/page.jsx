@@ -54,7 +54,6 @@ import {
   Plus,
   Info,
   Package,
-  DollarSign,
   CreditCard,
   Banknote,
   CheckCircle2,
@@ -2732,9 +2731,6 @@ export default function DispatchOrderDetailPage({ params }) {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      {/* <DollarSign className="h-5 w-5 text-primary" /> */}
-                    </div>
                     <div>
                       <CardTitle className="text-lg font-semibold">Payment Details</CardTitle>
                       {dispatchOrder?.returnedItems &&
@@ -2837,9 +2833,6 @@ export default function DispatchOrderDetailPage({ params }) {
             <Card className="border border-border bg-card">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <DollarSign className="h-5 w-5 text-primary" />
-                  </div>
                   <div className="flex-1">
                     <CardTitle className="text-lg font-semibold">Payment History</CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">{paymentHistory.length} payment{paymentHistory.length !== 1 ? 's' : ''} recorded</p>

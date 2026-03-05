@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, use } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,7 +48,6 @@ import {
 import {
   Loader2,
   Package,
-  DollarSign,
   CreditCard,
   Banknote,
   CheckCircle2,
@@ -578,7 +578,16 @@ export default function SaleDetailPage({ params }) {
                           />
                         </td>
                         <td className="p-2">
-                          <div className="font-medium">{item.product?.name || item.productCode || "—"}</div>
+                          {item.product?._id || item.productId ? (
+                            <Link
+                              href={`/stock/${item.product?._id || item.productId}/packets`}
+                              className="font-medium text-blue-600 hover:underline"
+                            >
+                              {item.product?.name || item.productCode || "—"}
+                            </Link>
+                          ) : (
+                            <div className="font-medium">{item.product?.name || item.productCode || "—"}</div>
+                          )}
                         </td>
                         <td className="p-2 text-muted-foreground">
                           {item.product?.sku || "—"}
@@ -612,7 +621,7 @@ export default function SaleDetailPage({ params }) {
       <Card className="border-amber-200 bg-amber-50/30">
         <CardHeader className="bg-amber-50/50 rounded-t-lg">
           <CardTitle className="flex items-center gap-2 text-amber-900">
-            <DollarSign className="h-5 w-5 text-amber-600" />
+
             Payment Summary
           </CardTitle>
         </CardHeader>
