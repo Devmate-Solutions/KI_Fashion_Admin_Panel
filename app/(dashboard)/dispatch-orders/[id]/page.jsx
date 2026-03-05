@@ -66,6 +66,7 @@ import {
   Pencil,
   ImagePlus,
   X,
+  Printer,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { dispatchOrdersAPI } from "@/lib/api/endpoints/dispatchOrders";
@@ -165,6 +166,7 @@ export default function DispatchOrderDetailPage({ params }) {
   const [selectedItemForPackets, setSelectedItemForPackets] = useState(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBarcodePrintModal, setShowBarcodePrintModal] = useState(false);
+  const [isPostConfirmPrint, setIsPostConfirmPrint] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -1078,8 +1080,9 @@ export default function DispatchOrderDetailPage({ params }) {
         setPercentage("0");
         setActiveTab("confirm");
 
-        // Open barcode print modal instead of redirecting
+        // Open barcode print modal with auto-print after confirmation
         setTimeout(() => {
+          setIsPostConfirmPrint(true);
           setShowBarcodePrintModal(true);
         }, 500);
       },
@@ -1302,14 +1305,30 @@ export default function DispatchOrderDetailPage({ params }) {
               </div>
             </div>
           </div>
-          <Badge
-            className={cn(
-              "px-4 py-2 text-sm font-semibold rounded-md border",
-              statusStyles[dispatchOrder.status] || statusStyles.pending
+          <div className="flex items-center gap-3">
+            {dispatchOrder.status === 'confirmed' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsPostConfirmPrint(false);
+                  setShowBarcodePrintModal(true);
+                }}
+                className="hover:bg-primary/10 transition-colors"
+              >
+                <Printer className="h-4 w-4 mr-2" />
+                Print Barcodes
+              </Button>
             )}
-          >
-            {dispatchOrder.status?.replace(/_/g, " ").replace(/-/g, " ").toUpperCase()}
-          </Badge>
+            <Badge
+              className={cn(
+                "px-4 py-2 text-sm font-semibold rounded-md border",
+                statusStyles[dispatchOrder.status] || statusStyles.pending
+              )}
+            >
+              {dispatchOrder.status?.replace(/_/g, " ").replace(/-/g, " ").toUpperCase()}
+            </Badge>
+          </div>
         </div>
       </div>
 
@@ -3369,9 +3388,12 @@ export default function DispatchOrderDetailPage({ params }) {
       {/* Barcode Print Modal */}
       <BarcodePrintModal
         open={showBarcodePrintModal}
-        onClose={() => setShowBarcodePrintModal(false)}
+        onClose={() => {
+          setShowBarcodePrintModal(false);
+          setIsPostConfirmPrint(false);
+        }}
         dispatchOrderId={dispatchOrderId}
-        autoPrint={true}
+        autoPrint={isPostConfirmPrint}
       />
     </div >
   );

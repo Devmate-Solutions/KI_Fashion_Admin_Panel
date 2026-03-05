@@ -25,9 +25,9 @@ import {
   X,
   Menu,
   RotateCcw,
+  Settings2
 } from "lucide-react";
 import * as Collapsible from "@radix-ui/react-collapsible";
-
 const items = [
   { href: "/home", label: "Dashboard", icon: Home },
   { href: "/dispatch-orders", label: "Dispatch Orders", icon: Truck },
@@ -53,7 +53,7 @@ const items = [
   // { href: "/product-types", label: "Product Types", icon: Package },
   { href: "/users", label: "User Management", icon: UserCog },
   // { href: "/delivery-personnel", label: "Delivery Staff", icon: Truck },
-  { href: "/cost-types", label: "Cost Config", icon: DollarSign },
+  { href: "/cost-types", label: "Cost Config", icon: Settings2 },
 ];
 
 const reportLinks = [
