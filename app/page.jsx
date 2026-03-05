@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/store';
-
+// uat to vercel
 export default function Page() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuthStore();
