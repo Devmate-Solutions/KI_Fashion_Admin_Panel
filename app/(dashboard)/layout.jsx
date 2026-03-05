@@ -2,6 +2,7 @@ import { Toaster } from "react-hot-toast"
 import TopBar from "../../components/topbar"
 import Sidebar from "../../components/sidebar"
 import MainContentWrapper from "../../components/MainContentWrapper"
+import { NavigationHistoryProvider } from "../../lib/providers/NavigationHistoryProvider"
 
 export const metadata = {
     title: "KL Fashion CRM",
@@ -11,6 +12,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
     return (
         <MainContentWrapper>
+            <NavigationHistoryProvider>
             <div className="min-h-dvh flex flex-col bg-[#fbfcfd]">
                 <TopBar />
                 <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -44,6 +46,7 @@ export default function RootLayout({ children }) {
                     </main>
                 </div>
             </div>
+            </NavigationHistoryProvider>
         </MainContentWrapper>
     )
 }

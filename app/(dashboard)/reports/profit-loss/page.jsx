@@ -63,9 +63,20 @@ export default function ProfitLossReportPage() {
     {
       header: "Invoice No.",
       accessor: "invoiceNumber",
-      render: (row) => (
-        <span className="font-mono text-xs">{row.invoiceNumber || "—"}</span>
-      ),
+      render: (row) => {
+        const invoiceNum = row.invoiceNumber || "—"
+        if (row.saleId && invoiceNum !== "—") {
+          return (
+            <Link
+              href={`/selling/${row.saleId}`}
+              className="font-mono text-xs text-blue-600 hover:text-blue-800 hover:underline"
+            >
+              {invoiceNum}
+            </Link>
+          )
+        }
+        return <span className="font-mono text-xs">{invoiceNum}</span>
+      },
     },
     {
       header: "Customer Name",

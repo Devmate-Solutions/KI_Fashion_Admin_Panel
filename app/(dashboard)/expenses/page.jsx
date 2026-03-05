@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import BackButton from "@/components/BackButton"
 import DataTable from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -306,6 +307,9 @@ export default function ExpensesPage() {
   return (
     <div className="space-y-6">
       {/* Header - Enhanced */}
+      <div className="mb-3">
+        <BackButton fallbackPath="/home" label="Back" />
+      </div>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">

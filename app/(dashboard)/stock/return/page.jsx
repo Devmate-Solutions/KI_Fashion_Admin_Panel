@@ -38,6 +38,7 @@ import { Separator } from "@/components/ui/separator";
 
 // API
 import { returnsAPI } from "@/lib/api/endpoints/returns";
+import BackButton from "@/components/BackButton";
 
 export default function ReturnItemsPage() {
     const [searchQuery, setSearchQuery] = useState("");
@@ -130,6 +131,9 @@ export default function ReturnItemsPage() {
         <div className="flex flex-col h-full space-y-6 max-w-[1600px] mx-auto p-6">
             <div className="flex items-center justify-between">
                 <div>
+                    <div className="mb-3">
+                        <BackButton fallbackPath="/stock" label="Back to Stock" />
+                    </div>
                     <h1 className="text-3xl font-bold tracking-tight">Return Items</h1>
                     <p className="text-muted-foreground mt-2">
                         Search for inventory items and process returns to suppliers.

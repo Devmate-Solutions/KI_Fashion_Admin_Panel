@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import BackButton from "@/components/BackButton"
 import DataTable from "../../../components/data-table"
 import { CostTypeForm } from "../../../components/forms/cost-type-form"
 import { useCostTypes, useCreateCostType, useUpdateCostType, useDeleteCostType } from "../../../lib/hooks/useCostTypes"
@@ -90,6 +91,9 @@ export default function CostTypesPage() {
 
   return (
     <div className="space-y-6">
+      <div className="mb-3">
+        <BackButton fallbackPath="/home" label="Back" />
+      </div>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Cost Types</h1>

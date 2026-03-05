@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, use } from "react";
+import BackButton from "@/components/BackButton";
+import { useState, useMemo, use, Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -114,7 +115,6 @@ const deliveryStatusStyles = {
   pending: "bg-sky-500/15 text-sky-600 border-sky-200",
   processing: "bg-blue-500/15 text-blue-600 border-blue-200",
   shipped: "bg-amber-500/15 text-amber-600 border-amber-200",
-  delivered: "bg-emerald-500/15 text-emerald-600 border-emerald-200",
   cancelled: "bg-rose-500/15 text-rose-600 border-rose-200",
   returned: "bg-purple-500/15 text-purple-600 border-purple-200",
 };
@@ -182,7 +182,7 @@ export default function SaleDetailPage({ params }) {
       return {
         name: sale.buyer.name || sale.buyer.company || "N/A",
         phone: sale.buyer.phone
-          ? `${sale.buyer.phoneAreaCode || ""}${sale.buyer.phone}`
+          ? `${sale.buyer.phoneAreaCode ? sale.buyer.phoneAreaCode + " " : ""}${sale.buyer.phone}`
           : null,
         email: sale.buyer.email,
         address: sale.buyer.address,
@@ -194,7 +194,7 @@ export default function SaleDetailPage({ params }) {
       return {
         name: sale.manualCustomer.name || "N/A",
         phone: sale.manualCustomer.phone
-          ? `${sale.manualCustomer.phoneAreaCode || ""}${sale.manualCustomer.phone}`
+          ? `${sale.manualCustomer.phoneAreaCode ? sale.manualCustomer.phoneAreaCode + " " : ""}${sale.manualCustomer.phone}`
           : null,
         email: sale.manualCustomer.email,
         address: sale.manualCustomer.address,
@@ -273,10 +273,7 @@ export default function SaleDetailPage({ params }) {
     return (
       <div className="space-y-6 p-6">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.push("/selling")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Sales
-          </Button>
+          <BackButton fallbackPath="/selling" label="Back to Sales" />
         </div>
         <div className="text-center py-8">
           <h2 className="text-xl font-semibold">Sale Not Found</h2>
@@ -293,10 +290,7 @@ export default function SaleDetailPage({ params }) {
       {/* Header */}
       <div className="flex items-center justify-between border-b pb-4">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.push("/selling")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
+          <BackButton fallbackPath="/selling" label="Back" />
           <div>
             <h1 className="text-2xl font-semibold">
               Sale: {sale.saleNumber || `#${String(sale._id).slice(-6)}`}
@@ -313,26 +307,7 @@ export default function SaleDetailPage({ params }) {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className={
-              paymentStatusStyles[sale.paymentStatus] ||
-              paymentStatusStyles.pending
-            }
-          >
-            {sale.paymentStatus?.toUpperCase() || "PENDING"}
-          </Badge>
-          <Badge
-            variant="outline"
-            className={
-              deliveryStatusStyles[sale.deliveryStatus] ||
-              deliveryStatusStyles.pending
-            }
-          >
-            {sale.deliveryStatus?.replace(/_/g, " ").toUpperCase() || "PENDING"}
-          </Badge>
-        </div>
+        
       </div>
 
       {/* Customer Information */}
@@ -548,13 +523,13 @@ export default function SaleDetailPage({ params }) {
                         Variant / Packet
                       </th>
                       <th className="p-2 text-right text-purple-900 font-semibold">
+                        Packets
+                      </th>
+                      <th className="p-2 text-right text-purple-900 font-semibold">
                         Qty
                       </th>
                       <th className="p-2 text-right text-purple-900 font-semibold">
                         Unit Price
-                      </th>
-                      <th className="p-2 text-right text-purple-900 font-semibold">
-                        Discount
                       </th>
                       <th className="p-2 text-right text-purple-900 font-semibold">
                         Total
@@ -563,51 +538,102 @@ export default function SaleDetailPage({ params }) {
                   </thead>
                   <tbody>
                     {sale.items?.map((item, idx) => (
-                      <tr
-                        key={idx}
-                        className={`border-b border-purple-100 ${idx % 2 === 0 ? "bg-white" : "bg-purple-50/20"
-                          }`}
-                      >
-                        <td className="p-2">
-                          <ProductImageGallery
-                            images={getImageArray(item)}
-                            alt={item.product?.name || "Product"}
-                            size="sm"
-                            maxVisible={1}
-                            showCount={false}
-                          />
-                        </td>
-                        <td className="p-2">
-                          {item.product?._id || item.productId ? (
-                            <Link
-                              href={`/stock/${item.product?._id || item.productId}/packets`}
-                              className="font-medium text-blue-600 hover:underline"
-                            >
-                              {item.product?.name || item.productCode || "—"}
-                            </Link>
-                          ) : (
-                            <div className="font-medium">{item.product?.name || item.productCode || "—"}</div>
-                          )}
-                        </td>
-                        <td className="p-2 text-muted-foreground">
-                          {item.product?.sku || "—"}
-                        </td>
-                        <td className="p-2">
-                          {item.isPacketSale ? (
-                            <div className="text-sm font-medium text-blue-600">{item.packetBarcode || 'Packet'}</div>
-                          ) : (
-                            <div className="text-sm font-medium text-amber-600">Loose Item</div>
-                          )}
-                        </td>
-                        <td className="p-2 text-right font-medium">{item.quantity || 0}</td>
-                        <td className="p-2 text-right">
-                          {currency(item.unitPrice || 0)}
-                        </td>
-                        <td className="p-2 text-right text-red-600">
-                          {item.discount ? `-${currency(item.discount)}` : "—"}
-                        </td>
-                        <td className="p-2 text-right font-semibold">{currency(item.totalPrice || 0)}</td>
-                      </tr>
+                      <Fragment key={idx}>
+                        <tr
+                          className={`border-b border-purple-100 ${idx % 2 === 0 ? "bg-white" : "bg-purple-50/20"}`}
+                        >
+                          <td className="p-2">
+                            <ProductImageGallery
+                              images={getImageArray(item)}
+                              alt={item.product?.name || "Product"}
+                              size="sm"
+                              maxVisible={1}
+                              showCount={false}
+                            />
+                          </td>
+                          <td className="p-2">
+                            {item.product?._id || item.productId ? (
+                              <Link
+                                href={`/stock/${item.product?._id || item.productId}/packets`}
+                                className="font-medium text-blue-600 hover:underline"
+                              >
+                                {item.product?.name || item.productCode || "—"}
+                              </Link>
+                            ) : (
+                              <div className="font-medium">{item.product?.name || item.productCode || "—"}</div>
+                            )}
+                            {item.product?.supplier?.name && (
+                              <div className="text-xs text-muted-foreground mt-0.5">{item.product.supplier.name}</div>
+                            )}
+                          </td>
+                          <td className="p-2">
+                            {item.product?._id || item.productId ? (
+                              <Link
+                                href={`/stock/${item.product?._id || item.productId}/packets`}
+                                className="text-blue-600 hover:underline"
+                              >
+                                {item.product?.sku || "—"}
+                              </Link>
+                            ) : (
+                              <span className="text-muted-foreground">{item.product?.sku || "—"}</span>
+                            )}
+                          </td>
+                          <td className="p-2">
+                            {item.isPacketSale ? (
+                              <button
+                                type="button"
+                                className="text-sm font-medium text-blue-600 hover:underline cursor-pointer"
+                                onClick={(e) => {
+                                  const row = e.currentTarget.closest('tr');
+                                  const detailRow = row.nextElementSibling;
+                                  if (detailRow?.classList.contains('variant-detail-row')) {
+                                    detailRow.classList.toggle('hidden');
+                                  }
+                                }}
+                              >
+                                {item.packetBarcode || 'Packet'}
+                              </button>
+                            ) : (
+                              item.variant?.size || item.variant?.color ? (
+                                <div className="text-sm">
+                                  {[item.variant.size, item.variant.color].filter(Boolean).join(' / ')}
+                                </div>
+                              ) : (
+                                <div className="text-sm text-muted-foreground">—</div>
+                              )
+                            )}
+                          </td>
+                          <td className="p-2 text-right font-medium">
+                            {/* {JSON.stringify(item.packetBarcode)} */}
+                            {item.isPacketSale && item.totalItemsPerPacket
+                              ? Math.round(item.quantity / item.totalItemsPerPacket)
+                              : ""}
+                          </td>
+                          <td className="p-2 text-right font-medium">{item.quantity || 0}</td>
+                          <td className="p-2 text-right">
+                            {currency(item.unitPrice || 0)}
+                          </td>
+                          <td className="p-2 text-right font-semibold">{currency(item.totalPrice || 0)}</td>
+                        </tr>
+                        {item.isPacketSale && item.packetComposition?.length > 0 && (
+                          <tr className="variant-detail-row hidden">
+                            <td colSpan={8} className="p-0">
+                              <div className="bg-blue-50/50 border-t border-blue-100 px-6 py-3">
+                                {/* <p className="text-xs font-semibold text-blue-800 mb-2">Packet Composition — {item.packetBarcode}</p> */}
+                                <div className="flex flex-wrap gap-2">
+                                  {item.packetComposition.map((comp, ci) => (
+                                    <span key={ci} className="inline-flex items-center gap-1 bg-white border border-blue-200 rounded px-2 py-1 text-xs">
+                                      <span className="font-medium">{comp.size}</span>
+                                      {comp.color && <span className="text-muted-foreground">/ {comp.color}</span>}
+                                      <span className="text-blue-600 font-semibold">×{comp.quantity}</span>
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
@@ -679,18 +705,7 @@ export default function SaleDetailPage({ params }) {
             </div>
           </div>
         </CardContent>
-        <CardFooter className="flex gap-2 flex-wrap border-t border-amber-200 bg-amber-50/30 rounded-b-lg">
-          <Button onClick={() => setShowPaymentDialog(true)} className="bg-green-600 hover:bg-green-700">
-            <Banknote className="h-4 w-4 mr-2" />
-            Add Payment
-          </Button>
-
-          <Button onClick={() => setShowReturnModal(true)} variant="outline" className="border-blue-200 text-blue-700 hover:bg-blue-50">
-            <RefreshCcw className="h-4 w-4 mr-2" />
-            Create Return
-          </Button>
-          {/* Mark Delivered, View Invoice and Delete Sale buttons hidden for simplified view */}
-        </CardFooter>
+       
       </Card>
 
       {/* Payment Dialog */}
@@ -768,52 +783,7 @@ export default function SaleDetailPage({ params }) {
         </DialogContent>
       </Dialog>
 
-      {/* Delivery Dialog */}
-      <Dialog open={showDeliveryDialog} onOpenChange={setShowDeliveryDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Truck className="h-5 w-5 text-green-600" />
-              Mark as Delivered
-            </DialogTitle>
-            <DialogDescription>
-              Confirm that this sale has been delivered to the customer.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="deliveryNotes">Delivery Notes (Optional)</Label>
-              <Textarea
-                id="deliveryNotes"
-                value={deliveryNotes}
-                onChange={(e) => setDeliveryNotes(e.target.value)}
-                placeholder="Add any notes about the delivery..."
-                className="mt-1"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeliveryDialog(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleMarkDelivered}
-              disabled={markDeliveredMutation.isPending}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              {markDeliveredMutation.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-              )}
-              Confirm Delivery
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+     
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

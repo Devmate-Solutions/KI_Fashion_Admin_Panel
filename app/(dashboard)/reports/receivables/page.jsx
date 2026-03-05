@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useReceivablesReport } from "@/lib/hooks/useReports"
@@ -29,16 +30,18 @@ function getAgingDays(date) {
 function getDefaultDateRange() {
   const today = new Date()
   return {
-    from: today.toISOString().split("T")[0],
+    from: "",
     to: today.toISOString().split("T")[0],
   }
 }
 
 export default function ReceivablesReportPage() {
   const [dateRange, setDateRange] = useState(getDefaultDateRange())
+  const router = useRouter()
 
   const { data, isLoading, isError, error, refetch } = useReceivablesReport({
     asOfDate: dateRange.to,
+    ...(dateRange.from ? { startDate: dateRange.from } : {}),
   })
 
   const receivablesData = useMemo(() => {
@@ -124,6 +127,7 @@ export default function ReceivablesReportPage() {
       loading={isLoading}
       error={isError ? error : null}
       summary={summary}
+      showBeginningButton={true}
     >
       <PrintableTable
         columns={columns}
@@ -132,7 +136,7 @@ export default function ReceivablesReportPage() {
         showTotals={true}
         totalsRow={totalsRow}
         totalColumns={[{ title: "Total", value: "remainingBalance" }]}
-
+        onRowClick={(row) => router.push(`/customer-ledger?buyerId=${row._id}`)}
       />
     </ReportLayout>
   )

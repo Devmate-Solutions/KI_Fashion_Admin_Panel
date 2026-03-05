@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react"
 import Link from "next/link"
+import BackButton from "@/components/BackButton"
 import Tabs from "@/components/tabs"
 import DataTable from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
@@ -14,6 +15,7 @@ import { useRevertToPending } from "@/lib/hooks/useDispatchOrders"
 import ReturnDetailModal from "@/components/modals/ReturnDetailModal"
 import BuyingReturnModal from "@/components/modals/BuyingReturnModal"
 import ProductImageGallery from "@/components/ui/ProductImageGallery"
+import TruncatedBadgeList from "@/components/ui/TruncatedBadgeList"
 import {
   Dialog,
   DialogContent,
@@ -74,6 +76,7 @@ export default function BuyingPage() {
             // Override fields to show item-level data
             productName: item.productName,
             productCode: item.productCode,
+            productId: item.product?._id?.toString() || (typeof item.product === 'string' ? item.product : null),
             quantity: item.quantity,
             landedPrice: item.landedPrice,
             primaryColor: item.primaryColor,
@@ -216,63 +219,51 @@ export default function BuyingPage() {
       {
         header: "Products",
         accessor: "productsSearch",
-        render: (row) => (
-          <div className="flex items-center gap-3">
-            {row.currentItem ? (
-              <>
-                <ProductImageGallery
-                  images={getImageArray(row.currentItem)}
-                  alt={row.productName || row.productCode || "Product"}
-                  size="sm"
-                  maxVisible={1}
-                  showCount={true}
-                />
-                <div className="flex flex-col gap-0.5">
-                  {row.productId ? (
-                    <Link
-                      href={`/stock/${row.productId}/packets`}
-                      className="font-semibold text-sm text-blue-600 hover:underline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {row.productName || "—"}
-                    </Link>
-                  ) : (
-                    <div className="font-semibold text-sm text-foreground">{row.productName || "—"}</div>
-                  )}
-                  <div className="text-xs text-muted-foreground font-medium">{row.productCode || "—"}</div>
-                  {row.quantity && (
-                    <div className="text-xs text-muted-foreground font-medium">
-                      Qty: <span className="font-semibold text-foreground">{row.quantity}</span>
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <span className="text-sm text-muted-foreground">No product</span>
-            )}
-          </div>
-        ),
+        render: (row) => {
+          if (!row.currentItem) return <span className="text-sm text-muted-foreground">No product</span>
+
+          return (
+            <div className="flex items-center gap-3">
+              <ProductImageGallery
+                images={getImageArray(row.currentItem)}
+                alt={row.productName || row.productCode || "Product"}
+                size="sm"
+                maxVisible={1}
+                showCount={true}
+              />
+              <div className="flex flex-col gap-0">
+                {row.productId ? (
+                  <Link
+                    href={`/stock/${row.productId}/packets`}
+                    className="font-semibold text-sm text-blue-600 hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {row.productName || "—"}
+                  </Link>
+                ) : (
+                  <span className="font-semibold text-sm text-foreground">{row.productName || "—"}</span>
+                )}
+                <span className="text-xs text-muted-foreground">{row.productCode || "—"}</span>
+              </div>
+            </div>
+          )
+        },
       },
       {
         header: "Colors",
         accessor: "colors",
-        render: (row) => {
+        render: (row, { isExpanded } = {}) => {
           if (!row.currentItem) return <span className="text-muted-foreground">—</span>
 
           const item = row.currentItem
 
-          // Helper function to extract colors from a value (array, string, or object)
           const extractColors = (value) => {
             const extracted = []
             if (!value) return extracted
-
             if (Array.isArray(value)) {
               value.forEach(color => {
-                if (color && typeof color === 'string' && color.trim()) {
-                  extracted.push(color.trim())
-                } else if (color && typeof color === 'object' && color.name) {
-                  extracted.push(color.name.trim())
-                }
+                if (color && typeof color === 'string' && color.trim()) extracted.push(color.trim())
+                else if (color && typeof color === 'object' && color.name) extracted.push(color.name.trim())
               })
             } else if (typeof value === 'string' && value.trim()) {
               extracted.push(value.trim())
@@ -282,32 +273,16 @@ export default function BuyingPage() {
             return extracted
           }
 
-          // Collect colors from the item
           const colors = new Set()
-          
-          if (item.primaryColor) {
-            extractColors(item.primaryColor).forEach(color => colors.add(color))
-          }
-
-          if (item.primaryColorDisplay) {
-            extractColors(item.primaryColorDisplay).forEach(color => colors.add(color))
-          }
-
-          if (item.color) {
-            extractColors(item.color).forEach(color => colors.add(color))
-          }
-
-          // Check packets composition for additional colors
+          if (item.primaryColor) extractColors(item.primaryColor).forEach(c => colors.add(c))
+          if (item.primaryColorDisplay) extractColors(item.primaryColorDisplay).forEach(c => colors.add(c))
+          if (item.color) extractColors(item.color).forEach(c => colors.add(c))
           if (item.packets && Array.isArray(item.packets)) {
             item.packets.forEach(packet => {
               if (packet.composition && Array.isArray(packet.composition)) {
                 packet.composition.forEach(comp => {
-                  if (comp.color) {
-                    extractColors(comp.color).forEach(color => colors.add(color))
-                  }
-                  if (comp.primaryColor) {
-                    extractColors(comp.primaryColor).forEach(color => colors.add(color))
-                  }
+                  if (comp.color) extractColors(comp.color).forEach(c => colors.add(c))
+                  if (comp.primaryColor) extractColors(comp.primaryColor).forEach(c => colors.add(c))
                 })
               }
             })
@@ -316,108 +291,57 @@ export default function BuyingPage() {
           const colorArray = Array.from(colors).filter(Boolean)
           if (colorArray.length === 0) return <span className="text-muted-foreground">—</span>
 
-          // Show all colors (up to 3 visible, rest in tooltip)
-          const visibleColors = colorArray.slice(0, 3)
-          const remainingColors = colorArray.slice(3)
+          if (isExpanded) {
+            return (
+              <div className="flex flex-wrap gap-1">
+                {colorArray.map((color, idx) => (
+                  <span key={idx} className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px] font-medium">{color}</span>
+                ))}
+              </div>
+            )
+          }
 
-          return (
-            <div className="flex flex-wrap items-center gap-1 max-w-[200px]">
-              {visibleColors.map((color, idx) => (
-                <Badge
-                  key={idx}
-                  variant="outline"
-                  className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 border-blue-200"
-                >
-                  {color}
-                </Badge>
-              ))}
-              {remainingColors.length > 0 && (
-                <Badge
-                  variant="outline"
-                  className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 border-blue-200"
-                  title={remainingColors.join(', ')}
-                >
-                  +{remainingColors.length}
-                </Badge>
-              )}
-            </div>
-          )
+          return <TruncatedBadgeList items={colorArray} max={3} colorClass="bg-blue-100 text-blue-800" />
         },
       },
       {
         header: "Sizes",
         accessor: "sizes",
-        render: (row) => {
-          if (!row.items || row.items.length === 0) return <span className="text-muted-foreground">—</span>
+        render: (row, { isExpanded } = {}) => {
+          const item = row.currentItem
+          if (!item) return <span className="text-muted-foreground">—</span>
 
-          // Collect unique sizes from all items - check ALL sources to get complete size list
-          // Match what's shown in detail page: aggregate all sizes from item-level data
           const sizes = new Set()
-          row.items.forEach(item => {
-            // Check ALL sources for each item to get complete size list
-            // PRIORITY 1: Check item.size (array or string) - this is what detail page uses
-            if (item.size) {
-              if (Array.isArray(item.size)) {
-                item.size.forEach(s => {
-                  if (s && s.trim()) sizes.add(s.trim())
-                })
-              } else if (typeof item.size === 'string' && item.size.trim()) {
-                sizes.add(item.size.trim())
+          // Check current item's size fields
+          if (item.size) {
+            if (Array.isArray(item.size)) item.size.forEach(s => { if (s && s.trim()) sizes.add(s.trim()) })
+            else if (typeof item.size === 'string' && item.size.trim()) sizes.add(item.size.trim())
+          }
+          if (item.sizeArray && Array.isArray(item.sizeArray)) {
+            item.sizeArray.forEach(s => { if (s && s.trim()) sizes.add(s.trim()) })
+          }
+          if (item.packets && item.packets.length > 0) {
+            item.packets.forEach(packet => {
+              if (packet.composition) {
+                packet.composition.forEach(comp => { if (comp.size && comp.size.trim()) sizes.add(comp.size.trim()) })
               }
-            }
-
-            // PRIORITY 2: Also check sizeArray (may have additional sizes)
-            if (item.sizeArray && Array.isArray(item.sizeArray)) {
-              item.sizeArray.forEach(size => {
-                if (size && size.trim()) sizes.add(size.trim())
-              })
-            }
-
-            // PRIORITY 3: Also check packets composition for additional sizes (important for variant tracking)
-            if (item.packets && item.packets.length > 0) {
-              item.packets.forEach(packet => {
-                if (packet.composition && packet.composition.length > 0) {
-                  packet.composition.forEach(comp => {
-                    if (comp.size && comp.size.trim()) {
-                      sizes.add(comp.size.trim())
-                    }
-                  })
-                }
-              })
-            }
-
-            // DO NOT fallback to product.size - item data should match detail page
-          })
+            })
+          }
 
           const sizeArray = Array.from(sizes).filter(Boolean)
           if (sizeArray.length === 0) return <span className="text-muted-foreground">—</span>
 
-          // Show all sizes (up to 3 visible, rest in tooltip)
-          const visibleSizes = sizeArray.slice(0, 3)
-          const remainingSizes = sizeArray.slice(3)
+          if (isExpanded) {
+            return (
+              <div className="flex flex-wrap gap-1">
+                {sizeArray.map((size, idx) => (
+                  <span key={idx} className="inline-block px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-[10px] font-medium">{size}</span>
+                ))}
+              </div>
+            )
+          }
 
-          return (
-            <div className="flex flex-wrap items-center gap-1 max-w-[200px]">
-              {visibleSizes.map((size, idx) => (
-                <Badge
-                  key={idx}
-                  variant="outline"
-                  className="text-[10px] px-1.5 py-0.5 bg-green-50 text-green-700 border-green-200"
-                >
-                  {size}
-                </Badge>
-              ))}
-              {remainingSizes.length > 0 && (
-                <Badge
-                  variant="outline"
-                  className="text-[10px] px-1.5 py-0.5 bg-green-50 text-green-700 border-green-200"
-                  title={remainingSizes.join(', ')}
-                >
-                  +{remainingSizes.length}
-                </Badge>
-              )}
-            </div>
-          )
+          return <TruncatedBadgeList items={sizeArray} max={3} colorClass="bg-green-100 text-green-800" />
         },
       },
       {
@@ -666,6 +590,9 @@ export default function BuyingPage() {
   return (
     <div className="space-y-6">
       {/* Enhanced Page Header */}
+      <div className="mb-3">
+        <BackButton fallbackPath="/home" label="Back" />
+      </div>
       <header className="bg-card border border-border rounded-lg p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -729,6 +656,7 @@ export default function BuyingPage() {
                       setPage(1) // Reset to first page when searching
                     }}
                     pageSize={20}
+                    expandableRow={true}
                   />
                 </div>
 

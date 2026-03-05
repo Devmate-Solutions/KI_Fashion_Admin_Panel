@@ -1,6 +1,7 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import BackButton from "@/components/BackButton"
 import Link from "next/link"
 import {
   TrendingUp,
@@ -138,6 +139,9 @@ export default function ReportsPage() {
   return (
     <div className="p-4 md:p-6 max-w-[1600px] mx-auto">
       {/* Header */}
+      <div className="mb-3">
+        <BackButton fallbackPath="/home" label="Back" />
+      </div>
       <header className="mb-6">
         <h1 className="text-xl md:text-2xl font-bold">Reports & Analytics</h1>
         <p className="text-sm text-muted-foreground mt-1">

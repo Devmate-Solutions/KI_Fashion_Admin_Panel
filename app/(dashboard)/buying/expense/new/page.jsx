@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { useCallback } from "react"
 import toast from "react-hot-toast"
 import ExpenseForm from "@/components/forms/expense-form"
+import BackButton from "@/components/BackButton"
 
 export default function NewExpensePage() {
   const router = useRouter()
@@ -27,6 +28,9 @@ export default function NewExpensePage() {
   return (
     <div className="mx-auto max-w-[1200px] p-4">
       <header className="mb-6">
+        <div className="mb-3">
+          <BackButton fallbackPath="/buying" label="Back to Buying" />
+        </div>
         <h1 className="text-lg font-semibold">New Expense</h1>
         <p className="text-sm text-muted-foreground">Create a new expense entry with products and details.</p>
       </header>

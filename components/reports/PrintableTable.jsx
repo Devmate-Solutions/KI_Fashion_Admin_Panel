@@ -20,6 +20,7 @@ export default function PrintableTable({
   grandTotalSection = null,
   searchableColumns,
   totalColumns = [],
+  onRowClick,
 }) {
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState({ key: null, dir: "asc" })
@@ -174,7 +175,8 @@ export default function PrintableTable({
               slice.map((row, idx) => (
                 <tr
                   key={row.id ?? row._id ?? idx}
-                  className="border-b border-border hover:bg-muted/30 print:hover:bg-transparent"
+                  className={`border-b border-border hover:bg-muted/30 print:hover:bg-transparent${onRowClick ? ' cursor-pointer' : ''}`}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
                 >
                   {Array.isArray(columns) &&
                     columns.map((c) => (

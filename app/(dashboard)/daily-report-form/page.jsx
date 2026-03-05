@@ -1,6 +1,11 @@
+import BackButton from "@/components/BackButton"
+
 export default function DailyReportFormPage() {
   return (
     <div className="space-y-6">
+      <div className="mb-3">
+        <BackButton fallbackPath="/home" label="Back" />
+      </div>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Daily Report Form</h1>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, use } from "react";
 import { useRouter } from "next/navigation";
+import BackButton from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1260,13 +1261,7 @@ export default function DispatchOrderDetailPage({ params }) {
     return (
       <div className="space-y-6 p-6">
         <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            onClick={() => router.push("/dispatch-orders")}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to List
-          </Button>
+          <BackButton fallbackPath="/dispatch-orders" label="Back to List" />
         </div>
         <div className="text-center py-8">
           <h2 className="text-xl font-semibold">Dispatch Order Not Found</h2>
@@ -1281,15 +1276,7 @@ export default function DispatchOrderDetailPage({ params }) {
       <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push("/dispatch-orders")}
-              className="hover:bg-muted transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
+            <BackButton fallbackPath="/dispatch-orders" label="Back" />
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Package className="h-6 w-6 text-primary" />

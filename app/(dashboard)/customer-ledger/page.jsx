@@ -1,7 +1,9 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
+import BackButton from "@/components/BackButton"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Combobox } from "@/components/ui/combobox"
@@ -66,6 +68,15 @@ export default function CustomerLedgerPage() {
   const [paymentHistoryMethodFilter, setPaymentHistoryMethodFilter] = useState("all")
 
   const queryClient = useQueryClient()
+  const searchParams = useSearchParams()
+
+  // Auto-select buyer from URL query param (e.g. navigating from Receivables report)
+  useEffect(() => {
+    const buyerId = searchParams.get('buyerId')
+    if (buyerId) {
+      setSelectedBuyerId(buyerId)
+    }
+  }, [searchParams])
 
   // Fetch active buyers for dropdowns
   const { data: buyers = [], isLoading: buyersLoading, error: buyersError } = useBuyers({ limit: 500 })
@@ -1086,6 +1097,9 @@ export default function CustomerLedgerPage() {
   return (
     <div className="space-y-6">
       {/* Header - Enhanced */}
+      <div className="mb-3">
+        <BackButton fallbackPath="/reports/receivables" label="Back" />
+      </div>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">

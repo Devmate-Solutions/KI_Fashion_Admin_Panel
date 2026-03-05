@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
+import BackButton from "@/components/BackButton";
 import Tabs from "../../../components/tabs";
 import DataTable from "../../../components/data-table";
 import FormDialog from "../../../components/form-dialog";
@@ -2045,6 +2046,9 @@ export default function StockPage() {
 
   return (
     <div className="space-y-6">
+      <div className="mb-3">
+        <BackButton fallbackPath="/home" label="Back" />
+      </div>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">

@@ -3,8 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useCallback } from "react"
 import SaleReturnFormFrictionless from "@/components/forms/sale-return-form-frictionless"
-import { ArrowLeft } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import BackButton from "@/components/BackButton"
 
 export default function NewSaleReturnPage() {
   const router = useRouter()
@@ -17,15 +16,9 @@ export default function NewSaleReturnPage() {
   return (
     <div className="mx-auto max-w-[1200px] p-4 pb-8">
       <header className="mb-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push("/selling")}
-          className="mb-3"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Selling
-        </Button>
+        <div className="mb-3">
+          <BackButton fallbackPath="/selling" label="Back to Selling" />
+        </div>
         <h1 className="text-2xl font-bold">Sale Return</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Process customer returns and restore inventory

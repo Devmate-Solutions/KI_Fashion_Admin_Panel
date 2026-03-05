@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import BackButton from "@/components/BackButton"
 import DataTable from "../../../components/data-table"
 import { EmployeeForm } from "../../../components/forms/employee-form"
 import { SupplierForm } from "../../../components/forms/supplier-form"
@@ -571,6 +572,9 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
+      <div className="mb-3">
+        <BackButton fallbackPath="/home" label="Back" />
+      </div>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">User Management</h1>

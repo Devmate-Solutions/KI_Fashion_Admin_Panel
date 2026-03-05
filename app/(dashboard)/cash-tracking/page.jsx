@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useDailyCashSummary } from "@/lib/hooks/useCashTracking"
+import BackButton from "@/components/BackButton"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -26,6 +27,9 @@ export default function CashTrackingPage() {
 
   return (
     <div className="space-y-6">
+      <div className="mb-3">
+        <BackButton fallbackPath="/home" label="Back" />
+      </div>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Daily Cash Tracking</h1>

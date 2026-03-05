@@ -3,8 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useCallback } from "react"
 import BuyingReturnFormFrictionless from "@/components/forms/buying-return-form-frictionless"
-import { ArrowLeft } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import BackButton from "@/components/BackButton"
 
 export default function NewBuyingReturnPage() {
   const router = useRouter()
@@ -17,15 +16,9 @@ export default function NewBuyingReturnPage() {
   return (
     <div className="mx-auto max-w-[1200px] p-4 pb-8">
       <header className="mb-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push("/buying")}
-          className="mb-3"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Buying
-        </Button>
+        <div className="mb-3">
+          <BackButton fallbackPath="/buying" label="Back to Buying" />
+        </div>
         <h1 className="text-2xl font-bold">Buying Return</h1>
         
       </header>

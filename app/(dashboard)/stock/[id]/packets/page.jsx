@@ -2,6 +2,7 @@
 
 import { useState, useMemo, use } from "react";
 import { useRouter } from "next/navigation";
+import BackButton from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -371,10 +372,7 @@ export default function ProductPacketsPage({ params }) {
     return (
       <div className="space-y-6 p-6">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.push("/stock")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Stock
-          </Button>
+          <BackButton fallbackPath="/stock" label="Back to Stock" />
         </div>
         <div className="text-center py-8">
           <h2 className="text-xl font-semibold">Product Not Found</h2>
@@ -392,10 +390,7 @@ export default function ProductPacketsPage({ params }) {
     <div className="space-y-6 p-6 max-w-[1600px] mx-auto">
       {/* Header */}
       <div className="flex items-center border-b pb-4">
-        <Button variant="outline" onClick={() => router.push("/stock")}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
+        <BackButton fallbackPath="/stock" label="Back" />
       </div>
 
       {/* Product Info Accordion */}

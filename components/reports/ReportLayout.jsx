@@ -2,6 +2,7 @@
 
 import { useRef } from "react"
 import { Button } from "@/components/ui/button"
+import BackButton from "@/components/BackButton"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,6 +19,7 @@ export default function ReportLayout({
   children,
   summary = [],
   onExport = null,
+  showBeginningButton = false,
 }) {
   const printRef = useRef(null)
 
@@ -36,6 +38,10 @@ export default function ReportLayout({
       {/* Non-printable header controls */}
       <div className="no-print p-4 md:p-6 border-b bg-card">
         <div className="max-w-[1600px] mx-auto">
+          {/* Back button */}
+          <div className="mb-3">
+            <BackButton fallbackPath="/reports" label="Back to Reports" />
+          </div>
           {/* Title and actions */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -51,13 +57,27 @@ export default function ReportLayout({
                 <>
                   <div className="flex flex-col gap-1">
                     <Label htmlFor="fromDate" className="text-xs">From Date</Label>
-                    <Input
-                      id="fromDate"
-                      type="date"
-                      value={formatDateForInput(dateRange.from)}
-                      onChange={(e) => onDateChange({ ...dateRange, from: e.target.value })}
-                      className="w-40 h-9"
-                    />
+                    <div className="flex gap-1">
+                      <Input
+                        id="fromDate"
+                        type="date"
+                        value={formatDateForInput(dateRange.from)}
+                        onChange={(e) => onDateChange({ ...dateRange, from: e.target.value })}
+                        className="w-40 h-9"
+                      />
+                      {showBeginningButton && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-9 text-xs px-2 whitespace-nowrap"
+                          onClick={() => onDateChange({ ...dateRange, from: "" })}
+                          title="Reset to beginning of records"
+                        >
+                          Beginning
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex flex-col gap-1">
                     <Label htmlFor="toDate" className="text-xs">To Date</Label>

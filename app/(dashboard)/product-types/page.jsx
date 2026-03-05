@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import BackButton from "@/components/BackButton"
 import DataTable from "../../../components/data-table"
 import { ProductTypeForm } from "../../../components/forms/product-type-form"
 import { useProductTypes, useCreateProductType, useUpdateProductType, useDeleteProductType } from "../../../lib/hooks/useProductTypes"
@@ -79,6 +80,9 @@ export default function ProductTypesPage() {
 
   return (
     <div className="space-y-6">
+      <div className="mb-3">
+        <BackButton fallbackPath="/home" label="Back" />
+      </div>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Product Types</h1>

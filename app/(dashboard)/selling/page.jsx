@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
+import BackButton from "@/components/BackButton"
 import Tabs from "@/components/tabs"
 import DataTable from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
@@ -324,6 +325,9 @@ export default function SellingPage() {
   return (
     <div className="mx-auto max-w-[1600px] p-4">
       {/* Page header to match other sections */}
+      <div className="mb-3">
+        <BackButton fallbackPath="/home" label="Back" />
+      </div>
       <header className="mb-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>

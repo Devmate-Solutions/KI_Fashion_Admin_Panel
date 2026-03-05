@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { useCallback } from "react"
 import toast from "react-hot-toast"
 import SaleForm from "@/components/forms/sale-form"
+import BackButton from "@/components/BackButton"
 
 export default function NewSellingPage() {
   const router = useRouter()
@@ -24,6 +25,9 @@ export default function NewSellingPage() {
   return (
     <div className="mx-auto max-w-[1200px] p-4">
       <header className="mb-6">
+        <div className="mb-3">
+          <BackButton fallbackPath="/selling" label="Back to Selling" />
+        </div>
         <h1 className="text-lg font-semibold">New Selling</h1>
         <p className="text-sm text-muted-foreground">Create a new selling entry with products and payments.</p>
       </header>

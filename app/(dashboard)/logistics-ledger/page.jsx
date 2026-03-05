@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
+import BackButton from "@/components/BackButton"
 import Tabs from "@/components/tabs"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -1375,6 +1376,9 @@ export default function LogisticsLedgerPage() {
   return (
     <div className="space-y-6">
       {/* Premium Header */}
+      <div className="mb-3">
+        <BackButton fallbackPath="/logistics" label="Back" />
+      </div>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-3">

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { usePayablesReport } from "@/lib/hooks/useReports"
@@ -29,16 +30,17 @@ function getAgingDays(date) {
 function getDefaultDateRange() {
   const today = new Date()
   return {
-    from: today.toISOString().split("T")[0],
+    from: "",
     to: today.toISOString().split("T")[0],
   }
 }
 
 export default function PayablesReportPage() {
   const [dateRange, setDateRange] = useState(getDefaultDateRange())
+  const router = useRouter()
 
   const { data, isLoading, isError, error, refetch } = usePayablesReport({
-    startDate: dateRange.from,
+    ...(dateRange.from ? { startDate: dateRange.from } : {}),
     endDate: dateRange.to,
   })
 
@@ -125,6 +127,7 @@ export default function PayablesReportPage() {
       loading={isLoading}
       error={isError ? error : null}
       summary={summary}
+      showBeginningButton={true}
     >
       <PrintableTable
         columns={columns}
@@ -133,7 +136,7 @@ export default function PayablesReportPage() {
         showTotals={true}
         totalsRow={totalsRow}
         totalColumns={[{ title: "Total", value: "remainingBalance" }]}
-
+        onRowClick={(row) => router.push(`/supplier-ledger?supplierId=${row._id}`)}
       />
     </ReportLayout>
   )

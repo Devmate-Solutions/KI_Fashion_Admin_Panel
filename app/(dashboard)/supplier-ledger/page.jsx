@@ -1,7 +1,9 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
+import BackButton from "@/components/BackButton"
 import Tabs from "@/components/tabs"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -62,6 +64,7 @@ function formatDateTime(_date) {
 }
 
 export default function SupplierLedgerPage() {
+  const searchParams = useSearchParams()
   const [selectedSupplierId, setSelectedSupplierId] = useState("") // Default to empty - require supplier selection
   const [selectedDispatchOrderId, setSelectedDispatchOrderId] = useState("none")
   const [activeTab, setActiveTab] = useState(0) // Track active tab
@@ -101,6 +104,14 @@ export default function SupplierLedgerPage() {
   const [paymentHistoryMethodFilter, setPaymentHistoryMethodFilter] = useState("all")
 
   const queryClient = useQueryClient()
+
+  // Auto-select supplier from URL query param (e.g. navigating from Payables report)
+  useEffect(() => {
+    const supplierId = searchParams.get('supplierId')
+    if (supplierId) {
+      setLedgerSupplierFilter(supplierId)
+    }
+  }, [searchParams])
 
   // Fetch suppliers with user accounts for Tab 1 table
   const { data: suppliersWithUsers = [], isLoading: suppliersLoading } = useSuppliers()
@@ -2436,6 +2447,9 @@ export default function SupplierLedgerPage() {
   return (
     <div className="space-y-6">
       {/* Header - Enhanced */}
+      <div className="mb-3">
+        <BackButton fallbackPath="/reports/payables" label="Back" />
+      </div>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">

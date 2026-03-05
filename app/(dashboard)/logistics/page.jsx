@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import BackButton from "@/components/BackButton"
 import {
   useLogisticsCompanies,
   useCreateLogisticsCompany,
@@ -123,6 +124,9 @@ export default function LogisticsPage() {
 
   return (
     <div className="p-6">
+      <div className="mb-3">
+        <BackButton fallbackPath="/home" label="Back" />
+      </div>
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">Logistics Companies</h1>
