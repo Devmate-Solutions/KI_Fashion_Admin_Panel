@@ -37,7 +37,7 @@ function getDefaultDateRange() {
 export default function ReceivablesReportPage() {
   const [dateRange, setDateRange] = useState(getDefaultDateRange())
 
-  const { data, isLoading, refetch } = useReceivablesReport({
+  const { data, isLoading, isError, error, refetch } = useReceivablesReport({
     asOfDate: dateRange.to,
   })
 
@@ -122,6 +122,7 @@ export default function ReceivablesReportPage() {
       onRefresh={refetch}
       onExport={handleExport}
       loading={isLoading}
+      error={isError ? error : null}
       summary={summary}
     >
       <PrintableTable

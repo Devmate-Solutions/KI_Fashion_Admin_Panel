@@ -6,6 +6,7 @@ import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useSalesProductWiseReport } from "@/lib/hooks/useReports"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import { getDefaultDateRange } from "@/lib/utils/getDefaultDateRange"
 import toast from "react-hot-toast"
 
 function currency(n) {
@@ -18,18 +19,10 @@ function formatDate(date) {
   return new Date(date).toLocaleDateString("en-GB")
 }
 
-function getDefaultDateRange() {
-  const today = new Date()
-  return {
-    from: today.toISOString().split("T")[0],
-    to: today.toISOString().split("T")[0],
-  }
-}
-
 export default function SalesProductWiseReportPage() {
   const [dateRange, setDateRange] = useState(getDefaultDateRange())
 
-  const { data, isLoading, refetch } = useSalesProductWiseReport({
+  const { data, isLoading, isError, error, refetch } = useSalesProductWiseReport({
     startDate: dateRange.from,
     endDate: dateRange.to,
   })
@@ -176,6 +169,7 @@ export default function SalesProductWiseReportPage() {
       onRefresh={refetch}
       onExport={handleExport}
       loading={isLoading}
+      error={isError ? error : null}
       summary={summary}
     >
       <PrintableTable

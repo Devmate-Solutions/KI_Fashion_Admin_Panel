@@ -141,12 +141,6 @@ export default function PacketLabelPrintModal({ open, onClose, packetId, packet 
             color: #f57c00;
           }
           
-          .price {
-            font-size: 18px;
-            font-weight: bold;
-            color: #2e7d32;
-          }
-          
           @media print {
             body {
               padding: 0;
@@ -167,7 +161,6 @@ export default function PacketLabelPrintModal({ open, onClose, packetId, packet 
           <div class="barcode-number">${data.barcode}</div>
           <div class="composition">${compositionText}</div>
           <span class="badge ${data.isLoose ? 'badge-loose' : 'badge-packet'}">${data.isLoose ? 'LOOSE' : 'PACKET'}</span>
-          <div class="price">£${(data.suggestedSellingPrice || 0).toFixed(2)}</div>
         </div>
       </body>
       </html>

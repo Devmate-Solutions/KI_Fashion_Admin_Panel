@@ -5,6 +5,7 @@ import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useBuyingReturnsReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
+import { getDefaultDateRange } from "@/lib/utils/getDefaultDateRange"
 
 function formatNumber(n) {
   const num = Number(n || 0)
@@ -21,18 +22,10 @@ function formatDate(date) {
   return new Date(date).toLocaleDateString("en-GB")
 }
 
-function getDefaultDateRange() {
-  const today = new Date()
-  return {
-    from: today.toISOString().split("T")[0],
-    to: today.toISOString().split("T")[0],
-  }
-}
-
 export default function BuyingReturnsReportPage() {
   const [dateRange, setDateRange] = useState(getDefaultDateRange())
 
-  const { data, isLoading, refetch } = useBuyingReturnsReport({
+  const { data, isLoading, isError, error, refetch } = useBuyingReturnsReport({
     startDate: dateRange.from,
     endDate: dateRange.to,
   })
@@ -158,6 +151,7 @@ export default function BuyingReturnsReportPage() {
       onDateChange={setDateRange}
       onRefresh={refetch}
       loading={isLoading}
+      error={isError ? error : null}
       summary={summary}
     >
       <PrintableTable

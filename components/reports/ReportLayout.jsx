@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Printer, RefreshCw, FileDown } from "lucide-react"
+import { Printer, RefreshCw, FileDown, AlertCircle } from "lucide-react"
 
 export default function ReportLayout({
   title,
@@ -14,6 +14,7 @@ export default function ReportLayout({
   onDateChange,
   onRefresh,
   loading = false,
+  error = null,
   children,
   summary = [],
   onExport = null,
@@ -160,7 +161,17 @@ export default function ReportLayout({
           )} */}
 
           {/* Loading State */}
-          {loading ? (
+          {error ? (
+            <div className="flex items-center gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive mb-6">
+              <AlertCircle className="h-5 w-5 shrink-0" />
+              <div>
+                <p className="font-medium">Failed to load report data</p>
+                <p className="text-sm mt-0.5 opacity-80">
+                  {error?.message || "An unexpected error occurred. Please try refreshing."}
+                </p>
+              </div>
+            </div>
+          ) : loading ? (
             <div className="flex items-center justify-center py-20">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>

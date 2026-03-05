@@ -6,6 +6,7 @@ import PrintableTable from "@/components/reports/PrintableTable"
 import { useDailyBuyingReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import { getDefaultDateRange } from "@/lib/utils/getDefaultDateRange"
 import toast from "react-hot-toast"
 
 function formatNumber(n) {
@@ -23,18 +24,10 @@ function formatDate(date) {
   return new Date(date).toLocaleDateString("en-GB")
 }
 
-function getDefaultDateRange() {
-  const today = new Date()
-  return {
-    from: today.toISOString().split("T")[0],
-    to: today.toISOString().split("T")[0],
-  }
-}
-
 export default function DailyBuyingReportPage() {
   const [dateRange, setDateRange] = useState(getDefaultDateRange())
 
-  const { data, isLoading, refetch } = useDailyBuyingReport({
+  const { data, isLoading, isError, error, refetch } = useDailyBuyingReport({
     startDate: dateRange.from,
     endDate: dateRange.to,
   })
@@ -174,6 +167,7 @@ export default function DailyBuyingReportPage() {
       onRefresh={refetch}
       onExport={handleExport}
       loading={isLoading}
+      error={isError ? error : null}
       summary={summary}
     >
       <PrintableTable

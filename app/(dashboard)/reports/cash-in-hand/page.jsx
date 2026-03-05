@@ -5,6 +5,7 @@ import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useCashInHandReport } from "@/lib/hooks/useReports"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import { getDefaultDateRange } from "@/lib/utils/getDefaultDateRange"
 import toast from "react-hot-toast"
 
 function currency(n) {
@@ -17,21 +18,13 @@ function formatDate(date) {
     return new Date(date).toLocaleDateString("en-GB")
 }
 
-function getDefaultDateRange() {
-    const today = new Date()
-    return {
-        from: today.toISOString().split("T")[0],
-        to: today.toISOString().split("T")[0],
-    }
-}
-
 // Dash placeholder for columns that don't apply to a transaction type
 const DASH = <span className="text-muted-foreground">—</span>
 
 export default function CashInHandReportPage() {
     const [dateRange, setDateRange] = useState(getDefaultDateRange())
 
-    const { data, isLoading, refetch } = useCashInHandReport({
+    const { data, isLoading, isError, error, refetch } = useCashInHandReport({
         startDate: dateRange.from,
         endDate: dateRange.to,
     })
@@ -234,6 +227,7 @@ export default function CashInHandReportPage() {
             onRefresh={refetch}
             onExport={handleExport}
             loading={isLoading}
+            error={isError ? error : null}
             summary={summaryCards}
         >
             {/* {JSON.stringify(transactions)} */}

@@ -30,7 +30,7 @@ function getDefaultDateRange() {
 export default function StockInHandReportPage() {
   const [dateRange, setDateRange] = useState(getDefaultDateRange())
 
-  const { data, isLoading, refetch } = useStockInHandReport({
+  const { data, isLoading, isError, error, refetch } = useStockInHandReport({
     asOfDate: dateRange.to,
   })
 
@@ -196,6 +196,7 @@ export default function StockInHandReportPage() {
       onRefresh={refetch}
       onExport={handleExport}
       loading={isLoading}
+      error={isError ? error : null}
       summary={summary}
     >
       <PrintableTable

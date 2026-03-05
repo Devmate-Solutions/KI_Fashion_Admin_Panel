@@ -5,9 +5,9 @@ import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
-import apiClient from "@/lib/api-client"
+import { useProfitLossReport } from "@/lib/hooks/useReports"
+import { getDefaultDateRange } from "@/lib/utils/getDefaultDateRange"
 import toast from "react-hot-toast"
-import { useQuery } from "@tanstack/react-query"
 
 function currency(n) {
   const num = Number(n || 0)
@@ -19,31 +19,12 @@ function formatDate(date) {
   return new Date(date).toLocaleDateString("en-GB")
 }
 
-function getDefaultDateRange() {
-  const today = new Date()
-  const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
-  return {
-    from: thirtyDaysAgo.toISOString().split("T")[0],
-    to: today.toISOString().split("T")[0],
-  }
-}
-
-async function fetchProfitLossReport(startDate, endDate) {
-  const response = await apiClient.get("/reports/profit-loss", {
-    params: {
-      startDate,
-      endDate,
-    },
-  })
-  return response.data.data || { plData: [], summary: {} }
-}
-
 export default function ProfitLossReportPage() {
   const [dateRange, setDateRange] = useState(getDefaultDateRange())
 
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ["profitLossReport", dateRange.from, dateRange.to],
-    queryFn: () => fetchProfitLossReport(dateRange.from, dateRange.to),
+  const { data, isLoading, isError, error, refetch } = useProfitLossReport({
+    startDate: dateRange.from,
+    endDate: dateRange.to,
   })
 
   const reportData = data?.plData || []
@@ -199,6 +180,7 @@ export default function ProfitLossReportPage() {
       onRefresh={refetch}
       onExport={handleExport}
       loading={isLoading}
+      error={isError ? error : null}
       summary={summaryCards}
     >
       <PrintableTable

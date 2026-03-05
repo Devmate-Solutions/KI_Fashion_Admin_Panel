@@ -37,7 +37,7 @@ function getDefaultDateRange() {
 export default function PayablesReportPage() {
   const [dateRange, setDateRange] = useState(getDefaultDateRange())
 
-  const { data, isLoading, refetch } = usePayablesReport({
+  const { data, isLoading, isError, error, refetch } = usePayablesReport({
     asOfDate: dateRange.to,
   })
 
@@ -122,6 +122,7 @@ export default function PayablesReportPage() {
       onRefresh={refetch}
       onExport={handleExport}
       loading={isLoading}
+      error={isError ? error : null}
       summary={summary}
     >
       <PrintableTable

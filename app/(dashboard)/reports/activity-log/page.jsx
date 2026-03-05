@@ -5,6 +5,7 @@ import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useActivityLogReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
+import { getDefaultDateRange } from "@/lib/utils/getDefaultDateRange"
 
 function formatDateTime(date) {
   if (!date) return "—"
@@ -17,18 +18,10 @@ function formatDateTime(date) {
   })
 }
 
-function getDefaultDateRange() {
-  const today = new Date()
-  return {
-    from: today.toISOString().split("T")[0],
-    to: today.toISOString().split("T")[0],
-  }
-}
-
 export default function ActivityLogReportPage() {
   const [dateRange, setDateRange] = useState(getDefaultDateRange())
 
-  const { data, isLoading, refetch } = useActivityLogReport({
+  const { data, isLoading, isError, error, refetch } = useActivityLogReport({
     startDate: dateRange.from,
     endDate: dateRange.to,
   })
@@ -148,12 +141,16 @@ export default function ActivityLogReportPage() {
       onDateChange={setDateRange}
       onRefresh={refetch}
       loading={isLoading}
+      error={isError ? error : null}
       summary={summary}
     >
       {activityData.length === 0 && !isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <p>No activity logs found for the selected date range.</p>
-          <p className="text-sm mt-2">Activity logging may need to be enabled in the backend.</p>
+        <div className="text-center py-12">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 text-amber-700 border border-amber-200 mb-3">
+            <span className="text-sm font-medium">Feature Not Yet Implemented</span>
+          </div>
+          <p className="text-muted-foreground">Activity logging has not been enabled in the backend yet.</p>
+          <p className="text-sm text-muted-foreground mt-1">Once enabled, user actions will appear here automatically.</p>
         </div>
       ) : (
         <PrintableTable
