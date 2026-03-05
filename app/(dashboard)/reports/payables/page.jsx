@@ -38,7 +38,8 @@ export default function PayablesReportPage() {
   const [dateRange, setDateRange] = useState(getDefaultDateRange())
 
   const { data, isLoading, isError, error, refetch } = usePayablesReport({
-    asOfDate: dateRange.to,
+    startDate: dateRange.from,
+    endDate: dateRange.to,
   })
 
   const payablesData = useMemo(() => {
