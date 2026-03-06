@@ -43,14 +43,48 @@ export default function ReportLayout({
             <BackButton fallbackPath="/reports" label="Back to Reports" />
           </div>
           {/* Title and actions */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold">{title}</h1>
-              {description && (
-                <p className="text-sm text-muted-foreground mt-1">{description}</p>
+          <div className="flex flex-col  md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex flex-row w-full justify-between gap-4">
+              <h3 className="text-lg mb-1 md:text-2xl font-bold">{title}</h3>
+             <div className="space-x-1">
+               {onRefresh && (
+                <Button 
+                  onClick={onRefresh} 
+                  variant="outline" 
+                  size="sm"
+                  disabled={loading}
+                  className="h-9"
+                >
+                  <RefreshCw className={`h-4 w-4  ${loading ? 'animate-spin' : ''}`} />
+                  
+                </Button>
               )}
+              
+              {onExport && (
+                <Button 
+                  onClick={onExport} 
+                  variant="outline"
+                  size="sm"
+                  disabled={loading}
+                  className="h-9 bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <FileDown className="h-6 w-6 " />
+                  
+                </Button>
+              )}
+              
+              <Button 
+                onClick={handlePrint} 
+                size="sm"
+                className="h-9 bg-blue-600 hover:bg-blue-700"
+              >
+                <Printer className="h-4 w-4" />
+                
+              </Button>
+             </div>
             </div>
             
+          </div>
             {/* Date Range and Actions */}
             <div className="flex flex-wrap items-end gap-3">
               {dateRange && onDateChange && (
@@ -58,13 +92,6 @@ export default function ReportLayout({
                   <div className="flex flex-col gap-1">
                     <Label htmlFor="fromDate" className="text-xs">From Date</Label>
                     <div className="flex gap-1">
-                      <Input
-                        id="fromDate"
-                        type="date"
-                        value={formatDateForInput(dateRange.from)}
-                        onChange={(e) => onDateChange({ ...dateRange, from: e.target.value })}
-                        className="w-40 h-9"
-                      />
                       {showBeginningButton && (
                         <Button
                           type="button"
@@ -77,6 +104,13 @@ export default function ReportLayout({
                           Beginning
                         </Button>
                       )}
+                      <Input
+                        id="fromDate"
+                        type="date"
+                        value={formatDateForInput(dateRange.from)}
+                        onChange={(e) => onDateChange({ ...dateRange, from: e.target.value })}
+                        className="w-40 h-9"
+                      />
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
@@ -92,42 +126,8 @@ export default function ReportLayout({
                 </>
               )}
               
-              {onRefresh && (
-                <Button 
-                  onClick={onRefresh} 
-                  variant="outline" 
-                  size="sm"
-                  disabled={loading}
-                  className="h-9"
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
-              )}
-              
-              {onExport && (
-                <Button 
-                  onClick={onExport} 
-                  variant="outline"
-                  size="sm"
-                  disabled={loading}
-                  className="h-9 bg-green-600 hover:bg-green-700 text-white"
-                >
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Excel
-                </Button>
-              )}
-              
-              <Button 
-                onClick={handlePrint} 
-                size="sm"
-                className="h-9 bg-blue-600 hover:bg-blue-700"
-              >
-                <Printer className="h-4 w-4 mr-2" />
-                Print
-              </Button>
+             
             </div>
-          </div>
         </div>
       </div>
 

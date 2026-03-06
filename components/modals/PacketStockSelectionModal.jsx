@@ -57,23 +57,31 @@ export default function PacketStockSelectionModal({ open, onClose, onSelect }) {
         fetchPacketStocks()
     }, [open, filter])
 
-    // Filter by search term
+    // Filter by search term and sort by supplier name alphabetically
     const filteredStocks = useMemo(() => {
-        if (!searchTerm.trim()) return packetStocks
+        let result = packetStocks
 
-        const search = searchTerm.toLowerCase()
-        return packetStocks.filter(ps => {
-            const productName = ps.product?.name?.toLowerCase() || ''
-            const productCode = ps.product?.productCode?.toLowerCase() || ps.product?.sku?.toLowerCase() || ''
-            const barcode = ps.barcode?.toLowerCase() || ''
-            const supplierName = ps.supplier?.name?.toLowerCase() || ps.supplier?.company?.toLowerCase() || ''
+        if (searchTerm.trim()) {
+            const search = searchTerm.toLowerCase()
+            result = packetStocks.filter(ps => {
+                const productName = ps.product?.name?.toLowerCase() || ''
+                const productCode = ps.product?.productCode?.toLowerCase() || ps.product?.sku?.toLowerCase() || ''
+                const barcode = ps.barcode?.toLowerCase() || ''
+                const supplierName = ps.supplier?.name?.toLowerCase() || ps.supplier?.company?.toLowerCase() || ''
 
-            return (
-                productName.includes(search) ||
-                productCode.includes(search) ||
-                barcode.includes(search) ||
-                supplierName.includes(search)
-            )
+                return (
+                    productName.includes(search) ||
+                    productCode.includes(search) ||
+                    barcode.includes(search) ||
+                    supplierName.includes(search)
+                )
+            })
+        }
+
+        return [...result].sort((a, b) => {
+            const nameA = (a.supplier?.name || a.supplier?.company || '').toLowerCase()
+            const nameB = (b.supplier?.name || b.supplier?.company || '').toLowerCase()
+            return nameA.localeCompare(nameB)
         })
     }, [packetStocks, searchTerm])
 

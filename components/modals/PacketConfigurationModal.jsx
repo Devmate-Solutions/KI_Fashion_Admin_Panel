@@ -312,6 +312,16 @@ export default function PacketConfigurationModal({
   const availableColors = Array.isArray(activeItem.primaryColor) ? activeItem.primaryColor : [];
   const availableSizes = Array.isArray(activeItem.size) ? activeItem.size : [];
 
+  const getPacketColors = (packet) => {
+    if (!packet.composition || packet.composition.length === 0) return null;
+    const colors = [...new Set(
+      packet.composition
+        .filter(c => c.color && parseInt(c.quantity) > 0)
+        .map(c => c.color.trim())
+    )];
+    return colors.length > 0 ? colors.join(", ") : null;
+  };
+
   const configuredCount = Object.values(packetsByItem).filter((p) => p && p.length > 0).length;
 
   // Determine index logic for display and navigation
@@ -505,13 +515,18 @@ export default function PacketConfigurationModal({
                           className="flex items-center gap-2 hover:text-blue-600 transition-colors flex-1 text-left"
                           onClick={() => setExpandedPacket(isExpanded ? null : `packet-${packet.packetNumber}`)}
                         >
-                          <Package className="h-4 w-4 text-slate-500" />
-                          <span className="font-medium">Packet #{packet.packetNumber}</span>
+                          <span className="font-medium">
+                            
+                            {getPacketColors(packet) && (
+                              <span className="ml-1.5 font-normal text-blue-600 text-sm">({getPacketColors(packet)})</span>
+                            )}
+                          </span>
+                          
+                        </button>
+                        <div className="flex gap-2">
                           <span className="text-sm text-slate-600 ml-2">
                             ({packet.totalItems} items)
                           </span>
-                        </button>
-                        <div className="flex gap-2">
                           <Button
                             type="button"
                             size="sm"
@@ -542,9 +557,7 @@ export default function PacketConfigurationModal({
                         <div className="px-4 pb-4 bg-white border-t border-slate-200">
                           <div className="space-y-4 mt-4">
                             <div>
-                              <Label className="text-sm font-medium mb-2 block">
-                                Packet Composition
-                              </Label>
+                              
                               <CompositionEditor
                                 composition={packet.composition}
                                 onChange={(comp) => handleCompositionChange(index, comp)}

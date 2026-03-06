@@ -1,22 +1,28 @@
 "use client"
 
 import { createContext, useContext, useRef, useCallback } from "react"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useSearchParams, useRouter } from "next/navigation"
 
 const NavigationHistoryContext = createContext(null)
 
 export function NavigationHistoryProvider({ children }) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const router = useRouter()
 
-  // Stack of previous pathnames (e.g. ['/expenses', '/customer-ledger'])
+  // Full URL including query string (e.g. '/stock?tab=3')
+  const fullPath = searchParams.toString()
+    ? `${pathname}?${searchParams.toString()}`
+    : pathname
+
+  // Stack of previous full URLs
   const historyStack = useRef([])
   const currentPathRef = useRef(null)
   // Flag set before a back-navigation so the resulting route change is NOT
   // pushed onto the stack — otherwise it would create the cycling bug.
   const isGoingBack = useRef(false)
 
-  if (currentPathRef.current !== pathname) {
+  if (currentPathRef.current !== fullPath) {
     if (isGoingBack.current) {
       // We navigated backwards — discard the flag, don't push to stack
       isGoingBack.current = false
@@ -24,7 +30,7 @@ export function NavigationHistoryProvider({ children }) {
       // Normal forward navigation — save where we were
       historyStack.current.push(currentPathRef.current)
     }
-    currentPathRef.current = pathname
+    currentPathRef.current = fullPath
   }
 
   const goBack = useCallback(

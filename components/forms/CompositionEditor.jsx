@@ -216,7 +216,7 @@ export default function CompositionEditor({
       </div>
 
       {/* Total Indicator */}
-      <div className={`p-3 rounded-lg border-2 ${hasExpectedTotal
+      {/* <div className={`p-3 rounded-lg border-2 ${hasExpectedTotal
           ? isValid
             ? "border-green-200 bg-green-50"
             : "border-orange-200 bg-orange-50"
@@ -249,12 +249,9 @@ export default function CompositionEditor({
               : `Remove ${grandTotal - expectedTotal} items`}
           </p>
         )}
-      </div>
+      </div> */}
 
-      {/* Helper Text */}
-      <div className="text-xs text-slate-500 italic">
-        💡 Tip: Enter quantities for each size/color combination. Leave empty or 0 for combinations you don't need.
-      </div>
+     
     </div>
   );
 }

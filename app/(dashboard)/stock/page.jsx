@@ -1,10 +1,13 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import BackButton from "@/components/BackButton";
 import Tabs from "../../../components/tabs";
 import DataTable from "../../../components/data-table";
 import FormDialog from "../../../components/form-dialog";
+import ProductSummaryTab from "@/components/stock/ProductSummaryTab";
+import StockCountTab from "@/components/stock/StockCountTab";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -40,7 +43,7 @@ import {
   useReduceStock,
   useAdjustStock,
 } from "@/lib/hooks/useInventory";
-import { usePacketStockList, useScanBarcode } from "@/lib/hooks/usePacketStock";
+import { usePacketStockList } from "@/lib/hooks/usePacketStock";
 import { toast } from "react-hot-toast";
 import { Boxes, Loader2, MoveRight, RefreshCcw, Package, Barcode, Printer, QrCode, Copy, Check, Scissors, Trash2, ScanLine } from "lucide-react";
 import ProductImageGallery from "@/components/ui/ProductImageGallery";
@@ -117,7 +120,7 @@ const inventoryColumns = [
     render: (row) => (
       <div>
         <a
-          href={`/stock/${row.productId || row.product?._id}/packets`}
+          href={`/stock/product-history?productId=${row.productId || row.product?._id}`}
           className="font-medium leading-tight text-blue-600 hover:underline cursor-pointer"
           onClick={(e) => {
             e.stopPropagation();
@@ -328,6 +331,15 @@ function currency(n) {
 const PAGE_SIZE_OPTIONS = [10, 20, 25, 50, 100];
 
 export default function StockPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const initialTab = Number(searchParams.get("tab") ?? 0);
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  const handleTabChange = (idx) => {
+    setActiveTab(idx);
+    router.replace(`/stock?tab=${idx}`, { scroll: false });
+  };
   const [page, setPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(20);
   const [movementPage, setMovementPage] = useState(1);
@@ -559,88 +571,10 @@ export default function StockPage() {
   const packetStockItems = packetStockData?.data ?? [];
   const packetStockPagination = packetStockData?.pagination;
   const adjustStockMutation = useAdjustStock();
-  const scanBarcodeMutation = useScanBarcode();
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [reduceDialogOpen, setReduceDialogOpen] = useState(false);
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
-
-  // Stock Count Tab State
-  const [stockCountList, setStockCountList] = useState([]);
-  const [scanQuery, setScanQuery] = useState("");
-  const scanInputRef = useRef(null);
-
-  const handleStockCountScan = async (e) => {
-    e.preventDefault();
-    const barcode = scanQuery.trim();
-    if (!barcode) return;
-
-    try {
-      const result = await scanBarcodeMutation.mutateAsync(barcode);
-      // specific fix: result is the Axios response, result.data is { success: true, data: packet }
-      // So the actual item is result.data.data
-      const scannedItem = result.data?.data || result.data || result;
-
-      if (!scannedItem || !scannedItem.product) {
-        // Fallback if data structure is unexpected, though logic above should catch it
-        console.error("Unexpected scan result structure:", result);
-      }
-
-      // Add to list
-      setStockCountList(prev => [{
-        id: Date.now(), // temporary ID for the list
-        scannedAt: new Date(),
-        barcode: barcode,
-        item: scannedItem
-      }, ...prev]);
-
-      setScanQuery("");
-      toast.success("Item added");
-
-      // Keep focus
-      if (scanInputRef.current) {
-        scanInputRef.current.focus();
-      }
-    } catch (error) {
-      // toast is handled by mutation hook
-      setScanQuery(""); // clear anyway? optional
-    }
-  };
-
-  const removeStockCountItem = (id) => {
-    setStockCountList(prev => prev.filter(item => item.id !== id));
-  };
-
-  const stockCountSummary = useMemo(() => {
-    let totalItems = 0;
-    let totalValue = 0;
-
-    stockCountList.forEach(entry => {
-      const item = entry.item;
-      // If it's a packet
-      if (!item.isLoose) {
-        totalItems += (item.totalItemsPerPacket || 1);
-        totalValue += (item.suggestedSellingPrice || 0);
-      } else {
-        // Loose item logic depends on what scan returns. 
-        // If scan returns a loose stock record, it might refer to the whole bin.
-        // But usually scanning a barcode means counting "1" of that barcode entity.
-        // If the barcode identifies a SKU/Loose Item type, we count 1 unit of it?
-        // Let's assume the scan event implies "1 packet" or "1 unit" found.
-
-        // However, if the barcode is for a "Packet", it has a set price.
-        // If the barcode is for a "Loose Stock", it might not have a per-unit price easy to grab 
-        // unless we derive it. 
-        // Let's assume suggestedSellingPrice is per packet/unit available on the object.
-        totalItems += 1; // Count as 1 scan unit
-        // If loose stock doesn't have suggestedSellingPrice on the root object, check product.
-        const price = item.suggestedSellingPrice || item.product?.price || 0;
-        totalValue += price;
-      }
-    });
-
-    return { totalItems, totalValue, scanCount: stockCountList.length };
-  }, [stockCountList]);
 
   const handleApplyFilters = (event) => {
     event.preventDefault();
@@ -1818,167 +1752,11 @@ export default function StockPage() {
     </div>
   );
 
-  const stockCountTab = (
-    <div className="space-y-4">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Scanned Value
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold tabular-nums">
-              {currency(stockCountSummary.totalValue)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Items (Qty)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold tabular-nums">
-              {formatNumber(stockCountSummary.totalItems)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Scanned Entries
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold tabular-nums">
-              {formatNumber(stockCountSummary.scanCount)}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Scanner Input */}
-      <Card className="p-4 bg-muted/30 border-dashed">
-        <form onSubmit={handleStockCountScan} className="flex gap-4 items-end">
-          <div className="flex-1">
-            <Label htmlFor="stock-scan" className="text-base font-semibold mb-2 block">
-              Scan Barcode
-            </Label>
-            <div className="relative">
-              <ScanLine className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-              <Input
-                id="stock-scan"
-                ref={scanInputRef}
-                placeholder="Scan or type barcode and press Enter..."
-                value={scanQuery}
-                onChange={(e) => setScanQuery(e.target.value)}
-                className="pl-10 h-10 text-lg md:text-xl font-mono"
-                autoComplete="off"
-                autoFocus
-              />
-            </div>
-          </div>
-          <Button
-            type="submit"
-            size="lg"
-            className="h-10 px-8"
-            disabled={scanBarcodeMutation.isPending}
-          >
-            {scanBarcodeMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Wait...
-              </>
-            ) : (
-              "Add"
-            )}
-          </Button>
-        </form>
-      </Card>
-
-      {/* Scanned Items Table */}
-      <div className="rounded-md border bg-card">
-        <div className="relative w-full overflow-auto">
-          <table className="w-full caption-bottom text-sm text-left">
-            <thead className="[&_tr]:border-b">
-              <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Time</th>
-                <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Barcode</th>
-                <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Product</th>
-                <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Type</th>
-                <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Composition</th>
-                <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-right">Value</th>
-                <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="[&_tr:last-child]:border-0">
-              {stockCountList.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="h-24 text-center text-muted-foreground">
-                    No items scanned yet. Start scanning to count stock.
-                  </td>
-                </tr>
-              ) : (
-                stockCountList.map((entry) => {
-                  const item = entry.item;
-                  return (
-                    <tr key={entry.id} className="border-b transition-colors hover:bg-muted/50">
-                      <td className="p-4 align-middle font-mono text-xs text-muted-foreground">
-                        {entry.scannedAt.toLocaleTimeString()}
-                      </td>
-                      <td className="p-4 align-middle font-mono font-medium">
-                        {entry.barcode}
-                      </td>
-                      <td className="p-4 align-middle">
-                        <div className="font-medium">{item.product?.name || "Unknown Product"}</div>
-                        <div className="text-xs text-muted-foreground">{item.product?.sku}</div>
-                      </td>
-                      <td className="p-4 align-middle">
-                        <Badge variant={item.isLoose ? "secondary" : "default"}>
-                          {item.isLoose ? "Loose" : "Packet"}
-                        </Badge>
-                      </td>
-                      <td className="p-4 align-middle">
-                        <div className="text-xs">
-                          {(item.composition || []).slice(0, 2).map((c, i) => (
-                            <span key={i} className="mr-1 inline-block bg-slate-100 px-1 rounded">
-                              {c.color}/{c.size}
-                            </span>
-                          ))}
-                          {(item.composition?.length > 2) && "..."}
-                        </div>
-                      </td>
-                      <td className="p-4 align-middle text-right font-medium">
-                        {currency(item.suggestedSellingPrice || 0)}
-                      </td>
-                      <td className="p-4 align-middle text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => removeStockCountItem(entry.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-
   const tabs = [
     { label: "Inventory", content: inventoryTab },
     { label: "Packet Stock", content: packetStockTab },
-    { label: "Stock Count", content: stockCountTab },
+    { label: "Stock Count", content: <StockCountTab /> },
+    { label: "Product Summary", content: <ProductSummaryTab /> },
   ];
 
   const addStockFields = [
@@ -2068,7 +1846,7 @@ export default function StockPage() {
         </Button>
       </header>
 
-      <Tabs tabs={tabs} />
+      <Tabs tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />
 
       <FormDialog
         open={addDialogOpen}

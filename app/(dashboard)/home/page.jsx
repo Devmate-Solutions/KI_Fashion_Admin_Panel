@@ -10,6 +10,10 @@ import {
   useSuppliersReport,
   useCustomersReport,
 } from "@/lib/hooks/useReports";
+import ProductSummaryReportPage from "@/app/(dashboard)/reports/product-summary/page";
+import StockCountTab from "@/components/stock/StockCountTab";
+import ReceivablesReportPage from "@/app/(dashboard)/reports/receivables/page";
+import PayablesReportPage from "@/app/(dashboard)/reports/payables/page";
 import {
   useAllSupplierLedgers,
   useAllBuyerLedgers,
@@ -190,133 +194,20 @@ export default function HomePage() {
   const tabs = [
     { label: "Overview", content: overviewTab },
     {
-      label: "Inventory",
-      content: (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <StatCard
-              label="Stock Valuation"
-              value={currency(totalStockValue)}
-              icon={Package}
-              loading={inventoryLoading}
-              color="purple"
-            />
-            <StatCard
-              label="Total SKU Count"
-              value={inventoryItems.length.toString()}
-              icon={Target}
-              loading={inventoryLoading}
-              color="primary"
-            />
-            <StatCard
-              label="Low Stock Warning"
-              value={lowStockCount.toString()}
-              icon={AlertTriangle}
-              loading={inventoryLoading}
-              color="danger"
-            />
-            <StatCard
-              label="Net Items"
-              value={inventoryItems
-                .reduce((s, i) => s + (i.currentStock || 0), 0)
-                .toLocaleString()}
-              icon={Monitor}
-              loading={inventoryLoading}
-              color="success"
-            />
-          </div>
-
-          <Card className="border border-border bg-card rounded-lg overflow-hidden">
-            <CardHeader className="p-8">
-              <CardTitle className="text-xl font-black text-slate-900 tracking-tight">
-                Warehouse Ledger
-              </CardTitle>
-              <CardDescription>
-                Live inventory tracking and stock valuation
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-50/50 text-slate-400 uppercase text-[10px] font-black tracking-widest">
-                    <tr>
-                      <th className="px-8 py-4">Product</th>
-                      <th className="px-8 py-4">SKU</th>
-                      <th className="px-8 py-4 text-right">In Stock</th>
-                      <th className="px-8 py-4 text-right">Value</th>
-                      <th className="px-8 py-4 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {inventoryItems.slice(0, 15).map((item, idx) => (
-                      <tr
-                        key={idx}
-                        className="hover:bg-slate-50/30 transition-all duration-150 border-b border-slate-50 last:border-0"
-                      >
-                        <td className="px-8 py-4">
-                          <div className="flex items-center gap-4">
-                            <div className="h-10 w-10 rounded-lg overflow-hidden border border-slate-100 bg-white">
-                              <ProductImageGallery
-                                images={getImageArray(item)}
-                                alt={item.productName}
-                                size="sm"
-                                maxVisible={1}
-                              />
-                            </div>
-                            {item.productId ? (
-                              <Link
-                                href={`/stock/${item.productId}/packets`}
-                                className="font-bold text-slate-900 hover:text-blue-600 hover:underline"
-                              >
-                                {item.productName}
-                              </Link>
-                            ) : (
-                              <span className="font-bold text-slate-900">
-                                {item.productName}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-8 py-4">
-                          {item.productId ? (
-                            <Link
-                              href={`/stock/${item.productId}/packets`}
-                              className="font-bold text-slate-400 font-mono text-[11px] hover:text-blue-600 hover:underline"
-                            >
-                              {item.sku}
-                            </Link>
-                          ) : (
-                            <span className="font-bold text-slate-400 font-mono text-[11px]">
-                              {item.sku}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-8 py-4 text-right font-black text-slate-900 tabular-nums">
-                          {item.currentStock}
-                        </td>
-                        <td className="px-8 py-4 text-right font-black text-slate-900 tabular-nums">
-                          {currency(item.totalValue || 0)}
-                        </td>
-                        <td className="px-8 py-4 text-center">
-                          {item.lowStock || item.needsReorder ? (
-                            <Badge className="bg-rose-50 text-rose-600 border-rose-100 text-[9px] font-black uppercase tracking-widest px-2">
-                              Low Stock
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[9px] font-black uppercase tracking-widest px-2">
-                              Healthy
-                            </Badge>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      ),
+      label: "Product Summary",
+      content: <ProductSummaryReportPage />,
+    },
+    {
+      label: "Stock Count",
+      content: <StockCountTab />,
+    },
+    {
+      label: "Receivables",
+      content: <ReceivablesReportPage />,
+    },
+    {
+      label: "Payables",
+      content: <PayablesReportPage />,
     },
     {
       label: "Balances",
