@@ -13,7 +13,7 @@ export default function RootLayout({ children }) {
     return (
         <MainContentWrapper>
             <NavigationHistoryProvider>
-            <div className="min-h-dvh flex flex-col bg-[#fbfcfd]">
+            <div className="h-dvh flex flex-col bg-[#fbfcfd] overflow-hidden">
                 <TopBar />
                 <div className="flex min-h-0 flex-1 overflow-hidden">
                     <Sidebar />

@@ -140,7 +140,7 @@ export default function DataTable({
         </div>
       </div>
 
-      <div className="overflow-x-auto -mx-4 sm:mx-0 overflow-y-visible">
+      <div className="overflow-x-auto -mx-4 sm:mx-0">
         {loading ? (
           <div className="flex items-center justify-center p-8 sm:p-12">
             <div className="text-center animate-in fade-in duration-300">
@@ -166,7 +166,7 @@ export default function DataTable({
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto overflow-y-visible">
+          <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[640px]">
               <thead className="bg-muted/30 sticky top-0 z-10">
                 <tr className="border-b border-border">

@@ -195,21 +195,7 @@ export default function DispatchOrdersPage() {
       <div className="mb-3">
         <BackButton fallbackPath="/home" label="Back" />
       </div>
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Truck className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Dispatch Orders</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Manage pending, pending-approval, and confirmed dispatch orders from suppliers.
-              </p>
-            </div>
-          </div>
-        </div>
-      </header>
+      
 
       {/* Data Table with Filters */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
@@ -218,14 +204,14 @@ export default function DispatchOrdersPage() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
             <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-muted-foreground flex-shrink-0">
               <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              <span>Filter by status:</span>
+              {/* <span>Filter by status:</span> */}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {statusFilters.map((filter) => {
                 const Icon = filter.icon
                 const isActive = statusFilter === filter.value
                 return (
-                  <button
+                  <Button
                     key={filter.value}
                     onClick={() => setStatusFilter(filter.value)}
                     className={cn(
@@ -237,7 +223,7 @@ export default function DispatchOrdersPage() {
                   >
                     <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     <span className="whitespace-nowrap">{filter.label}</span>
-                  </button>
+                  </Button>
                 )
               })}
             </div>

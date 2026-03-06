@@ -26,7 +26,7 @@ export default function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-xl border-b border-slate-100/80 transition-shadow duration-300">
+    <header className="shrink-0 z-30 bg-white/95 backdrop-blur-xl border-b border-slate-100/80 transition-shadow duration-300">
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
         <div className="h-14 sm:h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 sm:gap-8 min-w-0 flex-1">

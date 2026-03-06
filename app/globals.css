@@ -121,8 +121,14 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    height: 100%;
+    overflow: hidden;
+  }
   body {
     @apply bg-background text-foreground;
+    height: 100%;
+    overflow: hidden;
     font-family: var(--font-poppins, ui-sans-serif, system-ui, sans-serif);
     /* Smooth scrolling */
     scroll-behavior: smooth;

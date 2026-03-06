@@ -2447,19 +2447,11 @@ export default function SupplierLedgerPage() {
   return (
     <div className="space-y-6">
       {/* Header - Enhanced */}
-      <div className="mb-3">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="">
         <BackButton fallbackPath="/reports/payables" label="Back" />
       </div>
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <Building2 className="h-6 w-6 text-primary" />
-          </div>
-          <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Supplier Ledger</h1>
-            <p className="text-sm text-muted-foreground">Manage supplier accounts, payments, and balances</p>
-          </div>
-        </div>
+       
         <div className="flex items-center gap-3">
           {suppliersLoading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">

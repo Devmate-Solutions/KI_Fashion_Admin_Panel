@@ -319,7 +319,7 @@ export default function HomePage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <header className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+      {/* <header className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
             <div className="h-12 w-12 rounded-lg bg-blue-600 flex items-center justify-center text-white">
@@ -356,7 +356,7 @@ export default function HomePage() {
             <Plus className="h-4 w-4 mr-2" /> New Dispatch
           </Button>
         </div>
-      </header>
+      </header> */}
 
       <Tabs tabs={tabs} />
     </div>

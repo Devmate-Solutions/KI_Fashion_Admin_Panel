@@ -96,49 +96,42 @@ export default function PrintableTable({
     <div className="rounded-lg border border-border bg-card overflow-hidden">
       {/* Top Totals Summary Bar - Above Search (compact horizontal display) */}
       {showTotals && totalsRow && (
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2.5 border-b border-border bg-muted/60 print:bg-gray-100">
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-4 py-2.5 border-b border-border bg-muted/60 print:bg-gray-100">
           {/* {JSON.stringify(totalsRow)} */}
+          <div className="flex flex-wrap items-center">
           <span className="font-semibold text-sm text-foreground">{totalColumns[0].title}:</span>
-          {/* {Array.isArray(grandTotalSection) &&
-            grandTotalSection.map((c) => {
-              const value = grandTotalSection[c]
-              if (value === undefined || value === "" || value === null) return null
-              return (
-                
-              )
-            })}
-             */}
           <div className="flex items-center gap-1.5 text-sm">
             <span className="text-muted-foreground"></span>
             <span className="font-semibold tabular-nums">{totalsRow[totalColumns[0].value]}</span>
           </div>
-          {/* {JSON.stringify(totalsRow.remaining)} */}
+          </div>
+
+          {/* Search - Hidden in print */}
+          {enableSearch && (
+            <div className="no-print flex items-center gap-2 ">
+              <input
+                type="search"
+                className="h-8 flex-1 max-w-xs rounded border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring"
+                placeholder="Search in table..."
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                  setPage(1)
+                }}
+              />
+              <span className="text-xs text-muted-foreground">
+                {filtered.length} record{filtered.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Search - Hidden in print */}
-      {enableSearch && (
-        <div className="no-print flex items-center gap-2 p-3 border-b border-border bg-muted/30">
-          <input
-            type="search"
-            className="h-8 flex-1 max-w-xs rounded border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring"
-            placeholder="Search in table..."
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value)
-              setPage(1)
-            }}
-          />
-          <span className="text-xs text-muted-foreground">
-            {filtered.length} record{filtered.length !== 1 ? "s" : ""}
-          </span>
-        </div>
-      )}
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div className="overflow-auto max-h-[calc(100vh-260px)] print:overflow-visible print:max-h-none">
         <table className="w-full text-sm">
-          <thead className="bg-muted/50 print:bg-gray-100">
+          <thead className="bg-muted print:bg-gray-100 sticky top-0 z-10">
             <tr>
               {Array.isArray(columns) &&
                 columns.map((c) => (

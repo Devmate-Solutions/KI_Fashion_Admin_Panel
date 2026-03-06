@@ -1827,7 +1827,7 @@ export default function StockPage() {
       <div className="mb-3">
         <BackButton fallbackPath="/home" label="Back" />
       </div>
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      {/* <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
             Inventory Control
@@ -1844,7 +1844,7 @@ export default function StockPage() {
         >
           <RefreshCcw className="mr-2 h-4 w-4" /> Refresh Data
         </Button>
-      </header>
+      </header> */}
 
       <Tabs tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />
 

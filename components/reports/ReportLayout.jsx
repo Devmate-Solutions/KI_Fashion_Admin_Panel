@@ -36,103 +36,100 @@ export default function ReportLayout({
   return (
     <div className="min-h-screen bg-background">
       {/* Non-printable header controls */}
-      <div className="no-print p-4 md:p-6 border-b bg-card">
+      <div className="no-print p-2 md:p-3 border-b bg-card shadow-sm">
         <div className="max-w-[1600px] mx-auto">
-          {/* Back button */}
+          <div className="flex flex-col  md:flex-row md:items-center md:justify-between gap-4">
           <div className="mb-3">
             <BackButton fallbackPath="/reports" label="Back to Reports" />
           </div>
-          {/* Title and actions */}
-          <div className="flex flex-col  md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex flex-row w-full justify-between gap-4">
-              <h3 className="text-lg mb-1 md:text-2xl font-bold">{title}</h3>
-             <div className="space-x-1">
-               {onRefresh && (
-                <Button 
-                  onClick={onRefresh} 
-                  variant="outline" 
+              <h3 className="text-md mb-1 md:text-xl font-bold">{title}</h3>
+              <div className="space-x-1">
+                {onRefresh && (
+                  <Button
+                    onClick={onRefresh}
+                    variant="outline"
+                    size="sm"
+                    disabled={loading}
+                    className="h-9"
+                  >
+                    <RefreshCw className={`h-4 w-4  ${loading ? 'animate-spin' : ''}`} />
+
+                  </Button>
+                )}
+
+                {onExport && (
+                  <Button
+                    onClick={onExport}
+                    variant="outline"
+                    size="sm"
+                    disabled={loading}
+                    className="h-9 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <FileDown className="h-6 w-6 " />
+
+                  </Button>
+                )}
+
+                <Button
+                  onClick={handlePrint}
                   size="sm"
-                  disabled={loading}
-                  className="h-9"
+                  className="h-9 bg-blue-600 hover:bg-blue-700"
                 >
-                  <RefreshCw className={`h-4 w-4  ${loading ? 'animate-spin' : ''}`} />
-                  
+                  <Printer className="h-4 w-4" />
+
                 </Button>
-              )}
-              
-              {onExport && (
-                <Button 
-                  onClick={onExport} 
-                  variant="outline"
-                  size="sm"
-                  disabled={loading}
-                  className="h-9 bg-green-600 hover:bg-green-700 text-white"
-                >
-                  <FileDown className="h-6 w-6 " />
-                  
-                </Button>
-              )}
-              
-              <Button 
-                onClick={handlePrint} 
-                size="sm"
-                className="h-9 bg-blue-600 hover:bg-blue-700"
-              >
-                <Printer className="h-4 w-4" />
-                
-              </Button>
-             </div>
+              </div>
             </div>
-            
+
           </div>
-            {/* Date Range and Actions */}
-            <div className="flex flex-wrap items-end gap-3">
-              {dateRange && onDateChange && (
-                <>
-                  <div className="flex flex-col gap-1">
-                    <Label htmlFor="fromDate" className="text-xs">From Date</Label>
-                    <div className="flex gap-1">
-                      {showBeginningButton && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-9 text-xs px-2 whitespace-nowrap"
-                          onClick={() => onDateChange({ ...dateRange, from: "" })}
-                          title="Reset to beginning of records"
-                        >
-                          Beginning
-                        </Button>
-                      )}
-                      <Input
-                        id="fromDate"
-                        type="date"
-                        value={formatDateForInput(dateRange.from)}
-                        onChange={(e) => onDateChange({ ...dateRange, from: e.target.value })}
-                        className="w-40 h-9"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <Label htmlFor="toDate" className="text-xs">To Date</Label>
+          <div className="flex flex-wrap items-end gap-3">
+            {dateRange && onDateChange && (
+              <>
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="fromDate" className="text-xs">From Date</Label>
+                  <div className="flex gap-1">
+                    {showBeginningButton && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-9 text-xs px-2 whitespace-nowrap"
+                        onClick={() => onDateChange({ ...dateRange, from: "" })}
+                        title="Reset to beginning of records"
+                      >
+                        Beginning
+                      </Button>
+                    )}
                     <Input
-                      id="toDate"
+                      id="fromDate"
                       type="date"
-                      value={formatDateForInput(dateRange.to)}
-                      onChange={(e) => onDateChange({ ...dateRange, to: e.target.value })}
+                      value={formatDateForInput(dateRange.from)}
+                      onChange={(e) => onDateChange({ ...dateRange, from: e.target.value })}
                       className="w-40 h-9"
                     />
                   </div>
-                </>
-              )}
-              
-             
-            </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="toDate" className="text-xs">To Date</Label>
+                  <Input
+                    id="toDate"
+                    type="date"
+                    value={formatDateForInput(dateRange.to)}
+                    onChange={(e) => onDateChange({ ...dateRange, to: e.target.value })}
+                    className="w-40 h-9"
+                  />
+                </div>
+              </>
+            )}
+
+
+          </div>
         </div>
       </div>
 
       {/* Printable content area */}
-      <div ref={printRef} className="p-4 md:p-6">
+      <div ref={printRef} className="py-2 md:py-4">
         <div className="max-w-[1600px] mx-auto">
           {/* Print Header - Only visible when printing */}
           <div className="print-only hidden print:block mb-6">

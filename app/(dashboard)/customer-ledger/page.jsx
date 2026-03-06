@@ -89,7 +89,7 @@ export default function CustomerLedgerPage() {
       label: `${b.name}${b.company ? ` (${b.company})` : ''}`,
     }))
     // Add "All Customers" option at the beginning
-    return [{ value: 'all', label: 'All Customers' }, ...options]
+    return [{ value: 'all', label: 'All Buyers' }, ...options]
   }, [dropdownBuyers])
 
   // Fetch ledger entries for Tab 0 (when buyer selected)
@@ -1097,18 +1097,12 @@ export default function CustomerLedgerPage() {
   return (
     <div className="space-y-6">
       {/* Header - Enhanced */}
-      <div className="mb-3">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="">
         <BackButton fallbackPath="/reports/receivables" label="Back" />
       </div>
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <FileText className="h-6 w-6 text-primary" />
-          </div>
-          <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Customer Ledger</h1>
-            <p className="text-sm text-muted-foreground">Manage customer accounts, payments, and balances</p>
-          </div>
+          
           <Button onClick={() => setPaymentModalOpen(true)} className="bg-green-600 hover:bg-green-700">
             <Plus className="h-4 w-4 mr-2" />
             Add Payment
@@ -1125,7 +1119,7 @@ export default function CustomerLedgerPage() {
                 {/* Filters */}
                 <div className="bg-white rounded-lg border p-6 flex flex-wrap gap-4 items-end">
                   <div className="w-[300px]">
-                    <Label className="mb-2 block">Select Customer</Label>
+                    <Label className="mb-2 block">Select Buyer</Label>
                     {buyersError ? (
                       <div className="text-sm text-red-600 p-2 bg-red-50 rounded border border-red-200">
                         Error loading customers: {buyersError.message}

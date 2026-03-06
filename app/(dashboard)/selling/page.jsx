@@ -323,17 +323,14 @@ export default function SellingPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4">
+    <div className="mx-auto  p-4">
       {/* Page header to match other sections */}
-      <div className="mb-3">
+      <header className="mb-4 sticky">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="">
         <BackButton fallbackPath="/home" label="Back" />
       </div>
-      <header className="mb-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-lg font-semibold">Selling</h1>
-            <p className="text-sm text-muted-foreground">Manage customer sales and monitor payment status.</p>
-          </div>
+          
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <Button
               onClick={() => setPaymentModalOpen(true)}
@@ -343,13 +340,7 @@ export default function SellingPage() {
               <Plus className="h-4 w-4 mr-1" />
               Add Payment
             </Button>
-            <div className="flex items-center gap-2 rounded-full border border-border px-3 py-1">
-              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
-              <span>Backend connected</span>
-            </div>
-            <span className="rounded-full border border-border px-3 py-1">
-              Total: {sellingRows.length || 0}
-            </span>
+           
           </div>
         </div>
       </header>

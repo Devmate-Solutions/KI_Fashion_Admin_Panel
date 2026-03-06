@@ -305,21 +305,13 @@ export default function ExpensesPage() {
   const pendingCount = expenses.filter(e => e.status === 'pending').length
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 ">
       {/* Header - Enhanced */}
-      <div className="mb-3">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="">
         <BackButton fallbackPath="/home" label="Back" />
       </div>
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <TrendingUp className="h-6 w-6 text-primary" />
-          </div>
-          <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Expenses</h1>
-          <p className="text-sm text-muted-foreground">Manage and track business expenses</p>
-        </div>
-        </div>
+        
         <Button onClick={handleCreate} className="gap-2 h-11 px-6 shadow-sm">
           <Plus className="h-4 w-4" />
           Add Expense
