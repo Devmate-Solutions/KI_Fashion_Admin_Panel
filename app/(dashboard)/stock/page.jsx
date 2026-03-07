@@ -136,7 +136,7 @@ const inventoryColumns = [
     accessor: "sku",
     render: (row) => (
       <a
-        href={`/stock/${row.productId || row.product?._id}/packets`}
+        href={`/stock/product-history?productId=${row.productId || row.product?._id}`}
         className="font-medium text-blue-600 hover:underline cursor-pointer"
         onClick={(e) => {
           e.stopPropagation();

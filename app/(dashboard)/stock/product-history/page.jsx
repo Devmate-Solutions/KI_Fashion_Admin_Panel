@@ -62,7 +62,23 @@ export default function ProductHistoryPage() {
     {
       header: "ID",
       accessor: "id",
-      render: (row) => <span className="font-mono text-xs">{String(row.id).slice(-8)}</span>,
+      render: (row) => {
+        const href =
+          row.transactionType === "Buying"
+            ? `/dispatch-orders/${row._id}`
+            : row.transactionType === "Selling"
+            ? `/selling/${row._id}`
+            : null
+        const label = String(row.id).slice(-8)
+        if (href) {
+          return (
+            <a href={href} className="font-mono text-xs text-blue-600 hover:underline">
+              {label}
+            </a>
+          )
+        }
+        return <span className="font-mono text-xs">{label}</span>
+      },
     },
     {
       header: "Transaction Type",
