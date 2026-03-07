@@ -120,12 +120,7 @@ export default function ProfitLossReportPage() {
       align: "right",
       render: (row) => currency(row.totalSales || 0),
     },
-    {
-      header: "Average Price",
-      accessor: "averagePrice",
-      align: "right",
-      render: (row) => currency(row.averagePrice || 0),
-    },
+    
     {
       header: "Average Cost",
       accessor: "averageCost",

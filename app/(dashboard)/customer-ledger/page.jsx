@@ -129,7 +129,8 @@ export default function CustomerLedgerPage() {
 
   // Payment History Data (Tab 3)
   const paymentHistoryParams = useMemo(() => {
-    if (!selectedBuyerId || selectedBuyerId === 'all') return null
+    if (!selectedBuyerId) return null
+    if (selectedBuyerId === 'all') return { limit: 500 }
     return { buyerId: selectedBuyerId, limit: 100 }
   }, [selectedBuyerId])
 
@@ -308,9 +309,13 @@ export default function CustomerLedgerPage() {
         }
       }
 
+      const buyer = entry.entityId || {}
+
       return {
         id: entry._id || entry.id,
         date: entry.date || entry.createdAt,
+        createdAt: entry.createdAt,
+        buyer: buyer.name || buyer.company || 'Unknown Customer',
         reference,
         paymentMethod: entry.paymentMethod || 'cash',
         amount: entry.credit || 0,
@@ -341,6 +346,7 @@ export default function CustomerLedgerPage() {
       bankAmount: payment.bankAmount || 0,
       salesAffected: payment.distributions?.filter(d => !d.isAdvance).length || 0,
       advanceAmount: payment.advanceAmount || 0,
+      distributions: payment.distributions || [],
       balanceBefore: payment.balanceBefore,
       balanceAfter: payment.balanceAfter,
       status: payment.status,
@@ -573,15 +579,26 @@ export default function CustomerLedgerPage() {
     }
   ], [])
 
-  const paymentHistoryColumns = useMemo(() => [
-    { header: "Date", accessor: "date", render: (row) => formatDateTime(row) },
-    { header: "Entry #", accessor: "entryNumber", render: (row) => row.entryNumber },
-    { header: "Reference", accessor: "reference", render: (row) => row.reference },
-    { header: "Mode", accessor: "paymentMethod", render: (row) => <Badge variant="outline">{row.paymentMethod}</Badge> },
-    { header: "Amount", accessor: "amount", render: (row) => <span className="text-green-600 font-bold">{formatNumber(row.amount)}</span> },
-    { header: "Received By", accessor: "madeBy", render: (row) => row.madeBy },
-    { header: "Notes", accessor: "notes", render: (row) => <span className="text-sm text-muted-foreground">{row.notes}</span> }
-  ], [])
+  const paymentHistoryColumns = useMemo(() => {
+    const cols = [
+      { header: "Date", accessor: "date", render: (row) => formatDateTime(row) },
+      { header: "Entry #", accessor: "entryNumber", render: (row) => row.entryNumber },
+    ]
+
+    if (selectedBuyerId === 'all') {
+      cols.push({ header: "Customer", accessor: "buyer", render: (row) => <span className="font-medium">{row.buyer}</span> })
+    }
+
+    cols.push(
+      { header: "Reference", accessor: "reference", render: (row) => row.reference },
+      { header: "Mode", accessor: "paymentMethod", render: (row) => <Badge variant="outline">{row.paymentMethod}</Badge> },
+      { header: "Amount", accessor: "amount", render: (row) => <span className="text-green-600 font-bold">{formatNumber(row.amount)}</span> },
+      { header: "Received By", accessor: "madeBy", render: (row) => row.madeBy },
+      { header: "Notes", accessor: "notes", render: (row) => <span className="text-sm text-muted-foreground">{row.notes}</span> }
+    )
+
+    return cols
+  }, [selectedBuyerId])
 
   // Search state for Customer Ledger tab
   const [ledgerSearch, setLedgerSearch] = useState("")
@@ -622,24 +639,6 @@ export default function CustomerLedgerPage() {
 
     const remainingColumns = [
       {
-        header: "Type",
-        accessor: "paymentDirection",
-        render: (row) => (
-          <Badge variant={row.paymentDirection === 'debit' ? 'destructive' : 'success'} className="capitalize">
-            {row.paymentDirection === 'debit' ? 'Debit' : 'Credit'}
-          </Badge>
-        )
-      },
-      {
-        header: "Debit",
-        accessor: "debitAmount",
-        render: (row) => (
-          <span className={row.paymentDirection === 'debit' ? "text-red-600 font-bold" : "text-muted-foreground"}>
-            {row.paymentDirection === 'debit' ? `£${formatNumber(row.totalAmount)}` : '-'}
-          </span>
-        )
-      },
-      {
         header: "Credit",
         accessor: "creditAmount",
         render: (row) => (
@@ -666,16 +665,6 @@ export default function CustomerLedgerPage() {
         )
       },
       {
-        header: "Status",
-        accessor: "status",
-        render: (row) => (
-          <Badge variant={row.status === 'active' ? 'success' : 'destructive'}>
-            {row.status.toUpperCase()}
-          </Badge>
-        )
-      },
-      { header: "By", accessor: "createdBy", render: (row) => row.createdBy },
-      {
         header: "Actions",
         accessor: "actions",
         render: (row) => (
@@ -688,17 +677,6 @@ export default function CustomerLedgerPage() {
             >
               <Printer className="h-4 w-4" />
             </Button>
-            {/* {row.status === 'active' && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-red-600 hover:text-red-700"
-                onClick={() => handleOpenReversalDialog(row)}
-                title="Reverse Payment"
-              >
-                <RotateCcw className="h-4 w-4" />
-              </Button>
-            )} */}
           </div>
         )
       }
@@ -1098,11 +1076,11 @@ export default function CustomerLedgerPage() {
     <div className="space-y-6">
       {/* Header - Enhanced */}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-      <div className="">
-        <BackButton fallbackPath="/reports/receivables" label="Back" />
-      </div>
+        <div className="">
+          <BackButton fallbackPath="/reports/receivables" label="Back" />
+        </div>
         <div className="flex items-center gap-4">
-          
+
           <Button onClick={() => setPaymentModalOpen(true)} className="bg-green-600 hover:bg-green-700">
             <Plus className="h-4 w-4 mr-2" />
             Add Payment
@@ -1163,25 +1141,25 @@ export default function CustomerLedgerPage() {
 
                     {/* Summary stats for all customers */}
                     {selectedBuyerId === 'all' && allLedgerTransactions.length > 0 && (
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="bg-red-50 rounded-lg p-6 border border-red-100">
-                          <p className="text-sm text-red-700">Total Sales (Debit)</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-red-50 col-2 rounded-lg p-6 border border-red-100">
+                          <p className="text-sm text-red-700">All Buyers Balance</p>
                           <p className="text-2xl font-bold text-red-600">
-                            {formatNumber(allLedgerTransactions.reduce((sum, t) => sum + t.debit, 0))}
+                            {formatNumber(allLedgerTransactions.reduce((sum, t) => sum + t.debit, 0) - allLedgerTransactions.reduce((sum, c) => sum + c.credit, 0))}
                           </p>
                         </div>
-                        <div className="bg-green-50 rounded-lg p-6 border border-green-100">
+                        {/* <div className="bg-green-50 rounded-lg p-6 border border-green-100">
                           <p className="text-sm text-green-700">Total Received (Credit)</p>
                           <p className="text-2xl font-bold text-green-600">
                             {formatNumber(allLedgerTransactions.reduce((sum, t) => sum + t.credit, 0))}
                           </p>
-                        </div>
-                        <div className="bg-blue-50 rounded-lg p-6 border border-blue-100">
+                        </div> */}
+                        {/* <div className="bg-blue-50 rounded-lg p-6 border border-blue-100">
                           <p className="text-sm text-blue-700">Total Transactions</p>
                           <p className="text-2xl font-bold text-blue-600">
                             {allLedgerTransactions.length}
                           </p>
-                        </div>
+                        </div> */}
                       </div>
                     )}
 
@@ -1213,50 +1191,36 @@ export default function CustomerLedgerPage() {
             content: (
               <div className="space-y-6">
                 {/* Filters Bar */}
-                <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-semibold text-foreground">Select Customer:</span>
-                    </div>
-                    <Select
+                <div className="bg-white rounded-lg border p-6 flex flex-wrap gap-4 items-end">
+                  <div className="w-[300px]">
+                    <Label className="mb-2 block">Select Buyer</Label>
+                    <Combobox
+                      options={comboboxOptions}
                       value={selectedBuyerId}
                       onValueChange={setSelectedBuyerId}
-                    >
-                      <SelectTrigger className="h-10 w-[300px] border-border">
-                        <SelectValue placeholder="Select Customer" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {dropdownBuyers.map(b => (
-                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    {selectedBuyerId && selectedBuyerId !== 'all' && (
-                      <Button
-                        onClick={() => setPaymentModalOpen(true)}
-                        className="ml-auto gap-2 h-10"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Record Payment
-                      </Button>
-                    )}
+                      placeholder="Search Buyers..."
+                      searchPlaceholder="Type buyer name..."
+                      loading={buyersLoading}
+                    />
                   </div>
                 </div>
 
-                {(!selectedBuyerId || selectedBuyerId === 'all') ? (
+                {!selectedBuyerId ? (
                   <div className="rounded-lg border border-border bg-card p-12 text-center">
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
                       <Users className="w-8 h-8 text-muted-foreground" />
                     </div>
                     <p className="text-sm font-medium text-foreground mb-1">No customer selected</p>
-                    <p className="text-xs text-muted-foreground">Select a customer to view their pending payments</p>
+                    <p className="text-xs text-muted-foreground">Select a customer to view their payment history</p>
                   </div>
                 ) : (
                   <div className="bg-white rounded-lg border">
                     {paymentHistoryLoading ? (
                       <div className="p-12 flex justify-center"><Loader2 className="animate-spin" /></div>
+                    ) : paymentHistoryTransactions.length === 0 ? (
+                      <div className="p-12 text-center text-muted-foreground">
+                        <p>No payment history found{selectedBuyerId === 'all' ? '' : ' for this customer'}.</p>
+                      </div>
                     ) : (
                       <DataTable columns={paymentHistoryColumns} data={paymentHistoryTransactions} paginate={false} />
                     )}
@@ -1270,71 +1234,23 @@ export default function CustomerLedgerPage() {
             content: (
               <div className="space-y-6">
                 {/* Filters Bar */}
-                <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-semibold text-foreground">Select Customer:</span>
-                    </div>
-                    <Select value={selectedBuyerId} onValueChange={setSelectedBuyerId}>
-                      <SelectTrigger className="h-10 w-[300px] border-border">
-                        <SelectValue placeholder="Select Customer" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {dropdownBuyers.map(b => (
-                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <div className="bg-white rounded-lg border p-6 flex flex-wrap gap-4 items-end">
+                  <div className="w-[300px]">
+                    <Label className="mb-2 block">Select Buyer</Label>
+                    <Combobox
+                      options={comboboxOptions}
+                      value={selectedBuyerId}
+                      onValueChange={setSelectedBuyerId}
+                      placeholder="Search Buyers..."
+                      searchPlaceholder="Type buyer name..."
+                      loading={buyersLoading}
+                    />
                   </div>
                 </div>
 
 
-                {/* Stats - shown for both single customer and all customers view */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="bg-green-50 rounded-lg p-4 border border-green-100">
-                    <p className="text-sm text-green-700">Total Credits (Received)</p>
-                    <p className="text-2xl font-bold text-green-700">
-                      £{formatNumber(
-                        paymentReceiptsTransactions
-                          .filter(p => p.status === 'active' && p.paymentDirection !== 'debit')
-                          .reduce((sum, p) => sum + p.totalAmount, 0)
-                      )}
-                    </p>
-                  </div>
-                  <div className="bg-red-50 rounded-lg p-4 border border-red-100">
-                    <p className="text-sm text-red-700">Total Debits (Issued)</p>
-                    <p className="text-2xl font-bold text-red-700">
-                      £{formatNumber(
-                        paymentReceiptsTransactions
-                          .filter(p => p.status === 'active' && p.paymentDirection === 'debit')
-                          .reduce((sum, p) => sum + p.totalAmount, 0)
-                      )}
-                    </p>
-                  </div>
 
-                  {selectedBuyerId && selectedBuyerId !== 'all' ? (
-                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                      <p className="text-sm text-blue-700">Current Balance</p>
-                      <p className={`text-2xl font-bold ${paymentReceiptsTransactions[0]?.balanceAfter > 0 ? 'text-red-600' :
-                          paymentReceiptsTransactions[0]?.balanceAfter < 0 ? 'text-green-600' : 'text-blue-700'
-                        }`}>
-                        £{formatNumber(Math.abs(paymentReceiptsTransactions[0]?.balanceAfter || 0))}
-                        {paymentReceiptsTransactions[0]?.balanceAfter < 0 && (
-                          <span className="text-sm font-normal ml-1">(Credit)</span>
-                        )}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                      <p className="text-sm text-blue-700">Total Transactions</p>
-                      <p className="text-2xl font-bold text-blue-700">
-                        {paymentReceiptsTransactions.length}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
+                {/* Table */}
                 <div className="bg-white rounded-lg border">
                   {paymentReceiptsLoading ? (
                     <div className="p-12 flex justify-center"><Loader2 className="animate-spin" /></div>
@@ -1405,6 +1321,109 @@ export default function CustomerLedgerPage() {
           refetchPayments()
         }}
       />
+
+      {/* Receipt Detail Dialog */}
+      <Dialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              
+              <div>
+                <DialogTitle className="text-xl">Payment Receipt</DialogTitle>
+                {receiptData && (
+                  <p className="text-sm text-muted-foreground font-mono">{receiptData.receiptNumber}</p>
+                )}
+              </div>
+            </div>
+          </DialogHeader>
+          {receiptData ? (
+            <div className="space-y-4 py-2">
+              {/* Customer & Payment Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-lg border p-3 space-y-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase">Customer</p>
+                  <p className="font-medium">{receiptData.customer?.name || 'Unknown'}</p>
+                  {receiptData.customer?.company && <p className="text-sm text-muted-foreground">{receiptData.customer.company}</p>}
+                </div>
+                <div className="rounded-lg border p-3 space-y-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase">Payment Details</p>
+                  <p className="font-medium">£{formatNumber(receiptData.payment?.totalAmount)}</p>
+                  <p className="text-sm text-muted-foreground capitalize">{receiptData.payment?.paymentMethod} &middot; {formatDateTime({ date: receiptData.date })}</p>
+                </div>
+              </div>
+
+              {/* Balance Before/After */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-lg bg-muted/30 p-3">
+                  <p className="text-xs font-semibold text-muted-foreground">Balance Before</p>
+                  <p className={`text-lg font-bold ${receiptData.balances?.before > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    £{formatNumber(Math.abs(receiptData.balances?.before || 0))}
+                    {receiptData.balances?.before < 0 && <span className="text-xs ml-1">(CR)</span>}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-muted/30 p-3">
+                  <p className="text-xs font-semibold text-muted-foreground">Balance After</p>
+                  <p className={`text-lg font-bold ${receiptData.balances?.after > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    £{formatNumber(Math.abs(receiptData.balances?.after || 0))}
+                    {receiptData.balances?.after < 0 && <span className="text-xs ml-1">(CR)</span>}
+                  </p>
+                </div>
+              </div>
+
+              {/* Payment Distribution / Allocation */}
+              <div className="space-y-2">
+                <p className="text-sm font-semibold">Payment Allocation</p>
+                <div className="rounded-lg border divide-y">
+                  {receiptData.distributions?.map((d, i) => (
+                    <div key={i} className="flex items-center justify-between px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {d.isAdvance ? (
+                          <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">Advance</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-blue-600 border-blue-300 bg-blue-50">Sale</Badge>
+                        )}
+                        <span className="text-sm font-medium">
+                          {d.isAdvance ? 'Stored as customer advance' : d.reference || 'Sale'}
+                        </span>
+                      </div>
+                      <span className="font-bold tabular-nums">£{formatNumber(d.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Status */}
+              {receiptData.status === 'reversed' && receiptData.reversal && (
+                <div className="rounded-lg bg-red-50 border border-red-200 p-3 space-y-1">
+                  <p className="text-sm font-semibold text-red-700">REVERSED</p>
+                  <p className="text-sm text-red-600">Date: {formatDateTime({ date: receiptData.reversal.reversedAt })}</p>
+                  <p className="text-sm text-red-600">Reason: {receiptData.reversal.reason}</p>
+                </div>
+              )}
+
+              {receiptData.notes && receiptData.notes !== '-' && (
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase">Notes</p>
+                  <p className="text-sm mt-1">{receiptData.notes}</p>
+                </div>
+              )}
+
+              <p className="text-xs text-muted-foreground">Created by: {receiptData.createdBy}</p>
+            </div>
+          ) : (
+            <div className="py-8 flex justify-center">
+              <Loader2 className="animate-spin text-muted-foreground" />
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReceiptDialogOpen(false)}>Close</Button>
+            <Button onClick={handlePrintReceipt} disabled={!receiptData}>
+              <Printer className="h-4 w-4 mr-2" />
+              Print Receipt
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reversal Confirmation Dialog */}
       <Dialog open={reversalDialogOpen} onOpenChange={setReversalDialogOpen}>

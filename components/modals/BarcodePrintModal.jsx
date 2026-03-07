@@ -263,31 +263,19 @@ export default function BarcodePrintModal({
           const typeBadge = item.isLoose
             ? `<span class="type-badge type-loose">LOOSE</span>`
             : `<span class="type-badge type-packet">PACKET</span>`;
-          const packetInfo =
-            !item.isLoose && item.packetNumber
-              ? `<span class="packet-num">Pkt #${item.packetNumber}</span>`
-              : "";
-          const counterText =
-            item.totalLabels > 1
-              ? `<div class="label-counter">${item.labelIndex} of ${item.totalLabels}</div>`
-              : "";
+         
 
           labelsHtml += `
             <div class="barcode-label">
-              <div class="label-top-row">
-                ${typeBadge}
-                ${packetInfo}
-              </div>
-              ${compositionText ? `<div class="composition">${compositionText}</div>` : ""}
+             
+              ${compositionText ? `<div class="barcode-number">${compositionText}</div>` : ""}
               <div class="barcode-image">
                 <img src="${item.dataUrl || item.barcodeImage}" alt="${item.data || item.barcodeNumber}" />
               </div>
-              <div class="barcode-number">${item.data || item.barcodeNumber}</div>
               <div class="product-info">
                 <div class="product-name">${item.productName || ""}</div>
                 <div class="product-code">${item.productCode || ""}</div>
               </div>
-              ${counterText}
             </div>
           `;
         });

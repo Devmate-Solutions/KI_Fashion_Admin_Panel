@@ -82,7 +82,7 @@ export default function ProductSummaryReportPage() {
         if (id && code !== "—") {
           return (
             <Link
-              href={`/stock/${id}/packets`}
+              href={`/stock/product-history?productId=${id}`}
               className="font-mono text-xs text-blue-600 hover:text-blue-800 hover:underline"
             >
               {code}
@@ -95,7 +95,21 @@ export default function ProductSummaryReportPage() {
     {
       header: "Product Description",
       accessor: "productName",
-      render: (row) => row.productName || "—",
+      render: (row) => {
+        const name = row.productName || "—"
+        const id = row.productId || row._id
+        if (id && name !== "—") {
+          return (
+            <Link
+              href={`/stock`}
+              className="text-blue-600 hover:text-blue-800 hover:underline"
+            >
+              {name}
+            </Link>
+          )
+        }
+        return <span>{name}</span>
+      },
     },
     {
       header: "Color",

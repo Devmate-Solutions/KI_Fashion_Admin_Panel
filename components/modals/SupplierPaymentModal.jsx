@@ -190,28 +190,53 @@ export default function SupplierPaymentModal({
 
         try {
             if (transactionType === 'credit') {
+                const createdReceiptNumbers = []
+
                 // Credit transactions (payments)
                 // Process sequentially to avoid race conditions with pending orders
                 // Cash payment is processed first, then bank payment sees updated balances
                 if (cashAmount > 0) {
-                    await ledgerAPI.distributeSupplierPayment(entityId, {
+                    const response = await ledgerAPI.distributeSupplierPayment(entityId, {
                         amount: cashAmount,
                         paymentMethod: 'cash',
                         date: form.date,
                         description: form.notes || `Cash payment to ${entityName}`
                     })
+                    const receiptNumber = response?.data?.data?.receipt?.receiptNumber
+                    if (receiptNumber) {
+                        createdReceiptNumbers.push(receiptNumber)
+                    }
                 }
 
                 if (bankAmount > 0) {
-                    await ledgerAPI.distributeSupplierPayment(entityId, {
+                    const response = await ledgerAPI.distributeSupplierPayment(entityId, {
                         amount: bankAmount,
                         paymentMethod: 'bank',
                         date: form.date,
                         description: form.notes || `Bank payment to ${entityName}`
                     })
+                    const receiptNumber = response?.data?.data?.receipt?.receiptNumber
+                    if (receiptNumber) {
+                        createdReceiptNumbers.push(receiptNumber)
+                    }
                 }
 
-                toast.success(`Payment of ${formatAmount(totalCreditPayment)} recorded successfully`)
+                toast.success(
+                    createdReceiptNumbers.length > 0
+                        ? `Payment of ${formatAmount(totalCreditPayment)} recorded. Receipt${createdReceiptNumbers.length > 1 ? 's' : ''}: ${createdReceiptNumbers.join(', ')}`
+                        : `Payment of ${formatAmount(totalCreditPayment)} recorded successfully`
+                )
+
+                queryClient.invalidateQueries({ queryKey: ['pending-balances'] })
+                queryClient.invalidateQueries({ queryKey: ['ledger', 'supplier'] })
+                queryClient.invalidateQueries({ queryKey: ['ledger'] })
+                queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+                queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] })
+                queryClient.invalidateQueries({ queryKey: ['supplier-payment-receipts'] })
+
+                handleClose()
+                onSuccess?.({ receiptNumbers: createdReceiptNumbers })
+                return
             } else {
                 // Debit transactions (charges/adjustments)
                 await ledgerAPI.createEntry({
@@ -233,6 +258,7 @@ export default function SupplierPaymentModal({
             queryClient.invalidateQueries({ queryKey: ['ledger'] })
             queryClient.invalidateQueries({ queryKey: ['suppliers'] })
             queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] })
+            queryClient.invalidateQueries({ queryKey: ['supplier-payment-receipts'] })
 
             handleClose()
             onSuccess?.()

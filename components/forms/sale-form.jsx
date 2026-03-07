@@ -447,7 +447,7 @@ export default function SaleForm({ onSave }) {
     const grandTotal = rows.reduce((sum, row) => sum + Number(row.totalPrice || 0), 0)
     const totalAfterDiscount = Math.max(0, grandTotal - Number(discount || 0))
     const paid = Number(cash || 0) + Number(bank || 0)
-    const remaining = Math.max(0, totalAfterDiscount - paid)
+    const remaining = totalAfterDiscount - paid
     return { grandTotal, totalAfterDiscount, paid, remaining }
   }, [rows, discount, cash, bank])
 
@@ -1222,22 +1222,28 @@ export default function SaleForm({ onSave }) {
                     {row.isPacketSale ? (
                       <div className="flex flex-col items-end gap-1">
                         <Input
-                          type="number"
+                          type="text"
                           inputMode="numeric"
-                          min="1"
-                          max={row.availablePackets || 999}
                           value={row.quantity}
                           onChange={(e) => {
-                            const value = Math.min(
-                              Math.max(1, parseInt(e.target.value) || 1),
-                              row.availablePackets || 999
-                            );
-                            updateRow(row.id, "quantity", value);
+                            const sanitized = e.target.value.replace(/[^0-9]/g, '');
+                            if (sanitized === "") {
+                              updateRow(row.id, "quantity", "");
+                            } else {
+                              const num = parseInt(sanitized, 10);
+                              const clamped = Math.min(num, row.availablePackets || 999);
+                              updateRow(row.id, "quantity", clamped);
+                            }
+                          }}
+                          onBlur={() => {
+                            const val = parseInt(row.quantity, 10);
+                            const clamped = Math.min(Math.max(1, isNaN(val) ? 1 : val), row.availablePackets || 999);
+                            updateRow(row.id, "quantity", clamped);
                           }}
                           className="h-8 text-sm text-right tabular-nums w-20"
                         />
                         <span className="text-xs text-muted-foreground">
-                          {row.availablePackets} available
+                          {row.availablePackets} availablev
                         </span>
                       </div>
                     ) : (
@@ -1246,10 +1252,12 @@ export default function SaleForm({ onSave }) {
                         inputMode="numeric"
                         value={row.quantity}
                         onChange={(e) => {
-                          const value = e.target.value;
-                          // Allow only numbers
-                          const sanitized = value.replace(/[^0-9]/g, '');
+                          const sanitized = e.target.value.replace(/[^0-9]/g, '');
                           updateRow(row.id, "quantity", sanitized === "" ? "" : Number(sanitized));
+                        }}
+                        onBlur={() => {
+                          const val = parseInt(row.quantity, 10);
+                          updateRow(row.id, "quantity", isNaN(val) || val < 1 ? 1 : val);
                         }}
                         className="h-8 text-sm text-right tabular-nums"
                       />
@@ -1430,9 +1438,19 @@ export default function SaleForm({ onSave }) {
                 className="text-lg"
               />
             </div>
-            <div className="flex justify-between items-center p-3 bg-amber-50 dark:bg-amber-950/30 rounded-md border-2 border-amber-200 dark:border-amber-900">
-              <span className="text-sm font-medium">Remaining Balance</span>
-              <span className="text-lg font-bold tabular-nums text-amber-700 dark:text-amber-400">
+            <div className={`flex justify-between items-center p-3 rounded-md border-2 ${
+              totals.remaining < 0
+                ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900'
+                : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900'
+            }`}>
+              <span className="text-sm font-medium">
+                {totals.remaining < 0 ? 'Remaining Balance' : 'Remaining Balance'}
+              </span>
+              <span className={`text-lg font-bold tabular-nums ${
+                totals.remaining < 0
+                  ? 'text-green-700 dark:text-green-400'
+                  : 'text-amber-700 dark:text-amber-400'
+              }`}>
                 £{totals.remaining.toFixed(2)}
               </span>
             </div>

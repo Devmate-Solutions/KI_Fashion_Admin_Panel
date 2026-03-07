@@ -18,13 +18,14 @@ import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { dispatchOrdersAPI } from "@/lib/api/endpoints/dispatchOrders"
 import { balancesAPI } from "@/lib/api/endpoints/balances"
 import { useQuery } from "@tanstack/react-query"
-import { Loader2, Plus, FileText, Users, Search, Filter, Building2, Clock, CheckCircle2, RotateCcw, Calendar, Download } from "lucide-react"
+import { Loader2, Plus, FileText, Users, Search, Filter, Building2, Clock, CheckCircle2, RotateCcw, Calendar, Download, Printer, Receipt } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { Badge } from "@/components/ui/badge"
 import { useQueryClient } from "@tanstack/react-query"
 import toast from "react-hot-toast"
 import SupplierPaymentModal from "@/components/modals/SupplierPaymentModal"
+import SupplierPaymentReceiptModal from "@/components/modals/SupplierPaymentReceiptModal"
 import { Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -102,6 +103,11 @@ export default function SupplierLedgerPage() {
   const [paymentHistoryDateFrom, setPaymentHistoryDateFrom] = useState("")
   const [paymentHistoryDateTo, setPaymentHistoryDateTo] = useState("")
   const [paymentHistoryMethodFilter, setPaymentHistoryMethodFilter] = useState("all")
+  const [receiptSupplierId, setReceiptSupplierId] = useState("")
+  const [receiptSupplierOpen, setReceiptSupplierOpen] = useState(false)
+  const [supplierReceiptModalOpen, setSupplierReceiptModalOpen] = useState(false)
+  const [selectedSupplierReceipt, setSelectedSupplierReceipt] = useState(null)
+  const [isLoadingSupplierReceipt, setIsLoadingSupplierReceipt] = useState(false)
 
   const queryClient = useQueryClient()
 
@@ -110,8 +116,17 @@ export default function SupplierLedgerPage() {
     const supplierId = searchParams.get('supplierId')
     if (supplierId) {
       setLedgerSupplierFilter(supplierId)
+      setSelectedSupplierId(supplierId)
+      setPaymentHistorySupplier(supplierId)
+      setReceiptSupplierId(supplierId)
     }
   }, [searchParams])
+
+  useEffect(() => {
+    if (selectedSupplierId && !receiptSupplierId) {
+      setReceiptSupplierId(selectedSupplierId)
+    }
+  }, [selectedSupplierId, receiptSupplierId])
 
   // Fetch suppliers with user accounts for Tab 1 table
   const { data: suppliersWithUsers = [], isLoading: suppliersLoading } = useSuppliers()
@@ -239,6 +254,17 @@ export default function SupplierLedgerPage() {
 
   const { data: paymentHistoryData, isLoading: paymentHistoryLoading } = useAllSupplierLedgers(paymentHistoryParams || {})
 
+  const receiptQuerySupplierId = receiptSupplierId || paymentHistorySupplier
+  const { data: supplierReceiptsData, isLoading: supplierReceiptsLoading, error: supplierReceiptsError, refetch: refetchSupplierReceipts } = useQuery({
+    queryKey: ['supplier-payment-receipts', receiptQuerySupplierId],
+    queryFn: async () => {
+      if (!receiptQuerySupplierId || receiptQuerySupplierId === 'all') return { receipts: [] }
+      const response = await ledgerAPI.getSupplierPaymentReceipts(receiptQuerySupplierId, { limit: 100 })
+      return response?.data?.data || response?.data || { receipts: [] }
+    },
+    enabled: (activeTab === 2 || activeTab === 3) && !!receiptQuerySupplierId && receiptQuerySupplierId !== 'all'
+  })
+
   // Calculate totals from displayed rows (matching Total Balances logic)
   const calculatedCashPending = pendingBalances.reduce((sum, balance) => {
     return sum + (balance.cashPending || 0)
@@ -348,6 +374,75 @@ export default function SupplierLedgerPage() {
 
     return { total, cash, bank, countThisMonth }
   }, [paymentHistoryTransactions])
+
+  // Build a lookup map: ledgerEntryId -> receipt info for the receipt column in payment history
+  const receiptByLedgerEntryId = useMemo(() => {
+    const map = new Map()
+    const receipts = supplierReceiptsData?.receipts || []
+    for (const receipt of receipts) {
+      if (!receipt.distributions) continue
+      for (const dist of receipt.distributions) {
+        if (dist.ledgerEntryId) {
+          map.set(String(dist.ledgerEntryId), {
+            receiptNumber: receipt.receiptNumber,
+            distributions: receipt.distributions,
+            totalAmount: receipt.totalAmount
+          })
+        }
+      }
+    }
+    return map
+  }, [supplierReceiptsData])
+
+  const supplierReceiptTransactions = useMemo(() => {
+    const receipts = supplierReceiptsData?.receipts || []
+    return receipts.map((receipt) => ({
+      id: receipt._id,
+      receiptNumber: receipt.receiptNumber,
+      date: receipt.paymentDate || receipt.createdAt,
+      supplierName: receipt.supplierId?.name || receipt.supplierId?.company || 'Unknown Supplier',
+      totalAmount: receipt.totalAmount || 0,
+      cashAmount: receipt.cashAmount || 0,
+      bankAmount: receipt.bankAmount || 0,
+      methodSummary: receipt.paymentMethodSummary || ((receipt.cashAmount > 0 && receipt.bankAmount > 0) ? 'cash + bank' : receipt.cashAmount > 0 ? 'cash' : 'bank'),
+      status: receipt.status || 'active',
+      createdBy: receipt.createdBy?.name || 'Unknown',
+      ordersAffected: receipt.ordersAffected || 0,
+      advanceAmount: receipt.advanceAmount || 0,
+      balanceBefore: receipt.balanceBefore,
+      balanceAfter: receipt.balanceAfter,
+      notes: receipt.notes || '-',
+      raw: receipt
+    }))
+  }, [supplierReceiptsData])
+
+  const supplierReceiptSummary = useMemo(() => {
+    const total = supplierReceiptTransactions.reduce((sum, receipt) => sum + (receipt.totalAmount || 0), 0)
+    const advance = supplierReceiptTransactions.reduce((sum, receipt) => sum + (receipt.advanceAmount || 0), 0)
+    const cash = supplierReceiptTransactions.reduce((sum, receipt) => sum + (receipt.cashAmount || 0), 0)
+    const bank = supplierReceiptTransactions.reduce((sum, receipt) => sum + (receipt.bankAmount || 0), 0)
+    return { total, advance, cash, bank }
+  }, [supplierReceiptTransactions])
+
+  const handleViewSupplierReceipt = async (receiptRow) => {
+    const supplierId = receiptSupplierId || receiptRow.raw?.supplierId?._id || receiptRow.raw?.supplierId
+    if (!supplierId) {
+      toast.error('Select a supplier to view the receipt')
+      return
+    }
+
+    setIsLoadingSupplierReceipt(true)
+    try {
+      const response = await ledgerAPI.getSupplierPaymentReceipt(supplierId, receiptRow.receiptNumber)
+      setSelectedSupplierReceipt(response?.data?.data || response?.data || null)
+      setSupplierReceiptModalOpen(true)
+    } catch (error) {
+      console.error('Error fetching supplier payment receipt:', error)
+      toast.error(error.response?.data?.message || 'Failed to load supplier payment receipt')
+    } finally {
+      setIsLoadingSupplierReceipt(false)
+    }
+  }
 
   // Debug logging
   console.log('Pending balances state:', {
@@ -617,12 +712,26 @@ export default function SupplierLedgerPage() {
           </span>
         )
       },
+     
       {
-        header: "Made By",
-        accessor: "madeBy",
-        render: (row) => (
-          <span className="text-sm text-muted-foreground">{row.madeBy || '-'}</span>
-        )
+        header: "Receipt",
+        accessor: "receipt",
+        render: (row) => {
+          const receipt = receiptByLedgerEntryId.get(row.id)
+          if (!receipt) return <span className="text-muted-foreground">{receipt}</span>
+          return (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-blue-600 hover:text-blue-700"
+              onClick={() => handleViewSupplierReceipt({ receiptNumber: receipt.receiptNumber, raw: { supplierId: row.supplierId } })}
+              disabled={isLoadingSupplierReceipt}
+            >
+              <Receipt className="h-3.5 w-3.5" />
+              {receipt.receiptNumber}
+            </Button>
+          )
+        }
       },
       {
         header: "Notes",
@@ -634,7 +743,66 @@ export default function SupplierLedgerPage() {
     )
 
     return columns
-  }, [])
+  }, [receiptByLedgerEntryId, isLoadingSupplierReceipt])
+
+  const supplierReceiptColumns = useMemo(() => {
+    return [
+      {
+        header: "Receipt #",
+        accessor: "receiptNumber",
+        render: (row) => <span className="font-mono font-medium text-blue-600">{row.receiptNumber}</span>
+      },
+      {
+        header: "Date",
+        accessor: "date",
+        render: (row) => formatDateTime(row)
+      },
+      {
+        header: "Supplier",
+        accessor: "supplierName",
+        render: (row) => <span className="font-medium">{row.supplierName}</span>
+      },
+      {
+        header: "Amount",
+        accessor: "totalAmount",
+        render: (row) => <span className="tabular-nums font-semibold text-green-600">{formatNumber(row.totalAmount)}</span>
+      },
+      {
+        header: "Method",
+        accessor: "methodSummary",
+        render: (row) => <Badge variant="outline" className="uppercase">{row.methodSummary}</Badge>
+      },
+      {
+        header: "Applied",
+        accessor: "ordersAffected",
+        render: (row) => (
+          <span className="text-sm text-muted-foreground">
+            {row.ordersAffected} order{row.ordersAffected === 1 ? '' : 's'}
+            {row.advanceAmount > 0 ? ` + ${formatNumber(row.advanceAmount)} advance` : ''}
+          </span>
+        )
+      },
+      {
+        header: "Created By",
+        accessor: "createdBy",
+        render: (row) => row.createdBy
+      },
+      {
+        header: "Status",
+        accessor: "status",
+        render: (row) => <Badge variant="outline">{row.status.toUpperCase()}</Badge>
+      },
+      {
+        header: "Actions",
+        accessor: "actions",
+        render: (row) => (
+          <Button size="sm" variant="outline" onClick={() => handleViewSupplierReceipt(row)} disabled={isLoadingSupplierReceipt}>
+            <Printer className="h-4 w-4" />
+          </Button>
+        )
+      }
+    ]
+  }, [isLoadingSupplierReceipt])
 
   // Pending Balance Columns
   const pendingBalanceColumns = useMemo(() => {
@@ -1358,15 +1526,11 @@ export default function SupplierLedgerPage() {
   }
 
   const ledgerTabContent = (
-    <div className="space-y-6">
+    <div className="space-y-2">
       {/* Filters & Search Bar - Unified */}
       <div className="rounded-lg border border-border bg-card p-3 sm:p-4 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
-          {/* Filter Label */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
-            <span className="text-xs sm:text-sm font-semibold text-foreground">Filters:</span>
-          </div>
+         
 
           {/* Select Supplier */}
           {/* Select Supplier (Combobox) */}
@@ -1498,23 +1662,8 @@ export default function SupplierLedgerPage() {
               </Button>
             </div>
           )}
-        </div>
-      </div>
 
-      {/* Content Section */}
-      <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-border">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <FileText className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h2 className="font-semibold text-lg text-foreground">Complete Ledger History</h2>
-                <p className="text-sm text-muted-foreground mt-0.5">Select a supplier to view their complete accounting record</p>
-              </div>
-            </div>
-            {ledgerSupplierFilter && filteredLedgerTransactions.length > 0 && (
+           {ledgerSupplierFilter && filteredLedgerTransactions.length > 0 && (
               <Button
                 variant="outline"
                 size="sm"
@@ -1525,8 +1674,25 @@ export default function SupplierLedgerPage() {
                 Export PDF
               </Button>
             )}
-          </div>
         </div>
+      </div>
+
+      {/* Content Section */}
+      <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+        {/* <div className="p-6 border-b border-border">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <FileText className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-lg text-foreground">Complete Ledger History</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Select a supplier to view their complete accounting record</p>
+              </div>
+            </div>
+           
+          </div>
+        </div> */}
 
         <div className="p-6">
           {!ledgerSupplierFilter ? (
@@ -1595,7 +1761,7 @@ export default function SupplierLedgerPage() {
                 columns={allLedgerColumns}
                 data={filteredLedgerTransactions}
                 hideActions
-                enableSearch={false}
+                enableSearch={true}
                 paginate={true}
                 pageSize={50}
                 disableSorting={true}
@@ -1830,15 +1996,24 @@ export default function SupplierLedgerPage() {
 
   const paymentDetails = (
     <>
+
+      {/* Supplier Selector - Enhanced */}
+        <div className="flex max-w-2xl flex-wrap items-center gap-4 mb-2">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-semibold text-foreground">Select Supplier:</span>
+          </div>
+          <div className="flex-1 min-w-[250px]">
+            {paymentSelector}
+          </div>
+        </div>
+      
+
       {/* Stats Cards - Enhanced */}
       {selectedSupplierId && selectedSupplierId !== 'all' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="rounded-lg border border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-emerald-50/30 p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              {/* <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-              </div> */}
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+          <div className="rounded-lg border border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-emerald-50/30 p-5 ">
+            
             <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
               Total Paid
             </div>
@@ -1846,12 +2021,8 @@ export default function SupplierLedgerPage() {
               {formatNumber(pendingTotals.totalPaid || 0)}
             </div>
           </div>
-          <div className="rounded-lg border border-red-200 bg-gradient-to-br from-red-50/50 to-red-50/30 p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              {/* <div className="h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center">
-                <Clock className="h-5 w-5 text-red-600" />
-              </div> */}
-            </div>
+          <div className="rounded-lg border border-red-200 bg-gradient-to-br from-red-50/50 to-red-50/30 p-5 ">
+            
             <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
               Total Pending
             </div>
@@ -1862,18 +2033,7 @@ export default function SupplierLedgerPage() {
         </div>
       )}
 
-      {/* Supplier Selector - Enhanced */}
-      <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-semibold text-foreground">Select Supplier:</span>
-          </div>
-          <div className="flex-1 min-w-[250px]">
-            {paymentSelector}
-          </div>
-        </div>
-      </div>
+
 
       {/* Pending Balances View - Only shown when supplier is selected */}
       {!selectedSupplierId || selectedSupplierId === 'all' ? (
@@ -1903,8 +2063,8 @@ export default function SupplierLedgerPage() {
           <p className="text-xs text-muted-foreground">This supplier has no confirmed dispatch orders or purchases with remaining balances</p>
         </div>
       ) : (
-        <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
-          <DataTable columns={pendingBalanceColumns} data={pendingBalancesWithEntryNumbers} hideActions enableSearch={false} />
+        <div className="rounded-lg border border-border bg-card  overflow-hidden">
+          <DataTable columns={pendingBalanceColumns} data={pendingBalancesWithEntryNumbers} hideActions enableSearch={true} />
         </div>
       )}
 
@@ -2033,11 +2193,7 @@ export default function SupplierLedgerPage() {
           <div className="relative rounded-lg border border-border/60 bg-gradient-to-br from-background via-card/50 to-background p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
             <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-primary/5 blur-xl group-hover:bg-primary/10 transition-all"></div>
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="h-12 w-12 rounded-xl bg-muted/70 backdrop-blur-sm flex items-center justify-center ring-1 ring-border/60 shadow-sm">
-                  <Building2 className="h-6 w-6 text-muted-foreground" />
-                </div>
-              </div>
+              
               <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-muted-foreground">
                 Bank Payments
               </div>
@@ -2052,11 +2208,7 @@ export default function SupplierLedgerPage() {
           <div className="relative rounded-lg border border-border/60 bg-gradient-to-br from-background via-card/50 to-background p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
             <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-primary/5 blur-xl group-hover:bg-primary/10 transition-all"></div>
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="h-12 w-12 rounded-xl bg-muted/70 backdrop-blur-sm flex items-center justify-center ring-1 ring-border/60 shadow-sm">
-                  <Clock className="h-6 w-6 text-muted-foreground" />
-                </div>
-              </div>
+              
               <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-muted-foreground">
                 Payments This Month
               </div>
@@ -2071,161 +2223,11 @@ export default function SupplierLedgerPage() {
 
       {/* Main Content Card - Unified Design */}
       <div className="rounded-lg border border-border/60 bg-gradient-to-br from-card via-background to-card shadow-sm overflow-hidden">
-        {/* Header Section */}
-        <div className="relative bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50 px-6 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-primary/10 backdrop-blur-sm flex items-center justify-center ring-1 ring-primary/20 shadow-sm">
-                <FileText className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h2 className="font-semibold text-xl text-foreground tracking-tight">Payment History</h2>
-                <p className="text-sm text-muted-foreground mt-1">Select a supplier to view their payment history</p>
-              </div>
-            </div>
-            {paymentHistorySupplier && paymentHistorySupplier !== 'all' && (
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="gap-2 h-10 px-5 shadow-sm hover:shadow-md transition-all bg-primary hover:bg-primary/90">
-                    <Plus className="h-4 w-4" />
-                    Add Payment
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add Payment</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    {supplierDetails && supplierDetails.balance > 0 && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm text-blue-900">
-                          <span className="font-medium">Remaining Balance:</span> {formatNumber(supplierDetails.balance)}
-                        </p>
-                      </div>
-                    )}
-                    {selectedDispatchOrder && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                        <p className="text-sm text-amber-900">
-                          <span className="font-medium">Paying for:</span> {selectedDispatchOrder.orderNumber}
-                          <span className="ml-2">(Remaining: {formatNumber(selectedDispatchOrder.remainingBalance)})</span>
-                        </p>
-                      </div>
-                    )}
-                    <div>
-                      <Label htmlFor="amount">Payment Amount <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="amount"
-                        type="text"
-                        inputMode="decimal"
-                        step="0.01"
-                        min="0.01"
-                        max={selectedDispatchOrder ? selectedDispatchOrder.remainingBalance : (supplierDetails?.balance || undefined)}
-                        value={paymentForm.amount}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          // Allow only numbers and one decimal point
-                          const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                          setPaymentForm({ ...paymentForm, amount: sanitized });
-                        }}
-                        placeholder="Enter payment amount"
-                        disabled={isSubmittingPayment}
-                      />
-                      {supplierDetails && supplierDetails.balance > 0 && !selectedDispatchOrder && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Maximum: {formatNumber(supplierDetails.balance)}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <Label htmlFor="date">Date</Label>
-                      <Input
-                        id="date"
-                        type="date"
-                        value={paymentForm.date}
-                        onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
-                        disabled={isSubmittingPayment}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="method">Payment Method <span className="text-red-500">*</span></Label>
-                      <Select
-                        value={paymentForm.method}
-                        onValueChange={(value) => setPaymentForm({ ...paymentForm, method: value })}
-                        disabled={isSubmittingPayment}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select method" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="cash">Cash</SelectItem>
-                          <SelectItem value="bank">Bank Transfer</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        value={paymentForm.description}
-                        onChange={(e) => setPaymentForm({ ...paymentForm, description: e.target.value })}
-                        placeholder="Enter description (optional)"
-                        disabled={isSubmittingPayment}
-                      />
-                    </div>
-
-                    {/* Dispatch Order Selector */}
-                    {unpaidDispatchOrders.length > 0 && (
-                      <div>
-                        <Label htmlFor="dispatch-order-select">Link to Dispatch Order (Optional)</Label>
-                        <Select
-                          value={selectedDispatchOrderId}
-                          onValueChange={setSelectedDispatchOrderId}
-                          disabled={isSubmittingPayment}
-                        >
-                          <SelectTrigger id="dispatch-order-select">
-                            <SelectValue placeholder="Select dispatch order..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">None (General Payment)</SelectItem>
-                            {unpaidDispatchOrders.map((order) => (
-                              <SelectItem key={order._id} value={order._id}>
-                                {order.orderNumber} - Remaining: {formatNumber(order.remainingBalance)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmittingPayment}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleAddPayment} disabled={isSubmittingPayment}>
-                      {isSubmittingPayment ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Recording...
-                        </>
-                      ) : (
-                        'Record Payment'
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
-          </div>
-        </div>
+       
 
         {/* Filters Section */}
         <div className="px-6 py-5 bg-gradient-to-b from-muted/20 via-muted/10 to-transparent border-b border-border/30">
-          <div className="flex items-center gap-2.5 mb-5">
-            <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <span className="text-sm font-semibold text-foreground">Filter Options</span>
-          </div>
+         
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             <div className="flex flex-col min-w-0">
               <Label htmlFor="payment-history-supplier" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
@@ -2415,6 +2417,166 @@ export default function SupplierLedgerPage() {
     </div>
   )
 
+  const supplierReceiptsTabContent = (
+    <div className="space-y-6">
+      {receiptSupplierId && receiptSupplierId !== 'all' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="relative rounded-lg border border-emerald-200/60 bg-gradient-to-br from-emerald-50/80 via-emerald-50/60 to-white p-6 shadow-sm overflow-hidden">
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-emerald-700/80">Total Receipts</div>
+            <div className="text-3xl font-bold text-emerald-700 tabular-nums mb-1.5">{formatNumber(supplierReceiptSummary.total)}</div>
+            <div className="text-xs font-medium text-emerald-600/70">Recorded supplier payments</div>
+          </div>
+          <div className="relative rounded-lg border border-border/60 bg-gradient-to-br from-background via-card/50 to-background p-6 shadow-sm overflow-hidden">
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-muted-foreground">Cash</div>
+            <div className="text-3xl font-bold tabular-nums text-foreground mb-1.5">{formatNumber(supplierReceiptSummary.cash)}</div>
+            <div className="text-xs font-medium text-muted-foreground">Cash-paid receipts</div>
+          </div>
+          <div className="relative rounded-lg border border-border/60 bg-gradient-to-br from-background via-card/50 to-background p-6 shadow-sm overflow-hidden">
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-muted-foreground">Bank</div>
+            <div className="text-3xl font-bold tabular-nums text-foreground mb-1.5">{formatNumber(supplierReceiptSummary.bank)}</div>
+            <div className="text-xs font-medium text-muted-foreground">Bank-paid receipts</div>
+          </div>
+          <div className="relative rounded-lg border border-amber-200/60 bg-gradient-to-br from-amber-50/80 via-amber-50/60 to-white p-6 shadow-sm overflow-hidden">
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-amber-700/80">Advance</div>
+            <div className="text-3xl font-bold text-amber-700 tabular-nums mb-1.5">{formatNumber(supplierReceiptSummary.advance)}</div>
+            <div className="text-xs font-medium text-amber-700/70">Unapplied supplier credit</div>
+          </div>
+        </div>
+      )}
+
+      <div className="rounded-lg border border-border/60 bg-gradient-to-br from-card via-background to-card shadow-sm overflow-hidden">
+        <div className="px-6 py-5 bg-gradient-to-b from-muted/20 via-muted/10 to-transparent border-b border-border/30">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div className="flex flex-col min-w-0">
+              <Label className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
+                <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="whitespace-nowrap">Select Supplier</span>
+              </Label>
+              <Popover open={receiptSupplierOpen} onOpenChange={setReceiptSupplierOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={receiptSupplierOpen}
+                    className="h-[44px] w-full justify-between border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg"
+                    disabled={allSuppliersLoading}
+                  >
+                    {receiptSupplierId
+                      ? (() => {
+                        const supplier = dropdownSuppliers.find((s) => String(s.id) === receiptSupplierId)
+                        return supplier ? `${supplier.name} ${supplier.company ? `(${supplier.company})` : ''}` : 'Select supplier...'
+                      })()
+                      : 'Select supplier...'}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0 bg-white dark:bg-zinc-950">
+                  <Command>
+                    <CommandInput placeholder="Search supplier..." />
+                    <CommandList>
+                      <CommandEmpty>No supplier found.</CommandEmpty>
+                      <CommandGroup>
+                        {dropdownSuppliers.map((supplier) => (
+                          <CommandItem
+                            key={supplier.id}
+                            value={`${supplier.name} ${supplier.company || ''} ${supplier.supplierId || ''} ${supplier.legacyId || ''} ${String(supplier.id).slice(-6)}`}
+                            onSelect={() => {
+                              const val = String(supplier.id)
+                              setReceiptSupplierId(val)
+                              setSelectedSupplierId(val)
+                              setReceiptSupplierOpen(false)
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                receiptSupplierId === String(supplier.id) ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <span className="font-medium">{supplier.name}</span>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                {supplier.supplierId ? (
+                                  <span className="font-mono bg-muted px-1 rounded">{supplier.supplierId}</span>
+                                ) : supplier.legacyId ? (
+                                  <span className="font-mono bg-muted px-1 rounded">{supplier.legacyId}</span>
+                                ) : null}
+                                {supplier.company && <span>{supplier.company}</span>}
+                              </div>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="flex items-center gap-3 md:col-span-2 md:justify-end">
+              {receiptSupplierId && receiptSupplierId !== 'all' ? (
+                <div className="text-sm text-muted-foreground">
+                  {supplierReceiptTransactions.length} receipt{supplierReceiptTransactions.length === 1 ? '' : 's'} found
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        <div className="px-6 py-6 bg-background">
+          {!receiptSupplierId || receiptSupplierId === 'all' ? (
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl animate-pulse"></div>
+                <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-muted/90 via-muted/70 to-muted/50 backdrop-blur-sm ring-2 ring-border/60 shadow-lg">
+                  <FileText className="w-12 h-12 text-muted-foreground" />
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2.5">No supplier selected</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-md leading-relaxed">
+                Select a supplier to review grouped supplier payment receipts and print allocation details.
+              </p>
+            </div>
+          ) : supplierReceiptsLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <Loader2 className="w-12 h-12 text-primary animate-spin mb-6" />
+              <h3 className="text-lg font-semibold text-foreground mb-2.5">Loading payment receipts</h3>
+              <p className="text-sm text-muted-foreground">Please wait while we fetch the receipt records...</p>
+            </div>
+          ) : supplierReceiptsError ? (
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <FileText className="w-12 h-12 text-destructive mb-6" />
+              <h3 className="text-lg font-semibold text-foreground mb-2.5">Unable to load receipts</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-md leading-relaxed">
+                {supplierReceiptsError.response?.data?.message || supplierReceiptsError.message || 'Failed to load supplier payment receipts.'}
+              </p>
+              <Button variant="outline" className="mt-5" onClick={() => refetchSupplierReceipts()}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+            </div>
+          ) : supplierReceiptTransactions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <FileText className="w-12 h-12 text-muted-foreground mb-6" />
+              <h3 className="text-lg font-semibold text-foreground mb-2.5">No payment receipts found</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-md leading-relaxed">
+                Record a supplier payment to create the first grouped receipt for this supplier.
+              </p>
+            </div>
+          ) : (
+            <DataTable
+              columns={supplierReceiptColumns}
+              data={supplierReceiptTransactions}
+              enableSearch={false}
+              paginate={true}
+              pageSize={50}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
   const tabs = [
     {
       label: "Supplier Ledger",
@@ -2471,7 +2633,7 @@ export default function SupplierLedgerPage() {
 
       <Tabs
         tabs={tabs}
-        className="space-y-4"
+        className="space-y-1"
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
@@ -2500,7 +2662,19 @@ export default function SupplierLedgerPage() {
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['pending-balances'] })
           queryClient.invalidateQueries({ queryKey: ['ledger', 'supplier'] })
+          queryClient.invalidateQueries({ queryKey: ['supplier-payment-receipts'] })
         }}
+      />
+
+      <SupplierPaymentReceiptModal
+        open={supplierReceiptModalOpen}
+        onOpenChange={(open) => {
+          setSupplierReceiptModalOpen(open)
+          if (!open) {
+            setSelectedSupplierReceipt(null)
+          }
+        }}
+        receipt={selectedSupplierReceipt}
       />
     </div>
   )

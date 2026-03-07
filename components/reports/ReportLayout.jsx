@@ -70,18 +70,15 @@ export default function ReportLayout({
 
                   </Button>
                 )}
-
                 <Button
                   onClick={handlePrint}
                   size="sm"
                   className="h-9 bg-blue-600 hover:bg-blue-700"
                 >
                   <Printer className="h-4 w-4" />
-
                 </Button>
               </div>
             </div>
-
           </div>
           <div className="flex flex-wrap items-end gap-3">
             {dateRange && onDateChange && (
