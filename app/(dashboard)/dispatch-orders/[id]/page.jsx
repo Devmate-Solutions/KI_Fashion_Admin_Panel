@@ -817,6 +817,22 @@ export default function DispatchOrderDetailPage({ params }) {
       errors.push("Total boxes must be greater than 0");
     }
 
+    // Check that all active items have packet configuration
+    const unconfiguredItemNumbers = [];
+    dispatchOrder.items?.forEach((item, originalIdx) => {
+      if (!itemsToRemove.includes(originalIdx)) {
+        if (!item.packets || item.packets.length === 0) {
+          unconfiguredItemNumbers.push(originalIdx + 1);
+        }
+      }
+    });
+
+    if (unconfiguredItemNumbers.length > 0) {
+      errors.push(
+        `Items missing packet configuration: #${unconfiguredItemNumbers.join(", #")}`
+      );
+    }
+
     return { isValid: errors.length === 0, errors };
   }, [
     dispatchOrder,
