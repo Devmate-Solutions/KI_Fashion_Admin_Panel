@@ -1075,6 +1075,13 @@ export default function SupplierLedgerPage() {
         discountAmount = entry.referenceId.totalDiscount || entry.referenceId.discount || 0
       }
 
+      // For Return entries, extract the linked dispatch order ID for hyperlinking
+      const dispatchOrderId = (entry.referenceModel === 'Return' &&
+        entry.referenceId && typeof entry.referenceId === 'object' &&
+        entry.referenceId.dispatchOrderId)
+        ? entry.referenceId.dispatchOrderId.toString()
+        : null
+
       return {
         id: entry._id || entry.id,
         date: entry.date || entry.createdAt,
@@ -1096,6 +1103,7 @@ export default function SupplierLedgerPage() {
           ? entry.referenceId._id.toString()
           : (entry.referenceId ? entry.referenceId.toString() : null),
         referenceModel: entry.referenceModel || '-',
+        dispatchOrderId,
         paymentMethod: entry.paymentMethod || null,
         paymentDetails: entry.paymentDetails || null,
         entryNumber: entry.entryNumber || '-',
@@ -1288,10 +1296,16 @@ export default function SupplierLedgerPage() {
       {
         header: "Reference",
         accessor: "reference",
-        render: (row) => (
-          row.referenceId ? (
+        render: (row) => {
+          // For returns, link to the associated dispatch order (if available).
+          // For other types, link to the reference ID directly.
+          // If no valid link target exists (e.g. return with no dispatch order), render plain text.
+          const linkTarget = row.referenceModel === 'Return'
+            ? row.dispatchOrderId
+            : row.referenceId
+          return linkTarget ? (
             <Link
-              href={`/dispatch-orders/${row.raw.referenceModel === 'Return' ? row.raw.referenceId.dispatchOrderId : row.referenceId}`}
+              href={`/dispatch-orders/${linkTarget}`}
               className="font-medium text-blue-600 hover:underline"
             >
               {row.reference || '-'}
@@ -1299,7 +1313,7 @@ export default function SupplierLedgerPage() {
           ) : (
             <span className="font-medium">{row.reference || '-'}</span>
           )
-        )
+        }
       },
       {
         header: "Debit (Owe)",

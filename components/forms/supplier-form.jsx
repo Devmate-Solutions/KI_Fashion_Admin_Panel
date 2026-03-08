@@ -115,7 +115,7 @@ export function AddSupplierForm({ open, onClose, onSubmit, loading = false }) {
         phoneAreaCode: formData.phoneAreaCode || undefined,
         alternatePhone: formData.alternatePhone || undefined,
         alternatePhoneAreaCode: formData.alternatePhoneAreaCode || undefined,
-        address: formData.address || undefined,
+        address: formData.address ? { street: formData.address, country: 'Pakistan' } : undefined,
         notes: 'Created by admin via CRM',
       }
       submitData.signupSource = 'crm'
