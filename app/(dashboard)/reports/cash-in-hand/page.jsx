@@ -18,57 +18,19 @@ function formatDate(date) {
     return new Date(date).toLocaleDateString("en-GB")
 }
 
-/** Filter out Ledger rows that were auto-created at sale time (already counted in Sales row) */
-function applyDuplicateFilter(rows) {
-    return rows.filter(r => !(r.transactionType === "Ledger" && r.isSaleTimePayment === true))
-}
-
-/** Recompute running balance from scratch on filtered rows */
-function recomputeRunningBalance(rows) {
-    let running = 0
-    return rows.map((r) => {
-        const inflow =
-            (Number(r.salesCash || 0) + Number(r.salesBank || 0)) +
-            (Number(r.ledgerCash || 0) + Number(r.ledgerBank || 0))
-        const outflow = Number(r.expenseCash || 0) + Number(r.expenseBank || 0)
-        running += inflow - outflow
-        return { ...r, totalCashInHand: running }
-    })
-}
-
 // Dash placeholder for columns that don't apply to a transaction type
 const DASH = <span className="text-muted-foreground">—</span>
 
 export default function CashInHandReportPage() {
     const [dateRange, setDateRange] = useState(getDefaultDateRange())
-    const [hideDuplicates, setHideDuplicates] = useState(false)
 
     const { data, isLoading, isError, error, refetch } = useCashInHandReport({
         startDate: dateRange.from,
         endDate: dateRange.to,
     })
 
-    const rawTransactions = useMemo(() => data?.transactions || [], [data])
-    const serverSummary = useMemo(() => data?.summary || {}, [data])
-
-    // Apply duplicate filter when toggled
-    const transactions = useMemo(() => {
-        if (!hideDuplicates) return rawTransactions
-        return recomputeRunningBalance(applyDuplicateFilter(rawTransactions))
-    }, [rawTransactions, hideDuplicates])
-
-    // Recompute summary from the (possibly filtered) transactions
-    const summary = useMemo(() => {
-        if (!hideDuplicates) return serverSummary
-        const s = { totalSalesCash: 0, totalSalesBank: 0, totalLedgerCash: 0, totalLedgerBank: 0, totalExpenseCash: 0, totalExpenseBank: 0 }
-        for (const t of transactions) {
-            if (t.transactionType === "Sales") { s.totalSalesCash += Number(t.salesCash || 0); s.totalSalesBank += Number(t.salesBank || 0) }
-            if (t.transactionType === "Ledger") { s.totalLedgerCash += Number(t.ledgerCash || 0); s.totalLedgerBank += Number(t.ledgerBank || 0) }
-            if (t.transactionType === "Expense") { s.totalExpenseCash += Number(t.expenseCash || 0); s.totalExpenseBank += Number(t.expenseBank || 0) }
-        }
-        s.netCashInHand = (s.totalSalesCash + s.totalSalesBank) + (s.totalLedgerCash + s.totalLedgerBank) - (s.totalExpenseCash + s.totalExpenseBank)
-        return s
-    }, [hideDuplicates, serverSummary, transactions])
+    const transactions = useMemo(() => data?.transactions || [], [data])
+    const summary = useMemo(() => data?.summary || {}, [data])
 
     // Summary card values
     const totalCashIn = (summary.totalSalesCash || 0) + (summary.totalSalesBank || 0)
@@ -268,23 +230,6 @@ export default function CashInHandReportPage() {
             error={isError ? error : null}
             summary={summaryCards}
         >
-            {/* Toggle for hiding duplicate same-day ledger entries */}
-            <div className="flex items-center gap-2 mb-3 print:hidden">
-                <input
-                    id="hideDuplicates"
-                    type="checkbox"
-                    checked={hideDuplicates}
-                    onChange={(e) => setHideDuplicates(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300"
-                />
-                <label htmlFor="hideDuplicates" className="text-sm font-medium select-none cursor-pointer">
-                    Hide sale-day duplicates
-                </label>
-                <span className="text-xs text-muted-foreground">
-                    (removes ledger entries that duplicate at-sale payments on the same day)
-                </span>
-            </div>
-
             <PrintableTable
                 columns={columns}
                 data={transactions}

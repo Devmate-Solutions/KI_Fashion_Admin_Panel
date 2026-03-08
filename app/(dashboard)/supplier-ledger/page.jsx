@@ -2596,10 +2596,10 @@ export default function SupplierLedgerPage() {
       label: "Supplier Ledger",
       content: ledgerTabContent,
     },
-    {
-      label: "Pending Payments",
-      content: paymentDetails,
-    },
+    // {
+    //   label: "Pending Payments",
+    //   content: paymentDetails,
+    // },
     {
       label: "Payment History",
       content: paymentHistoryTabContent,
