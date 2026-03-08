@@ -13,6 +13,9 @@ const poppins = Poppins({
 export const metadata = {
   title: "KL Fashion CRM",
   description: "Customer Relationship Management System",
+  icons: {
+    icon: "/icom.png",
+  },
 }
 
 export default function RootLayout({ children }) {
