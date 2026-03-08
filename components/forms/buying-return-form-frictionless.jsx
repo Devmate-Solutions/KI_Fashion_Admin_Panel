@@ -42,6 +42,11 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
   const [currentProduct, setCurrentProduct] = useState(null)
   const [variantSelections, setVariantSelections] = useState([])
 
+  // Packet partial return dialog
+  const [packetItemDialogOpen, setPacketItemDialogOpen] = useState(false)
+  const [currentPacketItem, setCurrentPacketItem] = useState(null)
+  const [packetItemSelections, setPacketItemSelections] = useState([])
+
   // Packet validation state
   const [packetValidation, setPacketValidation] = useState({})
   const [validatingPackets, setValidatingPackets] = useState(false)
@@ -345,13 +350,70 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
     searchInputRef.current?.focus()
   }
 
+  // Open dialog to select individual items from a packet for partial return
+  const openPacketItemDialog = (item) => {
+    setCurrentPacketItem(item)
+    const initialSelections = (item.composition || []).map(c => ({
+      size: c.size,
+      color: c.color,
+      max: c.quantity,
+      quantity: item.returnComposition
+        ? (item.returnComposition.find(r => r.size === c.size && r.color === c.color)?.quantity || 0)
+        : 0
+    }))
+    setPacketItemSelections(initialSelections)
+    setPacketItemDialogOpen(true)
+  }
+
+  // Confirm partial item selection from packet
+  const confirmPacketItemSelection = () => {
+    const selected = packetItemSelections.filter(v => v.quantity > 0)
+    if (selected.length === 0) {
+      toast.error("Please select at least one item")
+      return
+    }
+    const totalQty = selected.reduce((sum, v) => sum + v.quantity, 0)
+    setSelectedItems(prev => prev.map(item => {
+      if (item.id !== currentPacketItem.id) return item
+      return {
+        ...item,
+        returnMode: 'partial_items',
+        returnComposition: selected.map(v => ({
+          size: v.size,
+          color: v.color,
+          quantity: v.quantity
+        })),
+        returnQty: totalQty
+      }
+    }))
+    toast.success(`${totalQty} individual item(s) selected from packet`)
+    setPacketItemDialogOpen(false)
+    setCurrentPacketItem(null)
+  }
+
+  // Switch a packet item back to full packet return mode
+  const switchToFullPacketReturn = (itemId) => {
+    setSelectedItems(prev => prev.map(item => {
+      if (item.id !== itemId) return item
+      return {
+        ...item,
+        returnMode: undefined,
+        returnComposition: undefined,
+        returnQty: 1
+      }
+    }))
+  }
+
   // Calculate totals
   const totals = selectedItems.reduce((acc, item) => {
     let amount = 0
     let items = 0
 
     if (item.type === 'packet') {
-      if (item.isLoose) {
+      if (item.returnMode === 'partial_items') {
+        items = item.returnQty
+        amount = item.returnQty * (item.pricePerItem || item.costPrice / (item.totalItemsPerPacket || 1))
+      } else if (item.isLoose) {
         items = item.returnQty
         amount = item.returnQty * item.costPrice
       } else {
@@ -415,19 +477,25 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
       for (const group of supplierGroups) {
         // Process packets
         for (const item of group.packets) {
-          const totalAmount = item.isLoose 
-            ? item.returnQty * item.costPrice 
-            : item.returnQty * item.costPrice
-          
+          const isPartial = item.returnMode === 'partial_items'
+          const perItemPrice = item.pricePerItem || item.costPrice / (item.totalItemsPerPacket || 1)
+          const totalAmount = isPartial
+            ? item.returnQty * perItemPrice
+            : item.isLoose
+              ? item.returnQty * item.costPrice
+              : item.returnQty * item.costPrice
+
           const payload = {
             supplierId: group.supplierId,
             packetStockId: item.packetStockId,
-            quantity: item.returnQty,
-            returnType: item.isLoose ? 'loose' : 'full',
-            itemsToReturn: [],
+            quantity: isPartial ? item.returnQty : item.returnQty,
+            returnType: isPartial ? 'partial' : (item.isLoose ? 'loose' : 'full'),
+            itemsToReturn: isPartial ? item.returnComposition : [],
             reason: item.reason || "",
-            notes: `Barcode return - ${item.barcode}`,
-            costPrice: item.costPrice,
+            notes: isPartial
+              ? `Partial packet return - ${item.barcode} (${item.returnQty} items)`
+              : `Barcode return - ${item.barcode}`,
+            costPrice: isPartial ? perItemPrice : item.costPrice,
             totalAmount: totalAmount
           }
 
@@ -662,16 +730,66 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
                         {item.type === 'packet' && (
                           <p className="text-sm text-muted-foreground font-mono">
                             Barcode: {item.barcode} {item.isLoose && '(Loose)'}
+                            {item.returnMode === 'partial_items' && (
+                              <Badge variant="outline" className="ml-2 text-amber-600 border-amber-300">Partial</Badge>
+                            )}
                           </p>
                         )}
-                        
-                        {item.returnComposition && item.returnComposition.length > 0 && (
+
+                        {item.type === 'packet' && item.returnMode === 'partial_items' && item.returnComposition && (
                           <div className="mt-2 flex flex-wrap gap-1">
                             {item.returnComposition.map((v, idx) => (
                               <Badge key={idx} variant="secondary" className="text-xs">
                                 {v.size}/{v.color} ×{v.quantity}
                               </Badge>
                             ))}
+                          </div>
+                        )}
+
+                        {item.type !== 'packet' && item.returnComposition && item.returnComposition.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {item.returnComposition.map((v, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">
+                                {v.size}/{v.color} ×{v.quantity}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+
+                        {item.type === 'packet' && !item.isLoose && item.composition?.length > 0 && (
+                          <div className="mt-2">
+                            {item.returnMode === 'partial_items' ? (
+                              <div className="flex gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() => openPacketItemDialog(item)}
+                                >
+                                  Edit items
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 text-xs text-muted-foreground"
+                                  onClick={() => switchToFullPacketReturn(item.id)}
+                                >
+                                  Return full packet instead
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs"
+                                onClick={() => openPacketItemDialog(item)}
+                              >
+                                Return individual items instead
+                              </Button>
+                            )}
                           </div>
                         )}
 
@@ -694,7 +812,7 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
 
                       <div className="flex items-center gap-3 flex-shrink-0">
                         <div className="text-right">
-                          {item.type === 'packet' && (
+                          {item.type === 'packet' && item.returnMode !== 'partial_items' && (
                             <div className="flex items-center gap-2 mb-1">
                               <Label className="text-xs text-muted-foreground">Qty:</Label>
                               <Input
@@ -706,6 +824,11 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
                                 className="h-8 w-20 text-right"
                               />
                             </div>
+                          )}
+                          {item.type === 'packet' && item.returnMode === 'partial_items' && (
+                            <Badge variant="outline" className="text-sm mb-1">
+                              {item.returnQty} items
+                            </Badge>
                           )}
                           {item.type === 'product' && (
                             <Badge variant="outline" className="text-sm mb-1">
@@ -813,6 +936,96 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
           </CardContent>
         </Card>
       )}
+
+      {/* Packet Partial Return Dialog */}
+      <Dialog open={packetItemDialogOpen} onOpenChange={setPacketItemDialogOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Select Items to Return from Packet</DialogTitle>
+            <DialogDescription>
+              Choose individual items to return from {currentPacketItem?.barcode}
+              <br />
+              <span className="text-xs">Product: {currentPacketItem?.productName} • Supplier: {currentPacketItem?.supplierName}</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-4 max-h-[60vh] overflow-y-auto">
+            {packetItemSelections.map((variant, idx) => (
+              <div key={idx} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30">
+                <div>
+                  <div className="font-medium">
+                    {variant.size} / {variant.color}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    In packet: {variant.max}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      setPacketItemSelections(prev => prev.map((v, i) =>
+                        i === idx ? { ...v, quantity: Math.max(0, v.quantity - 1) } : v
+                      ))
+                    }}
+                  >
+                    -
+                  </Button>
+                  <Input
+                    type="number"
+                    min="0"
+                    max={variant.max}
+                    className="w-20 h-8 text-center"
+                    value={variant.quantity > 0 ? variant.quantity : ""}
+                    onChange={(e) => {
+                      const val = Math.min(Math.max(0, parseInt(e.target.value) || 0), variant.max)
+                      setPacketItemSelections(prev => prev.map((v, i) =>
+                        i === idx ? { ...v, quantity: val } : v
+                      ))
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      setPacketItemSelections(prev => prev.map((v, i) =>
+                        i === idx ? { ...v, quantity: Math.min(v.max, v.quantity + 1) } : v
+                      ))
+                    }}
+                  >
+                    +
+                  </Button>
+                </div>
+              </div>
+            ))}
+
+            <div className="flex justify-between items-center bg-primary/10 p-3 rounded-lg border border-primary/20">
+              <span className="font-semibold">Items to return:</span>
+              <span className="font-bold text-lg">
+                {packetItemSelections.reduce((sum, v) => sum + v.quantity, 0)} of {packetItemSelections.reduce((sum, v) => sum + v.max, 0)}
+              </span>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              The packet will be broken. Remaining items will become loose stock.
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPacketItemDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmPacketItemSelection}>
+              Confirm Selection
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Variant Selection Dialog */}
       <Dialog open={variantDialogOpen} onOpenChange={setVariantDialogOpen}>
