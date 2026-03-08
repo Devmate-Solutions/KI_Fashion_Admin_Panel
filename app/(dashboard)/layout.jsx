@@ -5,7 +5,7 @@ import MainContentWrapper from "../../components/MainContentWrapper"
 import { NavigationHistoryProvider } from "../../lib/providers/NavigationHistoryProvider"
 
 export const metadata = {
-    title: "KL Fashion CRM",
+    title: "KI Fashion CRM",
     description: "Customer Relationship Management System",
 }
 

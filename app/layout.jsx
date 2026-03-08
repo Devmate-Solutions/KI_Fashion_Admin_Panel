@@ -11,7 +11,7 @@ const poppins = Poppins({
 });
 
 export const metadata = {
-  title: "KL Fashion CRM",
+  title: "KI Fashion CRM",
   description: "Customer Relationship Management System",
   icons: {
     icon: "/icom.png",
