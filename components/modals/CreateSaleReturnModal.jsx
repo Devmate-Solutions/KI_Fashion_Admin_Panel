@@ -9,23 +9,27 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import ProductImageGallery from "@/components/ui/ProductImageGallery"
-import { Loader2, RefreshCcw, ChevronDown, ChevronUp } from "lucide-react"
+import { Loader2, RefreshCcw, ChevronDown, ChevronUp, Package } from "lucide-react"
 import { useCreateSaleReturn } from "@/lib/hooks/useSaleReturns"
 import toast from "react-hot-toast"
 
+function friendlyError(msg) {
+    if (!msg) return "Failed to create return"
+    if (msg.includes("composition total") || msg.includes("don't add up")) return "The return item quantities don't match the packet contents. Please review your selection."
+    if (msg.includes("returnComposition must be provided")) return "Please specify which items you're returning from the packet."
+    if (msg.includes("Original quantity mismatch")) return "Sale data has changed. Please refresh and try again."
+    return msg
+}
+
 export default function CreateSaleReturnModal({ open, onClose, sale }) {
-    const [selectedItems, setSelectedItems] = useState({}) // { itemIndex: { quantity, reason, selected, isPartial } }
-    const [variantReturns, setVariantReturns] = useState({}) // { itemIndex: { "size_color": quantity } }
-    const [expandedItems, setExpandedItems] = useState({}) // { itemIndex: boolean }
+    const [selectedItems, setSelectedItems] = useState({})
+    // selectedItems shape: { [itemIndex]: { selected, quantity, reason, returnMode: 'whole_packets'|'partial_items', variantSelections: {size_color: qty}, partialExpanded: bool } }
     const [notes, setNotes] = useState("")
     const createMutation = useCreateSaleReturn()
 
-    // Reset state on open
     useEffect(() => {
         if (open) {
             setSelectedItems({})
-            setVariantReturns({})
-            setExpandedItems({})
             setNotes("")
         }
     }, [open, sale])
@@ -39,21 +43,28 @@ export default function CreateSaleReturnModal({ open, onClose, sale }) {
     }
 
     const handleSelectionChange = (idx, checked) => {
+        const item = sale.items[idx]
+        const itemsPerPacket = item.totalItemsPerPacket || 1
+        const packetsCount = item.isPacketSale ? Math.floor(item.quantity / itemsPerPacket) : item.quantity
         setSelectedItems(prev => ({
             ...prev,
             [idx]: {
                 ...prev[idx],
                 selected: checked,
-                quantity: checked ? (prev[idx]?.quantity || sale.items[idx].quantity) : (prev[idx]?.quantity || 0),
-                isPartial: prev[idx]?.isPartial || false
+                quantity: checked ? (prev[idx]?.quantity || packetsCount) : 0,
+                returnMode: prev[idx]?.returnMode || 'whole_packets',
+                variantSelections: prev[idx]?.variantSelections || {},
+                partialExpanded: prev[idx]?.partialExpanded || false
             }
         }))
     }
 
     const handleQuantityChange = (idx, val) => {
-        const qty = parseFloat(val)
-
-        if (qty < 0) return
+        const item = sale.items[idx]
+        const itemsPerPacket = item.totalItemsPerPacket || 1
+        const maxPackets = item.isPacketSale ? Math.floor(item.quantity / itemsPerPacket) : item.quantity
+        const qty = parseInt(val) || 0
+        if (qty < 0 || qty > maxPackets) return
 
         setSelectedItems(prev => ({
             ...prev,
@@ -61,55 +72,56 @@ export default function CreateSaleReturnModal({ open, onClose, sale }) {
                 ...prev[idx],
                 quantity: qty,
                 selected: qty > 0,
-                isPartial: false // Manual override implies no automatic variant sync
+                returnMode: 'whole_packets'
             }
         }))
     }
 
-    const handleVariantChange = (idx, size, color, qty) => {
+    const handleVariantChange = (idx, size, color, val) => {
         const key = `${size}_${color}`
-        const newVariantReturns = {
-            ...variantReturns[idx],
-            [key]: parseFloat(qty) || 0
-        }
-
-        setVariantReturns(prev => ({
-            ...prev,
-            [idx]: newVariantReturns
-        }))
-
-        // Calculate total return fraction for packet
         const item = sale.items[idx]
-        if (item.totalItemsPerPacket) {
-            const totalItemsReturned = Object.values(newVariantReturns).reduce((a, b) => a + b, 0)
-            const packetFraction = totalItemsReturned / item.totalItemsPerPacket
+        const comp = item.packetComposition?.find(c => c.size === size && c.color === color)
+        const packetsCount = Math.floor(item.quantity / (item.totalItemsPerPacket || 1))
+        const maxQty = (comp?.quantity || 0) * packetsCount
+        const qty = Math.min(Math.max(0, parseInt(val) || 0), maxQty)
 
-            setSelectedItems(prev => ({
+        setSelectedItems(prev => {
+            const newVariants = { ...(prev[idx]?.variantSelections || {}), [key]: qty }
+            const totalItems = Object.values(newVariants).reduce((a, b) => a + b, 0)
+            return {
                 ...prev,
                 [idx]: {
                     ...prev[idx],
-                    quantity: packetFraction,
-                    selected: packetFraction > 0,
-                    isPartial: true
+                    variantSelections: newVariants,
+                    quantity: totalItems, // Individual item count, not packet fraction
+                    selected: totalItems > 0,
+                    returnMode: 'partial_items'
                 }
-            }))
-        }
+            }
+        })
     }
 
-    const toggleExpand = (idx) => {
-        setExpandedItems(prev => ({ ...prev, [idx]: !prev[idx] }))
-        if (!variantReturns[idx]) {
-            setVariantReturns(prev => ({ ...prev, [idx]: {} }))
-        }
+    const togglePartialExpand = (idx) => {
+        setSelectedItems(prev => {
+            const current = prev[idx] || {}
+            const newExpanded = !current.partialExpanded
+            return {
+                ...prev,
+                [idx]: {
+                    ...current,
+                    partialExpanded: newExpanded,
+                    returnMode: newExpanded ? 'partial_items' : 'whole_packets',
+                    quantity: newExpanded ? 0 : (current.quantity || 0),
+                    variantSelections: newExpanded ? (current.variantSelections || {}) : {}
+                }
+            }
+        })
     }
 
     const handleReasonChange = (idx, val) => {
         setSelectedItems(prev => ({
             ...prev,
-            [idx]: {
-                ...prev[idx],
-                reason: val
-            }
+            [idx]: { ...prev[idx], reason: val }
         }))
     }
 
@@ -118,24 +130,28 @@ export default function CreateSaleReturnModal({ open, onClose, sale }) {
             .filter(([_, data]) => data.selected && data.quantity > 0)
             .map(([idx, data]) => {
                 const itemIdx = parseInt(idx)
+                const saleItem = sale.items[itemIdx]
 
                 const returnObj = {
                     itemIndex: itemIdx,
+                    product: saleItem.product?._id || saleItem.product,
+                    originalQuantity: saleItem.quantity,
                     returnedQuantity: parseFloat(data.quantity),
+                    unitPrice: saleItem.unitPrice,
                     reason: data.reason || ""
                 }
 
-                // Add detailed composition if partial/variant based return
-                if (data.isPartial && variantReturns[idx]) {
-                    const composition = Object.entries(variantReturns[idx])
+                // Add composition only for partial (item-level) returns; whole-packet returns handled by backend
+                if (data.returnMode === 'partial_items' && data.variantSelections) {
+                    const composition = Object.entries(data.variantSelections)
                         .filter(([_, qty]) => qty > 0)
                         .map(([key, qty]) => {
                             const [size, color] = key.split('_')
                             return { size, color, quantity: qty }
                         })
-
                     if (composition.length > 0) {
                         returnObj.returnComposition = composition
+                        returnObj.isPartialReturn = true
                     }
                 }
 
@@ -149,13 +165,19 @@ export default function CreateSaleReturnModal({ open, onClose, sale }) {
         // Validation
         for (const item of itemsToReturn) {
             const originalItem = sale.items[item.itemIndex]
-            if (item.returnedQuantity > originalItem.quantity) {
-                return toast.error(`Return quantity cannot exceed original quantity for ${originalItem.product?.name || 'item'}`)
+            // For partial returns, qty is individual items; for whole-packet, qty is packets
+            const maxReturn = item.isPartialReturn
+                ? originalItem.quantity // total individual items
+                : (originalItem.isPacketSale
+                    ? Math.floor(originalItem.quantity / (originalItem.totalItemsPerPacket || 1))
+                    : originalItem.quantity)
+            if (item.returnedQuantity > maxReturn) {
+                return toast.error(`Return quantity exceeds sold quantity for ${originalItem.product?.name || 'item'}`)
             }
         }
 
         createMutation.mutate({
-            saleId: sale._id,
+            sale: sale._id,
             items: itemsToReturn,
             notes
         }, {
@@ -164,7 +186,8 @@ export default function CreateSaleReturnModal({ open, onClose, sale }) {
                 onClose()
             },
             onError: (error) => {
-                toast.error(error.message || "Failed to create return")
+                const msg = error?.response?.data?.message || error?.message
+                toast.error(friendlyError(msg))
             }
         })
     }
@@ -178,41 +201,37 @@ export default function CreateSaleReturnModal({ open, onClose, sale }) {
                         Create Return for Sale #{sale.saleNumber || String(sale._id).slice(-6)}
                     </DialogTitle>
                     <DialogDescription>
-                        Select items to return to stock.
+                        Select items to return to stock. For packets, you can return whole packets or individual items.
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-6 py-4">
-                    <div className="border rounded-md">
-                        <table className="w-full text-sm">
-                            <thead className="bg-muted/50 border-b">
-                                <tr>
-                                    <th className="p-3 w-[40px]">
-                                        {/* Checkbox */}
-                                    </th>
-                                    <th className="p-3 text-left">Product</th>
-                                    <th className="p-3 text-left">Type</th>
-                                    <th className="p-3 text-right">Sold Qty</th>
-                                    <th className="p-3 w-[150px]">Return Qty</th>
-                                    <th className="p-3">Reason</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {sale.items?.map((item, idx) => {
-                                    const isSelected = selectedItems[idx]?.selected || false
-                                    const returnQty = selectedItems[idx]?.quantity ?? (isSelected ? item.quantity : 0)
-                                    const isPacket = item.isPacketSale
+                    <div className="space-y-3">
+                        {sale.items?.map((item, idx) => {
+                            const state = selectedItems[idx] || {}
+                            const isSelected = state.selected || false
+                            const isPacket = item.isPacketSale
+                            const isPartialMode = isPacket && state.partialExpanded
+                            const totalVariantSelected = isPartialMode
+                                ? Object.values(state.variantSelections || {}).reduce((a, b) => a + b, 0)
+                                : 0
+                            // For packet sales, quantity is total items; convert to actual packet count
+                            const itemsPerPacket = item.totalItemsPerPacket || 1
+                            const packetsCount = isPacket ? Math.floor(item.quantity / itemsPerPacket) : item.quantity
 
-                                    return (
-                                        <tr key={idx} className={isSelected ? "bg-blue-50/30" : ""}>
-                                            <td className="p-3 align-top pt-4">
-                                                <Checkbox
-                                                    checked={isSelected}
-                                                    onCheckedChange={(c) => handleSelectionChange(idx, c)}
-                                                />
-                                            </td>
-                                            <td className="p-3 align-top">
-                                                <div className="flex gap-3">
+                            return (
+                                <div key={idx} className={`border rounded-lg p-4 transition-colors ${isSelected ? "border-blue-300 bg-blue-50/30" : ""}`}>
+                                    <div className="flex items-start gap-3">
+                                        <div className="pt-1">
+                                            <Checkbox
+                                                checked={isSelected}
+                                                onCheckedChange={(c) => handleSelectionChange(idx, c)}
+                                            />
+                                        </div>
+
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div className="flex gap-3 flex-1">
                                                     <ProductImageGallery
                                                         images={getImageArray(item)}
                                                         alt={item.product?.name || "Product"}
@@ -221,93 +240,127 @@ export default function CreateSaleReturnModal({ open, onClose, sale }) {
                                                         showCount={false}
                                                     />
                                                     <div>
-                                                        <div className="font-medium">{item.product?.name || item.productCode || "—"}</div>
+                                                        <div className="font-medium">{item.product?.name || item.productCode || "\u2014"}</div>
                                                         <div className="text-xs text-muted-foreground">{item.product?.sku}</div>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            {isPacket ? (
+                                                                <Badge variant="outline" className="text-blue-600 border-blue-200">Packet</Badge>
+                                                            ) : (
+                                                                <Badge variant="outline" className="text-amber-600 border-amber-200">Loose</Badge>
+                                                            )}
+                                                            {isPacket && item.packetBarcode && (
+                                                                <span className="text-xs text-muted-foreground font-mono">{item.packetBarcode}</span>
+                                                            )}
+                                                        </div>
+                                                        {isPacket && item.totalItemsPerPacket && (
+                                                            <div className="text-xs text-blue-600 mt-1">
+                                                                <Package className="h-3 w-3 inline mr-1" />
+                                                                {item.totalItemsPerPacket} items per packet \u2022 Sold: {packetsCount} packet(s)
+                                                            </div>
+                                                        )}
+                                                        {!isPacket && (
+                                                            <div className="text-xs text-muted-foreground mt-1">Sold: {item.quantity}</div>
+                                                        )}
                                                     </div>
                                                 </div>
-                                            </td>
-                                            <td className="p-3 align-top">
-                                                {isPacket ? (
-                                                    <div className="flex flex-col gap-1 items-start">
-                                                        <Badge variant="outline" className="text-blue-600 border-blue-200">Packet</Badge>
-                                                        <button
-                                                            onClick={() => toggleExpand(idx)}
-                                                            className="text-xs flex items-center gap-1 text-blue-600 hover:underline mt-1"
-                                                        >
-                                                            {expandedItems[idx] ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                                                            {expandedItems[idx] ? "Hide Items" : "Return Items"}
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <Badge variant="outline" className="text-amber-600 border-amber-200">Loose</Badge>
-                                                )}
-                                                {isPacket && item.packetBarcode && (
-                                                    <div className="text-xs text-muted-foreground mt-1">{item.packetBarcode}</div>
-                                                )}
-                                            </td>
-                                            <td className="p-3 text-right align-top pt-4">
-                                                {item.quantity}
-                                            </td>
-                                            <td className="p-3 align-top">
-                                                <Input
-                                                    type="number"
-                                                    min="0"
-                                                    max={item.quantity}
-                                                    step={isPacket ? "0.01" : "1"}
-                                                    value={returnQty || ""}
-                                                    onChange={(e) => handleQuantityChange(idx, e.target.value)}
-                                                    disabled={!isSelected || selectedItems[idx]?.isPartial}
-                                                    className="h-8 mb-2"
-                                                />
 
-                                                {/* Variant Breakdown for Packets */}
-                                                {isPacket && expandedItems[idx] && (
-                                                    <div className="bg-slate-50 p-3 rounded border text-xs space-y-2 mt-2 min-w-[200px]">
-                                                        <div className="font-semibold text-slate-700 mb-2 border-b pb-1">Select Items to Return:</div>
-                                                        {item.packetComposition?.map((comp, vIdx) => {
-                                                            const key = `${comp.size}_${comp.color}`
-                                                            const currentQty = variantReturns[idx]?.[key] || 0
-                                                            const maxQty = comp.quantity * item.quantity // Total variants sold
-
-                                                            return (
-                                                                <div key={vIdx} className="flex items-center justify-between gap-2 mb-1">
-                                                                    <span className="font-medium">{comp.size} / {comp.color}</span>
-                                                                    <div className="flex items-center gap-1">
-                                                                        <span className="text-muted-foreground text-[10px] mr-1">Max: {maxQty}</span>
-                                                                        <Input
-                                                                            type="number"
-                                                                            min="0"
-                                                                            max={maxQty}
-                                                                            className="h-7 w-16 text-right px-1"
-                                                                            placeholder="0"
-                                                                            value={currentQty > 0 ? currentQty : ""}
-                                                                            onChange={(e) => handleVariantChange(idx, comp.size, comp.color, e.target.value)}
-                                                                            disabled={!isSelected}
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                            )
-                                                        })}
-                                                        <div className="text-[10px] text-blue-600 font-medium text-right border-t pt-2 mt-2">
-                                                            Returning: {Object.values(variantReturns[idx] || {}).reduce((a, b) => a + b, 0)} items
+                                                {/* Qty controls */}
+                                                <div className="flex-shrink-0">
+                                                    {!isPartialMode && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Button
+                                                                type="button" variant="outline" size="icon" className="h-8 w-8"
+                                                                disabled={!isSelected}
+                                                                onClick={() => handleQuantityChange(idx, (state.quantity || 0) - 1)}
+                                                            >-</Button>
+                                                            <Input
+                                                                type="number" min="0" max={packetsCount}
+                                                                className="w-16 h-8 text-center"
+                                                                value={(state.quantity || 0) > 0 ? (state.quantity || 0) : ""}
+                                                                onChange={(e) => handleQuantityChange(idx, e.target.value)}
+                                                                disabled={!isSelected}
+                                                            />
+                                                            <Button
+                                                                type="button" variant="outline" size="icon" className="h-8 w-8"
+                                                                disabled={!isSelected}
+                                                                onClick={() => handleQuantityChange(idx, (state.quantity || 0) + 1)}
+                                                            >+</Button>
+                                                            {isPacket && <span className="text-xs text-muted-foreground">packet(s)</span>}
                                                         </div>
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="p-3 align-top">
-                                                <Input
-                                                    placeholder="Reason..."
-                                                    value={selectedItems[idx]?.reason || ""}
-                                                    onChange={(e) => handleReasonChange(idx, e.target.value)}
-                                                    disabled={!isSelected}
-                                                    className="h-8"
-                                                />
-                                            </td>
-                                        </tr>
-                                    )
-                                })}
-                            </tbody>
-                        </table>
+                                                    )}
+                                                    {isPartialMode && totalVariantSelected > 0 && (
+                                                        <div className="text-right">
+                                                            <div className="text-sm font-semibold text-blue-600">{totalVariantSelected} item(s)</div>
+                                                            <div className="text-xs text-muted-foreground">from {item.quantity} total</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Expandable partial item section for packets */}
+                                            {isPacket && item.packetComposition?.length > 0 && isSelected && (
+                                                <div className="mt-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => togglePartialExpand(idx)}
+                                                        className="text-xs flex items-center gap-1 text-blue-600 hover:underline"
+                                                    >
+                                                        {state.partialExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                                        {state.partialExpanded ? 'Return whole packets instead' : 'Return individual items from packet'}
+                                                    </button>
+
+                                                    {state.partialExpanded && (
+                                                        <div className="bg-blue-50/50 p-3 rounded-md border border-blue-100 mt-2 space-y-2">
+                                                            <div className="text-xs font-semibold text-slate-700 border-b pb-1 mb-2">
+                                                                Select individual items to return:
+                                                            </div>
+                                                            {item.packetComposition.map((comp, vIdx) => {
+                                                                const key = `${comp.size}_${comp.color}`
+                                                                const currentQty = state.variantSelections?.[key] || 0
+                                                                const maxQty = comp.quantity * packetsCount
+
+                                                                return (
+                                                                    <div key={vIdx} className="flex items-center justify-between gap-2">
+                                                                        <div>
+                                                                            <span className="text-sm font-medium">{comp.size} / {comp.color}</span>
+                                                                            <span className="text-xs text-muted-foreground ml-2">(max {maxQty})</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <Button type="button" variant="outline" size="icon" className="h-7 w-7"
+                                                                                onClick={() => handleVariantChange(idx, comp.size, comp.color, currentQty - 1)}>-</Button>
+                                                                            <Input type="number" min="0" max={maxQty} className="w-16 h-7 text-center text-sm"
+                                                                                value={currentQty > 0 ? currentQty : ""}
+                                                                                onChange={(e) => handleVariantChange(idx, comp.size, comp.color, e.target.value)} />
+                                                                            <Button type="button" variant="outline" size="icon" className="h-7 w-7"
+                                                                                onClick={() => handleVariantChange(idx, comp.size, comp.color, currentQty + 1)}>+</Button>
+                                                                        </div>
+                                                                    </div>
+                                                                )
+                                                            })}
+                                                            <div className="text-xs font-medium text-right border-t pt-2 mt-2 text-blue-600">
+                                                                Returning {totalVariantSelected} of {item.quantity} items
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Reason */}
+                                            {isSelected && (
+                                                <div className="mt-3">
+                                                    <Input
+                                                        placeholder="Return reason..."
+                                                        value={state.reason || ""}
+                                                        onChange={(e) => handleReasonChange(idx, e.target.value)}
+                                                        className="h-8"
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )
+                        })}
                     </div>
 
                     <div>

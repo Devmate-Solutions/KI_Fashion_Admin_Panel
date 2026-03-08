@@ -66,6 +66,11 @@ export function UserForm({ open, onClose, onSubmit, initialData = null, loading 
   }, [open, initialData])
 
   const handleChange = (field, value) => {
+    if (field === 'phoneAreaCode' || field === 'alternatePhoneAreaCode') {
+      value = value.replace(/[^\d+]/g, '')
+    } else if (field === 'phone' || field === 'alternatePhone') {
+      value = value.replace(/\D/g, '')
+    }
     setFormData(prev => ({ ...prev, [field]: value }))
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }))

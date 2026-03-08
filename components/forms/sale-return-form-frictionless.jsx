@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Trash2 as TrashIcon, Search, Loader2 as Loader2Icon, ShoppingBag, CheckCircle as CheckCircleIcon, ChevronDown, User } from "lucide-react"
+import { Trash2 as TrashIcon, Search, Loader2 as Loader2Icon, ShoppingBag, CheckCircle as CheckCircleIcon, ChevronDown, ChevronUp, User, Package } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { saleReturnsAPI } from "@/lib/api/endpoints/saleReturns"
 import toast from "react-hot-toast"
@@ -110,23 +110,37 @@ export default function SaleReturnFormFrictionless({ onSave }) {
   const openItemDialog = (sale) => {
     setCurrentSale(sale)
     
-    const initialItems = sale.items.map(item => ({
-      itemIndex: item.itemIndex,
-      product: item.product,
-      productName: item.productName,
-      productCode: item.productCode,
-      quantity: item.quantity,
-      alreadyReturned: item.alreadyReturned,
-      returnableQty: item.returnableQty,
-      returnQty: 0,
-      unitPrice: item.unitPrice,
-      variant: item.variant,
-      isPacketSale: item.isPacketSale,
-      packetBarcode: item.packetBarcode,
-      packetComposition: item.packetComposition,
-      totalItemsPerPacket: item.totalItemsPerPacket,
-      reason: ""
-    }))
+    const initialItems = sale.items.map(item => {
+      // For packet sales, quantity is total items (e.g. 4 items = 1 packet of 4)
+      // Convert to packet counts for proper limits
+      const itemsPerPacket = item.totalItemsPerPacket || 1
+      const packetsSold = item.isPacketSale ? Math.floor(item.quantity / itemsPerPacket) : item.quantity
+      const packetsReturned = item.isPacketSale ? item.alreadyReturned : item.alreadyReturned
+      const returnablePackets = item.isPacketSale ? Math.floor(item.returnableQty / itemsPerPacket) : item.returnableQty
+
+      return {
+        itemIndex: item.itemIndex,
+        product: item.product,
+        productName: item.productName,
+        productCode: item.productCode,
+        quantity: item.quantity,
+        alreadyReturned: item.alreadyReturned,
+        returnableQty: item.returnableQty,
+        packetsSold,
+        returnablePackets,
+        returnQty: 0,
+        unitPrice: item.unitPrice,
+        variant: item.variant,
+        isPacketSale: item.isPacketSale,
+        packetBarcode: item.packetBarcode,
+        packetComposition: item.packetComposition,
+        totalItemsPerPacket: item.totalItemsPerPacket,
+        reason: "",
+        returnMode: 'whole_packets',
+        variantSelections: {},
+        partialExpanded: false
+      }
+    })
 
     setItemSelections(initialItems)
     setItemDialogOpen(true)
@@ -134,7 +148,14 @@ export default function SaleReturnFormFrictionless({ onSave }) {
   }
 
   const confirmItemSelection = () => {
-    const selectedFromSale = itemSelections.filter(item => item.returnQty > 0)
+    // Filter items that have a return qty > 0 OR have partial variant selections
+    const selectedFromSale = itemSelections.filter(item => {
+      if (item.isPacketSale && item.returnMode === 'partial_items') {
+        const totalVariantItems = Object.values(item.variantSelections || {}).reduce((a, b) => a + b, 0)
+        return totalVariantItems > 0
+      }
+      return item.returnQty > 0
+    })
     
     if (selectedFromSale.length === 0) {
       toast.error("Please select at least one item to return")
@@ -143,34 +164,70 @@ export default function SaleReturnFormFrictionless({ onSave }) {
 
     // Validate return quantities
     for (const item of selectedFromSale) {
-      if (item.returnQty > item.returnableQty) {
+      if (item.isPacketSale && item.returnMode === 'partial_items') {
+        // Validate individual variant selections don't exceed available items
+        const totalVariantItems = Object.values(item.variantSelections || {}).reduce((a, b) => a + b, 0)
+        const maxItems = item.returnableQty // returnableQty is already in individual items
+        if (totalVariantItems > maxItems) {
+          toast.error(`Cannot return more than ${maxItems} items from packet for ${item.productName}`)
+          return
+        }
+      } else if (item.isPacketSale) {
+        // Whole-packet mode: validate against returnable packets
+        if (item.returnQty > item.returnablePackets) {
+          toast.error(`Cannot return more than ${item.returnablePackets} packet(s) of ${item.productName}`)
+          return
+        }
+      } else if (item.returnQty > item.returnableQty) {
         toast.error(`Cannot return more than ${item.returnableQty} of ${item.productName}`)
         return
       }
     }
 
     // Add items to the return list
-    const newItems = selectedFromSale.map(item => ({
-      id: Date.now() + Math.random(),
-      saleId: currentSale._id,
-      saleNumber: currentSale.saleNumber,
-      buyer: currentSale.buyer,
-      itemIndex: item.itemIndex,
-      product: item.product,
-      productName: item.productName,
-      productCode: item.productCode,
-      originalQuantity: item.quantity,
-      alreadyReturned: item.alreadyReturned,
-      returnableQty: item.returnableQty,
-      returnQty: item.returnQty,
-      unitPrice: item.unitPrice,
-      variant: item.variant,
-      isPacketSale: item.isPacketSale,
-      packetBarcode: item.packetBarcode,
-      packetComposition: item.packetComposition,
-      totalItemsPerPacket: item.totalItemsPerPacket,
-      reason: item.reason
-    }))
+    const newItems = selectedFromSale.map(item => {
+      let returnQty = item.returnQty
+      let returnCompositionDetails = undefined
+      let returnMode = item.isPacketSale ? item.returnMode : 'whole_packets'
+
+      if (item.isPacketSale && item.returnMode === 'partial_items') {
+        // Build composition from variant selections
+        returnCompositionDetails = Object.entries(item.variantSelections || {})
+          .filter(([_, qty]) => qty > 0)
+          .map(([key, qty]) => {
+            const [size, color] = key.split('_')
+            return { size, color, quantity: qty }
+          })
+        // For partial returns, returnQty = actual individual items selected
+        const totalVariantItems = Object.values(item.variantSelections || {}).reduce((a, b) => a + b, 0)
+        returnQty = totalVariantItems
+      }
+
+      return {
+        id: Date.now() + Math.random(),
+        saleId: currentSale._id,
+        saleNumber: currentSale.saleNumber,
+        buyer: currentSale.buyer,
+        itemIndex: item.itemIndex,
+        product: item.product,
+        productName: item.productName,
+        productCode: item.productCode,
+        originalQuantity: item.quantity,
+        alreadyReturned: item.alreadyReturned,
+        returnableQty: item.returnableQty,
+        returnablePackets: item.returnablePackets,
+        returnQty,
+        unitPrice: item.unitPrice,
+        variant: item.variant,
+        isPacketSale: item.isPacketSale,
+        packetBarcode: item.packetBarcode,
+        packetComposition: item.packetComposition,
+        totalItemsPerPacket: item.totalItemsPerPacket,
+        reason: item.reason,
+        returnMode,
+        returnCompositionDetails
+      }
+    })
 
     setSelectedItems(prev => [...prev, ...newItems])
     toast.success(`${selectedFromSale.length} item(s) added to return`)
@@ -186,8 +243,12 @@ export default function SaleReturnFormFrictionless({ onSave }) {
 
       if (field === "returnQty") {
         const numValue = Number(value)
-        if (numValue > item.returnableQty) {
-          toast.error(`Max ${item.returnableQty} available`)
+        // For partial item returns, max is in individual items; for whole-packet, max is packets
+        const maxReturn = (item.isPacketSale && item.returnMode !== 'partial_items')
+          ? (item.returnablePackets || item.returnableQty)
+          : item.returnableQty
+        if (numValue > maxReturn) {
+          toast.error(`Max ${maxReturn}${item.isPacketSale && item.returnMode !== 'partial_items' ? ' packet(s)' : ' item(s)'} available`)
           return item
         }
         if (numValue < 0) return item
@@ -204,11 +265,23 @@ export default function SaleReturnFormFrictionless({ onSave }) {
 
   // Calculate totals
   const totals = selectedItems.reduce((acc, item) => {
-    const refundAmount = item.returnQty * item.unitPrice
+    let refundAmount, pieceCount
+    if (item.isPacketSale && item.returnMode === 'partial_items') {
+      // Partial return: returnQty is individual items, unitPrice is per-item
+      refundAmount = item.returnQty * item.unitPrice
+      pieceCount = item.returnQty
+    } else if (item.isPacketSale) {
+      // Whole-packet return: returnQty is packets, unitPrice is per-item
+      refundAmount = item.returnQty * (item.totalItemsPerPacket || 1) * item.unitPrice
+      pieceCount = item.returnQty * (item.totalItemsPerPacket || 1)
+    } else {
+      refundAmount = item.returnQty * item.unitPrice
+      pieceCount = item.returnQty
+    }
 
     return {
       totalRefund: acc.totalRefund + refundAmount,
-      totalItems: acc.totalItems + item.returnQty
+      totalItems: acc.totalItems + Math.round(pieceCount)
     }
   }, { totalRefund: 0, totalItems: 0 })
 
@@ -262,8 +335,11 @@ export default function SaleReturnFormFrictionless({ onSave }) {
             returnedQuantity: item.returnQty,
             unitPrice: item.unitPrice,
             reason: item.reason,
-            returnComposition: item.isPacketSale && item.packetComposition 
-              ? item.packetComposition 
+            // Tell backend this is a partial item return (returnedQuantity is in items, not packets)
+            isPartialReturn: item.returnMode === 'partial_items' || false,
+            // For partial item returns, send explicit composition; for whole-packet, backend auto-derives
+            returnComposition: item.returnMode === 'partial_items' && item.returnCompositionDetails
+              ? item.returnCompositionDetails
               : undefined
           })),
           notes: `Sale return processed - ${group.items.length} item(s) from ${group.saleNumber}`
@@ -287,7 +363,17 @@ export default function SaleReturnFormFrictionless({ onSave }) {
 
     } catch (error) {
       console.error("Error creating return:", error)
-      toast.error(error.response?.data?.message || "Failed to create return")
+      const msg = error.response?.data?.message || error.message || "Failed to create return"
+      // Map technical backend errors to user-friendly messages
+      if (msg.includes("composition total") || msg.includes("don't add up")) {
+        toast.error("The return item quantities don't match the packet contents. Please review your selection.")
+      } else if (msg.includes("returnComposition must be provided")) {
+        toast.error("Please specify which items you're returning from the packet.")
+      } else if (msg.includes("Original quantity mismatch")) {
+        toast.error("Sale data has changed. Please refresh and try again.")
+      } else {
+        toast.error(msg)
+      }
     } finally {
       setSubmitting(false)
     }
@@ -419,9 +505,7 @@ export default function SaleReturnFormFrictionless({ onSave }) {
             )}
           </div>
 
-          <p className="text-xs text-muted-foreground mt-3">
-            Start typing to search across all sales and customers. Click any sale to select items for return.
-          </p>
+        
         </CardContent>
       </Card>
 
@@ -485,15 +569,23 @@ export default function SaleReturnFormFrictionless({ onSave }) {
                             <Input
                               type="number"
                               min="0"
-                              max={item.returnableQty}
+                              max={item.isPacketSale && item.returnMode !== 'partial_items' ? item.returnablePackets : item.returnableQty}
                               value={item.returnQty}
                               onChange={(e) => updateItem(item.id, "returnQty", Number(e.target.value))}
                               className="h-8 w-20 text-right"
                             />
                           </div>
                           <p className="text-sm font-semibold">
-                            £{(item.returnQty * item.unitPrice).toFixed(2)}
+                            £{(item.isPacketSale && item.returnMode !== 'partial_items'
+                              ? item.returnQty * (item.totalItemsPerPacket || 1) * item.unitPrice
+                              : item.returnQty * item.unitPrice
+                            ).toFixed(2)}
                           </p>
+                          {item.isPacketSale && item.returnMode !== 'partial_items' && item.returnQty > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              {item.returnQty} pkt × {item.totalItemsPerPacket} items × £{item.unitPrice.toFixed(2)}
+                            </p>
+                          )}
                         </div>
                         
                         <Button
@@ -581,76 +673,216 @@ export default function SaleReturnFormFrictionless({ onSave }) {
           </DialogHeader>
 
           <div className="space-y-3 py-4 max-h-[60vh] overflow-y-auto">
-            {itemSelections.map((item, idx) => (
-              <div key={idx} className="flex items-start justify-between p-3 border rounded-lg hover:bg-muted/30">
-                <div className="flex-1">
-                  <div className="font-medium">
-                    {item.productName}
+            {itemSelections.map((item, idx) => {
+              const isPartialMode = item.isPacketSale && item.returnMode === 'partial_items'
+              const totalVariantSelected = isPartialMode
+                ? Object.values(item.variantSelections || {}).reduce((a, b) => a + b, 0)
+                : 0
+
+              return (
+                <div key={idx} className="p-3 border rounded-lg hover:bg-muted/30">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="font-medium">
+                        {item.productName}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {item.productCode}
+                        {item.variant && ` • ${item.variant.size}/${item.variant.color}`}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Sold: {item.isPacketSale ? `${item.packetsSold} packet(s)` : item.quantity} • Already returned: {item.alreadyReturned} • Available: {item.isPacketSale ? `${item.returnablePackets} packet(s)` : item.returnableQty}
+                      </div>
+                      {item.isPacketSale && item.packetBarcode && (
+                        <div className="text-xs text-muted-foreground font-mono mt-1">
+                          Barcode:  {item.packetBarcode}
+                        </div>
+                      )}
+                      {item.isPacketSale && item.totalItemsPerPacket && (
+                        <div className="text-xs text-blue-600 mt-1">
+                          <Package className="h-3 w-3 inline mr-1" />
+                          {item.totalItemsPerPacket} items per packet
+                        </div>
+                      )}
+                      <div className="text-sm font-medium mt-1">
+                        £{item.unitPrice.toFixed(2)} per item{item.isPacketSale ? ` (£${(item.unitPrice * (item.totalItemsPerPacket || 1)).toFixed(2)} per packet)` : ''}
+                      </div>
+                    </div>
+
+                    {/* Qty controls — only shown for whole-packet / loose mode */}
+                    {!isPartialMode && (
+                      <div className="flex items-center gap-2 ml-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => {
+                            setItemSelections(prev => prev.map((v, i) =>
+                              i === idx ? { ...v, returnQty: Math.max(0, v.returnQty - 1) } : v
+                            ))
+                          }}
+                          disabled={item.returnQty <= 0}
+                        >
+                          -
+                        </Button>
+                        <Input
+                          type="number"
+                          min="0"
+                          max={item.isPacketSale ? item.returnablePackets : item.returnableQty}
+                          className="w-20 h-8 text-center"
+                          value={item.returnQty > 0 ? item.returnQty : ""}
+                          onChange={(e) => {
+                            const maxVal = item.isPacketSale ? item.returnablePackets : item.returnableQty
+                            const val = Math.min(Math.max(0, parseInt(e.target.value) || 0), maxVal)
+                            setItemSelections(prev => prev.map((v, i) =>
+                              i === idx ? { ...v, returnQty: val } : v
+                            ))
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => {
+                            setItemSelections(prev => prev.map((v, i) => {
+                              const maxVal = v.isPacketSale ? v.returnablePackets : v.returnableQty
+                              return i === idx ? { ...v, returnQty: Math.min(maxVal, v.returnQty + 1) } : v
+                            }
+                            ))
+                          }}
+                        >
+                          +
+                        </Button>
+                        {item.isPacketSale && (
+                          <span className="text-xs text-muted-foreground ml-1">packet(s)</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Summary for partial mode */}
+                    {isPartialMode && totalVariantSelected > 0 && (
+                      <div className="ml-4 text-right">
+                        <div className="text-sm font-semibold text-blue-600">
+                          {totalVariantSelected} item(s)
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          from {item.returnableQty} available
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    {item.productCode}
-                    {item.variant && ` • ${item.variant.size}/${item.variant.color}`}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Sold: {item.quantity} • Already returned: {item.alreadyReturned} • Available: {item.returnableQty}
-                  </div>
-                  {item.isPacketSale && item.packetBarcode && (
-                    <div className="text-xs text-muted-foreground font-mono mt-1">
-                      Barcode: {item.packetBarcode}
+
+                  {/* Expandable partial item selection for packets */}
+                  {item.isPacketSale && item.packetComposition?.length > 0 && (
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setItemSelections(prev => prev.map((v, i) => {
+                            if (i !== idx) return v
+                            const newPartialExpanded = !v.partialExpanded
+                            return {
+                              ...v,
+                              partialExpanded: newPartialExpanded,
+                              returnMode: newPartialExpanded ? 'partial_items' : 'whole_packets',
+                              // Reset packet qty when switching to partial
+                              returnQty: newPartialExpanded ? 0 : v.returnQty
+                            }
+                          }))
+                        }}
+                        className="text-xs flex items-center gap-1 text-blue-600 hover:underline"
+                      >
+                        {item.partialExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        {item.partialExpanded ? 'Return whole packets instead' : 'Return individual items from packet'}
+                      </button>
+
+                      {item.partialExpanded && (
+                        <div className="bg-blue-50/50 p-3 rounded-md border border-blue-100 mt-2 space-y-2">
+                          <div className="text-xs font-semibold text-slate-700 border-b pb-1 mb-2">
+                            Select individual items to return:
+                          </div>
+                          {item.packetComposition.map((comp, vIdx) => {
+                            const key = `${comp.size}_${comp.color}`
+                            const currentQty = item.variantSelections?.[key] || 0
+                            const maxQty = comp.quantity * item.returnablePackets
+
+                            return (
+                              <div key={vIdx} className="flex items-center justify-between gap-2">
+                                <div>
+                                  <span className="text-sm font-medium">{comp.size} / {comp.color}</span>
+                                  <span className="text-xs text-muted-foreground ml-2">(max {maxQty})</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => {
+                                      setItemSelections(prev => prev.map((v, i) => {
+                                        if (i !== idx) return v
+                                        const newQty = Math.max(0, (v.variantSelections?.[key] || 0) - 1)
+                                        return { ...v, variantSelections: { ...v.variantSelections, [key]: newQty } }
+                                      }))
+                                    }}
+                                  >
+                                    -
+                                  </Button>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max={maxQty}
+                                    className="w-16 h-7 text-center text-sm"
+                                    value={currentQty > 0 ? currentQty : ""}
+                                    onChange={(e) => {
+                                      const val = Math.min(Math.max(0, parseInt(e.target.value) || 0), maxQty)
+                                      setItemSelections(prev => prev.map((v, i) => {
+                                        if (i !== idx) return v
+                                        return { ...v, variantSelections: { ...v.variantSelections, [key]: val } }
+                                      }))
+                                    }}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => {
+                                      setItemSelections(prev => prev.map((v, i) => {
+                                        if (i !== idx) return v
+                                        const newQty = Math.min(maxQty, (v.variantSelections?.[key] || 0) + 1)
+                                        return { ...v, variantSelections: { ...v.variantSelections, [key]: newQty } }
+                                      }))
+                                    }}
+                                  >
+                                    +
+                                  </Button>
+                                </div>
+                              </div>
+                            )
+                          })}
+                          <div className="text-xs font-medium text-right border-t pt-2 mt-2 text-blue-600">
+                            Returning {totalVariantSelected} of {item.returnableQty} items
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
-                  <div className="text-sm font-medium mt-1">
-                    £{item.unitPrice.toFixed(2)} per unit
-                  </div>
                 </div>
-                <div className="flex items-center gap-2 ml-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => {
-                      setItemSelections(prev => prev.map((v, i) =>
-                        i === idx ? { ...v, returnQty: Math.max(0, v.returnQty - 1) } : v
-                      ))
-                    }}
-                  >
-                    -
-                  </Button>
-                  <Input
-                    type="number"
-                    min="0"
-                    max={item.returnableQty}
-                    className="w-20 h-8 text-center"
-                    value={item.returnQty > 0 ? item.returnQty : ""}
-                    onChange={(e) => {
-                      const val = Math.min(Math.max(0, parseInt(e.target.value) || 0), item.returnableQty)
-                      setItemSelections(prev => prev.map((v, i) =>
-                        i === idx ? { ...v, returnQty: val } : v
-                      ))
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => {
-                      setItemSelections(prev => prev.map((v, i) =>
-                        i === idx ? { ...v, returnQty: Math.min(v.returnableQty, v.returnQty + 1) } : v
-                      ))
-                    }}
-                  >
-                    +
-                  </Button>
-                </div>
-              </div>
-            ))}
+              )
+            })}
 
             <div className="flex justify-between items-center bg-primary/10 p-3 rounded-lg border border-primary/20">
               <span className="font-semibold">Total Items to Return:</span>
               <span className="font-bold text-lg">
-                {itemSelections.reduce((sum, v) => sum + v.returnQty, 0)}
+                {itemSelections.reduce((sum, v) => {
+                  if (v.isPacketSale && v.returnMode === 'partial_items') {
+                    return sum + Object.values(v.variantSelections || {}).reduce((a, b) => a + b, 0)
+                  }
+                  return sum + (v.isPacketSale ? v.returnQty * (v.totalItemsPerPacket || 1) : v.returnQty)
+                }, 0)}
               </span>
             </div>
           </div>

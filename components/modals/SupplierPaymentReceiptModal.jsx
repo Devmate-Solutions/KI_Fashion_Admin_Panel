@@ -3,7 +3,7 @@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Printer, Receipt } from "lucide-react"
+import { Printer, FileText } from "lucide-react"
 
 function formatNumber(n) {
   const num = Number(n || 0)
@@ -23,7 +23,7 @@ function buildPrintHtml(receipt) {
   const distributionRows = (receipt.distributions || []).map((distribution) => `
     <tr>
       <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${distribution.isAdvance ? "SUPPLIER ADVANCE" : (distribution.orderNumber || distribution.dispatchOrderId?.orderNumber || "-")}</td>
-      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">EUR ${formatNumber(distribution.amountApplied)}</td>
+      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">${formatNumber(distribution.amountApplied)}</td>
       <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">${formatNumber(distribution.previousBalance)}</td>
       <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">${formatNumber(distribution.newBalance)}</td>
     </tr>
@@ -64,7 +64,7 @@ function buildPrintHtml(receipt) {
         </div>
         <div class="card">
           <h3>Receipt Details</h3>
-          <p><strong>Total:</strong> EUR ${formatNumber(receipt.totalAmount)}</p>
+          <p><strong>Total:</strong> ${formatNumber(receipt.totalAmount)}</p>
           <p><strong>Date:</strong> ${formatDateTime({ paymentDate: receipt.paymentDate })}</p>
           <p><strong>Method:</strong> ${(receipt.paymentMethodSummary || "cash").toUpperCase()}</p>
           <p><strong>Created By:</strong> ${receipt.createdBy?.name || "System"}</p>
@@ -74,11 +74,11 @@ function buildPrintHtml(receipt) {
       <div class="grid">
         <div class="card">
           <h3>Balance Before</h3>
-          <p><strong>EUR ${formatNumber(Math.abs(receipt.balanceBefore || 0))}</strong>${receipt.balanceBefore < 0 ? " CR" : " DR"}</p>
+          <p><strong>${formatNumber(Math.abs(receipt.balanceBefore || 0))}</strong>${receipt.balanceBefore < 0 ? " CR" : " DR"}</p>
         </div>
         <div class="card">
           <h3>Balance After</h3>
-          <p><strong>EUR ${formatNumber(Math.abs(receipt.balanceAfter || 0))}</strong>${receipt.balanceAfter < 0 ? " CR" : " DR"}</p>
+          <p><strong>${formatNumber(Math.abs(receipt.balanceAfter || 0))}</strong>${receipt.balanceAfter < 0 ? " CR" : " DR"}</p>
         </div>
       </div>
 
@@ -100,7 +100,7 @@ function buildPrintHtml(receipt) {
 
       <div class="footer">
         <p>Orders affected: ${receipt.ordersAffected || 0}</p>
-        <p>Advance amount: EUR ${formatNumber(receipt.advanceAmount || 0)}</p>
+        <p>Advance amount: ${formatNumber(receipt.advanceAmount || 0)}</p>
       </div>
     </body>
     </html>
@@ -126,7 +126,7 @@ export default function SupplierPaymentReceiptModal({ open, onOpenChange, receip
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-              <Receipt className="h-5 w-5 text-blue-600" />
+              <FileText className="h-5 w-5 text-blue-600" />
             </div>
             <div>
               <DialogTitle>Supplier Payment Receipt</DialogTitle>
@@ -146,7 +146,7 @@ export default function SupplierPaymentReceiptModal({ open, onOpenChange, receip
               </div>
               <div className="rounded-lg border p-4 space-y-1">
                 <p className="text-xs font-semibold text-muted-foreground uppercase">Receipt Details</p>
-                <p className="font-semibold">EUR {formatNumber(receipt.totalAmount)}</p>
+                <p className="font-semibold">{formatNumber(receipt.totalAmount)}</p>
                 <p className="text-sm text-muted-foreground">{formatDateTime({ paymentDate: receipt.paymentDate })}</p>
                 <p className="text-sm text-muted-foreground uppercase">{receipt.paymentMethodSummary || "cash"}</p>
               </div>
@@ -156,13 +156,13 @@ export default function SupplierPaymentReceiptModal({ open, onOpenChange, receip
               <div className="rounded-lg bg-muted/30 p-4">
                 <p className="text-xs font-semibold text-muted-foreground uppercase">Balance Before</p>
                 <p className={`text-lg font-bold ${(receipt.balanceBefore || 0) >= 0 ? "text-red-600" : "text-green-600"}`}>
-                  EUR {formatNumber(Math.abs(receipt.balanceBefore || 0))} {(receipt.balanceBefore || 0) < 0 ? "CR" : "DR"}
+                  {formatNumber(Math.abs(receipt.balanceBefore || 0))} {(receipt.balanceBefore || 0) < 0 ? "CR" : "DR"}
                 </p>
               </div>
               <div className="rounded-lg bg-muted/30 p-4">
                 <p className="text-xs font-semibold text-muted-foreground uppercase">Balance After</p>
                 <p className={`text-lg font-bold ${(receipt.balanceAfter || 0) >= 0 ? "text-red-600" : "text-green-600"}`}>
-                  EUR {formatNumber(Math.abs(receipt.balanceAfter || 0))} {(receipt.balanceAfter || 0) < 0 ? "CR" : "DR"}
+                  {formatNumber(Math.abs(receipt.balanceAfter || 0))} {(receipt.balanceAfter || 0) < 0 ? "CR" : "DR"}
                 </p>
               </div>
             </div>
@@ -185,7 +185,7 @@ export default function SupplierPaymentReceiptModal({ open, onOpenChange, receip
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold tabular-nums">EUR {formatNumber(distribution.amountApplied)}</p>
+                      <p className="font-bold tabular-nums">{formatNumber(distribution.amountApplied)}</p>
                     </div>
                   </div>
                 )
@@ -199,7 +199,7 @@ export default function SupplierPaymentReceiptModal({ open, onOpenChange, receip
               </div>
               <div className="rounded-lg border p-4">
                 <p className="text-xs font-semibold text-muted-foreground uppercase">Advance Amount</p>
-                <p className="text-lg font-bold text-amber-700">EUR {formatNumber(receipt.advanceAmount || 0)}</p>
+                <p className="text-lg font-bold text-amber-700">{formatNumber(receipt.advanceAmount || 0)}</p>
               </div>
               <div className="rounded-lg border p-4">
                 <p className="text-xs font-semibold text-muted-foreground uppercase">Created By</p>

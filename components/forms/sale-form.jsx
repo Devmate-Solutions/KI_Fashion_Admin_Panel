@@ -1181,7 +1181,7 @@ export default function SaleForm({ onSave }) {
                           onChange={(e) => {
                             const value = e.target.value;
                             const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                            updateRow(row.id, "unitPrice", sanitized === "" ? "" : Number(sanitized));
+                            updateRow(row.id, "unitPrice", sanitized);
                           }}
                           onBlur={(e) => {
                             const val = parseFloat(e.target.value)
@@ -1204,7 +1204,7 @@ export default function SaleForm({ onSave }) {
                           const value = e.target.value;
                           // Allow only numbers and one decimal point
                           const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                          updateRow(row.id, "unitPrice", sanitized === "" ? "" : Number(sanitized));
+                          updateRow(row.id, "unitPrice", sanitized);
                         }}
                         onBlur={(e) => {
                           const val = parseFloat(e.target.value)

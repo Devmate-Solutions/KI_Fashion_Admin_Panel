@@ -59,6 +59,11 @@ export function AddBuyerForm({ open, onClose, onSubmit, loading = false }) {
   }, [open])
 
   const handleChange = (field, value) => {
+    if (field === 'phoneAreaCode' || field === 'alternatePhoneAreaCode' || field === 'landlineAreaCode') {
+      value = value.replace(/[^\d+]/g, '')
+    } else if (field === 'phone' || field === 'alternatePhone' || field === 'landline') {
+      value = value.replace(/\D/g, '')
+    }
     setFormData(prev => ({ ...prev, [field]: value }))
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }))
@@ -73,11 +78,6 @@ export function AddBuyerForm({ open, onClose, onSubmit, loading = false }) {
   }
 
   const validate = () => {
-    const newErrors = {}
-
-    if (!formData.name?.trim()) {
-      newErrors.name = 'Name is required'
-    }
 
     if (!formData.phone?.trim()) {
       newErrors.phone = 'Phone is required'
@@ -392,6 +392,11 @@ export function EditBuyerForm({ open, buyer, onClose, onSubmit, loading = false 
   }, [open, buyer])
 
   const handleChange = (field, value) => {
+    if (field === 'phoneAreaCode' || field === 'alternatePhoneAreaCode' || field === 'landlineAreaCode') {
+      value = value.replace(/[^\d+]/g, '')
+    } else if (field === 'phone' || field === 'alternatePhone' || field === 'landline') {
+      value = value.replace(/\D/g, '')
+    }
     setFormData(prev => ({ ...prev, [field]: value }))
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }))

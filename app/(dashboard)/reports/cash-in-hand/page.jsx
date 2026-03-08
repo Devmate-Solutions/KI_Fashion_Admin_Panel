@@ -18,23 +18,110 @@ function formatDate(date) {
     return new Date(date).toLocaleDateString("en-GB")
 }
 
+// --- Duplicate-detection helpers ---
+function getLocalDateKey(d) {
+    const dt = new Date(d)
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`
+}
+
+function normalizeName(n) {
+    return (n || "").trim().toLowerCase()
+}
+
+/** Build a "payment budget" per buyer per day from Sales rows */
+function buildSalePaymentBudget(rows) {
+    const budget = {}
+    for (const r of rows) {
+        if (r.transactionType !== "Sales") continue
+        const key = `${normalizeName(r.name)}|${getLocalDateKey(r.date)}`
+        if (!budget[key]) budget[key] = { cash: 0, bank: 0 }
+        budget[key].cash += Number(r.salesCash || 0)
+        budget[key].bank += Number(r.salesBank || 0)
+    }
+    return budget
+}
+
+/** Filter ledger rows that duplicate same-day sale payments */
+function applyDuplicateFilter(rows) {
+    const budget = buildSalePaymentBudget(rows)
+    const result = []
+    for (const r of rows) {
+        if (r.transactionType !== "Ledger") {
+            result.push(r)
+            continue
+        }
+        const key = `${normalizeName(r.name)}|${getLocalDateKey(r.date)}`
+        const b = budget[key]
+        if (!b) {
+            result.push(r)
+            continue
+        }
+        let cash = Number(r.ledgerCash || 0)
+        let bank = Number(r.ledgerBank || 0)
+        const subCash = Math.min(cash, b.cash)
+        const subBank = Math.min(bank, b.bank)
+        b.cash -= subCash
+        b.bank -= subBank
+        cash -= subCash
+        bank -= subBank
+        if (cash > 0 || bank > 0) {
+            result.push({ ...r, ledgerCash: cash, ledgerBank: bank })
+        }
+        // else row is fully duplicate → skip it
+    }
+    return result
+}
+
+/** Recompute running balance from scratch on filtered rows */
+function recomputeRunningBalance(rows) {
+    let running = 0
+    return rows.map((r) => {
+        const inflow =
+            (Number(r.salesCash || 0) + Number(r.salesBank || 0)) +
+            (Number(r.ledgerCash || 0) + Number(r.ledgerBank || 0))
+        const outflow = Number(r.expenseCash || 0) + Number(r.expenseBank || 0)
+        running += inflow - outflow
+        return { ...r, totalCashInHand: running }
+    })
+}
+
 // Dash placeholder for columns that don't apply to a transaction type
 const DASH = <span className="text-muted-foreground">—</span>
 
 export default function CashInHandReportPage() {
     const [dateRange, setDateRange] = useState(getDefaultDateRange())
+    const [hideDuplicates, setHideDuplicates] = useState(false)
 
     const { data, isLoading, isError, error, refetch } = useCashInHandReport({
         startDate: dateRange.from,
         endDate: dateRange.to,
     })
 
-    const transactions = useMemo(() => data?.transactions || [], [data])
-    const summary = useMemo(() => data?.summary || {}, [data])
+    const rawTransactions = useMemo(() => data?.transactions || [], [data])
+    const serverSummary = useMemo(() => data?.summary || {}, [data])
+
+    // Apply duplicate filter when toggled
+    const transactions = useMemo(() => {
+        if (!hideDuplicates) return rawTransactions
+        return recomputeRunningBalance(applyDuplicateFilter(rawTransactions))
+    }, [rawTransactions, hideDuplicates])
+
+    // Recompute summary from the (possibly filtered) transactions
+    const summary = useMemo(() => {
+        if (!hideDuplicates) return serverSummary
+        const s = { totalSalesCash: 0, totalSalesBank: 0, totalLedgerCash: 0, totalLedgerBank: 0, totalExpenseCash: 0, totalExpenseBank: 0 }
+        for (const t of transactions) {
+            if (t.transactionType === "Sales") { s.totalSalesCash += Number(t.salesCash || 0); s.totalSalesBank += Number(t.salesBank || 0) }
+            if (t.transactionType === "Ledger") { s.totalLedgerCash += Number(t.ledgerCash || 0); s.totalLedgerBank += Number(t.ledgerBank || 0) }
+            if (t.transactionType === "Expense") { s.totalExpenseCash += Number(t.expenseCash || 0); s.totalExpenseBank += Number(t.expenseBank || 0) }
+        }
+        s.netCashInHand = (s.totalSalesCash + s.totalSalesBank) + (s.totalLedgerCash + s.totalLedgerBank) - (s.totalExpenseCash + s.totalExpenseBank)
+        return s
+    }, [hideDuplicates, serverSummary, transactions])
 
     // Summary card values
     const totalCashIn = (summary.totalSalesCash || 0) + (summary.totalSalesBank || 0)
-    const totalLedgerOut = (summary.totalLedgerCash || 0) + (summary.totalLedgerBank || 0)
+    const totalLedgerIn = (summary.totalLedgerCash || 0) + (summary.totalLedgerBank || 0)
     const totalExpenseOut = (summary.totalExpenseCash || 0) + (summary.totalExpenseBank || 0)
     const netCashInHand = summary.netCashInHand || 0
 
@@ -71,7 +158,7 @@ export default function CashInHandReportPage() {
             render: (row) => {
                 const styles = {
                     Sales: "bg-emerald-100 text-emerald-700",
-                    "Ledger": "bg-blue-100 text-blue-700",
+                    Ledger: "bg-blue-100 text-blue-700",
                     Expense: "bg-red-100 text-red-700",
                 }
                 const cls = styles[row.transactionType] || "bg-gray-100 text-gray-700"
@@ -124,7 +211,7 @@ export default function CashInHandReportPage() {
                     </span>
                     : DASH,
         },
-        // Ledger columns
+        // Ledger columns (buyer payments received)
         {
             header: "Ledger Cash",
             accessor: "ledgerCash",
@@ -162,7 +249,7 @@ export default function CashInHandReportPage() {
                     ? <span className="text-red-700 font-medium">{currency(row.expenseBank)}</span>
                     : DASH,
         },
-        // Running net (same value for all rows = period net)
+        // Running cumulative cash-in-hand balance
         {
             header: "Cash in Hand",
             accessor: "totalCashInHand",
@@ -199,8 +286,8 @@ export default function CashInHandReportPage() {
             subtext: `Cash: ${currency(summary.totalSalesCash || 0)} | Bank: ${currency(summary.totalSalesBank || 0)}`,
         },
         {
-            label: "Ledger Paid Out",
-            value: currency(totalLedgerOut),
+            label: "Buyer Payments Received",
+            value: currency(totalLedgerIn),
             color: "text-blue-600",
             subtext: `Cash: ${currency(summary.totalLedgerCash || 0)} | Bank: ${currency(summary.totalLedgerBank || 0)}`,
         },
@@ -214,14 +301,14 @@ export default function CashInHandReportPage() {
             label: "Net Cash in Hand",
             value: currency(netCashInHand),
             color: netCashInHand >= 0 ? "text-emerald-700" : "text-red-600",
-            subtext: "Sales − Ledger Payments − Expenses",
+            subtext: "Sales + Buyer Payments − Expenses",
         },
     ]
 
     return (
         <ReportLayout
             title="Cash in Hand Report"
-            description="Unified view of sales inflows, supplier payments, and expenses for the selected period"
+            description="Unified view of sales inflows, buyer payments, and expenses for the selected period"
             dateRange={dateRange}
             onDateChange={setDateRange}
             onRefresh={refetch}
@@ -230,7 +317,23 @@ export default function CashInHandReportPage() {
             error={isError ? error : null}
             summary={summaryCards}
         >
-            {/* {JSON.stringify(transactions)} */}
+            {/* Toggle for hiding duplicate same-day ledger entries */}
+            <div className="flex items-center gap-2 mb-3 print:hidden">
+                <input
+                    id="hideDuplicates"
+                    type="checkbox"
+                    checked={hideDuplicates}
+                    onChange={(e) => setHideDuplicates(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300"
+                />
+                <label htmlFor="hideDuplicates" className="text-sm font-medium select-none cursor-pointer">
+                    Hide sale-day duplicates
+                </label>
+                <span className="text-xs text-muted-foreground">
+                    (removes ledger entries that duplicate at-sale payments on the same day)
+                </span>
+            </div>
+
             <PrintableTable
                 columns={columns}
                 data={transactions}

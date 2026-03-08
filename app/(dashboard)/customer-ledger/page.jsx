@@ -429,7 +429,7 @@ export default function CustomerLedgerPage() {
       .map(d => `
         <tr>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">${d.reference}</td>
-          <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">£${d.amount.toFixed(2)}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">${d.amount.toFixed(2)}</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">${d.isAdvance ? 'Advance' : 'Applied'}</td>
         </tr>
       `).join('')
@@ -498,9 +498,9 @@ export default function CustomerLedgerPage() {
         </table>
 
         <div class="totals">
-          <p><strong>Balance Before:</strong> £${receipt.balances.before.toFixed(2)}</p>
-          <p class="total"><strong>Total Received:</strong> £${receipt.payment.totalAmount.toFixed(2)}</p>
-          <p><strong>Balance After:</strong> £${receipt.balances.after.toFixed(2)}</p>
+          <p><strong>Balance Before:</strong> ${receipt.balances.before.toFixed(2)}</p>
+          <p class="total"><strong>Total Received:</strong> ${receipt.payment.totalAmount.toFixed(2)}</p>
+          <p><strong>Balance After:</strong> ${receipt.balances.after.toFixed(2)}</p>
         </div>
 
         ${receipt.notes ? `<p><strong>Notes:</strong> ${receipt.notes}</p>` : ''}
@@ -643,7 +643,7 @@ export default function CustomerLedgerPage() {
         accessor: "creditAmount",
         render: (row) => (
           <span className={row.paymentDirection !== 'debit' ? "text-green-600 font-bold" : "text-muted-foreground"}>
-            {row.paymentDirection !== 'debit' ? `£${formatNumber(row.totalAmount)}` : '-'}
+            {row.paymentDirection !== 'debit' ? `${formatNumber(row.totalAmount)}` : '-'}
           </span>
         )
       },
@@ -652,7 +652,7 @@ export default function CustomerLedgerPage() {
         accessor: "balanceAfter",
         render: (row) => (
           <span className={`font-bold tabular-nums ${row.balanceAfter > 0 ? 'text-red-600' : row.balanceAfter < 0 ? 'text-green-600' : ''}`}>
-            £{formatNumber(Math.abs(row.balanceAfter))}
+            {formatNumber(Math.abs(row.balanceAfter))}
             {row.balanceAfter < 0 && <span className="text-xs ml-1">(CR)</span>}
           </span>
         )
@@ -935,15 +935,15 @@ export default function CustomerLedgerPage() {
         <div class="summary-cards">
           <div class="summary-card green">
             <div class="label">Total Credits (Received)</div>
-            <div class="value">£${formatNumber(totalCredits)}</div>
+            <div class="value">${formatNumber(totalCredits)}</div>
           </div>
           <div class="summary-card red">
             <div class="label">Total Debits (Issued)</div>
-            <div class="value">£${formatNumber(totalDebits)}</div>
+            <div class="value">${formatNumber(totalDebits)}</div>
           </div>
           <div class="summary-card blue">
             <div class="label">Net Amount</div>
-            <div class="value">£${formatNumber(Math.abs(netTotal))}</div>
+            <div class="value">${formatNumber(Math.abs(netTotal))}</div>
           </div>
           <div class="summary-card amber">
             <div class="label">Total Transactions</div>
@@ -969,7 +969,7 @@ export default function CustomerLedgerPage() {
           <div class="info-box">
             <h3>Current Balance</h3>
             <p class="highlight ${currentBalance > 0 ? 'text-red' : 'text-green'}">
-              £${formatNumber(Math.abs(currentBalance))}
+              ${formatNumber(Math.abs(currentBalance))}
               ${currentBalance < 0 ? ' (Credit)' : currentBalance > 0 ? ' (Due)' : ''}
             </p>
           </div>
@@ -1003,13 +1003,13 @@ export default function CustomerLedgerPage() {
                   </span>
                 </td>
                 <td class="text-right ${row.paymentDirection === 'debit' ? 'text-red font-bold' : 'text-muted'}">
-                  ${row.paymentDirection === 'debit' ? '£' + formatNumber(row.totalAmount) : '-'}
+                  ${row.paymentDirection === 'debit' ? formatNumber(row.totalAmount) : '-'}
                 </td>
                 <td class="text-right ${row.paymentDirection !== 'debit' ? 'text-green font-bold' : 'text-muted'}">
-                  ${row.paymentDirection !== 'debit' ? '£' + formatNumber(row.totalAmount) : '-'}
+                  ${row.paymentDirection !== 'debit' ? formatNumber(row.totalAmount) : '-'}
                 </td>
                 <td class="text-right font-bold ${row.balanceAfter > 0 ? 'text-red' : row.balanceAfter < 0 ? 'text-green' : ''}">
-                  £${formatNumber(Math.abs(row.balanceAfter))}${row.balanceAfter < 0 ? ' (CR)' : ''}
+                  ${formatNumber(Math.abs(row.balanceAfter))}${row.balanceAfter < 0 ? ' (CR)' : ''}
                 </td>
                 <td class="text-center" style="text-transform: capitalize;">${row.paymentMethod}</td>
                 <td class="text-center">
@@ -1028,20 +1028,20 @@ export default function CustomerLedgerPage() {
           <div class="summary-grid">
             <div class="summary-item">
               <div class="label">Total Credits (Received)</div>
-              <div class="value text-green">£${formatNumber(totalCredits)}</div>
+              <div class="value text-green">${formatNumber(totalCredits)}</div>
             </div>
             <div class="summary-item">
               <div class="label">Total Debits (Issued)</div>
-              <div class="value text-red">£${formatNumber(totalDebits)}</div>
+              <div class="value text-red">${formatNumber(totalDebits)}</div>
             </div>
             <div class="summary-item">
               <div class="label">Net Amount</div>
-              <div class="value ${netTotal >= 0 ? 'text-green' : 'text-red'}">£${formatNumber(Math.abs(netTotal))}</div>
+              <div class="value ${netTotal >= 0 ? 'text-green' : 'text-red'}">${formatNumber(Math.abs(netTotal))}</div>
             </div>
             ${!isAllCustomers ? `
             <div class="summary-item">
               <div class="label">Current Balance</div>
-              <div class="value ${currentBalance > 0 ? 'text-red' : 'text-green'}">£${formatNumber(Math.abs(currentBalance))}</div>
+              <div class="value ${currentBalance > 0 ? 'text-red' : 'text-green'}">${formatNumber(Math.abs(currentBalance))}</div>
             </div>
             ` : ''}
           </div>
@@ -1186,49 +1186,49 @@ export default function CustomerLedgerPage() {
               </div>
             )
           },
-          {
-            label: "Payment History",
-            content: (
-              <div className="space-y-6">
-                {/* Filters Bar */}
-                <div className="bg-white rounded-lg border p-6 flex flex-wrap gap-4 items-end">
-                  <div className="w-[300px]">
-                    <Label className="mb-2 block">Select Buyer</Label>
-                    <Combobox
-                      options={comboboxOptions}
-                      value={selectedBuyerId}
-                      onValueChange={setSelectedBuyerId}
-                      placeholder="Search Buyers..."
-                      searchPlaceholder="Type buyer name..."
-                      loading={buyersLoading}
-                    />
-                  </div>
-                </div>
+          // {
+          //   label: "Payment History",
+          //   content: (
+          //     <div className="space-y-6">
+          //       {/* Filters Bar */}
+          //       <div className="bg-white rounded-lg border p-6 flex flex-wrap gap-4 items-end">
+          //         <div className="w-[300px]">
+          //           <Label className="mb-2 block">Select Buyer</Label>
+          //           <Combobox
+          //             options={comboboxOptions}
+          //             value={selectedBuyerId}
+          //             onValueChange={setSelectedBuyerId}
+          //             placeholder="Search Buyers..."
+          //             searchPlaceholder="Type buyer name..."
+          //             loading={buyersLoading}
+          //           />
+          //         </div>
+          //       </div>
 
-                {!selectedBuyerId ? (
-                  <div className="rounded-lg border border-border bg-card p-12 text-center">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
-                      <Users className="w-8 h-8 text-muted-foreground" />
-                    </div>
-                    <p className="text-sm font-medium text-foreground mb-1">No customer selected</p>
-                    <p className="text-xs text-muted-foreground">Select a customer to view their payment history</p>
-                  </div>
-                ) : (
-                  <div className="bg-white rounded-lg border">
-                    {paymentHistoryLoading ? (
-                      <div className="p-12 flex justify-center"><Loader2 className="animate-spin" /></div>
-                    ) : paymentHistoryTransactions.length === 0 ? (
-                      <div className="p-12 text-center text-muted-foreground">
-                        <p>No payment history found{selectedBuyerId === 'all' ? '' : ' for this customer'}.</p>
-                      </div>
-                    ) : (
-                      <DataTable columns={paymentHistoryColumns} data={paymentHistoryTransactions} paginate={false} />
-                    )}
-                  </div>
-                )}
-              </div>
-            )
-          },
+          //       {!selectedBuyerId ? (
+          //         <div className="rounded-lg border border-border bg-card p-12 text-center">
+          //           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
+          //             <Users className="w-8 h-8 text-muted-foreground" />
+          //           </div>
+          //           <p className="text-sm font-medium text-foreground mb-1">No customer selected</p>
+          //           <p className="text-xs text-muted-foreground">Select a customer to view their payment history</p>
+          //         </div>
+          //       ) : (
+          //         <div className="bg-white rounded-lg border">
+          //           {paymentHistoryLoading ? (
+          //             <div className="p-12 flex justify-center"><Loader2 className="animate-spin" /></div>
+          //           ) : paymentHistoryTransactions.length === 0 ? (
+          //             <div className="p-12 text-center text-muted-foreground">
+          //               <p>No payment history found{selectedBuyerId === 'all' ? '' : ' for this customer'}.</p>
+          //             </div>
+          //           ) : (
+          //             <DataTable columns={paymentHistoryColumns} data={paymentHistoryTransactions} paginate={false} />
+          //           )}
+          //         </div>
+          //       )}
+          //     </div>
+          //   )
+          // },
           {
             label: "Payment Receipts",
             content: (
@@ -1347,7 +1347,7 @@ export default function CustomerLedgerPage() {
                 </div>
                 <div className="rounded-lg border p-3 space-y-1">
                   <p className="text-xs font-semibold text-muted-foreground uppercase">Payment Details</p>
-                  <p className="font-medium">£{formatNumber(receiptData.payment?.totalAmount)}</p>
+                  <p className="font-medium">{formatNumber(receiptData.payment?.totalAmount)}</p>
                   <p className="text-sm text-muted-foreground capitalize">{receiptData.payment?.paymentMethod} &middot; {formatDateTime({ date: receiptData.date })}</p>
                 </div>
               </div>
@@ -1357,14 +1357,14 @@ export default function CustomerLedgerPage() {
                 <div className="rounded-lg bg-muted/30 p-3">
                   <p className="text-xs font-semibold text-muted-foreground">Balance Before</p>
                   <p className={`text-lg font-bold ${receiptData.balances?.before > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    £{formatNumber(Math.abs(receiptData.balances?.before || 0))}
+                    {formatNumber(Math.abs(receiptData.balances?.before || 0))}
                     {receiptData.balances?.before < 0 && <span className="text-xs ml-1">(CR)</span>}
                   </p>
                 </div>
                 <div className="rounded-lg bg-muted/30 p-3">
                   <p className="text-xs font-semibold text-muted-foreground">Balance After</p>
                   <p className={`text-lg font-bold ${receiptData.balances?.after > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    £{formatNumber(Math.abs(receiptData.balances?.after || 0))}
+                    {formatNumber(Math.abs(receiptData.balances?.after || 0))}
                     {receiptData.balances?.after < 0 && <span className="text-xs ml-1">(CR)</span>}
                   </p>
                 </div>
@@ -1386,7 +1386,7 @@ export default function CustomerLedgerPage() {
                           {d.isAdvance ? 'Stored as customer advance' : d.reference || 'Sale'}
                         </span>
                       </div>
-                      <span className="font-bold tabular-nums">£{formatNumber(d.amount)}</span>
+                      <span className="font-bold tabular-nums">{formatNumber(d.amount)}</span>
                     </div>
                   ))}
                 </div>
@@ -1448,7 +1448,7 @@ export default function CustomerLedgerPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-muted-foreground">Amount:</span>
-                  <span className="text-sm font-bold">£{formatNumber(selectedPayment.totalAmount)}</span>
+                  <span className="text-sm font-bold">{formatNumber(selectedPayment.totalAmount)}</span>
                 </div>
               </div>
             )}

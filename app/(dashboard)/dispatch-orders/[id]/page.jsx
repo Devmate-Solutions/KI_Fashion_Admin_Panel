@@ -71,6 +71,7 @@ import {
 import toast from "react-hot-toast";
 import { dispatchOrdersAPI } from "@/lib/api/endpoints/dispatchOrders";
 import ProductImageGallery from "@/components/ui/ProductImageGallery";
+import ImageLightbox from "@/components/ui/ImageLightbox";
 import PacketCompositionView from "@/components/ui/PacketCompositionView";
 import ArrayInput from "@/components/ui/ArrayInput";
 import PacketConfigurationModal from "@/components/modals/PacketConfigurationModal";
@@ -157,6 +158,9 @@ export default function DispatchOrderDetailPage({ params }) {
   const [showAddItemForm, setShowAddItemForm] = useState(false);
   // Per-row image uploading state {itemIndex: boolean}
   const [imageUploading, setImageUploading] = useState({});
+
+  // Lightbox state for viewing pending-item images
+  const [pendingGallery, setPendingGallery] = useState({ open: false, images: [], itemIndex: null });
 
   // Track which order field is being edited (for double-click editing)
   const [editingField, setEditingField] = useState(null); // 'logisticsCompany', 'dispatchDate', 'discount', null
@@ -856,15 +860,15 @@ export default function DispatchOrderDetailPage({ params }) {
   };
 
   const handleSubmitApproval = useCallback(() => {
-     
+
     if (!dispatchOrderId) {
-       
+
       return;
     }
 
     // Validate before submitting
     const { isValid, errors } = validateOrderBeforeConfirm();
-     
+
 
     if (!isValid) {
       toast.error(
@@ -881,7 +885,7 @@ export default function DispatchOrderDetailPage({ params }) {
       return;
     }
 
-     
+
 
     // Prepare items array with edited values and exclude removed items
     const finalItems = [];
@@ -950,8 +954,6 @@ export default function DispatchOrderDetailPage({ params }) {
       isTotalBoxesConfirmed: totalBoxesConfirmed,
     };
 
-     
-
     submitApprovalMutation.mutate(approvalData, {
       onSuccess: () => {
         setCashPayment("0");
@@ -982,15 +984,15 @@ export default function DispatchOrderDetailPage({ params }) {
   ]);
 
   const handleConfirm = useCallback(() => {
-     
+
     if (!dispatchOrderId) {
-       
+
       return;
     }
 
     // Validate before confirming
     const { isValid, errors } = validateOrderBeforeConfirm();
-     
+
 
     if (!isValid) {
       toast.error(
@@ -1007,7 +1009,7 @@ export default function DispatchOrderDetailPage({ params }) {
       return;
     }
 
-     
+
 
     // Prepare items array with edited values and exclude removed items
     const finalItems = [];
@@ -1086,7 +1088,7 @@ export default function DispatchOrderDetailPage({ params }) {
       isTotalBoxesConfirmed: totalBoxesConfirmed,
     };
 
-     
+
 
     confirmMutation.mutate(confirmData, {
       onSuccess: () => {
@@ -1334,377 +1336,245 @@ export default function DispatchOrderDetailPage({ params }) {
         </div>
       </div>
 
-      {/* Order Info - Enhanced Design */}
+      {/* Order Info */}
       <Card className="border border-border bg-card">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Info className="h-4 w-4 text-primary" />
-            </div>
-            <CardTitle className="text-lg font-semibold">Order Information</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Supplier - Always Read-Only */}
-            <div className="space-y-1">
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Supplier (Not Editable)
-              </Label>
-              <p className="font-semibold text-base text-foreground">
-                {dispatchOrder.supplier?.name ||
-                  dispatchOrder.supplier?.company ||
-                  "—"}
+        <CardContent className="pt-4 pb-4">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+
+            {/* ── PRIMARY: Supplier ── */}
+            <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5 border-b sm:border-b-0 sm:border-r border-border pb-4 sm:pb-0 sm:pr-6">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Supplier</p>
+              <p className="text-xl font-bold text-foreground truncate">
+                {dispatchOrder.supplier?.name || dispatchOrder.supplier?.company || "—"}
               </p>
-              {dispatchOrder.supplier?.phone && (
-                <p className="text-sm text-muted-foreground">
-                  {(dispatchOrder.supplier?.phoneAreaCode
-                    ? `${dispatchOrder.supplier.phoneAreaCode}-`
-                    : "") + dispatchOrder.supplier.phone}
-                </p>
-              )}
-              {dispatchOrder.supplier?.email && (
-                <p className="text-sm text-muted-foreground">
-                  {dispatchOrder.supplier.email}
+              {(dispatchOrder.supplier?.phone || dispatchOrder.supplier?.email) && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {dispatchOrder.supplier?.phone
+                    ? (dispatchOrder.supplier?.phoneAreaCode ? `${dispatchOrder.supplier.phoneAreaCode}-` : "") + dispatchOrder.supplier.phone
+                    : null}
+                  {dispatchOrder.supplier?.phone && dispatchOrder.supplier?.email ? " · " : null}
+                  {dispatchOrder.supplier?.email}
                 </p>
               )}
             </div>
 
-            {/* Logistics Company - Double-click to edit for pending orders */}
-            <div className="space-y-1">
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Logistics Company{" "}
-                {isPending && <span className="text-destructive">*</span>}
-              </Label>
-              {isPending && editingField === "logisticsCompany" ? (
-                <div className="flex gap-1">
-                  <Select
-                    value={editedLogisticsCompany || ""}
-                    onValueChange={setEditedLogisticsCompany}
-                    onOpenChange={(open) => {
-                      if (!open) {
-                        setEditingField(null);
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="h-9 text-sm border-blue-500 border-2">
-                      <SelectValue placeholder="Select logistics company" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {logisticsCompanies.map((company) => (
-                        <SelectItem key={company.id} value={company.id}>
-                          {company.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setEditingField(null)}
-                    className="h-9 px-2"
-                  >
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  </Button>
+            {/* ── FINANCIAL HIGHLIGHTS ── */}
+            {isConfirmed ? (
+              <div className="flex flex-wrap gap-3 items-center sm:border-r border-border sm:pr-6">
+                {/* Exchange Rate */}
+                <div className="bg-primary/8 border border-primary/20 rounded-lg px-3 py-2 min-w-[90px]">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider leading-none mb-1">Rate</p>
+                  <p className="text-lg font-bold text-foreground tabular-nums leading-none">
+                    {dispatchOrder.exchangeRate
+                      ? dispatchOrder.exchangeRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+                      : "—"}
+                  </p>
                 </div>
-              ) : (
-                <p
-                  className={cn(
-                    "font-semibold text-base text-foreground p-2 rounded-md transition-colors",
-                    isPending && "cursor-pointer hover:bg-muted border border-transparent hover:border-border"
-                  )}
-                  onDoubleClick={() =>
-                    isPending && setEditingField("logisticsCompany")
-                  }
-                  title={isPending ? "Double-click to edit" : ""}
-                >
-                  {logisticsCompanies.find(
-                    (c) => c.id === editedLogisticsCompany
-                  )?.name ||
-                    dispatchOrder.logisticsCompany?.name ||
-                    "—"}
-                </p>
-              )}
-            </div>
-
-            {/* Dispatch Date - Enhanced Design */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
-                <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                Date {isPending && <span className="text-destructive">*</span>}
-              </Label>
-              {isPending && editingField === "dispatchDate" ? (
-                <div className="flex gap-2 items-center">
-                  <div className="relative flex-1 group">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
-                      <svg className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
+                {/* Percentage */}
+                <div className="bg-primary/8 border border-primary/20 rounded-lg px-3 py-2 min-w-[70px]">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider leading-none mb-1">Markup</p>
+                  <p className="text-lg font-bold text-foreground leading-none">
+                    {dispatchOrder.percentage != null ? `${dispatchOrder.percentage}%` : "—"}
+                  </p>
+                </div>
+                {/* Payments (if available) */}
+                {dispatchOrder.computedPaymentDetails && (
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider w-12">Cash</span>
+                      <span className="text-sm font-semibold text-foreground tabular-nums">
+                        {(dispatchOrder.computedPaymentDetails.cashPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider w-12">Bank</span>
+                      <span className="text-sm font-semibold text-foreground tabular-nums">
+                        {(dispatchOrder.computedPaymentDetails.bankPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Pending: show discount + boxes as modest highlights */
+              <div className="flex flex-wrap gap-3 items-center sm:border-r border-border sm:pr-6">
+                {/* Discount */}
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Discount</p>
+                  {isPending && editingField === "discount" ? (
+                    <div className="flex gap-1 items-center">
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        value={editedDiscount}
+                        onChange={(e) => {
+                          const sanitized = e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                          setEditedDiscount(sanitized);
+                        }}
+                        onBlur={() => setEditingField(null)}
+                        className="h-8 w-24 text-sm border-blue-500 border-2"
+                        placeholder="0.00"
+                        autoFocus
+                      />
+                      <Button size="sm" variant="ghost" onClick={() => setEditingField(null)} className="h-8 px-1.5">
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <p
+                      className={cn("text-base font-semibold text-foreground tabular-nums", isPending && "cursor-pointer hover:text-primary transition-colors")}
+                      onDoubleClick={() => isPending && setEditingField("discount")}
+                      title={isPending ? "Double-click to edit" : ""}
+                    >
+                      {isPending
+                        ? (dispatchOrder?.returnedItems?.length > 0
+                          ? confirmOrderSupplierCurrency.discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                          : editedDiscount)
+                        : (dispatchOrder.totalDiscount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  )}
+                </div>
+                {/* Total Boxes */}
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Boxes</p>
+                    {isPending && (
+                      <div className="flex items-center gap-1">
+                        <Checkbox
+                          id="total-boxes-confirmed"
+                          checked={totalBoxesConfirmed}
+                          onCheckedChange={(checked) => setTotalBoxesConfirmed(checked === true)}
+                          className="h-3.5 w-3.5"
+                        />
+                        <Label htmlFor="total-boxes-confirmed" className="text-[10px] text-muted-foreground cursor-pointer">Confirm</Label>
+                      </div>
+                    )}
+                  </div>
+                  {isPending && editingField === "totalBoxes" ? (
+                    <div className="flex gap-1 items-center">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={editedTotalBoxes}
+                        onChange={(e) => {
+                          const sanitized = e.target.value.replace(/[^0-9]/g, '');
+                          setEditedTotalBoxes(sanitized);
+                          if (sanitized !== editedTotalBoxes) setTotalBoxesConfirmed(false);
+                        }}
+                        onBlur={() => setEditingField(null)}
+                        className="h-8 w-20 text-sm border-blue-500 border-2"
+                        placeholder="0"
+                        autoFocus
+                      />
+                      <Button size="sm" variant="ghost" onClick={() => setEditingField(null)} className="h-8 px-1.5">
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <p
+                      className={cn("text-base font-semibold text-foreground tabular-nums", isPending && "cursor-pointer hover:text-primary transition-colors")}
+                      onDoubleClick={() => isPending && setEditingField("totalBoxes")}
+                      title={isPending ? "Double-click to edit" : ""}
+                    >
+                      {isPending ? editedTotalBoxes : (dispatchOrder.totalBoxes || 0)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── SECONDARY META (compact, muted) ── */}
+            <div className="flex flex-col gap-2 justify-center shrink-0">
+              {/* Logistics Company */}
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-16 pt-0.5 shrink-0">Logistics</span>
+                {isPending && editingField === "logisticsCompany" ? (
+                  <div className="flex gap-1 items-center">
+                    <Select
+                      value={editedLogisticsCompany || ""}
+                      onValueChange={setEditedLogisticsCompany}
+                      onOpenChange={(open) => { if (!open) setEditingField(null); }}
+                    >
+                      <SelectTrigger className="h-7 text-xs border-blue-500 border-2 w-44">
+                        <SelectValue placeholder="Select…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {logisticsCompanies.map((company) => (
+                          <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button size="sm" variant="ghost" onClick={() => setEditingField(null)} className="h-7 px-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                    </Button>
+                  </div>
+                ) : (
+                  <span
+                    className={cn("text-xs font-medium text-foreground max-w-[180px] truncate", isPending && "cursor-pointer hover:text-primary transition-colors")}
+                    onDoubleClick={() => isPending && setEditingField("logisticsCompany")}
+                    title={isPending ? "Double-click to edit" : (logisticsCompanies.find((c) => c.id === editedLogisticsCompany)?.name || dispatchOrder.logisticsCompany?.name || "—")}
+                  >
+                    {logisticsCompanies.find((c) => c.id === editedLogisticsCompany)?.name || dispatchOrder.logisticsCompany?.name || "—"}
+                  </span>
+                )}
+              </div>
+              {/* Dispatch Date */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-16 shrink-0">Date</span>
+                {isPending && editingField === "dispatchDate" ? (
+                  <div className="flex gap-1 items-center">
                     <Input
                       type="date"
                       value={editedDispatchDate}
                       onChange={(e) => setEditedDispatchDate(e.target.value)}
                       onBlur={() => setEditingField(null)}
-                      className="h-11 pl-10 pr-3 text-sm font-medium border-primary focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                      className="h-7 text-xs border-blue-500 border-2 w-36"
                       autoFocus
                     />
+                    <Button size="sm" variant="ghost" onClick={() => setEditingField(null)} className="h-7 px-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setEditingField(null)}
-                    className="h-11 w-11 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
-                    title="Confirm"
+                ) : (
+                  <span
+                    className={cn("text-xs font-medium text-foreground tabular-nums", isPending && "cursor-pointer hover:text-primary transition-colors")}
+                    onDoubleClick={() => isPending && setEditingField("dispatchDate")}
+                    title={isPending ? "Double-click to edit" : ""}
                   >
-                    <CheckCircle2 className="h-5 w-5" />
-                  </Button>
-                </div>
-              ) : (
-                <div
-                  className={cn(
-                    "relative group",
-                    isPending && "cursor-pointer"
-                  )}
-                  onDoubleClick={() =>
-                    isPending && setEditingField("dispatchDate")
-                  }
-                  title={isPending ? "Double-click to edit" : ""}
-                >
-                  <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition-colors">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <p className="font-semibold text-base text-foreground tabular-nums">
-                      {(() => {
-                        if (editedDispatchDate) {
-                          const [year, month, day] = editedDispatchDate.split("-");
-                          return `${day}/${month}/${year}`;
-                        }
-                        if (dispatchOrder.dispatchDate) {
-                          const date = new Date(dispatchOrder.dispatchDate);
-                          // Using UTC methods to avoid timezone shifts for these dates
-                          const day = String(date.getUTCDate()).padStart(2, '0');
-                          const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-                          const year = date.getUTCFullYear();
-                          return `${day}/${month}/${year}`;
-                        }
-                        return "—";
-                      })()}
-                    </p>
-                    {isPending && (
-                      <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-                        <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Discount - Double-click to edit for pending orders */}
-            <div className="space-y-1">
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Discount
-              </Label>
-              {isPending && editingField === "discount" ? (
-                <div className="flex gap-1">
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    min="0"
-                    step="0.01"
-                    value={editedDiscount}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Allow only numbers and one decimal point
-                      const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                      setEditedDiscount(sanitized);
-                    }}
-                    onBlur={() => setEditingField(null)}
-                    className="h-9 text-sm border-blue-500 border-2"
-                    placeholder="0.00"
-                    autoFocus
-                  />
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setEditingField(null)}
-                    className="h-9 px-2"
-                  >
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  </Button>
-                </div>
-              ) : (
-                <p
-                  className={cn(
-                    "font-semibold text-base text-foreground p-2 rounded-md transition-colors",
-                    isPending && "cursor-pointer hover:bg-muted border border-transparent hover:border-border"
-                  )}
-                  onDoubleClick={() =>
-                    isPending && setEditingField("discount")
-                  }
-                  title={isPending ? "Double-click to edit" : ""}
-                >
-                  {isPending
-                    ? (() => {
-                      if (
-                        dispatchOrder?.returnedItems &&
-                        dispatchOrder.returnedItems.length > 0
-                      ) {
-                        // Show the calculated proportional discount for pending orders with returns
-                        return confirmOrderSupplierCurrency.discount.toLocaleString(
-                          undefined,
-                          {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          }
-                        );
+                    {(() => {
+                      if (editedDispatchDate) {
+                        const [year, month, day] = editedDispatchDate.split("-");
+                        return `${day}/${month}/${year}`;
                       }
-                      return editedDiscount;
-                    })()
-                    : (() => {
-                      // For display in Order Information, show discount in supplier currency (amount)
-                      // For pending orders: totalDiscount is stored in supplier currency
-
-                      const discountValue =
-                        dispatchOrder.totalDiscount || 0;
-                      // Format as number (supplier currency) without EUR symbol
-                      return discountValue.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      });
+                      if (dispatchOrder.dispatchDate) {
+                        const date = new Date(dispatchOrder.dispatchDate);
+                        const day = String(date.getUTCDate()).padStart(2, '0');
+                        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                        const year = date.getUTCFullYear();
+                        return `${day}/${month}/${year}`;
+                      }
+                      return "—";
                     })()}
-                </p>
-              )}
-            </div>
-
-            {/* Total Boxes - Editable for pending orders */}
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Total Boxes
-                </Label>
-                {isPending && (
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="total-boxes-confirmed"
-                      checked={totalBoxesConfirmed}
-                      onCheckedChange={(checked) => {
-                        setTotalBoxesConfirmed(checked === true);
-                      }}
-                      className="h-4 w-4"
-                    />
-                    <Label
-                      htmlFor="total-boxes-confirmed"
-                      className="text-xs text-muted-foreground cursor-pointer"
-                    >
-                      Confirm
-                    </Label>
-                  </div>
+                  </span>
                 )}
               </div>
-              {isPending && editingField === "totalBoxes" ? (
-                <div className="flex gap-1">
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    value={editedTotalBoxes}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Allow only numbers
-                      const sanitized = value.replace(/[^0-9]/g, '');
-                      setEditedTotalBoxes(sanitized);
-                      // Reset confirmation when value changes
-                      if (sanitized !== editedTotalBoxes) {
-                        setTotalBoxesConfirmed(false);
-                      }
-                    }}
-                    onBlur={() => setEditingField(null)}
-                    className="h-9 text-sm border-blue-500 border-2"
-                    placeholder="0"
-                    autoFocus
-                  />
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setEditingField(null)}
-                    className="h-9 px-2"
-                  >
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  </Button>
-                </div>
-              ) : (
-                <p
-                  className={cn(
-                    "font-semibold text-base text-foreground p-2 rounded-md transition-colors",
-                    isPending && "cursor-pointer hover:bg-muted border border-transparent hover:border-border"
-                  )}
-                  onDoubleClick={() =>
-                    isPending && setEditingField("totalBoxes")
-                  }
-                  title={isPending ? "Double-click to edit" : ""}
-                >
-                  {isPending
-                    ? editedTotalBoxes
-                    : dispatchOrder.totalBoxes || 0}
-                </p>
+              {/* For confirmed: also show discount + boxes compactly */}
+              {isConfirmed && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-16 shrink-0">Discount</span>
+                    <span className="text-xs font-medium text-foreground tabular-nums">
+                      {(dispatchOrder.totalDiscount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-16 shrink-0">Boxes</span>
+                    <span className="text-xs font-medium text-foreground tabular-nums">{dispatchOrder.totalBoxes || 0}</span>
+                  </div>
+                </>
               )}
             </div>
 
-            {isConfirmed && (
-              <>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Exchange Rate
-                  </Label>
-                  <p className="font-semibold text-base text-foreground">
-                    {dispatchOrder.exchangeRate
-                      ? dispatchOrder.exchangeRate.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 4,
-                      })
-                      : "—"}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Percentage
-                  </Label>
-                  <p className="font-semibold text-base text-foreground">
-                    {dispatchOrder.percentage != null
-                      ? `${dispatchOrder.percentage}%`
-                      : "—"}
-                  </p>
-                </div>
-              </>
-            )}
-            {isConfirmed && dispatchOrder.computedPaymentDetails && (
-              <>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Cash Payment
-                  </Label>
-                  <p className="font-semibold text-base text-foreground">
-                    {(dispatchOrder.computedPaymentDetails.cashPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Bank Payment
-                  </Label>
-                  <p className="font-semibold text-base text-foreground">
-                    {(dispatchOrder.computedPaymentDetails.bankPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                </div>
-              </>
-            )}
           </div>
         </CardContent>
       </Card>
@@ -1860,42 +1730,64 @@ export default function DispatchOrderDetailPage({ params }) {
                       )}
                       <td className="px-4 py-3 align-top">
                         {isPending && !isRemoved ? (
-                          /* Editable image cell for pending orders */
-                          <div className="flex flex-col gap-1.5 min-w-[80px]">
-                            {/* Thumbnails with remove button */}
-                            {(itemData.images || []).map((url, imgIdx) => (
-                              <div key={imgIdx} className="relative group w-14 h-14 flex-shrink-0">
+                          /* Editable image cell for pending orders — single thumbnail */
+                          <div className="flex flex-col gap-1.5 items-center min-w-[56px]">
+                            {/* Single thumbnail with count badge */}
+                            {(itemData.images || []).length > 0 ? (
+                              <div
+                                className="relative group w-14 h-14 flex-shrink-0 cursor-pointer"
+                                onClick={() =>
+                                  setPendingGallery({
+                                    open: true,
+                                    images: itemData.images || [],
+                                    itemIndex: item.index,
+                                  })
+                                }
+                              >
                                 <img
-                                  src={url}
-                                  alt={`Image ${imgIdx + 1}`}
-                                  className="w-14 h-14 object-cover rounded border border-border"
+                                  src={(itemData.images || [])[0]}
+                                  alt="Product"
+                                  className="w-14 h-14 object-cover rounded border border-border hover:opacity-90 transition-opacity"
                                   onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                 />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const newImages = (itemData.images || []).filter((_, i) => i !== imgIdx);
-                                    setEditedItems({
-                                      ...editedItems,
-                                      [item.index]: { ...itemData, images: newImages },
-                                    });
-                                  }}
-                                  className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                  title="Remove image"
-                                >
-                                  <X className="h-2.5 w-2.5" />
-                                </button>
+                                {/* Count badge if multiple images */}
+                                {(itemData.images || []).length > 1 && (
+                                  <div className="absolute -top-1.5 -right-1.5 bg-foreground text-background text-[10px] px-1.5 py-0.5 rounded z-10 pointer-events-none">
+                                    {(itemData.images || []).length}
+                                  </div>
+                                )}
+                                {/* Remove button — only shown on hover when single image */}
+                                {(itemData.images || []).length === 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditedItems({
+                                        ...editedItems,
+                                        [item.index]: { ...itemData, images: [] },
+                                      });
+                                    }}
+                                    className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                    title="Remove image"
+                                  >
+                                    <X className="h-2.5 w-2.5" />
+                                  </button>
+                                )}
                               </div>
-                            ))}
-                            {/* Add image button */}
+                            ) : (
+                              <div className="w-14 h-14 flex items-center justify-center rounded border-2 border-dashed border-border bg-muted/30 flex-shrink-0">
+                                <span className="text-[9px] text-muted-foreground text-center leading-tight">No{"\n"}image</span>
+                              </div>
+                            )}
+                            {/* Add image button — pencil icon */}
                             <label
-                              className="w-14 h-14 flex items-center justify-center rounded border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 cursor-pointer transition-colors flex-shrink-0"
+                              className="w-14 h-7 flex items-center justify-center gap-1 rounded border border-border hover:border-primary hover:bg-primary/5 cursor-pointer transition-colors"
                               title="Add image"
                             >
                               {imageUploading[item.index] ? (
-                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
                               ) : (
-                                <ImagePlus className="h-4 w-4 text-muted-foreground" />
+                                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                               )}
                               <input
                                 type="file"
@@ -1940,7 +1832,7 @@ export default function DispatchOrderDetailPage({ params }) {
                             productId={item.product?._id?.toString()}
                             alt={itemData.productName || "Product"}
                             size="sm"
-                            maxVisible={3}
+                            maxVisible={1}
                             showCount={true}
                           />
                         )}
@@ -2135,7 +2027,7 @@ export default function DispatchOrderDetailPage({ params }) {
                                       ? null
                                       : item.packets.length}
                                   </span>
-                                  
+
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -2254,7 +2146,7 @@ export default function DispatchOrderDetailPage({ params }) {
                           )}
 
                           {/* Breakdown Display - Per Packet */}
-                          {(() => {
+                          {/* {(() => {
                             const packets = item.packets || [];
                             if (packets.length === 0) return null;
 
@@ -2292,7 +2184,48 @@ export default function DispatchOrderDetailPage({ params }) {
                                 </div>
                               </div>
                             );
+                          })()} */}
+
+                          {(() => {
+                            const packets = item.packets || [];
+                            if (packets.length === 0) return null;
+
+                            // Build a color signature per packet
+                            const colorGroupCount = {};
+                            packets.forEach((packet) => {
+                              if (!packet.composition?.length) return;
+
+                              const uniqueColors = [...new Set(
+                                packet.composition
+                                  .filter(c => c.color && c.quantity > 0)
+                                  .map(c => c.color)
+                              )];
+
+                              const signature = uniqueColors.join("/"); // "beige" or "grey/green/blue"
+                              if (signature) {
+                                colorGroupCount[signature] = (colorGroupCount[signature] || 0) + 1;
+                              }
+                            });
+
+                            const parts = Object.entries(colorGroupCount);
+                            if (parts.length === 0) return null;
+
+                            return (
+                              <div className="flex flex-wrap gap-1">
+                                {parts.map(([colorSignature, count]) => (
+                                  <span
+                                    key={colorSignature}
+                                    className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200"
+                                  >
+                                    <span className="capitalize">{colorSignature}</span>
+                                    <span className="ml-1 text-slate-400">×</span>
+                                    <span className="ml-0.5 font-semibold">{count}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            );
                           })()}
+
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right align-top">
@@ -2670,7 +2603,7 @@ export default function DispatchOrderDetailPage({ params }) {
                 {isSuperAdmin && (dispatchOrder?.status === 'pending' || dispatchOrder?.status === 'pending-approval') && (
                   <Button
                     onClick={() => {
-                       
+
                       handleConfirm();
                     }}
                     disabled={
@@ -2699,7 +2632,7 @@ export default function DispatchOrderDetailPage({ params }) {
                 {isAdmin && (dispatchOrder?.status === 'pending' || dispatchOrder?.status === 'pending-approval') && (
                   <Button
                     onClick={() => {
-                       
+
                       handleSubmitApproval();
                     }}
                     disabled={
@@ -3380,6 +3313,14 @@ export default function DispatchOrderDetailPage({ params }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Pending-item image gallery lightbox */}
+      <ImageLightbox
+        images={pendingGallery.images}
+        initialIndex={0}
+        open={pendingGallery.open}
+        onClose={() => setPendingGallery((prev) => ({ ...prev, open: false }))}
+      />
 
       {/* Barcode Print Modal */}
       <BarcodePrintModal

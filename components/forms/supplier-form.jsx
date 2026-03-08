@@ -46,6 +46,11 @@ export function AddSupplierForm({ open, onClose, onSubmit, loading = false }) {
   }, [open])
 
   const handleChange = (field, value) => {
+    if (field === 'phoneAreaCode' || field === 'alternatePhoneAreaCode') {
+      value = value.replace(/[^\d+]/g, '')
+    } else if (field === 'phone' || field === 'alternatePhone') {
+      value = value.replace(/\D/g, '')
+    }
     setFormData(prev => ({ ...prev, [field]: value }))
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }))

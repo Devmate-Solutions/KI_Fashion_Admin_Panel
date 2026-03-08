@@ -56,6 +56,11 @@ export function LogisticsCompanyForm({ open, onClose, onSubmit, loading = false,
   }, [open, initialData, isEdit])
 
   const handleChange = (field, value) => {
+    if (field === 'phoneAreaCode') {
+      value = value.replace(/[^\d+]/g, '')
+    } else if (field === 'phone') {
+      value = value.replace(/\D/g, '')
+    }
     setFormData(prev => ({ ...prev, [field]: value }))
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }))

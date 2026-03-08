@@ -18,7 +18,7 @@ import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { dispatchOrdersAPI } from "@/lib/api/endpoints/dispatchOrders"
 import { balancesAPI } from "@/lib/api/endpoints/balances"
 import { useQuery } from "@tanstack/react-query"
-import { Loader2, Plus, FileText, Users, Search, Filter, Building2, Clock, CheckCircle2, RotateCcw, Calendar, Download, Printer, Receipt } from "lucide-react"
+import { Loader2, Plus, FileText, Users, Search, Filter, Building2, Clock, CheckCircle2, RotateCcw, Calendar, Download, Printer } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { Badge } from "@/components/ui/badge"
@@ -49,7 +49,7 @@ function formatNumber(n) {
 
 function currency(n) {
   const num = Number(n || 0)
-  return `£${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return `${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 
@@ -727,7 +727,7 @@ export default function SupplierLedgerPage() {
               onClick={() => handleViewSupplierReceipt({ receiptNumber: receipt.receiptNumber, raw: { supplierId: row.supplierId } })}
               disabled={isLoadingSupplierReceipt}
             >
-              <Receipt className="h-3.5 w-3.5" />
+              <FileText className="h-3.5 w-3.5" />
               {receipt.receiptNumber}
             </Button>
           )
