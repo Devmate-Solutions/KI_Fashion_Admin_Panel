@@ -14,11 +14,9 @@ import {
   useCreateExpense,
   useUpdateExpense,
   useDeleteExpense,
-  useApproveExpense,
-  useRejectExpense,
 } from "@/lib/hooks/useExpenses"
 import { useCostTypes } from "@/lib/hooks/useCostTypes"
-import { Plus, Trash2, Check, X, Edit, Filter, RotateCcw, Wallet, Building2, Clock, Search, TrendingUp, Package, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Plus, Trash2, Edit, Filter, RotateCcw, Wallet, Building2, Search, TrendingUp, Package, AlertCircle, CheckCircle2 } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -76,8 +74,6 @@ export default function ExpensesPage() {
   const createMutation = useCreateExpense()
   const updateMutation = useUpdateExpense()
   const deleteMutation = useDeleteExpense()
-  const approveMutation = useApproveExpense()
-  const rejectMutation = useRejectExpense()
 
   const handleCreate = () => {
     setEditingExpense(null)
@@ -101,21 +97,6 @@ export default function ExpensesPage() {
     }
   }
 
-  const handleApprove = async (expense) => {
-    try {
-      await approveMutation.mutateAsync(expense.id)
-    } catch (error) {
-      console.error('Approve error:', error)
-    }
-  }
-
-  const handleReject = async (expense) => {
-    try {
-      await rejectMutation.mutateAsync(expense.id)
-    } catch (error) {
-      console.error('Reject error:', error)
-    }
-  }
 
   const handleSave = async (formData) => {
     try {
@@ -257,28 +238,6 @@ export default function ExpensesPage() {
             >
               <Edit className="h-4 w-4" />
             </Button>
-            {row.status === 'pending' && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleApprove(row)}
-                  className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
-                  title="Approve"
-                >
-                  <Check className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleReject(row)}
-                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                  title="Reject"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </>
-            )}
             <Button
               variant="ghost"
               size="sm"
@@ -302,7 +261,6 @@ export default function ExpensesPage() {
   const bankExpenses = expenses
     .filter(e => ['card', 'bank_transfer', 'cheque', 'online'].includes(e.paymentMethod))
     .reduce((sum, e) => sum + (e.totalCost || 0), 0)
-  const pendingCount = expenses.filter(e => e.status === 'pending').length
 
   return (
     <div className="space-y-6 ">
@@ -319,7 +277,7 @@ export default function ExpensesPage() {
       </header>
 
       {/* Summary Cards - Modern Design */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Total Expenses */}
         <div className="rounded-lg border border-border bg-card p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
@@ -362,23 +320,7 @@ export default function ExpensesPage() {
           </div>
       </div>
 
-        {/* Pending Approvals */}
-        <div className="rounded-lg border border-amber-200 bg-gradient-to-br from-amber-50/50 to-amber-50/30 p-5 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-              <Clock className="h-5 w-5 text-amber-600" />
-            </div>
-        </div>
-          <div className="text-xs font-medium text-amber-700/80 uppercase tracking-wider mb-1">
-            Pending Approvals
-        </div>
-          <div className="text-2xl font-bold text-amber-700 tabular-nums">
-            {pendingCount}
-        </div>
-        </div>
-      </div>
-
-      {/* Filters & Search Bar - Unified */}
+      {/* Filters & Search Bar - Unified */}}
       <div className="rounded-lg border border-border bg-card p-3 sm:p-4 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
           {/* Filter Label */}
@@ -415,9 +357,8 @@ export default function ExpensesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
             </SelectContent>
           </Select>
 
