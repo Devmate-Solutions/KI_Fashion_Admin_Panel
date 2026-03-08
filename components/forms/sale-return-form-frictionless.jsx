@@ -504,7 +504,6 @@ export default function SaleReturnFormFrictionless({ onSave }) {
               </div>
             )}
           </div>
-
         
         </CardContent>
       </Card>
