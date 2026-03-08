@@ -463,6 +463,14 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
               { duration: 4000 }
             )
           }
+          // Show warnings about packet stock that couldn't be adjusted
+          if (summary?.warnings?.length > 0) {
+            toast(summary.warnings.join('\n'), {
+              icon: '⚠️',
+              duration: 6000,
+              style: { maxWidth: '500px' }
+            })
+          }
         }
       }
 
@@ -674,6 +682,14 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
                             ))}
                           </div>
                         )}
+
+                        {validation && validation.valid && validation.warnings?.length > 0 && (
+                          <div className="mt-2">
+                            {validation.warnings.map((warn, idx) => (
+                              <p key={idx} className="text-xs text-amber-600">⚠ {warn}</p>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-3 flex-shrink-0">
@@ -714,14 +730,27 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
             </div>
 
             {/* Validation Summary */}
-            {Object.keys(packetValidation).length > 0 && !hasValidationErrors && (
-              <Alert className="mt-4 bg-green-50 border-green-200">
-                <CheckCircleIcon className="h-4 w-4 text-green-600" />
-                <AlertTitle className="text-sm text-green-700">Ready to submit</AlertTitle>
-                <AlertDescription className="text-xs text-green-600">
-                  All items validated. Packet stock will be automatically adjusted.
-                </AlertDescription>
-              </Alert>
+            {Object.keys(packetValidation).length > 0 && !hasValidationErrors && (() => {
+              const allWarnings = Object.values(packetValidation).flatMap(v => v.warnings || [])
+              const hasWarnings = allWarnings.length > 0
+              return hasWarnings ? (
+                <Alert className="mt-4 bg-amber-50 border-amber-200">
+                  <AlertTriangleIcon className="h-4 w-4 text-amber-600" />
+                  <AlertTitle className="text-sm text-amber-700">Ready to submit (with warnings)</AlertTitle>
+                  <AlertDescription className="text-xs text-amber-600">
+                    Inventory will be adjusted. Some packet stock may not be fully adjusted.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert className="mt-4 bg-green-50 border-green-200">
+                  <CheckCircleIcon className="h-4 w-4 text-green-600" />
+                  <AlertTitle className="text-sm text-green-700">Ready to submit</AlertTitle>
+                  <AlertDescription className="text-xs text-green-600">
+                    All items validated. Packet stock will be automatically adjusted.
+                  </AlertDescription>
+                </Alert>
+              )
+            })()
             )}
 
             {validatingPackets && (
