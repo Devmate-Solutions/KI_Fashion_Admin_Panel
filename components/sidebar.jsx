@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -115,9 +116,7 @@ export default function Sidebar() {
         aria-label="Main navigation"
       >
         <div className="flex items-center justify-between px-6 py-6 border-b border-slate-50">
-          <span className="text-sm font-black uppercase tracking-widest text-blue-600">
-            KI CRM
-          </span>
+          {/* <Imagse src="/ki-logo.png" alt="KI Fashion" width={120} height={32} className="h-8 w-auto object-contain" priority /> */}
           <button
             type="button"
             onClick={() => setOpen(false)}
@@ -182,13 +181,8 @@ export default function Sidebar() {
         aria-label="Main navigation"
         data-collapsed={collapsed}
       >
-        <div className="flex items-center justify-between px-6 py-6 border-b border-slate-50">
-          <span
-            className={`text-sm font-black uppercase tracking-widest text-blue-600 ${collapsed ? "sr-only" : ""
-              }`}
-          >
-            KI CRM
-          </span>
+        <div className="flex items-center justify-right px-6 py-2 border-b border-slate-50">
+         
           <button
             type="button"
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Trash2 as TrashIcon, Search, Loader2 as Loader2Icon, Package as PackageIcon, CheckCircle as CheckCircleIcon, AlertTriangle as AlertTriangleIcon, Layers as LayersIcon, ShoppingCart, ChevronDown } from "lucide-react"
+import { Trash2 as TrashIcon, Search, Loader2 as Loader2Icon, Package as PackageIcon, CheckCircle as CheckCircleIcon, AlertTriangle as AlertTriangleIcon, Layers as LayersIcon, ShoppingCart, ChevronDown, Info as InfoIcon, Unlink as UnlinkIcon } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { returnsAPI } from "@/lib/api/endpoints/returns"
 import toast from "react-hot-toast"
@@ -179,6 +179,14 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
     )
     
     if (existing) {
+      // Prevent duplicate add if already set to partial return mode
+      if (existing.returnMode === 'partial_items') {
+        toast.error("This packet is already set for partial return. Edit items or remove it first.")
+        setSearchQuery("")
+        setShowResults(false)
+        searchInputRef.current?.focus()
+        return
+      }
       toast("Packet already added - increasing quantity", { icon: '📦' })
       updateItem(existing.id, "returnQty", existing.returnQty + 1)
       setSearchQuery("")
@@ -473,6 +481,8 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
 
       const supplierGroups = groupBySupplier()
 
+      const breakResults = []
+
       // Process each supplier group
       for (const group of supplierGroups) {
         // Process packets
@@ -499,7 +509,21 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
             totalAmount: totalAmount
           }
 
-          await returnsAPI.createPacketReturn(payload)
+          const response = await returnsAPI.createPacketReturn(payload)
+
+          // Capture break results for partial returns
+          if (isPartial) {
+            const packetDetails = response.data?.data?.packetDetails || response.data?.packetDetails
+            const breakResult = packetDetails?.breakResult
+            if (breakResult) {
+              breakResults.push({
+                barcode: item.barcode,
+                itemsReturned: breakResult.totalItemsReturned,
+                looseStocksCreated: breakResult.looseStocksCreated || [],
+                remainingItems: breakResult.remainingItems || []
+              })
+            }
+          }
         }
 
         // Process products (if any)
@@ -548,6 +572,18 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
         duration: 3000
       })
 
+      // Show break results for partial packet returns
+      for (const br of breakResults) {
+        const looseCount = br.looseStocksCreated.reduce((sum, ls) => sum + ls.quantity, 0)
+        if (looseCount > 0) {
+          const looseDetails = br.looseStocksCreated.map(ls => `${ls.size}/${ls.color} ×${ls.quantity}`).join(', ')
+          toast(
+            `Packet ${br.barcode} broken: ${br.itemsReturned} returned, ${looseCount} items moved to loose stock (${looseDetails})`,
+            { icon: '📦', duration: 6000, style: { maxWidth: '500px' } }
+          )
+        }
+      }
+
       if (onSave) onSave()
       setSelectedItems([])
       setPacketValidation({})
@@ -556,7 +592,13 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
 
     } catch (error) {
       console.error("Error creating return:", error)
-      toast.error(error.response?.data?.message || "Failed to create return")
+      const errorMsg = error.response?.data?.message || "Failed to create return"
+      // Surface concurrent break errors clearly
+      if (errorMsg.includes('concurrent operation') || errorMsg.includes('no longer available')) {
+        toast.error("A packet was modified by another user. Please clear and re-add items to refresh.", { duration: 5000 })
+      } else {
+        toast.error(errorMsg)
+      }
     } finally {
       setSubmitting(false)
     }
@@ -746,6 +788,32 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
                           </div>
                         )}
 
+                        {/* Break indicator: show what becomes loose stock */}
+                        {item.type === 'packet' && item.returnMode === 'partial_items' && item.composition?.length > 0 && (() => {
+                          const remaining = item.composition.map(c => {
+                            const returned = item.returnComposition?.find(r => r.size === c.size && r.color === c.color)
+                            const qty = c.quantity - (returned?.quantity || 0)
+                            return { size: c.size, color: c.color, quantity: qty }
+                          }).filter(r => r.quantity > 0)
+                          const totalLoose = remaining.reduce((sum, r) => sum + r.quantity, 0)
+                          if (totalLoose === 0) return null
+                          return (
+                            <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                              <p className="text-xs font-medium text-amber-700 flex items-center gap-1">
+                                <UnlinkIcon className="h-3 w-3" />
+                                Packet will be broken — {totalLoose} item{totalLoose !== 1 ? 's' : ''} become loose stock:
+                              </p>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {remaining.map((r, idx) => (
+                                  <Badge key={idx} variant="outline" className="text-xs text-amber-600 border-amber-300">
+                                    {r.size}/{r.color} ×{r.quantity}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        })()}
+
                         {item.type !== 'packet' && item.returnComposition && item.returnComposition.length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-1">
                             {item.returnComposition.map((v, idx) => (
@@ -874,7 +942,7 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
                 </Alert>
               )
             })()
-            )}
+            }
 
             {validatingPackets && (
               <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
@@ -885,7 +953,6 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
           </CardContent>
         </Card>
       )}
-
       {/* Summary and Actions */}
       {selectedItems.length > 0 && (
         <Card className="border-2 border-primary">
@@ -1011,9 +1078,40 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
               </span>
             </div>
 
-            <p className="text-xs text-muted-foreground">
-              The packet will be broken. Remaining items will become loose stock.
-            </p>
+            {/* Break warning with remaining items preview */}
+            {(() => {
+              const totalSelected = packetItemSelections.reduce((sum, v) => sum + v.quantity, 0)
+              const totalInPacket = packetItemSelections.reduce((sum, v) => sum + v.max, 0)
+              if (totalSelected === 0) return null
+              const remaining = packetItemSelections
+                .map(v => ({ size: v.size, color: v.color, quantity: v.max - v.quantity }))
+                .filter(v => v.quantity > 0)
+              const totalRemaining = remaining.reduce((sum, v) => sum + v.quantity, 0)
+              const isFullReturn = totalRemaining === 0
+
+              return (
+                <Alert className={isFullReturn ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-200'}>
+                  <InfoIcon className={`h-4 w-4 ${isFullReturn ? 'text-blue-600' : 'text-amber-600'}`} />
+                  <AlertTitle className={`text-sm ${isFullReturn ? 'text-blue-700' : 'text-amber-700'}`}>
+                    {isFullReturn
+                      ? 'All items selected — full packet will be returned'
+                      : `Packet will be broken — ${totalRemaining} item${totalRemaining !== 1 ? 's' : ''} become loose stock`}
+                  </AlertTitle>
+                  {!isFullReturn && (
+                    <AlertDescription className="mt-2">
+                      <p className="text-xs text-amber-600 mb-1">Remaining items will be converted to individual loose stock entries:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {remaining.map((r, idx) => (
+                          <Badge key={idx} variant="outline" className="text-xs text-amber-700 border-amber-300 bg-amber-100">
+                            {r.size}/{r.color} ×{r.quantity}
+                          </Badge>
+                        ))}
+                      </div>
+                    </AlertDescription>
+                  )}
+                </Alert>
+              )
+            })()}
           </div>
 
           <DialogFooter>

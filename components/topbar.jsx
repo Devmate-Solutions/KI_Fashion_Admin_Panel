@@ -31,21 +31,10 @@ export default function TopBar() {
         <div className="h-14 sm:h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 sm:gap-8 min-w-0 flex-1">
             <Link href="/home" className="flex items-center gap-2 group min-w-0 flex-shrink-0">
-              <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-200 group-hover:scale-105 transition-transform flex-shrink-0">
-                <span className="font-black text-xs">KI</span>
-              </div>
-              <span className="text-sm sm:text-base font-black tracking-tighter text-slate-900 group-hover:text-blue-600 transition-colors hidden sm:inline">FASHION CRM</span>
+              <Image src="/ki-logo.png" alt="KI Fashion" width={120} height={20} priority />
             </Link>
 
-            {/* Global Search Placeholder - Hidden on mobile to save space */}
-            <div className="hidden lg:flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100/50 w-64 group focus-within:ring-2 focus-within:ring-blue-100 focus-within:bg-white transition-all">
-              <Search className="h-4 w-4 text-slate-400 group-focus-within:text-blue-500 flex-shrink-0" />
-              <input 
-                type="text" 
-                placeholder="Search command..." 
-                className="bg-transparent border-none text-xs font-bold text-slate-600 focus:outline-none placeholder:text-slate-400 w-full min-w-0"
-              />
-            </div>
+            
           </div>
 
           <div className="flex items-center gap-3 sm:gap-6 flex-shrink-0">

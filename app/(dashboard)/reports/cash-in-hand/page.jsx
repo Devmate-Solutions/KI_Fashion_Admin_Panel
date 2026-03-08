@@ -18,58 +18,9 @@ function formatDate(date) {
     return new Date(date).toLocaleDateString("en-GB")
 }
 
-// --- Duplicate-detection helpers ---
-function getLocalDateKey(d) {
-    const dt = new Date(d)
-    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`
-}
-
-function normalizeName(n) {
-    return (n || "").trim().toLowerCase()
-}
-
-/** Build a "payment budget" per buyer per day from Sales rows */
-function buildSalePaymentBudget(rows) {
-    const budget = {}
-    for (const r of rows) {
-        if (r.transactionType !== "Sales") continue
-        const key = `${normalizeName(r.name)}|${getLocalDateKey(r.date)}`
-        if (!budget[key]) budget[key] = { cash: 0, bank: 0 }
-        budget[key].cash += Number(r.salesCash || 0)
-        budget[key].bank += Number(r.salesBank || 0)
-    }
-    return budget
-}
-
-/** Filter ledger rows that duplicate same-day sale payments */
+/** Filter out Ledger rows that were auto-created at sale time (already counted in Sales row) */
 function applyDuplicateFilter(rows) {
-    const budget = buildSalePaymentBudget(rows)
-    const result = []
-    for (const r of rows) {
-        if (r.transactionType !== "Ledger") {
-            result.push(r)
-            continue
-        }
-        const key = `${normalizeName(r.name)}|${getLocalDateKey(r.date)}`
-        const b = budget[key]
-        if (!b) {
-            result.push(r)
-            continue
-        }
-        let cash = Number(r.ledgerCash || 0)
-        let bank = Number(r.ledgerBank || 0)
-        const subCash = Math.min(cash, b.cash)
-        const subBank = Math.min(bank, b.bank)
-        b.cash -= subCash
-        b.bank -= subBank
-        cash -= subCash
-        bank -= subBank
-        if (cash > 0 || bank > 0) {
-            result.push({ ...r, ledgerCash: cash, ledgerBank: bank })
-        }
-        // else row is fully duplicate → skip it
-    }
-    return result
+    return rows.filter(r => !(r.transactionType === "Ledger" && r.isSaleTimePayment === true))
 }
 
 /** Recompute running balance from scratch on filtered rows */
