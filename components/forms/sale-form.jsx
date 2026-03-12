@@ -853,6 +853,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                       setSaleDate(date.toISOString().split("T")[0]);
                     }
                   }}
+                  disabled={!isSuperAdmin}
                   className="h-11 w-full pl-10 pr-3 text-base font-medium rounded-lg border border-input bg-background"
                   placeholder="DD/MM/YYYY"
                 />

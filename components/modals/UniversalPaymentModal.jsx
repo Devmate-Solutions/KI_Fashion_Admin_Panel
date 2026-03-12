@@ -11,6 +11,8 @@ import { Loader2, CreditCard, Banknote } from "lucide-react"
 import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { useQueryClient } from "@tanstack/react-query"
 import toast from "react-hot-toast"
+import BritishDatePicker from "@/components/BritishDatePicker"
+import { useAuthStore } from "@/store/store"
 
 function currency(n) {
     const num = Number(n || 0)
@@ -42,6 +44,8 @@ export default function UniversalPaymentModal({
     entities = [],
     onSuccess
 }) {
+    const { user } = useAuthStore()
+    const isSuperAdmin = user?.role === 'super-admin'
     const queryClient = useQueryClient()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [selectedEntityId, setSelectedEntityId] = useState(initialEntityId || '')
@@ -289,12 +293,16 @@ export default function UniversalPaymentModal({
 
                     {/* Date (optional) */}
                     <div className="space-y-2">
-                        <Label htmlFor="date">Date (optional)</Label>
-                        <Input
-                            id="date"
-                            type="date"
-                            value={form.date}
-                            onChange={(e) => setForm({ ...form, date: e.target.value })}
+                        <Label htmlFor="date">Date</Label>
+                        <BritishDatePicker
+                            value={form.date ? new Date(form.date) : new Date()}
+                            onChange={(date) => {
+                                if (date) {
+                                    setForm({ ...form, date: date.toISOString().split("T")[0] });
+                                }
+                            }}
+                            disabled={!isSuperAdmin}
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         />
                     </div>
 

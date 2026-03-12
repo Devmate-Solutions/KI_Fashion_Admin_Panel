@@ -139,10 +139,10 @@ export default function DispatchOrderDetailPage({ params }) {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [returnQuantities, setReturnQuantities] = useState({});
   const [returnReasons, setReturnReasons] = useState({});
-  const [cashPayment, setCashPayment] = useState("0");
-  const [bankPayment, setBankPayment] = useState("0");
-  const [exchangeRate, setExchangeRate] = useState("1.0");
-  const [percentage, setPercentage] = useState("0");
+  const [cashPayment, setCashPayment] = useState("");
+  const [bankPayment, setBankPayment] = useState("");
+  const [exchangeRate, setExchangeRate] = useState("");
+  const [percentage, setPercentage] = useState("");
   const [returnNotes, setReturnNotes] = useState("");
   const [showAllReturnItems, setShowAllReturnItems] = useState(false);
 
@@ -247,16 +247,16 @@ export default function DispatchOrderDetailPage({ params }) {
   // Initialize exchange rate and percentage from dispatch order or defaults
   useEffect(() => {
     if (dispatchOrder && isPending) {
-      setExchangeRate(String(dispatchOrder.exchangeRate || 1.0));
-      setPercentage(String(dispatchOrder.percentage || 0));
+      setExchangeRate("");
+      setPercentage("");
       setEditedDiscount(String(dispatchOrder.totalDiscount || 0));
       setEditedTotalBoxes(String(dispatchOrder.totalBoxes || 0));
       setTotalBoxesConfirmed(!!dispatchOrder.isTotalBoxesConfirmed);
 
       // Initialize financials from paymentDetails (drafts)
       if (dispatchOrder.paymentDetails) {
-        setCashPayment(String(dispatchOrder.paymentDetails.cashPayment || 0));
-        setBankPayment(String(dispatchOrder.paymentDetails.bankPayment || 0));
+        setCashPayment(dispatchOrder.paymentDetails.cashPayment ? String(dispatchOrder.paymentDetails.cashPayment) : "");
+        setBankPayment(dispatchOrder.paymentDetails.bankPayment ? String(dispatchOrder.paymentDetails.bankPayment) : "");
       }
 
       // Initialize order fields (supplier remains uneditable - use original value)
@@ -325,8 +325,8 @@ export default function DispatchOrderDetailPage({ params }) {
   // Calculate confirmed quantities and landed prices
   // For pending orders, use the input values; for confirmed orders, use stored values
   const currentExchangeRate = isPending
-    ? parseFloat(exchangeRate) || 1.0
-    : dispatchOrder?.exchangeRate || 1.0;
+    ? parseFloat(exchangeRate) || 0
+    : dispatchOrder?.exchangeRate || 0;
   const currentPercentage = isPending
     ? parseFloat(percentage) || 0
     : dispatchOrder?.percentage || 0;
@@ -902,6 +902,9 @@ export default function DispatchOrderDetailPage({ params }) {
     if (!exchangeRate || parseFloat(exchangeRate) <= 0) {
       errors.push("Exchange rate must be greater than 0");
     }
+    if (percentage === "" || percentage === null || percentage === undefined || isNaN(parseFloat(percentage))) {
+      errors.push("Percentage is required");
+    }
 
     // Get active items (not removed)
     const activeItems =
@@ -1084,7 +1087,7 @@ export default function DispatchOrderDetailPage({ params }) {
       paymentData: {
         cashPayment: parseFloat(cashPayment) || 0,
         bankPayment: parseFloat(bankPayment) || 0,
-        exchangeRate: parseFloat(exchangeRate) || 1.0,
+        exchangeRate: parseFloat(exchangeRate) || 0,
         percentage: parseFloat(percentage) || 0,
         discount: confirmOrderSupplierCurrency.discount,
       },
@@ -1097,7 +1100,7 @@ export default function DispatchOrderDetailPage({ params }) {
       onSuccess: () => {
         setCashPayment("0");
         setBankPayment("0");
-        setExchangeRate("1.0");
+        setExchangeRate("0");
         setPercentage("0");
         setActiveTab("confirm");
         toast.success("Order submitted for approval successfully!");
@@ -1218,7 +1221,7 @@ export default function DispatchOrderDetailPage({ params }) {
       paymentData: {
         cashPayment: parseFloat(cashPayment) || 0,
         bankPayment: parseFloat(bankPayment) || 0,
-        exchangeRate: parseFloat(exchangeRate) || 1.0,
+        exchangeRate: parseFloat(exchangeRate) || 0,
         percentage: parseFloat(percentage) || 0,
         discount: confirmOrderSupplierCurrency.discount,
       },
@@ -1233,7 +1236,7 @@ export default function DispatchOrderDetailPage({ params }) {
       onSuccess: () => {
         setCashPayment("0");
         setBankPayment("0");
-        setExchangeRate("1.0");
+        setExchangeRate("0");
         setPercentage("0");
         setActiveTab("confirm");
 
@@ -1631,7 +1634,7 @@ export default function DispatchOrderDetailPage({ params }) {
                         }}
                         onBlur={() => setEditingField(null)}
                         className="h-8 w-24 text-sm border-blue-500 border-2"
-                        placeholder="0.00"
+                        placeholder=""
                         autoFocus
                       />
                       <Button size="sm" variant="ghost" onClick={() => setEditingField(null)} className="h-8 px-1.5">
@@ -1681,7 +1684,7 @@ export default function DispatchOrderDetailPage({ params }) {
                         }}
                         onBlur={() => setEditingField(null)}
                         className="h-8 w-20 text-sm border-blue-500 border-2"
-                        placeholder="0"
+                        placeholder=""
                         autoFocus
                       />
                       <Button size="sm" variant="ghost" onClick={() => setEditingField(null)} className="h-8 px-1.5">
@@ -2776,7 +2779,7 @@ export default function DispatchOrderDetailPage({ params }) {
                       value={exchangeRate}
                       onChange={(e) => setExchangeRate(e.target.value)}
                       className="h-10"
-                      placeholder="1.00"
+                      placeholder=""
                     />
                   </div>
                   <div className="space-y-2">
@@ -2797,7 +2800,7 @@ export default function DispatchOrderDetailPage({ params }) {
                         setPercentage(sanitized);
                       }}
                       className="h-10"
-                      placeholder="0"
+                      placeholder=""
                     />
                   </div>
                 </div>
@@ -2824,7 +2827,7 @@ export default function DispatchOrderDetailPage({ params }) {
                         setCashPayment(sanitized);
                       }}
                       className="h-10"
-                      placeholder="0.00"
+                      placeholder=""
                     />
                   </div>
                   <div className="space-y-2">
@@ -2849,7 +2852,7 @@ export default function DispatchOrderDetailPage({ params }) {
                         setBankPayment(sanitized);
                       }}
                       className="h-10"
-                      placeholder="0.00"
+                      placeholder=""
                     />
                   </div>
                 </div>
@@ -3418,7 +3421,7 @@ export default function DispatchOrderDetailPage({ params }) {
                                       });
                                     }
                                   }}
-                                  placeholder="0"
+                                  placeholder=""
                                   className="h-8 text-sm w-20 text-center"
                                   disabled={remainingQty === 0}
                                 />
