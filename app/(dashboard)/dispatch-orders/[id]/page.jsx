@@ -67,6 +67,7 @@ import {
   ImagePlus,
   X,
   Printer,
+  FilePen,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { dispatchOrdersAPI } from "@/lib/api/endpoints/dispatchOrders";
@@ -77,6 +78,8 @@ import ArrayInput from "@/components/ui/ArrayInput";
 import PacketConfigurationModal from "@/components/modals/PacketConfigurationModal";
 import StandaloneSupplierPaymentModal from "@/components/modals/StandaloneSupplierPaymentModal";
 import BarcodePrintModal from "@/components/modals/BarcodePrintModal";
+import { useSubmitEditRequest } from "@/lib/hooks/useEditRequests";
+import DeleteRequestDialog from "@/components/modals/DeleteRequestDialog";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { SEASON_OPTIONS } from "@/lib/constants/seasons";
 import { cn } from "@/lib/utils";
@@ -171,6 +174,19 @@ export default function DispatchOrderDetailPage({ params }) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBarcodePrintModal, setShowBarcodePrintModal] = useState(false);
   const [isPostConfirmPrint, setIsPostConfirmPrint] = useState(false);
+  const [editRequestReason, setEditRequestReason] = useState("");
+  const [showDeleteRequestDialog, setShowDeleteRequestDialog] = useState(false);
+
+  const submitEditRequestMutation = useSubmitEditRequest();
+
+  // Confirmed order inline edit state
+  const [isEditingConfirmed, setIsEditingConfirmed] = useState(false);
+  const [confirmedEditLoading, setConfirmedEditLoading] = useState(false);
+  const [confirmedEditSaving, setConfirmedEditSaving] = useState(false);
+  const [confirmedEditError, setConfirmedEditError] = useState(null);
+  const [confirmedEditResult, setConfirmedEditResult] = useState(null);
+  const [confirmedEditForm, setConfirmedEditForm] = useState({ exchangeRate: '', percentage: '', discount: '', items: [] });
+  const [confirmedEditImpact, setConfirmedEditImpact] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -225,6 +241,7 @@ export default function DispatchOrderDetailPage({ params }) {
   const isConfirmed = dispatchOrder?.status === "confirmed";
   const isPending = dispatchOrder?.status === "pending" || dispatchOrder?.status === "pending-approval";
   const canEdit = isPending; // Both pending and pending-approval can be edited
+  const isEligibleForEdit = ['confirmed', 'picked_up', 'in_transit', 'delivered'].includes(dispatchOrder?.status);
 
 
   // Initialize exchange rate and percentage from dispatch order or defaults
@@ -745,6 +762,128 @@ export default function DispatchOrderDetailPage({ params }) {
       maximumFractionDigits: 2,
     })}`;
   }
+
+  // Confirmed order inline edit handlers
+  const handleEnterEditMode = async () => {
+    setConfirmedEditLoading(true);
+    setConfirmedEditError(null);
+    try {
+      const res = await dispatchOrdersAPI.editImpact(dispatchOrderId);
+      const data = res?.data?.data || res?.data || res;
+      setConfirmedEditImpact({
+        hasSoldItems: data.hasSoldItems,
+        currentSupplierPaymentTotal: data.currentSupplierPaymentTotal,
+        items: data.items || [],
+      });
+      setConfirmedEditForm({
+        exchangeRate: String(data.currentExchangeRate ?? ''),
+        percentage: String(data.currentPercentage ?? ''),
+        discount: String(data.currentDiscount ?? '0'),
+        items: (data.items || []).map(item => ({
+          costPrice: String(item.currentCostPrice ?? ''),
+          quantity: String(item.orderedQuantity ?? ''),
+          soldQty: item.soldQuantity ?? 0,
+        })),
+      });
+      setIsEditingConfirmed(true);
+    } catch (err) {
+      setConfirmedEditError(err?.response?.data?.message || err?.message || 'Failed to load order data');
+    } finally {
+      setConfirmedEditLoading(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingConfirmed(false);
+    setConfirmedEditForm({ exchangeRate: '', percentage: '', discount: '', items: [] });
+    setConfirmedEditImpact(null);
+    setConfirmedEditError(null);
+    setConfirmedEditResult(null);
+  };
+
+  const handleSaveConfirmedEdit = async () => {
+    setConfirmedEditSaving(true);
+    setConfirmedEditError(null);
+    try {
+      const payload = {
+        exchangeRate: parseFloat(confirmedEditForm.exchangeRate),
+        percentage: parseFloat(confirmedEditForm.percentage),
+        discount: parseFloat(confirmedEditForm.discount),
+        items: confirmedEditForm.items.map(item => ({
+          costPrice: parseFloat(item.costPrice),
+          quantity: parseInt(item.quantity),
+        })),
+      };
+
+      if (!isSuperAdmin) {
+        // Non-super-admin: submit edit request
+        if (!editRequestReason.trim()) {
+          setConfirmedEditError("Please provide a reason for the edit request.");
+          setConfirmedEditSaving(false);
+          return;
+        }
+
+        const requestedChanges = {};
+        if (payload.exchangeRate !== confirmedEditImpact?.items?.[0] && confirmedEditImpact) {
+          const impactData = confirmedEditImpact;
+          const origER = dispatchOrder?.exchangeRate;
+          const origPct = dispatchOrder?.percentage;
+          const origDisc = dispatchOrder?.discount || 0;
+          if (payload.exchangeRate !== origER) requestedChanges.exchangeRate = { from: origER, to: payload.exchangeRate };
+          if (payload.percentage !== origPct) requestedChanges.percentage = { from: origPct, to: payload.percentage };
+          if (payload.discount !== origDisc) requestedChanges.discount = { from: origDisc, to: payload.discount };
+          payload.items.forEach((item, i) => {
+            const orig = impactData.items?.[i];
+            if (orig && item.costPrice !== orig.currentCostPrice) {
+              requestedChanges[`items[${i}].costPrice`] = { from: orig.currentCostPrice, to: item.costPrice };
+            }
+            if (orig && item.quantity !== orig.orderedQuantity) {
+              requestedChanges[`items[${i}].quantity`] = { from: orig.orderedQuantity, to: item.quantity };
+            }
+          });
+        }
+
+        await submitEditRequestMutation.mutateAsync({
+          entityType: "dispatch-order",
+          entityId: dispatchOrderId,
+          entityRef: dispatchOrder?.orderNumber,
+          requestType: "edit",
+          requestedChanges,
+          rawPayload: payload,
+          reason: editRequestReason.trim(),
+        });
+
+        toast.success("Edit request submitted for approval");
+        setIsEditingConfirmed(false);
+        setConfirmedEditForm({ exchangeRate: '', percentage: '', discount: '', items: [] });
+        setConfirmedEditImpact(null);
+        setEditRequestReason("");
+        return;
+      }
+
+      const res = await dispatchOrdersAPI.editConfirmed(dispatchOrderId, payload);
+      const result = res?.data?.data || res?.data || res;
+      setConfirmedEditResult(result);
+      await queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['dispatch-order', dispatchOrderId] });
+      await queryClient.invalidateQueries({ queryKey: ['purchases'] });
+      const supplierId = dispatchOrder?.supplier?._id;
+      if (supplierId) {
+        await queryClient.invalidateQueries({ queryKey: ['unpaid-dispatch-orders', supplierId] });
+        await queryClient.invalidateQueries({ queryKey: ['supplier-ledger', supplierId] });
+      }
+      setTimeout(() => {
+        setIsEditingConfirmed(false);
+        setConfirmedEditForm({ exchangeRate: '', percentage: '', discount: '', items: [] });
+        setConfirmedEditImpact(null);
+        setConfirmedEditResult(null);
+      }, 3000);
+    } catch (err) {
+      setConfirmedEditError(err?.response?.data?.message || err?.message || 'Failed to save changes');
+    } finally {
+      setConfirmedEditSaving(false);
+    }
+  };
 
   // Validation function
   const validateOrderBeforeConfirm = useCallback(() => {
@@ -1324,6 +1463,46 @@ export default function DispatchOrderDetailPage({ params }) {
                 Print Barcodes
               </Button>
             )}
+            {isEligibleForEdit && !isEditingConfirmed && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEnterEditMode}
+                disabled={confirmedEditLoading}
+                className="gap-2 text-violet-600 border-violet-200 hover:bg-violet-50 hover:text-violet-700 transition-colors"
+                title={isSuperAdmin ? "Edit confirmed order financial fields (super-admin)" : "Request edit of confirmed order financial fields"}
+              >
+                {confirmedEditLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FilePen className="h-4 w-4" />
+                )}
+                Edit
+              </Button>
+            )}
+            {isEditingConfirmed && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancelEdit}
+                className="gap-2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-4 w-4" />
+                Cancel Edit
+              </Button>
+            )}
+            {isEligibleForEdit && !isEditingConfirmed && !isSuperAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDeleteRequestDialog(true)}
+                className="gap-2 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 transition-colors"
+                title="Request deletion of this confirmed order"
+              >
+                <Trash2 className="h-4 w-4" />
+                Request Delete
+              </Button>
+            )}
             <Badge
               className={cn(
                 "px-4 py-2 text-sm font-semibold rounded-md border",
@@ -1361,21 +1540,60 @@ export default function DispatchOrderDetailPage({ params }) {
             {/* ── FINANCIAL HIGHLIGHTS ── */}
             {isConfirmed ? (
               <div className="flex flex-wrap gap-3 items-center sm:border-r border-border sm:pr-6">
+                {/* Edit icon for financial card — super-admin only */}
+                {isEligibleForEdit && !isEditingConfirmed && (
+                  <button
+                    onClick={handleEnterEditMode}
+                    disabled={confirmedEditLoading}
+                    className="p-1.5 rounded-md text-violet-500 hover:text-violet-700 hover:bg-violet-50 transition-colors"
+                    title="Edit financial fields"
+                  >
+                    {confirmedEditLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FilePen className="h-3.5 w-3.5" />}
+                  </button>
+                )}
+                {isEditingConfirmed && (
+                  <div className="flex items-center gap-1 text-violet-600 text-xs font-semibold bg-violet-50 border border-violet-200 px-2 py-1 rounded-md">
+                    <FilePen className="h-3 w-3" />
+                    Editing
+                  </div>
+                )}
                 {/* Exchange Rate */}
                 <div className="bg-primary/8 border border-primary/20 rounded-lg px-3 py-2 min-w-[90px]">
                   <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider leading-none mb-1">Rate</p>
-                  <p className="text-lg font-bold text-foreground tabular-nums leading-none">
-                    {dispatchOrder.exchangeRate
-                      ? dispatchOrder.exchangeRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })
-                      : "—"}
-                  </p>
+                  {isEditingConfirmed ? (
+                    <Input
+                      type="number"
+                      step="0.0001"
+                      min="0.0001"
+                      value={confirmedEditForm.exchangeRate}
+                      onChange={(e) => setConfirmedEditForm(prev => ({ ...prev, exchangeRate: e.target.value }))}
+                      className="h-7 w-20 text-sm font-bold border-violet-400 focus:border-violet-500 p-1"
+                    />
+                  ) : (
+                    <p className="text-lg font-bold text-foreground tabular-nums leading-none">
+                      {dispatchOrder.exchangeRate
+                        ? dispatchOrder.exchangeRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+                        : "—"}
+                    </p>
+                  )}
                 </div>
                 {/* Percentage */}
                 <div className="bg-primary/8 border border-primary/20 rounded-lg px-3 py-2 min-w-[70px]">
                   <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider leading-none mb-1">Markup</p>
-                  <p className="text-lg font-bold text-foreground leading-none">
-                    {dispatchOrder.percentage != null ? `${dispatchOrder.percentage}%` : "—"}
-                  </p>
+                  {isEditingConfirmed ? (
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={confirmedEditForm.percentage}
+                      onChange={(e) => setConfirmedEditForm(prev => ({ ...prev, percentage: e.target.value }))}
+                      className="h-7 w-20 text-sm font-bold border-violet-400 focus:border-violet-500 p-1"
+                    />
+                  ) : (
+                    <p className="text-lg font-bold text-foreground leading-none">
+                      {dispatchOrder.percentage != null ? `${dispatchOrder.percentage}%` : "—"}
+                    </p>
+                  )}
                 </div>
                 {/* Payments (if available) */}
                 {dispatchOrder.computedPaymentDetails && (
@@ -1563,9 +1781,20 @@ export default function DispatchOrderDetailPage({ params }) {
                 <>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-16 shrink-0">Discount</span>
-                    <span className="text-xs font-medium text-foreground tabular-nums">
-                      {(dispatchOrder.totalDiscount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
+                    {isEditingConfirmed ? (
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={confirmedEditForm.discount}
+                        onChange={(e) => setConfirmedEditForm(prev => ({ ...prev, discount: e.target.value }))}
+                        className="h-6 w-24 text-xs border-violet-400 focus:border-violet-500 p-1"
+                      />
+                    ) : (
+                      <span className="text-xs font-medium text-foreground tabular-nums">
+                        {(dispatchOrder.totalDiscount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-16 shrink-0">Boxes</span>
@@ -1578,6 +1807,87 @@ export default function DispatchOrderDetailPage({ params }) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Confirmed Order Edit: Warning Banner + Save/Cancel Bar */}
+      {(isEditingConfirmed || confirmedEditError || confirmedEditLoading) && (
+        <>
+          {isEditingConfirmed && confirmedEditImpact?.hasSoldItems && (
+            <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
+              <div>
+                <p className="font-semibold">Some items have been sold</p>
+                <p className="text-xs mt-0.5 text-amber-700/80">Changing cost price will retroactively update inventory batch prices for sold stock. A ledger adjustment entry will be created if the supplier payment total changes.</p>
+              </div>
+            </div>
+          )}
+          {confirmedEditError && (
+            <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <p>{confirmedEditError}</p>
+            </div>
+          )}
+          {isEditingConfirmed && confirmedEditResult && (
+            <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold">{confirmedEditResult.message || 'Changes saved successfully'}</p>
+                {confirmedEditResult.adjustmentEntry && (
+                  <p className="text-xs mt-0.5">Ledger adjustment entry: <span className="font-mono font-semibold">{confirmedEditResult.adjustmentEntry.entryNumber}</span></p>
+                )}
+              </div>
+            </div>
+          )}
+          {isEditingConfirmed && <div className="flex flex-col gap-3 rounded-lg border border-violet-200 bg-violet-50/60 px-5 py-3">
+            <p className="text-sm text-violet-700 font-medium flex items-center gap-2">
+              <FilePen className="h-4 w-4" />
+              {isSuperAdmin
+                ? "Editing confirmed order — changes will update inventory costs and create a ledger adjustment if the total changes"
+                : "Editing confirmed order — your changes will be submitted as a request for Super Admin approval"
+              }
+            </p>
+            {!isSuperAdmin && (
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Reason for edit (required)"
+                  value={editRequestReason}
+                  onChange={(e) => setEditRequestReason(e.target.value)}
+                  className="flex-1 h-8 text-sm border-violet-300 focus:border-violet-500"
+                />
+              </div>
+            )}
+            <div className="flex items-center justify-end gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancelEdit}
+                disabled={confirmedEditSaving}
+                className="gap-1.5"
+              >
+                <X className="h-3.5 w-3.5" />
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveConfirmedEdit}
+                disabled={confirmedEditSaving || !!confirmedEditResult || (!isSuperAdmin && !editRequestReason.trim())}
+                className="gap-1.5 bg-violet-600 hover:bg-violet-700 text-white"
+              >
+                {confirmedEditSaving ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {isSuperAdmin ? "Saving..." : "Submitting..."}
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {isSuperAdmin ? "Save Changes" : "Submit Edit Request"}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>}
+        </>
+      )}
 
       {/* Items - Enhanced Design */}
       <Card className="border border-border bg-card">
@@ -1684,22 +1994,28 @@ export default function DispatchOrderDetailPage({ params }) {
                   const isRemoved = itemsToRemove.includes(item.index);
 
                   // Recalculate with edited values
-                  // ALWAYS use the remaining quantity (original/edited minus returns) for financial calculations
-                  // item.confirmedQty already contains the remaining amount (original - returned)
-                  const editedQuantity = item.confirmedQty ?? 0;
-                  // Get cost price from editedItems first (user edits), then from original item
-                  // Make sure we're getting the actual cost price, not any other numeric value
-                  const editedCostPrice = editedItems[item.index]?.costPrice !== undefined
-                    ? parseFloat(editedItems[item.index].costPrice) || 0
-                    : parseFloat(item.costPrice) || 0;
-                  // All financial calculations MUST use editedQuantity (which is confirmedQty)
-                  const supplierPaymentItemTotal =
-                    editedCostPrice * editedQuantity;
-                  const supplierPaymentAmount =
-                    editedCostPrice / currentExchangeRate;
-                  const landedPrice =
-                    truncateToTwoDecimals((editedCostPrice / currentExchangeRate) *
-                      (1 + currentPercentage / 100));
+                  // When editing a confirmed order, use confirmedEditForm values for live feedback
+                  const isConfirmedItemEdit = isEditingConfirmed && item.originalIndex !== null;
+                  const editedCostPrice = isConfirmedItemEdit
+                    ? (parseFloat(confirmedEditForm.items[item.originalIndex]?.costPrice) || parseFloat(item.costPrice) || 0)
+                    : (editedItems[item.index]?.costPrice !== undefined
+                      ? parseFloat(editedItems[item.index].costPrice) || 0
+                      : parseFloat(item.costPrice) || 0);
+                  const editedQuantity = isConfirmedItemEdit
+                    ? (parseInt(confirmedEditForm.items[item.originalIndex]?.quantity) || item.confirmedQty || 0)
+                    : (item.confirmedQty ?? 0);
+                  // Use confirmedEditForm exchange rate / percentage for live recalculation
+                  const rowExchangeRate = isEditingConfirmed
+                    ? (parseFloat(confirmedEditForm.exchangeRate) || currentExchangeRate)
+                    : currentExchangeRate;
+                  const rowPercentage = isEditingConfirmed
+                    ? (parseFloat(confirmedEditForm.percentage) ?? currentPercentage)
+                    : currentPercentage;
+                  const supplierPaymentItemTotal = editedCostPrice * editedQuantity;
+                  const supplierPaymentAmount = editedCostPrice / rowExchangeRate;
+                  const landedPrice = truncateToTwoDecimals(
+                    (editedCostPrice / rowExchangeRate) * (1 + rowPercentage / 100)
+                  );
                   const itemTotal = truncateToTwoDecimals(landedPrice * editedQuantity);
 
                   return (
@@ -2273,7 +2589,34 @@ export default function DispatchOrderDetailPage({ params }) {
                             {item.totalReturned}
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-muted-foreground align-top">
-                            {item.quantity}
+                            {isEditingConfirmed && item.originalIndex !== null ? (
+                              <div className="flex flex-col items-end gap-1">
+                                <Input
+                                  type="number"
+                                  step="1"
+                                  min={confirmedEditForm.items[item.originalIndex]?.soldQty ?? 0}
+                                  value={confirmedEditForm.items[item.originalIndex]?.quantity ?? ''}
+                                  onChange={(e) => setConfirmedEditForm(prev => {
+                                    const items = [...prev.items];
+                                    items[item.originalIndex] = { ...items[item.originalIndex], quantity: e.target.value };
+                                    return { ...prev, items };
+                                  })}
+                                  className={cn(
+                                    "h-8 text-sm w-20 text-right border-violet-400 focus:border-violet-500",
+                                    (confirmedEditForm.items[item.originalIndex]?.soldQty ?? 0) > 0 &&
+                                    parseInt(confirmedEditForm.items[item.originalIndex]?.quantity) <= (confirmedEditForm.items[item.originalIndex]?.soldQty ?? 0) &&
+                                    "border-amber-400"
+                                  )}
+                                />
+                                {(confirmedEditForm.items[item.originalIndex]?.soldQty ?? 0) > 0 && (
+                                  <span className="text-[10px] text-amber-600 font-medium">
+                                    min: {confirmedEditForm.items[item.originalIndex].soldQty} (sold)
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              item.quantity
+                            )}
                           </td>
                         </>
                       )}
@@ -2297,6 +2640,26 @@ export default function DispatchOrderDetailPage({ params }) {
                             }}
                             className="h-8 text-sm w-24 text-right"
                           />
+                        ) : isEditingConfirmed && item.originalIndex !== null ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={confirmedEditForm.items[item.originalIndex]?.costPrice ?? ''}
+                              onChange={(e) => setConfirmedEditForm(prev => {
+                                const items = [...prev.items];
+                                items[item.originalIndex] = { ...items[item.originalIndex], costPrice: e.target.value };
+                                return { ...prev, items };
+                              })}
+                              className="h-8 text-sm w-24 text-right border-violet-400 focus:border-violet-500"
+                            />
+                            {(confirmedEditForm.items[item.originalIndex]?.soldQty ?? 0) > 0 && (
+                              <span className="text-[10px] text-amber-600 font-medium">
+                                {confirmedEditForm.items[item.originalIndex].soldQty} sold
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-muted-foreground">
                             {item.costPrice?.toFixed(2) || "—"}
@@ -3331,6 +3694,23 @@ export default function DispatchOrderDetailPage({ params }) {
         }}
         dispatchOrderId={dispatchOrderId}
         autoPrint={isPostConfirmPrint}
+      />
+
+      {/* Delete Request Dialog (non-super-admin, confirmed orders) */}
+      <DeleteRequestDialog
+        open={showDeleteRequestDialog}
+        onClose={() => setShowDeleteRequestDialog(false)}
+        entityType="dispatch-order"
+        entityId={dispatchOrderId}
+        entityRef={dispatchOrder?.orderNumber}
+        entitySummary={{
+          "Order Number": dispatchOrder?.orderNumber,
+          Supplier: dispatchOrder?.supplier?.name || dispatchOrder?.supplier?.company,
+          Status: dispatchOrder?.status,
+          "Grand Total": `€${(dispatchOrder?.grandTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+          Items: `${dispatchOrder?.items?.length || 0} items`,
+        }}
+        onSuccess={() => setShowDeleteRequestDialog(false)}
       />
     </div >
   );

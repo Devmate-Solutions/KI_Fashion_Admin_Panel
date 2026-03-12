@@ -17,6 +17,8 @@ import { paymentAPI } from "@/lib/api/endpoints/payments"
 import { salesAPI } from "@/lib/api/endpoints/sales"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Loader2, FileText, Users, Search, Filter, TrendingUp, Clock, Plus, CheckCircle2, Printer, RotateCcw, Receipt, X } from "lucide-react"
+import { useAuthStore } from "@/store/store"
+import DeleteRequestDialog from "@/components/modals/DeleteRequestDialog"
 import { Badge } from "@/components/ui/badge"
 import toast from "react-hot-toast"
 import Tabs from "@/components/tabs"
@@ -61,6 +63,11 @@ export default function CustomerLedgerPage() {
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false)
   const [receiptData, setReceiptData] = useState(null)
   const [isLoadingReceipt, setIsLoadingReceipt] = useState(false)
+
+  // Auth and reversal request state
+  const user = useAuthStore((s) => s.user)
+  const isSuperAdmin = user?.role === "super-admin"
+  const [reverseRequestTarget, setReverseRequestTarget] = useState(null)
 
   // Filters for Payment History Tab
   const [paymentHistoryDateFrom, setPaymentHistoryDateFrom] = useState("")
@@ -368,14 +375,14 @@ export default function CustomerLedgerPage() {
 
   const handleReversePayment = async () => {
     if (!selectedPayment || !reversalReason.trim()) {
-      toast.error('Please provide a reason for reversal')
+      toast.error('Please provide a reason for deletion')
       return
     }
 
     setIsReversing(true)
     try {
       await paymentAPI.reversePayment(selectedPayment.paymentNumber, reversalReason.trim())
-      toast.success(`Payment ${selectedPayment.paymentNumber} has been reversed`)
+      toast.success(`Payment ${selectedPayment.paymentNumber} has been deleted`)
 
       // Refresh data
       refetchPayments()
@@ -677,13 +684,36 @@ export default function CustomerLedgerPage() {
             >
               <Printer className="h-4 w-4" />
             </Button>
+            {row.status === 'active' && (
+              isSuperAdmin ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  onClick={() => handleOpenReversalDialog(row)}
+                  title="Reverse Payment"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-orange-600 border-orange-400 hover:bg-orange-50"
+                  onClick={() => setReverseRequestTarget(row)}
+                  title="Request Reversal"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              )
+            )}
           </div>
         )
       }
     ]
 
     return [...baseColumns, ...remainingColumns]
-  }, [selectedBuyerId])
+  }, [selectedBuyerId, isSuperAdmin, handleOpenReversalDialog])
 
   // Calculate buyer balance map from ledger data for the modal
   const buyerBalanceMap = useMemo(() => {
@@ -1433,10 +1463,10 @@ export default function CustomerLedgerPage() {
               <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
                 <RotateCcw className="h-5 w-5 text-destructive" />
               </div>
-              <DialogTitle className="text-xl">Reverse Payment</DialogTitle>
+              <DialogTitle className="text-xl">Delete Payment</DialogTitle>
             </div>
             <DialogDescription>
-              This action will reverse the payment and cannot be undone.
+              This will permanently delete the payment record and its ledger entries. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -1453,11 +1483,11 @@ export default function CustomerLedgerPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label className="text-sm font-semibold">Reason for Reversal *</Label>
+              <Label className="text-sm font-semibold">Reason for Deletion *</Label>
               <Textarea
                 value={reversalReason}
                 onChange={e => setReversalReason(e.target.value)}
-                placeholder="Please provide a reason for reversing this payment..."
+                placeholder="Please provide a reason for deleting this payment..."
                 className="min-h-[100px]"
               />
             </div>
@@ -1474,18 +1504,35 @@ export default function CustomerLedgerPage() {
               {isReversing ? (
                 <>
                   <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                  Reversing...
+                  Deleting...
                 </>
               ) : (
                 <>
                   <RotateCcw className="h-4 w-4 mr-2" />
-                  Confirm Reversal
+                  Confirm Delete
                 </>
               )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Request Reversal Dialog (non-super-admin) */}
+      <DeleteRequestDialog
+        open={!!reverseRequestTarget}
+        onClose={() => setReverseRequestTarget(null)}
+        entityType="payment"
+        entityId={reverseRequestTarget?.paymentNumber}
+        entityRef={reverseRequestTarget?.paymentNumber}
+        entitySummary={reverseRequestTarget ? {
+          "Payment #": reverseRequestTarget.paymentNumber,
+          "Amount": `£${formatNumber(reverseRequestTarget.totalAmount)}`,
+          "Date": reverseRequestTarget.date ? new Date(reverseRequestTarget.date).toLocaleDateString("en-GB") : "—",
+          "Method": reverseRequestTarget.paymentMethod || "—",
+          "Customer": reverseRequestTarget.customerName || "—",
+        } : {}}
+        onSuccess={() => setReverseRequestTarget(null)}
+      />
     </div>
   )
 }

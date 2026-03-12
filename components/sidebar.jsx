@@ -25,9 +25,13 @@ import {
   X,
   Menu,
   RotateCcw,
-  Settings2
+  Settings2,
+  ClipboardCheck,
+  ListChecks
 } from "lucide-react";
 import * as Collapsible from "@radix-ui/react-collapsible";
+import { useAuthStore } from "@/store/store";
+import { usePendingRequestCount } from "@/lib/hooks/useEditRequests";
 const items = [
   { href: "/home", label: "Dashboard", icon: Home },
   { href: "/dispatch-orders", label: "Dispatch Orders", icon: Truck },
@@ -54,6 +58,9 @@ const items = [
   { href: "/users", label: "User Management", icon: UserCog },
   // { href: "/delivery-personnel", label: "Delivery Staff", icon: Truck },
   { href: "/cost-types", label: "Cost Config", icon: Settings2 },
+  { type: "separator", label: "Governance" },
+  { href: "/approval-queue", label: "Approval Queue", icon: ClipboardCheck, superAdminOnly: true, hasBadge: true },
+  { href: "/my-requests", label: "My Requests", icon: ListChecks },
 ];
 
 const reportLinks = [
@@ -76,6 +83,12 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [open, setOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const isSuperAdmin = user?.role === "super-admin";
+  const { data: pendingCount } = usePendingRequestCount();
+
+  // Filter items based on role
+  const visibleItems = items.filter((it) => !it.superAdminOnly || isSuperAdmin);
 
   useEffect(() => {
     const saved =
@@ -128,7 +141,7 @@ export default function Sidebar() {
         </div>
         <nav className="flex-1 overflow-y-auto custom-scrollbar h-[calc(100vh-80px)]">
           <ul className="py-6 px-3 space-y-1">
-            {items.map((it, idx) => {
+            {visibleItems.map((it, idx) => {
               if (it.type === "separator") {
                 return (
                   <li
@@ -140,6 +153,42 @@ export default function Sidebar() {
                 );
               }
 
+              if (it.type === "reports") {
+                const anyReportActive = pathname?.startsWith('/reports');
+                const Icon = it.icon;
+                return (
+                  <li key="reports-collapsible-mobile">
+                    <Collapsible.Root open={reportsOpen} onOpenChange={setReportsOpen}>
+                      <Collapsible.Trigger asChild>
+                        <button
+                          type="button"
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-all rounded-xl relative group min-h-[44px] ${anyReportActive ? "bg-blue-600 text-white shadow-lg shadow-blue-100 font-bold" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"}`}
+                        >
+                          <Icon className={`h-5 w-5 shrink-0 ${anyReportActive ? "text-white" : "text-slate-400 group-hover:text-slate-900"}`} aria-hidden="true" />
+                          <span className="truncate flex-1 text-left">{it.label}</span>
+                          {reportsOpen ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
+                        </button>
+                      </Collapsible.Trigger>
+                      <Collapsible.Content className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+                        <ul className="mt-1 space-y-1">
+                          {reportLinks.map((report) => {
+                            const active = pathname === report.href;
+                            return (
+                              <li key={report.href}>
+                                <Link href={report.href} prefetch={true} onClick={() => setOpen(false)} className={`flex items-center gap-3 pl-12 pr-4 py-2.5 text-xs transition-all rounded-xl relative ${active ? "bg-blue-50 text-blue-700 font-semibold" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}>
+                                  <span className="truncate">{report.label}</span>
+                                  {active && <div className="absolute left-6 w-1.5 h-1.5 rounded-full bg-blue-600"></div>}
+                                </Link>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </Collapsible.Content>
+                    </Collapsible.Root>
+                  </li>
+                );
+              }
+
               const active =
                 pathname === it.href ||
                 (it.href !== "/home" && pathname.startsWith(it.href + "/"));
@@ -147,7 +196,7 @@ export default function Sidebar() {
               return (
                 <li key={idx}>
                   <Link
-                    href={""}
+                    href={it.href}
                     prefetch={true}
                     onClick={() => setOpen(false)}
                     className={`flex items-center gap-3 px-4 py-3 text-sm transition-all rounded-xl relative group min-h-[44px] ${active
@@ -163,7 +212,12 @@ export default function Sidebar() {
                       aria-hidden="true"
                     />
                     <span className="truncate">{it.label}</span>
-                    {active && (
+                    {it.hasBadge && pendingCount > 0 && (
+                      <span className="ml-auto inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                        {pendingCount > 99 ? "99+" : pendingCount}
+                      </span>
+                    )}
+                    {active && !it.hasBadge && (
                       <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white/40"></div>
                     )}
                   </Link>
@@ -182,7 +236,7 @@ export default function Sidebar() {
         data-collapsed={collapsed}
       >
         <div className="flex items-center justify-right px-6 py-2 border-b border-slate-50">
-         
+
           <button
             type="button"
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -199,7 +253,7 @@ export default function Sidebar() {
 
         <nav className="flex-1 overflow-y-auto custom-scrollbar">
           <ul className="py-6 px-3 space-y-1">
-            {items.map((it, idx) => {
+            {visibleItems.map((it, idx) => {
               if (it.type === "separator") {
                 return !collapsed ? (
                   <li
@@ -317,7 +371,17 @@ export default function Sidebar() {
                       aria-hidden="true"
                     />
                     {!collapsed && <span className="truncate">{it.label}</span>}
-                    {active && !collapsed && (
+                    {!collapsed && it.hasBadge && pendingCount > 0 && (
+                      <span className="ml-auto inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                        {pendingCount > 99 ? "99+" : pendingCount}
+                      </span>
+                    )}
+                    {collapsed && it.hasBadge && pendingCount > 0 && (
+                      <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-white text-[9px] font-bold">
+                        {pendingCount > 9 ? "9+" : pendingCount}
+                      </span>
+                    )}
+                    {active && !collapsed && !it.hasBadge && (
                       <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white/40"></div>
                     )}
                   </Link>

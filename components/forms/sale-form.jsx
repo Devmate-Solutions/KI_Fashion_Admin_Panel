@@ -25,6 +25,9 @@ import BritishDatePicker from "@/components/BritishDatePicker"
 import PacketStockSelectionModal from "@/components/modals/PacketStockSelectionModal"
 import BreakPacketDialog from "@/components/modals/BreakPacketDialog"
 import { useBreakPacket } from "@/lib/hooks/usePacketStock"
+import { useAuthStore } from "@/store/store"
+import { useSubmitEditRequest } from "@/lib/hooks/useEditRequests"
+import { FilePen } from "lucide-react"
 
 // Helper to get image array from various sources
 const getImageArray = (row) => {
@@ -45,7 +48,18 @@ const getImageArray = (row) => {
 // Integrated with backend APIs for buyers and sales
 // Matches buying-form.jsx structure and design
 
-export default function SaleForm({ onSave }) {
+export default function SaleForm({ onSave, initialData, saleId }) {
+  const isEditMode = !!saleId
+  const { user } = useAuthStore()
+  const isSuperAdmin = user?.role === 'super-admin'
+  const submitEditRequestMutation = useSubmitEditRequest()
+
+  // Edit request panel state (non-super-admin edit mode)
+  const [showEditRequestPanel, setShowEditRequestPanel] = useState(false)
+  const [editRequestReason, setEditRequestReason] = useState("")
+  const [pendingPayload, setPendingPayload] = useState(null)
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false)
+
   // Loading and error states
   const [isLoadingBuyers, setIsLoadingBuyers] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -99,6 +113,7 @@ export default function SaleForm({ onSave }) {
   // Metadata fields
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split("T")[0])
   const [saleType, setSaleType] = useState("wholesale")
+  const [notes, setNotes] = useState("") // separate notes field for edit
 
   // Cart rows
   const [rows, setRows] = useState([])
@@ -117,6 +132,56 @@ export default function SaleForm({ onSave }) {
   const [discount, setDiscount] = useState(0)
   const [cash, setCash] = useState(0)
   const [bank, setBank] = useState(0)
+
+  // Pre-populate form when initialData is provided (edit mode)
+  useEffect(() => {
+    if (!initialData) return
+
+    // Date
+    if (initialData.saleDate) setSaleDate(new Date(initialData.saleDate).toISOString().split('T')[0])
+    // Type
+    if (initialData.saleType) setSaleType(initialData.saleType)
+    // Notes
+    if (initialData.notes) setNotes(initialData.notes)
+    // Payment
+    if (initialData.totalDiscount != null) setDiscount(initialData.totalDiscount)
+    if (initialData.cashPayment != null) setCash(initialData.cashPayment)
+    if (initialData.bankPayment != null) setBank(initialData.bankPayment)
+    // Buyer
+    if (initialData.buyer) {
+      const buyerIdVal = initialData.buyer?._id || initialData.buyer
+      setBuyerId(String(buyerIdVal))
+      setIsManualCustomer(false)
+    } else if (initialData.manualCustomer) {
+      setIsManualCustomer(true)
+      setManualCustomer(prev => ({ ...prev, ...initialData.manualCustomer }))
+    }
+    // Items → rows
+    if (Array.isArray(initialData.items) && initialData.items.length > 0) {
+      const mappedRows = initialData.items.map((item, idx) => {
+        const prod = item.product
+        return {
+          id: Date.now() + idx,
+          productId: prod?._id || prod || '',
+          productName: prod?.name || '',
+          productCode: prod?.productCode || prod?.sku || '',
+          season: prod?.season || [],
+          unitPrice: item.unitPrice,
+          quantity: item.packetQuantity || item.quantity,
+          photo: prod?.images?.[0] || null,
+          totalPrice: item.unitPrice * (item.packetQuantity || item.quantity),
+          isPacketSale: item.isPacketSale || false,
+          packetStockId: item.packetStock?._id || item.packetStock || undefined,
+          packetBarcode: item.packetBarcode || undefined,
+          packetComposition: item.packetComposition || undefined,
+          totalItemsPerPacket: item.totalItemsPerPacket || undefined,
+          packetQuantity: item.packetQuantity || undefined,
+        }
+      })
+      setRows(mappedRows)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData])
 
   // Refs for keyboard navigation
   const cashInputRef = useRef(null)
@@ -627,7 +692,7 @@ export default function SaleForm({ onSave }) {
         bankPayment: Number(bank || 0),
         paymentMethod: cash > 0 ? 'cash' : bank > 0 ? 'online' : 'credit',
         saleType: saleType,
-        notes: `Manual entry - ${isManualCustomer ? manualCustomer.name : buyers.find(b => String(b.id) === String(buyerId))?.name || 'Customer'}`,
+        notes: notes.trim() || `Manual entry - ${isManualCustomer ? manualCustomer.name : buyers.find(b => String(b.id) === String(buyerId))?.name || 'Customer'}`,
       }
 
       // Add buyer or manualCustomer
@@ -637,7 +702,19 @@ export default function SaleForm({ onSave }) {
         payload.buyer = buyerId
       }
 
-      const response = await salesAPI.create(payload)
+      let response
+      if (isEditMode) {
+        if (!isSuperAdmin) {
+          // Non-super-admin: show edit request panel instead of saving directly
+          setPendingPayload(payload)
+          setShowEditRequestPanel(true)
+          setIsSaving(false)
+          return
+        }
+        response = await salesAPI.update(saleId, payload)
+      } else {
+        response = await salesAPI.create(payload)
+      }
 
       if (onSave) {
         onSave(response.data?.data || response.data)
@@ -654,6 +731,64 @@ export default function SaleForm({ onSave }) {
       setError(errorMessage)
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  async function handleSubmitEditRequest() {
+    if (!editRequestReason.trim() || !pendingPayload) return
+    setIsSubmittingRequest(true)
+    try {
+      const saleRef = initialData?.saleNumber || `#${String(saleId).slice(-6)}`
+      const requestedChanges = {}
+      if (initialData) {
+        if (pendingPayload.saleDate !== new Date(initialData.saleDate).toISOString().split('T')[0])
+          requestedChanges.saleDate = { from: initialData.saleDate, to: pendingPayload.saleDate }
+        if (pendingPayload.saleType !== initialData.saleType)
+          requestedChanges.saleType = { from: initialData.saleType, to: pendingPayload.saleType }
+        if (String(pendingPayload.buyer || '') !== String(initialData.buyer?._id || initialData.buyer || ''))
+          requestedChanges.buyer = { from: initialData.buyer?.name || initialData.buyer, to: pendingPayload.buyer }
+        if (pendingPayload.totalDiscount !== (initialData.totalDiscount || 0))
+          requestedChanges.totalDiscount = { from: initialData.totalDiscount || 0, to: pendingPayload.totalDiscount }
+        if (pendingPayload.cashPayment !== (initialData.cashPayment || 0))
+          requestedChanges.cashPayment = { from: initialData.cashPayment || 0, to: pendingPayload.cashPayment }
+        if (pendingPayload.bankPayment !== (initialData.bankPayment || 0))
+          requestedChanges.bankPayment = { from: initialData.bankPayment || 0, to: pendingPayload.bankPayment }
+        if (pendingPayload.notes !== (initialData.notes || ''))
+          requestedChanges.notes = { from: initialData.notes || '', to: pendingPayload.notes }
+        // Compare items (quantity and price changes)
+        const origItems = (initialData.items || []).map(item => ({
+          productId: String(item.product?._id || item.product || ''),
+          productName: item.product?.name || '',
+          productCode: item.product?.productCode || item.product?.sku || '',
+          unitPrice: item.unitPrice,
+          quantity: item.packetQuantity || item.quantity,
+        }))
+        const newItems = rows.map((row) => ({
+          productId: String(row.productId || ''),
+          productName: row.productName || '',
+          productCode: row.productCode || '',
+          unitPrice: Number(row.unitPrice || 0),
+          quantity: Number(row.quantity || 0),
+        }))
+        if (JSON.stringify(origItems) !== JSON.stringify(newItems))
+          requestedChanges.items = { from: origItems, to: newItems }
+      }
+      await submitEditRequestMutation.mutateAsync({
+        entityType: 'sale',
+        entityId: saleId,
+        entityRef: saleRef,
+        requestType: 'edit',
+        requestedChanges,
+        rawPayload: pendingPayload,
+        reason: editRequestReason.trim(),
+      })
+      setShowEditRequestPanel(false)
+      setEditRequestReason("")
+      setPendingPayload(null)
+    } catch {
+      // error toast handled by mutation hook
+    } finally {
+      setIsSubmittingRequest(false)
     }
   }
 
@@ -1457,6 +1592,55 @@ export default function SaleForm({ onSave }) {
           </div>
         </div>
 
+        {/* Edit request panel for non-super-admin in edit mode */}
+        {showEditRequestPanel && (
+          <div className="mt-4 flex flex-col gap-3 rounded-lg border border-violet-200 bg-violet-50/60 px-5 py-4">
+            <p className="text-sm text-violet-700 font-medium flex items-center gap-2">
+              <FilePen className="h-4 w-4" />
+              Your changes will be submitted as a request for Super Admin approval
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Reason for change (required)"
+                value={editRequestReason}
+                onChange={(e) => setEditRequestReason(e.target.value)}
+                className="flex-1 h-9 px-3 text-sm rounded-md border border-violet-300 focus:border-violet-500 focus:outline-none bg-white"
+              />
+            </div>
+            <div className="flex items-center justify-end gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setShowEditRequestPanel(false); setEditRequestReason(""); setPendingPayload(null) }}
+                disabled={isSubmittingRequest}
+                className="gap-1.5"
+              >
+                <X className="h-3.5 w-3.5" />
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSubmitEditRequest}
+                disabled={isSubmittingRequest || !editRequestReason.trim()}
+                className="gap-1.5 bg-violet-600 hover:bg-violet-700 text-white"
+              >
+                {isSubmittingRequest ? (
+                  <>
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <FilePen className="h-3.5 w-3.5" />
+                    Submit Edit Request
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="mt-6 pt-6 border-t flex items-center justify-between">
           <div className="text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
@@ -1495,6 +1679,8 @@ export default function SaleForm({ onSave }) {
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
                   Saving...
                 </>
+              ) : isEditMode ? (
+                isSuperAdmin ? 'Update Sale' : 'Request Changes'
               ) : (
                 'Save Selling'
               )}

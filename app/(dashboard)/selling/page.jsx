@@ -15,6 +15,8 @@ import SaleReturnDetailModal from "@/components/modals/SaleReturnDetailModal"
 import CustomerPaymentModal from "@/components/modals/CustomerPaymentModal"
 import ProductImageGallery from "@/components/ui/ProductImageGallery"
 import { Plus, RotateCcw } from "lucide-react"
+import { useAuthStore } from "@/store/store"
+import DeleteRequestDialog from "@/components/modals/DeleteRequestDialog"
 
 // Helper to get image array from various sources
 const getImageArray = (item) => {
@@ -35,6 +37,9 @@ function currency(n) {
 export default function SellingPage() {
   const router = useRouter()
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
+  const user = useAuthStore((s) => s.user)
+  const isSuperAdmin = user?.role === "super-admin"
+  const [deleteRequestTarget, setDeleteRequestTarget] = useState(null)
 
   // Fetch sales data
   const { data: sellingRows = [], isLoading: salesLoading } = useSales()
@@ -185,13 +190,18 @@ export default function SellingPage() {
     router.push('/selling/new')
   }
 
-  // Handle Edit Sale - Navigate to detail page
+  // Handle Edit Sale - Navigate to full edit page
   function handleEdit(sale) {
-    router.push(`/selling/${sale.id}`)
+    router.push(`/selling/${sale.id}/edit`)
   }
 
   // Handle Delete Sale
   async function handleDelete(sale) {
+    if (!isSuperAdmin) {
+      // Non-super-admin: open delete request dialog
+      setDeleteRequestTarget(sale)
+      return
+    }
     if (window.confirm(`Are you sure you want to delete sale #${String(sale.id).slice(-6)}?`)) {
       try {
         await deleteSaleMutation.mutateAsync(sale.id)
@@ -359,6 +369,8 @@ export default function SellingPage() {
                     data={sellingRows}
                     onAddNew={handleAddNew}
                     loading={salesLoading}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
                   />
                 </div>
               </div>
@@ -409,6 +421,22 @@ export default function SellingPage() {
         onSuccess={() => {
           // Data refresh handled by query invalidation in the modal
         }}
+      />
+
+      {/* Delete Request Dialog (non-super-admin) */}
+      <DeleteRequestDialog
+        open={!!deleteRequestTarget}
+        onClose={() => setDeleteRequestTarget(null)}
+        entityType="sale"
+        entityId={deleteRequestTarget?.id}
+        entityRef={deleteRequestTarget?.invoiceNumber || String(deleteRequestTarget?.id).slice(-6)}
+        entitySummary={deleteRequestTarget ? {
+          "Invoice": deleteRequestTarget.invoiceNumber || String(deleteRequestTarget.id).slice(-6),
+          "Buyer": deleteRequestTarget.buyer?.name || deleteRequestTarget.buyerName || "Unknown",
+          "Amount": currency(deleteRequestTarget.totalAmount || deleteRequestTarget.grandTotal),
+          "Date": deleteRequestTarget.date ? new Date(deleteRequestTarget.date).toLocaleDateString("en-GB") : "—",
+        } : {}}
+        onSuccess={() => setDeleteRequestTarget(null)}
       />
     </div>
   )

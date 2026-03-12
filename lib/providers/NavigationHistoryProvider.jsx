@@ -1,11 +1,13 @@
 "use client"
 
-import { createContext, useContext, useRef, useCallback } from "react"
+import { createContext, useContext, useRef, useCallback, useEffect, Suspense } from "react"
 import { usePathname, useSearchParams, useRouter } from "next/navigation"
 
 const NavigationHistoryContext = createContext(null)
 
-export function NavigationHistoryProvider({ children }) {
+const MAX_HISTORY = 50
+
+function NavigationHistoryInner({ children }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -17,21 +19,29 @@ export function NavigationHistoryProvider({ children }) {
 
   // Stack of previous full URLs
   const historyStack = useRef([])
-  const currentPathRef = useRef(null)
+  const currentPathRef = useRef(fullPath)  // initialise to current path
   // Flag set before a back-navigation so the resulting route change is NOT
   // pushed onto the stack — otherwise it would create the cycling bug.
   const isGoingBack = useRef(false)
 
-  if (currentPathRef.current !== fullPath) {
-    if (isGoingBack.current) {
-      // We navigated backwards — discard the flag, don't push to stack
-      isGoingBack.current = false
-    } else if (currentPathRef.current !== null) {
-      // Normal forward navigation — save where we were
-      historyStack.current.push(currentPathRef.current)
+  // Track path changes in useEffect to avoid side-effects during render.
+  // This fixes the React Strict Mode double-push bug.
+  useEffect(() => {
+    if (currentPathRef.current !== fullPath) {
+      if (isGoingBack.current) {
+        // We navigated backwards — discard the flag, don't push to stack
+        isGoingBack.current = false
+      } else if (currentPathRef.current !== null) {
+        // Normal forward navigation — save where we were
+        historyStack.current.push(currentPathRef.current)
+        // Cap the stack size to prevent unbounded growth
+        if (historyStack.current.length > MAX_HISTORY) {
+          historyStack.current = historyStack.current.slice(-MAX_HISTORY)
+        }
+      }
+      currentPathRef.current = fullPath
     }
-    currentPathRef.current = fullPath
-  }
+  }, [fullPath])
 
   const goBack = useCallback(
     (fallbackPath) => {
@@ -40,7 +50,7 @@ export function NavigationHistoryProvider({ children }) {
         isGoingBack.current = true
         router.push(prev)
       } else {
-        router.push(fallbackPath)
+        router.push(fallbackPath || "/home")
       }
     },
     [router]
@@ -50,6 +60,14 @@ export function NavigationHistoryProvider({ children }) {
     <NavigationHistoryContext.Provider value={{ goBack }}>
       {children}
     </NavigationHistoryContext.Provider>
+  )
+}
+
+export function NavigationHistoryProvider({ children }) {
+  return (
+    <Suspense fallback={null}>
+      <NavigationHistoryInner>{children}</NavigationHistoryInner>
+    </Suspense>
   )
 }
 

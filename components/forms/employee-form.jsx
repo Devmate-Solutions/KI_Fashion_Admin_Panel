@@ -137,7 +137,7 @@ export function EmployeeForm({ open, onClose, onSubmit, initialData = null, load
             </div>
             <div>
               <DialogTitle className="text-xl font-semibold">
-                {initialData ? 'Edit Employee' : 'Add New Employee'}
+                {initialData ? 'Edit Employee' : 'Add New User'}
               </DialogTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 {initialData ? 'Update employee information and permissions' : 'Create a new employee account with role and permissions'}
@@ -183,9 +183,9 @@ export function EmployeeForm({ open, onClose, onSubmit, initialData = null, load
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="employee">Employee</SelectItem>
                   <SelectItem value="accountant">Accountant</SelectItem>
+                  <SelectItem value="viewer">Viewer</SelectItem>
                 </SelectContent>
               </Select>
             </div>

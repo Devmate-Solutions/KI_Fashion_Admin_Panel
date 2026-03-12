@@ -24,7 +24,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Edit, RotateCcw, Trash2 } from "lucide-react"
+import { Edit, RotateCcw, Trash2, FilePen } from "lucide-react"
+import EditConfirmedOrderModal from "@/components/modals/EditConfirmedOrderModal"
+import { useAuthStore } from "@/store/store"
 
 // Helper to get image array from various sources (same pattern as BuyingReturnModal)
 const getImageArray = (item) => {
@@ -49,6 +51,10 @@ function currency(n) {
 
 export default function BuyingPage() {
   const router = useRouter()
+  const { user } = useAuthStore()
+  const isSuperAdmin = user?.role === 'super-admin'
+
+  const [editConfirmedOrder, setEditConfirmedOrder] = useState(null) // { orderId, orderNumber, supplierId }
 
   const [page, setPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
@@ -411,6 +417,7 @@ export default function BuyingPage() {
         header: "Actions",
         accessor: "actions",
         render: (row) => {
+          const isConfirmedOrder = ['confirmed', 'picked_up', 'in_transit', 'delivered'].includes(row.status)
           return (
             <div className="flex items-center gap-2">
               <Button
@@ -423,11 +430,30 @@ export default function BuyingPage() {
                   }
                 }}
                 className="h-8 px-3 text-xs gap-1.5 hover:bg-primary hover:text-primary-foreground transition-colors"
-                title="Edit purchase"
+                title="View purchase"
               >
                 <Edit className="h-3.5 w-3.5" />
-                Edit
+                View
               </Button>
+              {isConfirmedOrder && row.dispatchOrderId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setEditConfirmedOrder({
+                      orderId: row.dispatchOrderId,
+                      orderNumber: row.purchaseNumber || row.orderNumber || row.dispatchOrderId,
+                      supplierId: row.supplierId || row.supplier?._id || null,
+                    })
+                  }}
+                  className="h-8 px-3 text-xs gap-1.5 text-violet-600 border-violet-200 hover:bg-violet-50 hover:text-violet-700 transition-colors"
+                  title={isSuperAdmin ? "Edit confirmed order financial fields" : "Request edit of confirmed order"}
+                >
+                  <FilePen className="h-3.5 w-3.5" />
+                  {isSuperAdmin ? "Edit" : "Request Edit"}
+                </Button>
+              )}
               {/* Revert and Delete buttons commented out */}
               {/* {row.dispatchOrderId && (
                 <>
@@ -723,51 +749,18 @@ export default function BuyingPage() {
       </Dialog> */}
 
       {/* Revert to Pending Confirmation Dialog - Commented out */}
-      {/* <Dialog open={showRevertDialog} onOpenChange={setShowRevertDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Revert to Pending</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to revert this purchase back to pending status? This will change the dispatch order status back to pending.
-              {selectedPurchase && (
-                <div className="mt-2 text-sm">
-                  <p><strong>Purchase ID:</strong> {selectedPurchase.purchaseNumber || "—"}</p>
-                  <p><strong>Supplier:</strong> {selectedPurchase.supplierName || "—"}</p>
-                  <p><strong>Grand Total:</strong> {currency(selectedPurchase.grandTotal || 0)}</p>
-                </div>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowRevertDialog(false)
-                setSelectedPurchase(null)
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="default"
-              onClick={async () => {
-                if (selectedPurchase?.dispatchOrderId) {
-                  try {
-                    await revertToPendingMutation.mutateAsync(selectedPurchase.dispatchOrderId)
-                    setShowRevertDialog(false)
-                    setSelectedPurchase(null)
-                  } catch (error) {
-                    console.error('Error reverting purchase:', error)
-                  }
-                }
-              }}
-              disabled={revertToPendingMutation.isPending}
-            >
-              {revertToPendingMutation.isPending ? "Reverting..." : "Revert to Pending"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog> */}
+      {/* <Dialog open={showRevertDialog} onOpenChange={setShowRevertDialog}> ... */}
+
+      {/* Edit Confirmed Order Modal — super-admin only */}
+      {editConfirmedOrder && (
+        <EditConfirmedOrderModal
+          orderId={editConfirmedOrder.orderId}
+          orderNumber={editConfirmedOrder.orderNumber}
+          supplierId={editConfirmedOrder.supplierId}
+          onClose={() => setEditConfirmedOrder(null)}
+          onSuccess={() => setEditConfirmedOrder(null)}
+        />
+      )}
     </div>
   )
 }

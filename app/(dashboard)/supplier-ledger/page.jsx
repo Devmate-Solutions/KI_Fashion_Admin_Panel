@@ -25,6 +25,8 @@ import { Badge } from "@/components/ui/badge"
 import { useQueryClient } from "@tanstack/react-query"
 import toast from "react-hot-toast"
 import SupplierPaymentModal from "@/components/modals/SupplierPaymentModal"
+import { useAuthStore } from "@/store/store"
+import DeleteRequestDialog from "@/components/modals/DeleteRequestDialog"
 import SupplierPaymentReceiptModal from "@/components/modals/SupplierPaymentReceiptModal"
 import { Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -83,6 +85,17 @@ export default function SupplierLedgerPage() {
 
   // Universal payment modal state
   const [universalPaymentOpen, setUniversalPaymentOpen] = useState(false)
+
+  // Auth and delete request state
+  const user = useAuthStore((s) => s.user)
+  const isSuperAdmin = user?.role === "super-admin"
+  const [deleteReceiptTarget, setDeleteReceiptTarget] = useState(null)
+
+  // Direct reversal state (super-admin)
+  const [receiptReversalDialogOpen, setReceiptReversalDialogOpen] = useState(false)
+  const [selectedReceipt, setSelectedReceipt] = useState(null)
+  const [receiptReversalReason, setReceiptReversalReason] = useState('')
+  const [isReversingReceipt, setIsReversingReceipt] = useState(false)
 
   // Filter for Tab 1 - Supplier Ledger
   const [ledgerSupplierFilter, setLedgerSupplierFilter] = useState("")
@@ -559,7 +572,9 @@ export default function SupplierLedgerPage() {
     return allTransactions.map(txn => {
       // Determine transaction type label
       let typeLabel = txn.type || txn.transactionType || '-'
-      if (txn.referenceModel === 'DispatchOrder') {
+      if (txn.transactionType === 'adjustment') {
+        typeLabel = 'Adjustment'
+      } else if (txn.referenceModel === 'DispatchOrder') {
         if (txn.transactionType === 'payment') {
           typeLabel = `Payment (${txn.paymentMethod === 'cash' ? 'Cash' : 'Bank'})`
         } else {
@@ -796,13 +811,42 @@ export default function SupplierLedgerPage() {
         header: "Actions",
         accessor: "actions",
         render: (row) => (
-          <Button size="sm" variant="outline" onClick={() => handleViewSupplierReceipt(row)} disabled={isLoadingSupplierReceipt}>
-            <Printer className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => handleViewSupplierReceipt(row)} disabled={isLoadingSupplierReceipt}>
+              <Printer className="h-4 w-4" />
+            </Button>
+            {row.status === 'active' && (
+              isSuperAdmin ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  onClick={() => {
+                    setSelectedReceipt(row)
+                    setReceiptReversalReason('')
+                    setReceiptReversalDialogOpen(true)
+                  }}
+                  title="Reverse Receipt"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-orange-600 border-orange-400 hover:bg-orange-50"
+                  onClick={() => setDeleteReceiptTarget(row)}
+                  title="Request Deletion"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              )
+            )}
+          </div>
         )
       }
     ]
-  }, [isLoadingSupplierReceipt])
+  }, [isLoadingSupplierReceipt, isSuperAdmin])
 
   // Pending Balance Columns
   const pendingBalanceColumns = useMemo(() => {
@@ -1002,8 +1046,10 @@ export default function SupplierLedgerPage() {
       const supplier = entry.entityId || {}
       let typeLabel = entry.transactionType || '-'
 
-      // Distinguish between purchases, payments, and returns
-      if (entry.transactionType === 'payment') {
+      // Distinguish between purchases, payments, returns, and adjustments
+      if (entry.transactionType === 'adjustment') {
+        typeLabel = 'Adjustment'
+      } else if (entry.transactionType === 'payment') {
         // Payment entry
         if (entry.paymentMethod === 'cash') {
           typeLabel = 'Payment - Cash'
@@ -1289,9 +1335,38 @@ export default function SupplierLedgerPage() {
       {
         header: "Type",
         accessor: "type",
-        render: (row) => (
-          <span>{row.type}</span>
-        )
+        render: (row) => {
+          const label = row.type || '-'
+          if (label === 'Adjustment') {
+            return (
+              <span className="inline-flex items-center rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                Adjustment
+              </span>
+            )
+          }
+          if (label.startsWith('Purchase')) {
+            return (
+              <span className="inline-flex items-center rounded-md border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
+                {label}
+              </span>
+            )
+          }
+          if (label.startsWith('Payment')) {
+            return (
+              <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                {label}
+              </span>
+            )
+          }
+          if (label.startsWith('Return')) {
+            return (
+              <span className="inline-flex items-center rounded-md border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
+                {label}
+              </span>
+            )
+          }
+          return <span className="text-muted-foreground text-xs">{label}</span>
+        }
       },
       {
         header: "Reference",
@@ -2596,13 +2671,13 @@ export default function SupplierLedgerPage() {
       label: "Supplier Ledger",
       content: ledgerTabContent,
     },
-    // {
-    //   label: "Pending Payments",
-    //   content: paymentDetails,
-    // },
     {
       label: "Payment History",
       content: paymentHistoryTabContent,
+    },
+    {
+      label: "Payment Receipts",
+      content: supplierReceiptsTabContent,
     },
   ]
 
@@ -2690,6 +2765,95 @@ export default function SupplierLedgerPage() {
         }}
         receipt={selectedSupplierReceipt}
       />
+
+      {/* Request Deletion Dialog (non-super-admin) */}
+      <DeleteRequestDialog
+        open={!!deleteReceiptTarget}
+        onClose={() => setDeleteReceiptTarget(null)}
+        entityType="supplierPayment"
+        entityId={deleteReceiptTarget?.receiptNumber}
+        entityRef={deleteReceiptTarget?.receiptNumber}
+        entitySummary={deleteReceiptTarget ? {
+          "Receipt #": deleteReceiptTarget.receiptNumber,
+          "Amount": formatNumber(deleteReceiptTarget.totalAmount),
+          "Supplier": deleteReceiptTarget.supplierName || "—",
+          "Method": deleteReceiptTarget.methodSummary || "—",
+        } : {}}
+        onSuccess={() => setDeleteReceiptTarget(null)}
+      />
+
+      {/* Direct Reversal Dialog (super-admin) */}
+      <Dialog open={receiptReversalDialogOpen} onOpenChange={setReceiptReversalDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+                <RotateCcw className="h-5 w-5 text-destructive" />
+              </div>
+              <DialogTitle className="text-xl">Reverse Receipt</DialogTitle>
+            </div>
+          </DialogHeader>
+          {selectedReceipt && (
+            <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2 my-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-muted-foreground">Receipt #:</span>
+                <span className="text-sm font-medium">{selectedReceipt.receiptNumber}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-muted-foreground">Amount:</span>
+                <span className="text-sm font-bold">{formatNumber(selectedReceipt.totalAmount)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-muted-foreground">Supplier:</span>
+                <span className="text-sm">{selectedReceipt.supplierName}</span>
+              </div>
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Reason for Reversal *</Label>
+            <Textarea
+              value={receiptReversalReason}
+              onChange={e => setReceiptReversalReason(e.target.value)}
+              placeholder="Please provide a reason for reversing this receipt..."
+              className="min-h-[100px]"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReceiptReversalDialogOpen(false)} disabled={isReversingReceipt}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={isReversingReceipt || !receiptReversalReason.trim()}
+              onClick={async () => {
+                if (!selectedReceipt || !receiptReversalReason.trim()) return
+                setIsReversingReceipt(true)
+                try {
+                  const supplierId = receiptSupplierId || selectedReceipt.raw?.supplierId?._id || selectedReceipt.raw?.supplierId
+                  await ledgerAPI.reverseSupplierReceipt(supplierId, selectedReceipt.receiptNumber, receiptReversalReason.trim())
+                  toast.success(`Receipt ${selectedReceipt.receiptNumber} reversed successfully`)
+                  queryClient.invalidateQueries({ queryKey: ['supplier-payment-receipts'] })
+                  queryClient.invalidateQueries({ queryKey: ['ledger', 'supplier'] })
+                  queryClient.invalidateQueries({ queryKey: ['pending-balances'] })
+                  setReceiptReversalDialogOpen(false)
+                  setSelectedReceipt(null)
+                  setReceiptReversalReason('')
+                } catch (error) {
+                  toast.error(error.response?.data?.message || 'Failed to reverse receipt')
+                } finally {
+                  setIsReversingReceipt(false)
+                }
+              }}
+            >
+              {isReversingReceipt ? (
+                <><Loader2 className="animate-spin h-4 w-4 mr-2" />Reversing...</>
+              ) : (
+                <><RotateCcw className="h-4 w-4 mr-2" />Confirm Reversal</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

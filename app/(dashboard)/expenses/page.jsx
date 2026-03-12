@@ -266,10 +266,10 @@ export default function ExpensesPage() {
     <div className="space-y-6 ">
       {/* Header - Enhanced */}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-      <div className="">
-        <BackButton fallbackPath="/home" label="Back" />
-      </div>
-        
+        <div className="">
+          <BackButton fallbackPath="/home" label="Back" />
+        </div>
+
         <Button onClick={handleCreate} className="gap-2 h-11 px-6 shadow-sm">
           <Plus className="h-4 w-4" />
           Add Expense
@@ -318,18 +318,19 @@ export default function ExpensesPage() {
           <div className="text-2xl font-bold text-blue-700 tabular-nums">
             {currency(bankExpenses)}
           </div>
+        </div>
       </div>
 
-      {/* Filters & Search Bar - Unified */}}
+      {/* Filters & Search Bar - Unified */}
       <div className="rounded-lg border border-border bg-card p-3 sm:p-4 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
           {/* Filter Label */}
           <div className="flex items-center gap-2 flex-shrink-0">
             <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
             <span className="text-xs sm:text-sm font-semibold text-foreground">Filters:</span>
-        </div>
+          </div>
 
-        {/* Cost Type Filter */}
+          {/* Cost Type Filter */}
           <Select
             value={filters.costType}
             onValueChange={(value) => setFilters(prev => ({ ...prev, costType: value }))}
@@ -347,7 +348,7 @@ export default function ExpensesPage() {
             </SelectContent>
           </Select>
 
-        {/* Status Filter */}
+          {/* Status Filter */}
           <Select
             value={filters.status}
             onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
@@ -362,7 +363,7 @@ export default function ExpensesPage() {
             </SelectContent>
           </Select>
 
-        {/* Payment Method Filter */}
+          {/* Payment Method Filter */}
           <Select
             value={filters.paymentMethod}
             onValueChange={(value) => setFilters(prev => ({ ...prev, paymentMethod: value }))}
@@ -397,23 +398,23 @@ export default function ExpensesPage() {
             >
               Search
             </Button>
-        </div>
+          </div>
 
           {/* Clear Filters Button */}
-        <Button
-          variant="outline"
-          size="sm"
+          <Button
+            variant="outline"
+            size="sm"
             className="gap-2 h-10 border-border"
-          onClick={() => setFilters({
-            search: '',
-            costType: 'all',
-            status: 'all',
-            paymentMethod: 'all',
-          })}
-        >
+            onClick={() => setFilters({
+              search: '',
+              costType: 'all',
+              status: 'all',
+              paymentMethod: 'all',
+            })}
+          >
             <RotateCcw className="h-4 w-4" />
-          Clear
-        </Button>
+            Clear
+          </Button>
         </div>
       </div>
 

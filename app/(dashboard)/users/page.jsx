@@ -6,7 +6,7 @@ import DataTable from "../../../components/data-table"
 import { EmployeeForm } from "../../../components/forms/employee-form"
 import { SupplierForm } from "../../../components/forms/supplier-form"
 import { DistributorForm } from "../../../components/forms/distributor-form"
-import { useUsers, useUpdateUser, useDeactivateUser, useDeleteUser, useCreateUser, useRegeneratePassword } from "../../../lib/hooks/useUsers"
+import { useUsers, useUpdateUser, useDeactivateUser, useDeleteUser, useCreateUser, useRegisterUser, useRegeneratePassword } from "../../../lib/hooks/useUsers"
 import { usePasswordResetRequests, useCompleteRequest, useCancelRequest, useDeleteRequest } from "../../../lib/hooks/usePasswordResetRequests"
 import { useAuthStore } from "@/store/store"
 import { Button } from "../../../components/ui/button"
@@ -34,6 +34,7 @@ export default function UsersPage() {
   const deactivateUserMutation = useDeactivateUser()
   const deleteUserMutation = useDeleteUser()
   const createUserMutation = useCreateUser()
+  const registerUserMutation = useRegisterUser()
   const regeneratePasswordMutation = useRegeneratePassword()
   
   // Password reset requests
@@ -246,6 +247,25 @@ export default function UsersPage() {
       }
     } catch (error) {
       console.error('Error creating user:', error)
+    }
+  }
+
+  const handleRegisterUser = async (formData) => {
+    try {
+      const response = await registerUserMutation.mutateAsync(formData)
+      setOpenAddForm(false)
+
+      if (isAdmin) {
+        const user = response?.data?.user
+        const userId = user?._id || user?.id
+        const password = formData.password
+        if (userId && password) {
+          setUserPasswords(prev => ({ ...prev, [userId]: password }))
+          setVisiblePasswords(prev => ({ ...prev, [userId]: true }))
+        }
+      }
+    } catch (error) {
+      console.error('Error registering user:', error)
     }
   }
 
@@ -591,9 +611,9 @@ export default function UsersPage() {
       <FormComponent
         open={openAddForm}
         onClose={() => setOpenAddForm(false)}
-        onSubmit={handleCreateUser}
+        onSubmit={activeTab === 0 ? handleCreateUser : handleRegisterUser}
         initialData={null}
-        loading={createUserMutation.isPending}
+        loading={activeTab === 0 ? createUserMutation.isPending : registerUserMutation.isPending}
       />
 
       <FormComponent
