@@ -170,14 +170,14 @@ const ROUTE_PERMISSIONS = {
   '/products': { permissions: ['products'] },
   '/inventory': { permissions: ['inventory'] },
   '/purchases': { permissions: ['purchases'] },
-  '/expenses': { permissions: ['expenses'] },
-  '/users': { permissions: ['users'], roles: ['super-admin', 'admin'] },
-  '/reports': { permissions: ['reports'] },
+  '/expenses': { },
+  '/users': {  },
+  '/reports': { },
   '/settings': { roles: ['super-admin'] },
   '/logistics': {roles: ['super-admin']},                                  // Any authenticated user can access logistics
   '/dispatch-orders': { roles: ['super-admin', 'admin'] }, // Admin and manager can access dispatch orders
   '/product-types': { roles: ['super-admin'] },            // Admin only
-  '/cost-types': { roles: ['super-admin'] },               // Admin only
+  '/cost-types': { },               // Admin only
   '/delivery-personnel': { roles: ['super-admin'] },       // Admin only
   '/home': {},                                       // Any authenticated user
   '/buying': {},                                     // Any authenticated user

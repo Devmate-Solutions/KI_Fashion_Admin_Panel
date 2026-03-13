@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import BritishDatePicker from "@/components/BritishDatePicker"
 import { useCostTypes } from "@/lib/hooks/useCostTypes"
 import { useDispatchOrders } from "@/lib/hooks/useDispatchOrders"
 import { Loader2, Check, Search, X } from "lucide-react"
@@ -143,11 +144,10 @@ export default function ExpenseFormNew({ expense, onSave, onCancel, isLoading })
         <Label htmlFor="expenseDate">
           Date <span className="text-red-500">*</span>
         </Label>
-        <Input
-          id="expenseDate"
-          type="date"
+        <BritishDatePicker
           value={formData.expenseDate}
-          onChange={(e) => handleChange('expenseDate', e.target.value)}
+          onChange={(date) => handleChange('expenseDate', date ? date.toISOString().split('T')[0] : '')}
+          maxDate={null}
           className={errors.expenseDate ? 'border-red-500' : ''}
         />
         {errors.expenseDate && (

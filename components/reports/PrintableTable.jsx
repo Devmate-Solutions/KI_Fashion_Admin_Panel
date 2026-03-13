@@ -131,7 +131,7 @@ export default function PrintableTable({
       {/* Table */}
       <div className="overflow-auto max-h-[calc(100vh-260px)] print:overflow-visible print:max-h-none">
         <table className="w-full text-sm">
-          <thead className="bg-muted print:bg-gray-100 sticky top-0 z-10">
+          <thead className="bg-muted print:bg-gray-100">
             <tr>
               {Array.isArray(columns) &&
                 columns.map((c) => (

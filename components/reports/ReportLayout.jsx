@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Printer, RefreshCw, FileDown, AlertCircle } from "lucide-react"
+import BritishDatePicker from "@/components/BritishDatePicker"
 
 export default function ReportLayout({
   title,
@@ -98,23 +99,21 @@ export default function ReportLayout({
                         Beginning
                       </Button>
                     )}
-                    <Input
-                      id="fromDate"
-                      type="date"
-                      value={formatDateForInput(dateRange.from)}
-                      onChange={(e) => onDateChange({ ...dateRange, from: e.target.value })}
-                      className="w-40 h-9"
+                    <BritishDatePicker
+                      value={dateRange.from || null}
+                      onChange={(date) => onDateChange({ ...dateRange, from: date ? date.toISOString().split("T")[0] : "" })}
+                      maxDate={null}
+                      className="w-40 h-9 z-index-10"
                     />
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <Label htmlFor="toDate" className="text-xs">To Date</Label>
-                  <Input
-                    id="toDate"
-                    type="date"
-                    value={formatDateForInput(dateRange.to)}
-                    onChange={(e) => onDateChange({ ...dateRange, to: e.target.value })}
-                    className="w-40 h-9"
+                  <BritishDatePicker
+                    value={dateRange.to || null}
+                    onChange={(date) => onDateChange({ ...dateRange, to: date ? date.toISOString().split("T")[0] : "" })}
+                    maxDate={null}
+                    className="w-40 h-9 z-index-10"
                   />
                 </div>
               </>

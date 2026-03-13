@@ -129,9 +129,9 @@ export default function SaleForm({ onSave, initialData, saleId }) {
   const breakPacketMutation = useBreakPacket()
 
   // Payment section
-  const [discount, setDiscount] = useState(0)
-  const [cash, setCash] = useState(0)
-  const [bank, setBank] = useState(0)
+  const [discount, setDiscount] = useState(null)
+  const [cash, setCash] = useState(null)
+  const [bank, setBank] = useState(null)
 
   // Pre-populate form when initialData is provided (edit mode)
   useEffect(() => {
@@ -1518,7 +1518,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                   setDiscount(!isNaN(val) ? val : 0);
                 }}
                 onKeyDown={(e) => handlePaymentKeyDown(e, "discount")}
-                placeholder="0.00"
+                placeholder=""
                 className="text-lg"
               />
             </div>
@@ -1542,7 +1542,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                   setCash(!isNaN(val) ? val : 0);
                 }}
                 onKeyDown={(e) => handlePaymentKeyDown(e, "cash")}
-                placeholder="0.00"
+                placeholder=""
                 className="text-lg"
               />
             </div>
@@ -1570,7 +1570,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                   setBank(!isNaN(val) ? val : 0);
                 }}
                 onKeyDown={(e) => handlePaymentKeyDown(e, "bank")}
-                placeholder="0.00"
+                placeholder=""
                 className="text-lg"
               />
             </div>
