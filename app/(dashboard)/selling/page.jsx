@@ -17,6 +17,7 @@ import ProductImageGallery from "@/components/ui/ProductImageGallery"
 import { Plus, RotateCcw } from "lucide-react"
 import { useAuthStore } from "@/store/store"
 import DeleteRequestDialog from "@/components/modals/DeleteRequestDialog"
+import { useSearchParams } from "next/navigation"
 
 // Helper to get image array from various sources
 const getImageArray = (item) => {
@@ -36,10 +37,13 @@ function currency(n) {
 
 export default function SellingPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const user = useAuthStore((s) => s.user)
   const isSuperAdmin = user?.role === "super-admin"
   const [deleteRequestTarget, setDeleteRequestTarget] = useState(null)
+  const initialTab = Number(searchParams.get("tab") ?? 0)
+  const [activeTab, setActiveTab] = useState(initialTab)
 
   // Fetch sales data
   const { data: sellingRows = [], isLoading: salesLoading } = useSales()
@@ -312,6 +316,12 @@ export default function SellingPage() {
     [],
   )
 
+  // Tab state sync
+  const handleTabChange = (idx) => {
+    setActiveTab(idx)
+    router.replace(`/selling?tab=${idx}`, { scroll: false })
+  }
+
   // Loading state
   if (salesLoading) {
     return (
@@ -400,6 +410,8 @@ export default function SellingPage() {
             ),
           },
         ]}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
       />
 
       {/* Sale Return Detail Modal */}

@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import BackButton from "@/components/BackButton"
 import DataTable from "../../../components/data-table"
 import { EmployeeForm } from "../../../components/forms/employee-form"
@@ -15,7 +16,15 @@ import { Plus, Eye, EyeOff, Copy, RefreshCw, CheckCircle, X, Trash2 } from "luci
 import { toast } from "react-hot-toast"
 
 export default function UsersPage() {
-  const [activeTab, setActiveTab] = useState(0)
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const initialTab = Number(searchParams.get("tab") ?? 0)
+  const [activeTab, setActiveTab] = useState(initialTab)
+  const handleTabChange = (idx) => {
+    setActiveTab(idx)
+    router.replace(`/users?tab=${idx}`, { scroll: false })
+  }
+
   const [openAddForm, setOpenAddForm] = useState(false)
   const [openEditForm, setOpenEditForm] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
@@ -605,7 +614,7 @@ export default function UsersPage() {
       <Tabs 
         tabs={tabs} 
         activeTab={activeTab} 
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
       />
 
       <FormComponent

@@ -67,10 +67,16 @@ function formatDateTime(_date) {
 }
 
 export default function SupplierLedgerPage() {
-  const searchParams = useSearchParams()
-  const [selectedSupplierId, setSelectedSupplierId] = useState("") // Default to empty - require supplier selection
-  const [selectedDispatchOrderId, setSelectedDispatchOrderId] = useState("none")
-  const [activeTab, setActiveTab] = useState(0) // Track active tab
+  const router = useRouter ? useRouter() : undefined;
+    // searchParams already declared above, remove duplicate
+  const initialTab = Number(searchParams.get("tab") ?? 0);
+  const [selectedSupplierId, setSelectedSupplierId] = useState(""); // Default to empty - require supplier selection
+  const [selectedDispatchOrderId, setSelectedDispatchOrderId] = useState("none");
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const handleTabChange = (idx) => {
+    setActiveTab(idx);
+    if (router) router.replace(`/supplier-ledger?tab=${idx}`, { scroll: false });
+  };
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false)
   const [markAsPaidDialog, setMarkAsPaidDialog] = useState({ open: false, balance: null })
@@ -404,17 +410,17 @@ export default function SupplierLedgerPage() {
         }
       }
     }
-    return map
-  }, [supplierReceiptsData])
-
-  const supplierReceiptTransactions = useMemo(() => {
-    const receipts = supplierReceiptsData?.receipts || []
-    return receipts.map((receipt) => ({
-      id: receipt._id,
-      receiptNumber: receipt.receiptNumber,
-      date: receipt.paymentDate || receipt.createdAt,
-      supplierName: receipt.supplierId?.name || receipt.supplierId?.company || 'Unknown Supplier',
-      totalAmount: receipt.totalAmount || 0,
+    return (
+      <div className="space-y-8">
+        {/* ...existing code... */}
+        <Tabs
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+        />
+        {/* ...existing code... */}
+      </div>
+    )
       cashAmount: receipt.cashAmount || 0,
       bankAmount: receipt.bankAmount || 0,
       methodSummary: receipt.paymentMethodSummary || ((receipt.cashAmount > 0 && receipt.bankAmount > 0) ? 'cash + bank' : receipt.cashAmount > 0 ? 'cash' : 'bank'),

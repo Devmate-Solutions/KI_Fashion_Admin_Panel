@@ -49,7 +49,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   XAxis,
   YAxis,
@@ -59,6 +59,7 @@ import {
   AreaChart,
   Area,
 } from "recharts";
+import { useSearchParams } from "next/navigation";
 
 // Helper to get image array
 const getImageArray = (item) => {
@@ -87,6 +88,7 @@ function currency(n) {
 
 export default function HomePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const today = new Date().toISOString().split("T")[0];
 
   // Fetch all dashboard data
@@ -209,112 +211,120 @@ export default function HomePage() {
       label: "Payables",
       content: <PayablesReportPage />,
     },
-    {
-      label: "Balances",
-      content: (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <StatCard
-              label="Active Accounts"
-              value={(customersData?.totalActiveCustomers || 0).toString()}
-              icon={Users}
-              loading={customersLoading}
-              color="warning"
-            />
-            <StatCard
-              label="Total Receivables"
-              value={currency(financialData?.receivables?.total || 0)}
-              icon={TrendingUp}
-              loading={financialLoading}
-              color="success"
-            />
-            <StatCard
-              label="Total Payables"
-              value={currency(financialData?.payables?.total || 0)}
-              icon={TrendingDown}
-              loading={financialLoading}
-              color="danger"
-            />
-            <StatCard
-              label="Net Liquidity"
-              value={currency(
-                (financialData?.receivables?.total || 0) -
-                  (financialData?.payables?.total || 0)
-              )}
-              icon={Wallet}
-              loading={financialLoading}
-              color="purple"
-            />
-          </div>
+    // {
+    //   label: "Balances",
+    //   content: (
+    //     <div className="space-y-6">
+    //       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    //         <StatCard
+    //           label="Active Accounts"
+    //           value={(customersData?.totalActiveCustomers || 0).toString()}
+    //           icon={Users}
+    //           loading={customersLoading}
+    //           color="warning"
+    //         />
+    //         <StatCard
+    //           label="Total Receivables"
+    //           value={currency(financialData?.receivables?.total || 0)}
+    //           icon={TrendingUp}
+    //           loading={financialLoading}
+    //           color="success"
+    //         />
+    //         <StatCard
+    //           label="Total Payables"
+    //           value={currency(financialData?.payables?.total || 0)}
+    //           icon={TrendingDown}
+    //           loading={financialLoading}
+    //           color="danger"
+    //         />
+    //         <StatCard
+    //           label="Net Liquidity"
+    //           value={currency(
+    //             (financialData?.receivables?.total || 0) -
+    //               (financialData?.payables?.total || 0)
+    //           )}
+    //           icon={Wallet}
+    //           loading={financialLoading}
+    //           color="purple"
+    //         />
+    //       </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card className="border border-border bg-card rounded-lg overflow-hidden">
-              <CardHeader className="p-8 pb-4">
-                <CardTitle className="text-lg font-black text-slate-900 tracking-tight">
-                  Outstanding Receivables
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Top 5 debtors by ledger balance
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-slate-50">
-                  {customersData?.activeCustomers
-                    ?.filter((c) => (c.ledgerBalance || 0) > 0)
-                    .slice(0, 5)
-                    .map((customer, idx) => (
-                      <div
-                        key={idx}
-                        className="px-8 py-5 flex items-center justify-between hover:bg-slate-50/30 transition-all duration-150 rounded-lg mx-2"
-                      >
-                        <span className="font-bold text-slate-900">
-                          {customer.name || customer.company || "Unknown"}
-                        </span>
-                        <span className="font-black text-slate-900 tabular-nums">
-                          {currency(customer.ledgerBalance || 0)}
-                        </span>
-                      </div>
-                    ))}
-                </div>
-              </CardContent>
-            </Card>
+    //       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    //         <Card className="border border-border bg-card rounded-lg overflow-hidden">
+    //           <CardHeader className="p-8 pb-4">
+    //             <CardTitle className="text-lg font-black text-slate-900 tracking-tight">
+    //               Outstanding Receivables
+    //             </CardTitle>
+    //             <CardDescription className="text-xs">
+    //               Top 5 debtors by ledger balance
+    //             </CardDescription>
+    //           </CardHeader>
+    //           <CardContent className="p-0">
+    //             <div className="divide-y divide-slate-50">
+    //               {customersData?.activeCustomers
+    //                 ?.filter((c) => (c.ledgerBalance || 0) > 0)
+    //                 .slice(0, 5)
+    //                 .map((customer, idx) => (
+    //                   <div
+    //                     key={idx}
+    //                     className="px-8 py-5 flex items-center justify-between hover:bg-slate-50/30 transition-all duration-150 rounded-lg mx-2"
+    //                   >
+    //                     <span className="font-bold text-slate-900">
+    //                       {customer.name || customer.company || "Unknown"}
+    //                     </span>
+    //                     <span className="font-black text-slate-900 tabular-nums">
+    //                       {currency(customer.ledgerBalance || 0)}
+    //                     </span>
+    //                   </div>
+    //                 ))}
+    //             </div>
+    //           </CardContent>
+    //         </Card>
 
-            <Card className="border border-border bg-card rounded-lg overflow-hidden">
-              <CardHeader className="p-8 pb-4">
-                <CardTitle className="text-lg font-black text-slate-900 tracking-tight">
-                  Outstanding Payables
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Top 5 suppliers by outstanding credit
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-slate-50">
-                  {suppliersData?.topSuppliers
-                    ?.slice(0, 5)
-                    .map((supplier, idx) => (
-                      <div
-                        key={idx}
-                        className="px-8 py-5 flex items-center justify-between hover:bg-slate-50/30 transition-all duration-150 rounded-lg mx-2"
-                      >
-                        <span className="font-bold text-slate-900">
-                          {supplier.supplierName ||
-                            supplier.company ||
-                            "Unknown"}
-                        </span>
-                        <span className="font-black text-rose-600 tabular-nums">
-                          {currency(supplier.totalAmount || 0)}
-                        </span>
-                      </div>
-                    ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      ),
-    },
+    //         <Card className="border border-border bg-card rounded-lg overflow-hidden">
+    //           <CardHeader className="p-8 pb-4">
+    //             <CardTitle className="text-lg font-black text-slate-900 tracking-tight">
+    //               Outstanding Payables
+    //             </CardTitle>
+    //             <CardDescription className="text-xs">
+    //               Top 5 suppliers by outstanding credit
+    //             </CardDescription>
+    //           </CardHeader>
+    //           <CardContent className="p-0">
+    //             <div className="divide-y divide-slate-50">
+    //               {suppliersData?.topSuppliers
+    //                 ?.slice(0, 5)
+    //                 .map((supplier, idx) => (
+    //                   <div
+    //                     key={idx}
+    //                     className="px-8 py-5 flex items-center justify-between hover:bg-slate-50/30 transition-all duration-150 rounded-lg mx-2"
+    //                   >
+    //                     <span className="font-bold text-slate-900">
+    //                       {supplier.supplierName ||
+    //                         supplier.company ||
+    //                         "Unknown"}
+    //                     </span>
+    //                     <span className="font-black text-rose-600 tabular-nums">
+    //                       {currency(supplier.totalAmount || 0)}
+    //                     </span>
+    //                   </div>
+    //                 ))}
+    //             </div>
+    //           </CardContent>
+    //         </Card>
+    //       </div>
+    //     </div>
+    //   ),
+    // },
   ];
+
+  // Tab state sync
+  const initialTab = Number(searchParams.get("tab") ?? 0);
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const handleTabChange = (idx) => {
+    setActiveTab(idx);
+    router.replace(`/home?tab=${idx}`, { scroll: false });
+  };
 
   return (
     <div className="space-y-8">
@@ -358,7 +368,7 @@ export default function HomePage() {
         </div>
       </header> */}
 
-      <Tabs tabs={tabs} />
+      <Tabs tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />
     </div>
   );
 }

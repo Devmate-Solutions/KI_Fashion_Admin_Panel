@@ -50,7 +50,14 @@ function formatDateTime(_date) {
 export default function CustomerLedgerPage() {
   const [selectedBuyerId, setSelectedBuyerId] = useState("all")
   const [ledgerBuyerFilter, setLedgerBuyerFilter] = useState("")
-  const [activeTab, setActiveTab] = useState(0) // 0: Ledger, 1: Payment History, 2: Payment Receipts
+  const router = useRouter ? useRouter() : undefined;
+  // searchParams already declared below, remove duplicate
+  const initialTab = Number(searchParams.get("tab") ?? 0);
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const handleTabChange = (idx) => {
+    setActiveTab(idx);
+    if (router) router.replace(`/customer-ledger?tab=${idx}`, { scroll: false });
+  };
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
 
   // Reversal dialog state
@@ -75,7 +82,7 @@ export default function CustomerLedgerPage() {
   const [paymentHistoryMethodFilter, setPaymentHistoryMethodFilter] = useState("all")
 
   const queryClient = useQueryClient()
-  const searchParams = useSearchParams()
+  const searchParams = useSearchParams();
 
   // Auto-select buyer from URL query param (e.g. navigating from Receivables report)
   useEffect(() => {
@@ -1110,7 +1117,6 @@ export default function CustomerLedgerPage() {
           <BackButton fallbackPath="/reports/receivables" label="Back" />
         </div>
         <div className="flex items-center gap-4">
-
           <Button onClick={() => setPaymentModalOpen(true)} className="bg-green-600 hover:bg-green-700">
             <Plus className="h-4 w-4 mr-2" />
             Add Payment
@@ -1124,415 +1130,24 @@ export default function CustomerLedgerPage() {
             label: "Buyer Ledger",
             content: (
               <div className="space-y-6">
-                {/* Filters */}
-                <div className="bg-white rounded-lg border p-6 flex flex-wrap gap-4 items-end">
-                  <div className="w-[300px]">
-                    <Label className="mb-2 block">Select Buyer</Label>
-                    {buyersError ? (
-                      <div className="text-sm text-red-600 p-2 bg-red-50 rounded border border-red-200">
-                        Error loading customers: {buyersError.message}
-                      </div>
-                    ) : (
-                      <Combobox
-                        options={comboboxOptions}
-                        value={selectedBuyerId}
-                        onValueChange={setSelectedBuyerId}
-                        placeholder="Search Buyers..."
-                        searchPlaceholder="Type buyer name..."
-                        loading={buyersLoading}
-                      />
-                    )}
-                  </div>
-                </div>
-
-
-                {!selectedBuyerId ? (
-                  <div className="bg-white rounded-lg border p-12 text-center text-muted-foreground">
-                    <p>Select a customer to view their ledger.</p>
-                  </div>
-                ) : (
-                  <>
-                    {/* Stats if specific customer selected */}
-                    {selectedBuyerId !== 'all' && buyerDetails && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-muted/30 rounded-lg p-6">
-                          <p className="text-sm text-muted-foreground">Customer Balance</p>
-                          <p className={`text-2xl font-bold ${buyerDetails.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                            {formatNumber(buyerDetails.balance)}
-                            <span className="text-sm font-normal text-muted-foreground ml-1">{buyerDetails.balance > 0 ? '(Pending)' : '(Clear)'}</span>
-                          </p>
-                        </div>
-                        <div className="bg-muted/30 rounded-lg p-6">
-                          <p className="text-sm text-muted-foreground">Total Sales</p>
-                          <p className="text-2xl font-bold">{formatNumber(buyerDetails.totalSales || 0)}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Summary stats for all customers */}
-                    {selectedBuyerId === 'all' && allLedgerTransactions.length > 0 && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-red-50 col-2 rounded-lg p-6 border border-red-100">
-                          <p className="text-sm text-red-700">All Buyers Balance</p>
-                          <p className="text-2xl font-bold text-red-600">
-                            {formatNumber(allLedgerTransactions.reduce((sum, t) => sum + t.debit, 0) - allLedgerTransactions.reduce((sum, c) => sum + c.credit, 0))}
-                          </p>
-                        </div>
-                        {/* <div className="bg-green-50 rounded-lg p-6 border border-green-100">
-                          <p className="text-sm text-green-700">Total Received (Credit)</p>
-                          <p className="text-2xl font-bold text-green-600">
-                            {formatNumber(allLedgerTransactions.reduce((sum, t) => sum + t.credit, 0))}
-                          </p>
-                        </div> */}
-                        {/* <div className="bg-blue-50 rounded-lg p-6 border border-blue-100">
-                          <p className="text-sm text-blue-700">Total Transactions</p>
-                          <p className="text-2xl font-bold text-blue-600">
-                            {allLedgerTransactions.length}
-                          </p>
-                        </div> */}
-                      </div>
-                    )}
-
-                    {/* Table */}
-                    <div className="bg-white rounded-lg border">
-                      {allLedgerLoading ? (
-                        <div className="p-12 flex justify-center"><Loader2 className="animate-spin text-muted-foreground" /></div>
-                      ) : allLedgerTransactions.length === 0 ? (
-                        <div className="p-12 text-center text-muted-foreground">
-                          <p>No ledger entries found{selectedBuyerId === 'all' ? '' : ' for this customer'}.</p>
-                        </div>
-                      ) : (
-                        <DataTable
-                          columns={allLedgerColumns}
-                          data={allLedgerTransactions}
-                          paginate={false}
-                          searchKey="reference"
-                          disableSorting
-                        />
-                      )}
-                    </div>
-                  </>
-                )}
+                {/* ...existing code... */}
               </div>
             )
           },
-          // {
-          //   label: "Payment History",
-          //   content: (
-          //     <div className="space-y-6">
-          //       {/* Filters Bar */}
-          //       <div className="bg-white rounded-lg border p-6 flex flex-wrap gap-4 items-end">
-          //         <div className="w-[300px]">
-          //           <Label className="mb-2 block">Select Buyer</Label>
-          //           <Combobox
-          //             options={comboboxOptions}
-          //             value={selectedBuyerId}
-          //             onValueChange={setSelectedBuyerId}
-          //             placeholder="Search Buyers..."
-          //             searchPlaceholder="Type buyer name..."
-          //             loading={buyersLoading}
-          //           />
-          //         </div>
-          //       </div>
-
-          //       {!selectedBuyerId ? (
-          //         <div className="rounded-lg border border-border bg-card p-12 text-center">
-          //           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
-          //             <Users className="w-8 h-8 text-muted-foreground" />
-          //           </div>
-          //           <p className="text-sm font-medium text-foreground mb-1">No customer selected</p>
-          //           <p className="text-xs text-muted-foreground">Select a customer to view their payment history</p>
-          //         </div>
-          //       ) : (
-          //         <div className="bg-white rounded-lg border">
-          //           {paymentHistoryLoading ? (
-          //             <div className="p-12 flex justify-center"><Loader2 className="animate-spin" /></div>
-          //           ) : paymentHistoryTransactions.length === 0 ? (
-          //             <div className="p-12 text-center text-muted-foreground">
-          //               <p>No payment history found{selectedBuyerId === 'all' ? '' : ' for this customer'}.</p>
-          //             </div>
-          //           ) : (
-          //             <DataTable columns={paymentHistoryColumns} data={paymentHistoryTransactions} paginate={false} />
-          //           )}
-          //         </div>
-          //       )}
-          //     </div>
-          //   )
-          // },
           {
             label: "Payment Receipts",
             content: (
               <div className="space-y-6">
-                {/* Filters Bar */}
-                <div className="bg-white rounded-lg border p-6 flex flex-wrap gap-4 items-end">
-                  <div className="w-[300px]">
-                    <Label className="mb-2 block">Select Buyer</Label>
-                    <Combobox
-                      options={comboboxOptions}
-                      value={selectedBuyerId}
-                      onValueChange={setSelectedBuyerId}
-                      placeholder="Search Buyers..."
-                      searchPlaceholder="Type buyer name..."
-                      loading={buyersLoading}
-                    />
-                  </div>
-                </div>
-
-
-
-                {/* Table */}
-                <div className="bg-white rounded-lg border">
-                  {paymentReceiptsLoading ? (
-                    <div className="p-12 flex justify-center"><Loader2 className="animate-spin" /></div>
-                  ) : paymentReceiptsError ? (
-                    <div className="p-12 text-center text-red-500">
-                      <X className="h-12 w-12 mx-auto mb-4" />
-                      <p className="font-medium">Error loading payment receipts</p>
-                      <p className="text-sm mt-2 text-muted-foreground">
-                        {paymentReceiptsError.response?.data?.message || paymentReceiptsError.message || 'Failed to fetch data'}
-                      </p>
-                      <Button
-                        onClick={() => refetchPayments()}
-                        variant="outline"
-                        className="mt-4"
-                      >
-                        <RotateCcw className="h-4 w-4 mr-2" />
-                        Retry
-                      </Button>
-                    </div>
-                  ) : paymentReceiptsTransactions.length === 0 ? (
-                    <div className="p-12 text-center text-muted-foreground">
-                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                      <p>No payment receipts found{selectedBuyerId && selectedBuyerId !== 'all' ? ' for this customer' : ''}.</p>
-                      <p className="text-sm mt-2">Add a payment to create a receipt.</p>
-                    </div>
-                  ) : (
-                    <DataTable
-                      columns={paymentReceiptsColumns}
-                      data={paymentReceiptsTransactions}
-                      paginate={false}
-                    />
-                  )}
-                </div>
+                {/* ...existing code... */}
               </div>
             )
           }
         ]}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
       />
 
-      {/* Payment Dialog - Enhanced */}
-      <CustomerPaymentModal
-        open={paymentModalOpen}
-        onClose={() => setPaymentModalOpen(false)}
-        entityId={selectedBuyerId !== 'all' ? selectedBuyerId : ''}
-        entityName={
-          selectedBuyerId !== 'all'
-            ? (dropdownBuyers.find(b => String(b.id) === selectedBuyerId)?.name ||
-              dropdownBuyers.find(b => String(b.id) === selectedBuyerId)?.company ||
-              'Customer')
-            : ''
-        }
-        totalBalance={
-          selectedBuyerId !== 'all'
-            ? Math.abs(dropdownBuyers.find(b => String(b.id) === selectedBuyerId)?.balance || 0)
-            : 0
-        }
-        ledgerBalance={currentBuyerLedgerBalance}
-        ledgerBalanceBuyerId={selectedBuyerId !== 'all' ? selectedBuyerId : null}
-        buyerBalanceMap={buyerBalanceMap}
-        entities={dropdownBuyers}
-        allLedgerData={allLedgerData}
-        onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ['ledger'] })
-          queryClient.invalidateQueries({ queryKey: ['buyers'] })
-          queryClient.invalidateQueries({ queryKey: ['payments'] })
-          refetchPayments()
-        }}
-      />
-
-      {/* Receipt Detail Dialog */}
-      <Dialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <div className="flex items-center gap-3 mb-2">
-              
-              <div>
-                <DialogTitle className="text-xl">Payment Receipt</DialogTitle>
-                {receiptData && (
-                  <p className="text-sm text-muted-foreground font-mono">{receiptData.receiptNumber}</p>
-                )}
-              </div>
-            </div>
-          </DialogHeader>
-          {receiptData ? (
-            <div className="space-y-4 py-2">
-              {/* Customer & Payment Info */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-lg border p-3 space-y-1">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase">Customer</p>
-                  <p className="font-medium">{receiptData.customer?.name || 'Unknown'}</p>
-                  {receiptData.customer?.company && <p className="text-sm text-muted-foreground">{receiptData.customer.company}</p>}
-                </div>
-                <div className="rounded-lg border p-3 space-y-1">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase">Payment Details</p>
-                  <p className="font-medium">{formatNumber(receiptData.payment?.totalAmount)}</p>
-                  <p className="text-sm text-muted-foreground capitalize">{receiptData.payment?.paymentMethod} &middot; {formatDateTime({ date: receiptData.date })}</p>
-                </div>
-              </div>
-
-              {/* Balance Before/After */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-lg bg-muted/30 p-3">
-                  <p className="text-xs font-semibold text-muted-foreground">Balance Before</p>
-                  <p className={`text-lg font-bold ${receiptData.balances?.before > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    {formatNumber(Math.abs(receiptData.balances?.before || 0))}
-                    {receiptData.balances?.before < 0 && <span className="text-xs ml-1">(CR)</span>}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-muted/30 p-3">
-                  <p className="text-xs font-semibold text-muted-foreground">Balance After</p>
-                  <p className={`text-lg font-bold ${receiptData.balances?.after > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    {formatNumber(Math.abs(receiptData.balances?.after || 0))}
-                    {receiptData.balances?.after < 0 && <span className="text-xs ml-1">(CR)</span>}
-                  </p>
-                </div>
-              </div>
-
-              {/* Payment Distribution / Allocation */}
-              <div className="space-y-2">
-                <p className="text-sm font-semibold">Payment Allocation</p>
-                <div className="rounded-lg border divide-y">
-                  {receiptData.distributions?.map((d, i) => (
-                    <div key={i} className="flex items-center justify-between px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        {d.isAdvance ? (
-                          <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">Advance</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-blue-600 border-blue-300 bg-blue-50">Sale</Badge>
-                        )}
-                        <span className="text-sm font-medium">
-                          {d.isAdvance ? 'Stored as customer advance' : d.reference || 'Sale'}
-                        </span>
-                      </div>
-                      <span className="font-bold tabular-nums">{formatNumber(d.amount)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Status */}
-              {receiptData.status === 'reversed' && receiptData.reversal && (
-                <div className="rounded-lg bg-red-50 border border-red-200 p-3 space-y-1">
-                  <p className="text-sm font-semibold text-red-700">REVERSED</p>
-                  <p className="text-sm text-red-600">Date: {formatDateTime({ date: receiptData.reversal.reversedAt })}</p>
-                  <p className="text-sm text-red-600">Reason: {receiptData.reversal.reason}</p>
-                </div>
-              )}
-
-              {receiptData.notes && receiptData.notes !== '-' && (
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase">Notes</p>
-                  <p className="text-sm mt-1">{receiptData.notes}</p>
-                </div>
-              )}
-
-              <p className="text-xs text-muted-foreground">Created by: {receiptData.createdBy}</p>
-            </div>
-          ) : (
-            <div className="py-8 flex justify-center">
-              <Loader2 className="animate-spin text-muted-foreground" />
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setReceiptDialogOpen(false)}>Close</Button>
-            <Button onClick={handlePrintReceipt} disabled={!receiptData}>
-              <Printer className="h-4 w-4 mr-2" />
-              Print Receipt
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Reversal Confirmation Dialog */}
-      <Dialog open={reversalDialogOpen} onOpenChange={setReversalDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-                <RotateCcw className="h-5 w-5 text-destructive" />
-              </div>
-              <DialogTitle className="text-xl">Delete Payment</DialogTitle>
-            </div>
-            <DialogDescription>
-              This will permanently delete the payment record and its ledger entries. This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {selectedPayment && (
-              <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-muted-foreground">Payment #:</span>
-                  <span className="text-sm font-medium">{selectedPayment.paymentNumber}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-muted-foreground">Amount:</span>
-                  <span className="text-sm font-bold">{formatNumber(selectedPayment.totalAmount)}</span>
-                </div>
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">Reason for Deletion *</Label>
-              <Textarea
-                value={reversalReason}
-                onChange={e => setReversalReason(e.target.value)}
-                placeholder="Please provide a reason for deleting this payment..."
-                className="min-h-[100px]"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setReversalDialogOpen(false)} disabled={isReversing}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleReversePayment}
-              disabled={isReversing || !reversalReason.trim()}
-            >
-              {isReversing ? (
-                <>
-                  <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Confirm Delete
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Request Reversal Dialog (non-super-admin) */}
-      <DeleteRequestDialog
-        open={!!reverseRequestTarget}
-        onClose={() => setReverseRequestTarget(null)}
-        entityType="payment"
-        entityId={reverseRequestTarget?.paymentNumber}
-        entityRef={reverseRequestTarget?.paymentNumber}
-        entitySummary={reverseRequestTarget ? {
-          "Payment #": reverseRequestTarget.paymentNumber,
-          "Amount": `£${formatNumber(reverseRequestTarget.totalAmount)}`,
-          "Date": reverseRequestTarget.date ? new Date(reverseRequestTarget.date).toLocaleDateString("en-GB") : "—",
-          "Method": reverseRequestTarget.paymentMethod || "—",
-          "Customer": reverseRequestTarget.customerName || "—",
-        } : {}}
-        onSuccess={() => setReverseRequestTarget(null)}
-      />
+      {/* ...existing code... */}
     </div>
   )
 }

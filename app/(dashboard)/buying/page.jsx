@@ -27,6 +27,7 @@ import {
 import { Edit, RotateCcw, Trash2, FilePen } from "lucide-react"
 import EditConfirmedOrderModal from "@/components/modals/EditConfirmedOrderModal"
 import { useAuthStore } from "@/store/store"
+import { useSearchParams } from "next/navigation"
 
 // Helper to get image array from various sources (same pattern as BuyingReturnModal)
 const getImageArray = (item) => {
@@ -51,6 +52,7 @@ function currency(n) {
 
 export default function BuyingPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useAuthStore()
   const isSuperAdmin = user?.role === 'super-admin'
 
@@ -681,6 +683,10 @@ export default function BuyingPage() {
             ),
           },
         ]}
+        // Tab state sync
+        initialTab={Number(searchParams.get("tab") ?? 0)}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
       />
 
       {/* Return Detail Modal */}
