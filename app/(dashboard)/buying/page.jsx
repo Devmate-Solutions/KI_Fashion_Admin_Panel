@@ -28,6 +28,8 @@ import { Edit, RotateCcw, Trash2, FilePen } from "lucide-react"
 import EditConfirmedOrderModal from "@/components/modals/EditConfirmedOrderModal"
 import { useAuthStore } from "@/store/store"
 import { useSearchParams } from "next/navigation"
+import BritishDatePicker from "@/components/BritishDatePicker"
+import { Label } from "@/components/ui/label"
 
 // Helper to get image array from various sources (same pattern as BuyingReturnModal)
 const getImageArray = (item) => {
@@ -55,17 +57,38 @@ export default function BuyingPage() {
   const searchParams = useSearchParams()
   const { user } = useAuthStore()
   const isSuperAdmin = user?.role === 'super-admin'
+  const initialTab = Number(searchParams.get("tab") ?? 0)
+  const [activeTab, setActiveTab] = useState(Number.isNaN(initialTab) ? 0 : initialTab)
+
+  useEffect(() => {
+    const urlTab = Number(searchParams.get("tab") ?? 0)
+    const normalizedTab = Number.isNaN(urlTab) ? 0 : urlTab
+    if (normalizedTab !== activeTab) {
+      setActiveTab(normalizedTab)
+    }
+  }, [searchParams, activeTab])
+
+  const handleTabChange = (tabIndex) => {
+    setActiveTab(tabIndex)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("tab", String(tabIndex))
+    router.replace(`?${params.toString()}`)
+  }
 
   const [editConfirmedOrder, setEditConfirmedOrder] = useState(null) // { orderId, orderNumber, supplierId }
 
   const [page, setPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
+  const today = new Date().toISOString().split("T")[0]
+  const [dateRange, setDateRange] = useState({ from: today, to: today })
 
   // When searching, fetch more results for better client-side filtering
   // When not searching, use normal pagination
   const { data: purchasesData, isLoading: purchasesLoading } = usePurchases({
     page: searchQuery.trim() ? 1 : page, // Always start at page 1 when searching
     limit: searchQuery.trim() ? 500 : 20, // Fetch more results when searching to enable client-side filtering
+    startDate: dateRange.from || undefined,
+    endDate: dateRange.to || undefined,
   })
   
   // Get all rows from API and flatten items into individual rows
@@ -631,6 +654,33 @@ export default function BuyingPage() {
             label: "Buying",
             content: (
               <div className="space-y-4">
+                <div className="flex flex-wrap items-end gap-3 mb-4">
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs">From Date</Label>
+                    <BritishDatePicker
+                      value={dateRange.from || null}
+                      onChange={(date) => {
+                        setDateRange(r => ({ ...r, from: date ? date.toISOString().split("T")[0] : "" }))
+                        setPage(1)
+                      }}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs">To Date</Label>
+                    <BritishDatePicker
+                      value={dateRange.to || null}
+                      onChange={(date) => {
+                        setDateRange(r => ({ ...r, to: date ? date.toISOString().split("T")[0] : "" }))
+                        setPage(1)
+                      }}
+                    />
+                  </div>
+                  {(dateRange.from || dateRange.to) && (
+                    <Button variant="outline" size="sm" onClick={() => { setDateRange({ from: "", to: "" }); setPage(1) }}>
+                      Clear
+                    </Button>
+                  )}
+                </div>
                 <div className="">
                   <DataTable
                     title="Buying"
@@ -684,7 +734,7 @@ export default function BuyingPage() {
           },
         ]}
         // Tab state sync
-        initialTab={Number(searchParams.get("tab") ?? 0)}
+        defaultTab={Number(searchParams.get("tab") ?? 0)}
         activeTab={activeTab}
         onTabChange={handleTabChange}
       />

@@ -448,20 +448,28 @@ export default function DispatchOrderDetailPage({ params }) {
   const packetConfigItems = useMemo(() => {
     return activeItemsWithDetails.map((item, idx) => {
       const itemData =
-        isPending && editedItems[item.index] ? editedItems[item.index] : item;
+        isPending && editedItems[item.index]
+          ? editedItems[item.index]
+          : isEditingConfirmed && item.originalIndex !== null
+            ? {
+                ...item,
+                ...(confirmedEditForm.items[item.originalIndex] || {}),
+              }
+            : item;
       return {
         id: String(item.index ?? idx),
         index: item.index ?? idx,
         productName:
           itemData.productName || itemData.productCode || `Item ${idx + 1}`,
         productCode: itemData.productCode,
-        quantity: parseFloat(itemData.quantity) || 0,
+        quantity: parseFloat(itemData.quantity ?? item.confirmedQty ?? 0) || 0,
         primaryColor: itemData.primaryColor || [],
         size: itemData.size || [],
         packets: itemData.packets || [],
+        useVariantTracking: itemData.useVariantTracking || false,
       };
     });
-  }, [activeItemsWithDetails, editedItems, isPending]);
+  }, [activeItemsWithDetails, editedItems, isPending, isEditingConfirmed, confirmedEditForm.items]);
 
   // Supplier payment total in supplier currency (cost price × quantity for all active items)
   // For confirmed orders, use confirmedQty which accounts for returned items
@@ -783,6 +791,16 @@ export default function DispatchOrderDetailPage({ params }) {
           costPrice: String(item.currentCostPrice ?? ''),
           quantity: String(item.orderedQuantity ?? ''),
           soldQty: item.soldQuantity ?? 0,
+          productName: item.productName || '',
+          productCode: item.productCode || '',
+          primaryColor: Array.isArray(item.primaryColor) ? item.primaryColor : [],
+          size: Array.isArray(item.size) ? item.size : [],
+          season: Array.isArray(item.season) ? item.season : [],
+          material: item.material || '',
+          description: item.description || '',
+          productId: item.productId || '',
+          packets: Array.isArray(item.packets) ? item.packets : [],
+          useVariantTracking: item.useVariantTracking || false,
         })),
       });
       setIsEditingConfirmed(true);
@@ -812,6 +830,16 @@ export default function DispatchOrderDetailPage({ params }) {
         items: confirmedEditForm.items.map(item => ({
           costPrice: parseFloat(item.costPrice),
           quantity: parseInt(item.quantity),
+          productName: String(item.productName || '').trim(),
+          productCode: String(item.productCode || '').trim().toUpperCase(),
+          primaryColor: Array.isArray(item.primaryColor) ? item.primaryColor : [],
+          size: Array.isArray(item.size) ? item.size : [],
+          season: Array.isArray(item.season) ? item.season : [],
+          material: String(item.material || '').trim(),
+          description: String(item.description || '').trim(),
+          productId: String(item.productId || '').trim() || undefined,
+          packets: Array.isArray(item.packets) ? item.packets : [],
+          useVariantTracking: Boolean(item.useVariantTracking),
         })),
       };
 
@@ -839,6 +867,33 @@ export default function DispatchOrderDetailPage({ params }) {
             }
             if (orig && item.quantity !== orig.orderedQuantity) {
               requestedChanges[`items[${i}].quantity`] = { from: orig.orderedQuantity, to: item.quantity };
+            }
+            if (orig && item.productName !== (orig.productName || '')) {
+              requestedChanges[`items[${i}].productName`] = { from: orig.productName || '', to: item.productName };
+            }
+            if (orig && item.productCode !== (orig.productCode || '')) {
+              requestedChanges[`items[${i}].productCode`] = { from: orig.productCode || '', to: item.productCode };
+            }
+            if (orig && JSON.stringify(item.primaryColor || []) !== JSON.stringify(orig.primaryColor || [])) {
+              requestedChanges[`items[${i}].primaryColor`] = { from: orig.primaryColor || [], to: item.primaryColor || [] };
+            }
+            if (orig && JSON.stringify(item.size || []) !== JSON.stringify(orig.size || [])) {
+              requestedChanges[`items[${i}].size`] = { from: orig.size || [], to: item.size || [] };
+            }
+            if (orig && JSON.stringify(item.season || []) !== JSON.stringify(orig.season || [])) {
+              requestedChanges[`items[${i}].season`] = { from: orig.season || [], to: item.season || [] };
+            }
+            if (orig && item.material !== (orig.material || '')) {
+              requestedChanges[`items[${i}].material`] = { from: orig.material || '', to: item.material };
+            }
+            if (orig && item.description !== (orig.description || '')) {
+              requestedChanges[`items[${i}].description`] = { from: orig.description || '', to: item.description };
+            }
+            if (orig && item.productId !== (orig.productId || '')) {
+              requestedChanges[`items[${i}].productId`] = { from: orig.productId || '', to: item.productId || '' };
+            }
+            if (orig && JSON.stringify(item.packets || []) !== JSON.stringify(orig.packets || [])) {
+              requestedChanges[`items[${i}].packets`] = { from: orig.packets || [], to: item.packets || [] };
             }
           });
         }
@@ -1384,6 +1439,20 @@ export default function DispatchOrderDetailPage({ params }) {
   const handlePacketsSave = (packets, context) => {
     const targetIndex = context?.index ?? selectedItemForPackets?.index;
     if (targetIndex === undefined || targetIndex === null) return;
+
+    if (isEditingConfirmed) {
+      setConfirmedEditForm((prev) => {
+        const items = [...prev.items];
+        items[targetIndex] = {
+          ...items[targetIndex],
+          packets,
+          useVariantTracking: true,
+        };
+        return { ...prev, items };
+      });
+      toast.success("Packet configuration saved");
+      return;
+    }
 
     setEditedItems((prev) => ({
       ...prev,
@@ -2171,6 +2240,17 @@ export default function DispatchOrderDetailPage({ params }) {
                             }
                             className="h-8 text-sm min-w-[150px]"
                           />
+                        ) : isEditingConfirmed && item.originalIndex !== null ? (
+                          <Input
+                            value={confirmedEditForm.items[item.originalIndex]?.productName ?? ''}
+                            onChange={(e) => setConfirmedEditForm(prev => {
+                              const items = [...prev.items];
+                              items[item.originalIndex] = { ...items[item.originalIndex], productName: e.target.value };
+                              return { ...prev, items };
+                            })}
+                            disabled={(confirmedEditForm.items[item.originalIndex]?.soldQty ?? 0) > 0}
+                            className="h-8 text-sm min-w-[150px] border-violet-400 focus:border-violet-500"
+                          />
                         ) : (
                           <div className="font-medium">
                             {itemData.productName}
@@ -2191,6 +2271,17 @@ export default function DispatchOrderDetailPage({ params }) {
                               })
                             }
                             className="h-8 text-sm w-24"
+                          />
+                        ) : isEditingConfirmed && item.originalIndex !== null ? (
+                          <Input
+                            value={confirmedEditForm.items[item.originalIndex]?.productCode ?? ''}
+                            onChange={(e) => setConfirmedEditForm(prev => {
+                              const items = [...prev.items];
+                              items[item.originalIndex] = { ...items[item.originalIndex], productCode: e.target.value.toUpperCase() };
+                              return { ...prev, items };
+                            })}
+                            disabled={(confirmedEditForm.items[item.originalIndex]?.soldQty ?? 0) > 0}
+                            className="h-8 text-sm w-24 border-violet-400 focus:border-violet-500"
                           />
                         ) : (
                           <span className="font-mono text-xs font-medium text-foreground">{itemData.productCode}</span>
@@ -2218,6 +2309,21 @@ export default function DispatchOrderDetailPage({ params }) {
                               }
                               placeholder="Enter color..."
                               disabled={isRemoved}
+                            />
+                          </div>
+                        ) : isEditingConfirmed && item.originalIndex !== null ? (
+                          <div className="min-w-[100px]">
+                            <ArrayInput
+                              value={Array.isArray(confirmedEditForm.items[item.originalIndex]?.primaryColor)
+                                ? confirmedEditForm.items[item.originalIndex].primaryColor
+                                : []}
+                              onChange={(colors) => setConfirmedEditForm(prev => {
+                                const items = [...prev.items];
+                                items[item.originalIndex] = { ...items[item.originalIndex], primaryColor: colors };
+                                return { ...prev, items };
+                              })}
+                              placeholder="Enter color..."
+                              disabled={(confirmedEditForm.items[item.originalIndex]?.soldQty ?? 0) > 0}
                             />
                           </div>
                         ) : (
@@ -2266,6 +2372,21 @@ export default function DispatchOrderDetailPage({ params }) {
                               disabled={isRemoved}
                             />
                           </div>
+                        ) : isEditingConfirmed && item.originalIndex !== null ? (
+                          <div className="min-w-[100px]">
+                            <ArrayInput
+                              value={Array.isArray(confirmedEditForm.items[item.originalIndex]?.size)
+                                ? confirmedEditForm.items[item.originalIndex].size
+                                : []}
+                              onChange={(sizes) => setConfirmedEditForm(prev => {
+                                const items = [...prev.items];
+                                items[item.originalIndex] = { ...items[item.originalIndex], size: sizes };
+                                return { ...prev, items };
+                              })}
+                              placeholder="Enter size..."
+                              disabled={(confirmedEditForm.items[item.originalIndex]?.soldQty ?? 0) > 0}
+                            />
+                          </div>
                         ) : (
                           <div className="text-xs">
                             {Array.isArray(itemData.size) &&
@@ -2305,6 +2426,22 @@ export default function DispatchOrderDetailPage({ params }) {
                               }
                               placeholder="Select seasons"
                               disabled={isRemoved}
+                            />
+                          </div>
+                        ) : isEditingConfirmed && item.originalIndex !== null ? (
+                          <div className="min-w-[120px]">
+                            <MultiSelect
+                              options={SEASON_OPTIONS}
+                              value={Array.isArray(confirmedEditForm.items[item.originalIndex]?.season)
+                                ? confirmedEditForm.items[item.originalIndex].season
+                                : []}
+                              onChange={(seasons) => setConfirmedEditForm(prev => {
+                                const items = [...prev.items];
+                                items[item.originalIndex] = { ...items[item.originalIndex], season: seasons };
+                                return { ...prev, items };
+                              })}
+                              placeholder="Select seasons"
+                              disabled={(confirmedEditForm.items[item.originalIndex]?.soldQty ?? 0) > 0}
                             />
                           </div>
                         ) : (
@@ -2397,6 +2534,26 @@ export default function DispatchOrderDetailPage({ params }) {
                                 </Button>
                               )}
                             </>
+                              ) : isEditingConfirmed && item.originalIndex !== null ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    const modalItemId = String(item.originalIndex ?? item.index ?? "0");
+                                    setSelectedItemForPackets({
+                                      ...item,
+                                      ...(confirmedEditForm.items[item.originalIndex] || {}),
+                                      index: item.originalIndex,
+                                      modalItemId,
+                                    });
+                                    setPacketDialogOpen(true);
+                                  }}
+                                  disabled={(confirmedEditForm.items[item.originalIndex]?.soldQty ?? 0) > 0}
+                                  className="h-6 w-6 p-0 hover:bg-slate-100 text-slate-500 hover:text-blue-600"
+                                  title="Edit Configuration"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
                           ) : item.useVariantTracking &&
                             item.packets?.length > 0 ? (
                             <div className="text-xs font-medium text-slate-600">

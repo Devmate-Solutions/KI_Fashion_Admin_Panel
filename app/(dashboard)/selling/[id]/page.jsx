@@ -307,7 +307,14 @@ export default function SaleDetailPage({ params }) {
             </p>
           </div>
         </div>
-        
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => router.push(`/selling/${saleId}/edit`)}
+          >
+            Edit Sale
+          </Button>
+        </div>
       </div>
 
       {/* Customer Information */}

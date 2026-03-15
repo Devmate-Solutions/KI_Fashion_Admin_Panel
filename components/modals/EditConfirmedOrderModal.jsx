@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,8 @@ import { dispatchOrdersAPI } from "@/lib/api/endpoints/dispatchOrders";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/store";
 import { useSubmitEditRequest } from "@/lib/hooks/useEditRequests";
+import ArrayInput from "@/components/ui/ArrayInput";
+import PacketConfigurationModal from "@/components/modals/PacketConfigurationModal";
 
 /**
  * EditConfirmedOrderModal
@@ -66,6 +68,22 @@ export default function EditConfirmedOrderModal({
   const [saveError, setSaveError] = useState(null);
   const [saveResult, setSaveResult] = useState(null);
   const [reason, setReason] = useState("");
+  const [packetDialogOpen, setPacketDialogOpen] = useState(false);
+  const [selectedItemForPackets, setSelectedItemForPackets] = useState(null);
+
+  const packetConfigItems = useMemo(() => {
+    return (itemEdits || []).map((edit, idx) => ({
+      id: String(idx),
+      index: idx,
+      productName: edit.productName || `Item ${idx + 1}`,
+      productCode: edit.productCode || "",
+      quantity: parseInt(edit.quantity) || 0,
+      primaryColor: Array.isArray(edit.primaryColor) ? edit.primaryColor : [],
+      size: Array.isArray(edit.size) ? edit.size : [],
+      packets: Array.isArray(edit.packets) ? edit.packets : [],
+      useVariantTracking: edit.useVariantTracking || false,
+    }));
+  }, [itemEdits]);
 
   // Load impact analysis when the modal opens
   useEffect(() => {
@@ -87,6 +105,16 @@ export default function EditConfirmedOrderModal({
             (data.items || []).map((item) => ({
               costPrice: String(item.currentCostPrice ?? ""),
               quantity: String(item.orderedQuantity ?? ""),
+              productName: item.productName || "",
+              productCode: item.productCode || "",
+              primaryColor: Array.isArray(item.primaryColor) ? item.primaryColor : [],
+              size: Array.isArray(item.size) ? item.size : [],
+              season: Array.isArray(item.season) ? item.season : [],
+              material: item.material || "",
+              description: item.description || "",
+              productId: item.productId || "",
+              packets: Array.isArray(item.packets) ? item.packets : [],
+              useVariantTracking: item.useVariantTracking || false,
             }))
           );
         }
@@ -128,6 +156,16 @@ export default function EditConfirmedOrderModal({
         items: itemEdits.map((edit) => ({
           costPrice: parseFloat(edit.costPrice) || 0,
           quantity: parseInt(edit.quantity) || 0,
+          productName: String(edit.productName || "").trim(),
+          productCode: String(edit.productCode || "").trim().toUpperCase(),
+          primaryColor: Array.isArray(edit.primaryColor) ? edit.primaryColor : [],
+          size: Array.isArray(edit.size) ? edit.size : [],
+          season: Array.isArray(edit.season) ? edit.season : [],
+          material: String(edit.material || "").trim(),
+          description: String(edit.description || "").trim(),
+          productId: String(edit.productId || "").trim() || undefined,
+          packets: Array.isArray(edit.packets) ? edit.packets : [],
+          useVariantTracking: Boolean(edit.useVariantTracking),
         })),
       };
 
@@ -157,6 +195,33 @@ export default function EditConfirmedOrderModal({
           }
           if (orig && item.quantity !== orig.orderedQuantity) {
             requestedChanges[`items[${i}].quantity`] = { from: orig.orderedQuantity, to: item.quantity };
+          }
+          if (orig && item.productName !== (orig.productName || "")) {
+            requestedChanges[`items[${i}].productName`] = { from: orig.productName || "", to: item.productName };
+          }
+          if (orig && item.productCode !== (orig.productCode || "")) {
+            requestedChanges[`items[${i}].productCode`] = { from: orig.productCode || "", to: item.productCode };
+          }
+          if (orig && JSON.stringify(item.primaryColor || []) !== JSON.stringify(orig.primaryColor || [])) {
+            requestedChanges[`items[${i}].primaryColor`] = { from: orig.primaryColor || [], to: item.primaryColor || [] };
+          }
+          if (orig && JSON.stringify(item.size || []) !== JSON.stringify(orig.size || [])) {
+            requestedChanges[`items[${i}].size`] = { from: orig.size || [], to: item.size || [] };
+          }
+          if (orig && JSON.stringify(item.season || []) !== JSON.stringify(orig.season || [])) {
+            requestedChanges[`items[${i}].season`] = { from: orig.season || [], to: item.season || [] };
+          }
+          if (orig && item.material !== (orig.material || "")) {
+            requestedChanges[`items[${i}].material`] = { from: orig.material || "", to: item.material };
+          }
+          if (orig && item.description !== (orig.description || "")) {
+            requestedChanges[`items[${i}].description`] = { from: orig.description || "", to: item.description };
+          }
+          if (orig && item.productId !== (orig.productId || "")) {
+            requestedChanges[`items[${i}].productId`] = { from: orig.productId || "", to: item.productId || "" };
+          }
+          if (orig && JSON.stringify(item.packets || []) !== JSON.stringify(orig.packets || [])) {
+            requestedChanges[`items[${i}].packets`] = { from: orig.packets || [], to: item.packets || [] };
           }
         });
 
@@ -206,6 +271,7 @@ export default function EditConfirmedOrderModal({
   const hasSoldItems = impactData?.hasSoldItems ?? false;
 
   return (
+    <>
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -319,6 +385,7 @@ export default function EditConfirmedOrderModal({
                 {editableItems.map((item, index) => {
                   const edit = itemEdits[index] || {};
                   const soldQty = item.soldQuantity || 0;
+                  const configLocked = soldQty > 0;
                   const isFlooredQty =
                     edit.quantity !== "" &&
                     parseInt(edit.quantity) <= soldQty &&
@@ -356,6 +423,22 @@ export default function EditConfirmedOrderModal({
                         )}
                       </div>
                       <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Product Name</Label>
+                          <Input
+                            value={edit.productName ?? ""}
+                            onChange={(e) => updateItemEdit(index, "productName", e.target.value)}
+                            disabled={configLocked}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Product Code</Label>
+                          <Input
+                            value={edit.productCode ?? ""}
+                            onChange={(e) => updateItemEdit(index, "productCode", e.target.value.toUpperCase())}
+                            disabled={configLocked}
+                          />
+                        </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs">
                             Cost Price (€){" "}
@@ -403,7 +486,81 @@ export default function EditConfirmedOrderModal({
                             </p>
                           )}
                         </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Colors</Label>
+                          <ArrayInput
+                            value={Array.isArray(edit.primaryColor) ? edit.primaryColor : []}
+                            onChange={(colors) => updateItemEdit(index, "primaryColor", colors)}
+                            placeholder="Enter color..."
+                            disabled={configLocked}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Sizes</Label>
+                          <ArrayInput
+                            value={Array.isArray(edit.size) ? edit.size : []}
+                            onChange={(sizes) => updateItemEdit(index, "size", sizes)}
+                            placeholder="Enter size..."
+                            disabled={configLocked}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Seasons</Label>
+                          <ArrayInput
+                            value={Array.isArray(edit.season) ? edit.season : []}
+                            onChange={(seasons) => updateItemEdit(index, "season", seasons)}
+                            placeholder="Enter season..."
+                            disabled={configLocked}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Product ID (optional)</Label>
+                          <Input
+                            value={edit.productId ?? ""}
+                            onChange={(e) => updateItemEdit(index, "productId", e.target.value)}
+                            disabled={configLocked}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Material</Label>
+                          <Input
+                            value={edit.material ?? ""}
+                            onChange={(e) => updateItemEdit(index, "material", e.target.value)}
+                            disabled={configLocked}
+                          />
+                        </div>
+                        <div className="space-y-1.5 col-span-2">
+                          <Label className="text-xs">Description</Label>
+                          <Input
+                            value={edit.description ?? ""}
+                            onChange={(e) => updateItemEdit(index, "description", e.target.value)}
+                            disabled={configLocked}
+                          />
+                        </div>
+                        <div className="space-y-1.5 col-span-2">
+                          <Label className="text-xs">Packet Configuration</Label>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={configLocked}
+                            onClick={() => {
+                              setSelectedItemForPackets({
+                                ...edit,
+                                index,
+                                modalItemId: String(index),
+                              });
+                              setPacketDialogOpen(true);
+                            }}
+                          >
+                            Configure
+                          </Button>
+                        </div>
                       </div>
+                      {configLocked && (
+                        <p className="text-xs text-amber-700">
+                          Product configuration fields are locked for this item because sold quantity is greater than zero.
+                        </p>
+                      )}
                     </div>
                   );
                 })}
@@ -474,5 +631,30 @@ export default function EditConfirmedOrderModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <PacketConfigurationModal
+      isOpen={packetDialogOpen}
+      onClose={() => {
+        setPacketDialogOpen(false);
+        setSelectedItemForPackets(null);
+      }}
+      onSave={(packets, context) => {
+        const targetIndex = context?.index ?? selectedItemForPackets?.index;
+        if (targetIndex === undefined || targetIndex === null) return;
+        setItemEdits((prev) => {
+          const next = [...prev];
+          next[targetIndex] = {
+            ...next[targetIndex],
+            packets,
+            useVariantTracking: true,
+          };
+          return next;
+        });
+      }}
+      item={selectedItemForPackets}
+      items={packetConfigItems}
+      activeItemId={selectedItemForPackets?.modalItemId}
+      initialPackets={selectedItemForPackets?.packets || []}
+    />
+    </>
   );
 }

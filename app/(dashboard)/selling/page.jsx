@@ -18,6 +18,8 @@ import { Plus, RotateCcw } from "lucide-react"
 import { useAuthStore } from "@/store/store"
 import DeleteRequestDialog from "@/components/modals/DeleteRequestDialog"
 import { useSearchParams } from "next/navigation"
+import BritishDatePicker from "@/components/BritishDatePicker"
+import { Label } from "@/components/ui/label"
 
 // Helper to get image array from various sources
 const getImageArray = (item) => {
@@ -44,9 +46,14 @@ export default function SellingPage() {
   const [deleteRequestTarget, setDeleteRequestTarget] = useState(null)
   const initialTab = Number(searchParams.get("tab") ?? 0)
   const [activeTab, setActiveTab] = useState(initialTab)
+  const today = new Date().toISOString().split("T")[0]
+  const [dateRange, setDateRange] = useState({ from: today, to: today })
 
   // Fetch sales data
-  const { data: sellingRows = [], isLoading: salesLoading } = useSales()
+  const { data: sellingRows = [], isLoading: salesLoading } = useSales({
+    startDate: dateRange.from || undefined,
+    endDate: dateRange.to || undefined,
+  })
 
   // Fetch buyers for payment modal
   const { data: buyers = [] } = useBuyers({ limit: 100 })
@@ -372,6 +379,31 @@ export default function SellingPage() {
             label: "Selling",
             content: (
               <div className="space-y-4">
+                <div className="flex flex-wrap items-end gap-3 mb-4">
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs">From Date</Label>
+                    <BritishDatePicker
+                      value={dateRange.from || null}
+                      onChange={(date) => {
+                        setDateRange(r => ({ ...r, from: date ? date.toISOString().split("T")[0] : "" }))
+                      }}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs">To Date</Label>
+                    <BritishDatePicker
+                      value={dateRange.to || null}
+                      onChange={(date) => {
+                        setDateRange(r => ({ ...r, to: date ? date.toISOString().split("T")[0] : "" }))
+                      }}
+                    />
+                  </div>
+                  {(dateRange.from || dateRange.to) && (
+                    <Button variant="outline" size="sm" onClick={() => setDateRange({ from: "", to: "" })}>
+                      Clear
+                    </Button>
+                  )}
+                </div>
                 <div className="">
                   <DataTable
                     title="Selling"
