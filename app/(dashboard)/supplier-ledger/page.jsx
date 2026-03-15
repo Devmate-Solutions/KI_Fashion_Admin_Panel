@@ -410,30 +410,37 @@ export default function SupplierLedgerPage() {
         }
       }
     }
-    return (
-      <div className="space-y-8">
-        {/* ...existing code... */}
-        <Tabs
-          tabs={tabs}
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-        />
-        {/* ...existing code... */}
-      </div>
-    )
-      cashAmount: receipt.cashAmount || 0,
-      bankAmount: receipt.bankAmount || 0,
-      methodSummary: receipt.paymentMethodSummary || ((receipt.cashAmount > 0 && receipt.bankAmount > 0) ? 'cash + bank' : receipt.cashAmount > 0 ? 'cash' : 'bank'),
-      status: receipt.status || 'active',
-      createdBy: receipt.createdBy?.name || 'Unknown',
-      ordersAffected: receipt.ordersAffected || 0,
-      advanceAmount: receipt.advanceAmount || 0,
-      balanceBefore: receipt.balanceBefore,
-      balanceAfter: receipt.balanceAfter,
-      notes: receipt.notes || '-',
-      raw: receipt
-    }))
+      return map
   }, [supplierReceiptsData])
+
+    const supplierReceiptTransactions = useMemo(() => {
+      const receipts = supplierReceiptsData?.receipts || []
+
+      return receipts.map(receipt => {
+        const supplier = receipt.supplierId || {}
+        const supplierName = supplier.name || supplier.company || 'Unknown Supplier'
+
+        return {
+          id: receipt._id || receipt.id || receipt.receiptNumber,
+          receiptNumber: receipt.receiptNumber,
+          date: receipt.date || receipt.createdAt,
+          supplierName,
+          supplierId: supplier._id || supplier.id || receipt.supplierId,
+          totalAmount: receipt.totalAmount || 0,
+          cashAmount: receipt.cashAmount || 0,
+          bankAmount: receipt.bankAmount || 0,
+          methodSummary: receipt.paymentMethodSummary || ((receipt.cashAmount > 0 && receipt.bankAmount > 0) ? 'cash + bank' : receipt.cashAmount > 0 ? 'cash' : 'bank'),
+          status: receipt.status || 'active',
+          createdBy: receipt.createdBy?.name || 'Unknown',
+          ordersAffected: receipt.ordersAffected || 0,
+          advanceAmount: receipt.advanceAmount || 0,
+          balanceBefore: receipt.balanceBefore,
+          balanceAfter: receipt.balanceAfter,
+          notes: receipt.notes || '-',
+          raw: receipt
+        }
+      })
+    }, [supplierReceiptsData])
 
   const supplierReceiptSummary = useMemo(() => {
     const total = supplierReceiptTransactions.reduce((sum, receipt) => sum + (receipt.totalAmount || 0), 0)
