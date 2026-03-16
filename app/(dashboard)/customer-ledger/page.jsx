@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import BackButton from "@/components/BackButton"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -50,8 +50,8 @@ function formatDateTime(_date) {
 export default function CustomerLedgerPage() {
   const [selectedBuyerId, setSelectedBuyerId] = useState("all")
   const [ledgerBuyerFilter, setLedgerBuyerFilter] = useState("")
-  const router = useRouter ? useRouter() : undefined;
-  // searchParams already declared below, remove duplicate
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const initialTab = Number(searchParams.get("tab") ?? 0);
   const [activeTab, setActiveTab] = useState(initialTab);
   const handleTabChange = (idx) => {
@@ -82,7 +82,6 @@ export default function CustomerLedgerPage() {
   const [paymentHistoryMethodFilter, setPaymentHistoryMethodFilter] = useState("all")
 
   const queryClient = useQueryClient()
-  const searchParams = useSearchParams();
 
   // Auto-select buyer from URL query param (e.g. navigating from Receivables report)
   useEffect(() => {
@@ -1130,7 +1129,56 @@ export default function CustomerLedgerPage() {
             label: "Buyer Ledger",
             content: (
               <div className="space-y-6">
-                {/* ...existing code... */}
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label>Buyer</Label>
+                    <Combobox
+                      options={comboboxOptions}
+                      value={selectedBuyerId}
+                      onValueChange={(value) => setSelectedBuyerId(value || "all")}
+                      placeholder="Select buyer"
+                      searchPlaceholder="Search buyer..."
+                      emptyMessage="No buyer found"
+                      loading={buyersLoading}
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="ledger-search">Search Ledger</Label>
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="ledger-search"
+                        placeholder="Search by buyer, reference, or type"
+                        value={ledgerSearch}
+                        onChange={(e) => setLedgerSearch(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {selectedBuyerId !== "all" && (
+                  <div className="rounded-lg border bg-card p-4">
+                    <div className="text-sm text-muted-foreground">Current Buyer Balance</div>
+                    <div className="mt-1 text-2xl font-bold tabular-nums">
+                      {buyerDetailsLoading ? "Loading..." : formatNumber(currentBuyerLedgerBalance)}
+                    </div>
+                  </div>
+                )}
+
+                {buyersError && (
+                  <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                    Failed to load buyers list.
+                  </div>
+                )}
+
+                <DataTable
+                  title="Buyer Ledger"
+                  columns={allLedgerColumns}
+                  data={filteredLedgerTransactions}
+                  loading={allLedgerLoading}
+                  hideActions
+                />
               </div>
             )
           },
@@ -1138,7 +1186,59 @@ export default function CustomerLedgerPage() {
             label: "Payment Receipts",
             content: (
               <div className="space-y-6">
-                {/* ...existing code... */}
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label>Buyer</Label>
+                    <Combobox
+                      options={comboboxOptions}
+                      value={selectedBuyerId}
+                      onValueChange={(value) => setSelectedBuyerId(value || "all")}
+                      placeholder="Select buyer"
+                      searchPlaceholder="Search buyer..."
+                      emptyMessage="No buyer found"
+                      loading={buyersLoading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="receipt-from">Date From</Label>
+                    <Input
+                      id="receipt-from"
+                      type="date"
+                      value={paymentHistoryDateFrom}
+                      onChange={(e) => setPaymentHistoryDateFrom(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="receipt-to">Date To</Label>
+                    <Input
+                      id="receipt-to"
+                      type="date"
+                      value={paymentHistoryDateTo}
+                      onChange={(e) => setPaymentHistoryDateTo(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end">
+                  <Button variant="outline" onClick={handlePrintPaymentReceiptsReport}>
+                    <Printer className="h-4 w-4 mr-2" />
+                    Print Report
+                  </Button>
+                </div>
+
+                {paymentReceiptsError && (
+                  <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                    Failed to load payment receipts.
+                  </div>
+                )}
+
+                <DataTable
+                  title="Payment Receipts"
+                  columns={paymentReceiptsColumns}
+                  data={paymentReceiptsTransactions}
+                  loading={paymentReceiptsLoading || isFetching}
+                  hideActions
+                />
               </div>
             )
           }
@@ -1147,7 +1247,91 @@ export default function CustomerLedgerPage() {
         onTabChange={handleTabChange}
       />
 
-      {/* ...existing code... */}
+      <CustomerPaymentModal
+        open={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        entityId={selectedBuyerId !== "all" ? selectedBuyerId : ""}
+        entityName={selectedEntity?.name || selectedEntity?.company || ""}
+        totalBalance={currentBuyerLedgerBalance}
+        ledgerBalance={currentBuyerLedgerBalance}
+        ledgerBalanceBuyerId={selectedBuyerId !== "all" ? selectedBuyerId : ""}
+        buyerBalanceMap={buyerBalanceMap}
+        entities={dropdownBuyers}
+        allLedgerData={allLedgerData}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['ledger'] })
+          queryClient.invalidateQueries({ queryKey: ['buyers'] })
+          queryClient.invalidateQueries({ queryKey: ['payments'] })
+        }}
+      />
+
+      <DeleteRequestDialog
+        open={!!reverseRequestTarget}
+        onClose={() => setReverseRequestTarget(null)}
+        entityType="payment"
+        entityId={reverseRequestTarget?.id}
+        entityRef={reverseRequestTarget?.paymentNumber || String(reverseRequestTarget?.id || '').slice(-6)}
+        entitySummary={reverseRequestTarget ? {
+          "Buyer": reverseRequestTarget.customerName || "Unknown",
+          "Amount": formatNumber(reverseRequestTarget.totalAmount),
+          "Method": reverseRequestTarget.paymentMethod || "-",
+          "Date": reverseRequestTarget.date ? new Date(reverseRequestTarget.date).toLocaleDateString('en-GB') : "-",
+        } : {}}
+        onSuccess={() => setReverseRequestTarget(null)}
+      />
+
+      <Dialog open={reversalDialogOpen} onOpenChange={setReversalDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reverse Payment</DialogTitle>
+            <DialogDescription>
+              This action will reverse the payment and update ledger balances.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="reversal-reason">Reason</Label>
+            <Textarea
+              id="reversal-reason"
+              placeholder="Enter reason for reversal"
+              value={reversalReason}
+              onChange={(e) => setReversalReason(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReversalDialogOpen(false)} disabled={isReversing}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleReversePayment} disabled={isReversing || !reversalReason.trim()}>
+              {isReversing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Confirm Reverse
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Payment Receipt</DialogTitle>
+            <DialogDescription>
+              Receipt details for {receiptData?.receiptNumber || '-'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            <div><span className="font-medium">Receipt #:</span> {receiptData?.receiptNumber || '-'}</div>
+            <div><span className="font-medium">Customer:</span> {receiptData?.customer?.name || '-'}</div>
+            <div><span className="font-medium">Amount:</span> {receiptData?.payment?.totalAmount != null ? formatNumber(receiptData.payment.totalAmount) : '-'}</div>
+            <div><span className="font-medium">Method:</span> {receiptData?.payment?.paymentMethod || '-'}</div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReceiptDialogOpen(false)}>Close</Button>
+            <Button onClick={handlePrintReceipt}>
+              <Printer className="h-4 w-4 mr-2" />
+              Print
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

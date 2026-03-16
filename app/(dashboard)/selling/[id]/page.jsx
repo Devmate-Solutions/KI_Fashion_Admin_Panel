@@ -82,6 +82,32 @@ const getImageArray = (item) => {
   return [];
 };
 
+const getPacketQuantity = (item) => {
+  if (!item?.isPacketSale) return null;
+
+  const explicitPacketQuantity = Number(item.packetQuantity);
+  if (Number.isFinite(explicitPacketQuantity) && explicitPacketQuantity > 0) {
+    return explicitPacketQuantity;
+  }
+
+  const totalItemsPerPacket = Number(item.totalItemsPerPacket);
+  const quantity = Number(item.quantity);
+
+  if (
+    !Number.isFinite(totalItemsPerPacket) ||
+    totalItemsPerPacket <= 0 ||
+    !Number.isFinite(quantity) ||
+    quantity <= 0
+  ) {
+    return null;
+  }
+
+  const derivedPacketQuantity = quantity / totalItemsPerPacket;
+  return Number.isInteger(derivedPacketQuantity) && derivedPacketQuantity > 0
+    ? derivedPacketQuantity
+    : null;
+};
+
 // Format address that may be a string or object
 const formatAddress = (address) => {
   if (!address) return "";
@@ -611,10 +637,7 @@ export default function SaleDetailPage({ params }) {
                             )}
                           </td>
                           <td className="p-2 text-right font-medium">
-                            {/* {JSON.stringify(item.packetBarcode)} */}
-                            {item.isPacketSale && item.totalItemsPerPacket
-                              ? Math.round(item.quantity / item.totalItemsPerPacket)
-                              : ""}
+                            {getPacketQuantity(item) ?? ""}
                           </td>
                           <td className="p-2 text-right font-medium">{item.quantity || 0}</td>
                           <td className="p-2 text-right">

@@ -43,6 +43,45 @@ const getImageArray = (row) => {
   return [];
 };
 
+const getPacketQuantity = (item) => {
+  if (!item?.isPacketSale) {
+    return null
+  }
+
+  const explicitPacketQuantity = Number(item.packetQuantity)
+  if (Number.isFinite(explicitPacketQuantity) && explicitPacketQuantity > 0) {
+    return explicitPacketQuantity
+  }
+
+  const totalItemsPerPacket = Number(item.totalItemsPerPacket)
+  const quantity = Number(item.quantity)
+
+  if (
+    !Number.isFinite(totalItemsPerPacket) ||
+    totalItemsPerPacket <= 0 ||
+    !Number.isFinite(quantity) ||
+    quantity <= 0
+  ) {
+    return null
+  }
+
+  const derivedPacketQuantity = quantity / totalItemsPerPacket
+  return Number.isInteger(derivedPacketQuantity) && derivedPacketQuantity > 0
+    ? derivedPacketQuantity
+    : null
+}
+
+const getRowTotalPrice = (row) => {
+  const unitPrice = Number(row.unitPrice || 0)
+  const quantity = Number(row.quantity || 0)
+
+  if (row.isPacketSale && row.totalItemsPerPacket) {
+    return unitPrice * quantity * Number(row.totalItemsPerPacket || 0)
+  }
+
+  return unitPrice * quantity
+}
+
 // A multi-section selling form: buyer/metadata, products cart, and payment summary.
 // Enhanced with keyboard shortcuts and better UX
 // Integrated with backend APIs for buyers and sales
@@ -160,6 +199,8 @@ export default function SaleForm({ onSave, initialData, saleId }) {
     if (Array.isArray(initialData.items) && initialData.items.length > 0) {
       const mappedRows = initialData.items.map((item, idx) => {
         const prod = item.product
+        const packetQuantity = getPacketQuantity(item)
+        const rowQuantity = item.isPacketSale ? packetQuantity ?? '' : item.quantity
         return {
           id: Date.now() + idx,
           productId: prod?._id || prod || '',
@@ -167,15 +208,21 @@ export default function SaleForm({ onSave, initialData, saleId }) {
           productCode: prod?.productCode || prod?.sku || '',
           season: prod?.season || [],
           unitPrice: item.unitPrice,
-          quantity: item.packetQuantity || item.quantity,
+          quantity: rowQuantity,
           photo: prod?.images?.[0] || null,
-          totalPrice: item.unitPrice * (item.packetQuantity || item.quantity),
+          totalPrice: Number(item.totalPrice ?? getRowTotalPrice({
+            unitPrice: item.unitPrice,
+            quantity: rowQuantity,
+            isPacketSale: item.isPacketSale,
+            totalItemsPerPacket: item.totalItemsPerPacket,
+          })),
           isPacketSale: item.isPacketSale || false,
           packetStockId: item.packetStock?._id || item.packetStock || undefined,
           packetBarcode: item.packetBarcode || undefined,
           packetComposition: item.packetComposition || undefined,
           totalItemsPerPacket: item.totalItemsPerPacket || undefined,
-          packetQuantity: item.packetQuantity || undefined,
+          packetQuantity: packetQuantity || undefined,
+          originalItemQuantity: item.quantity,
         }
       })
       setRows(mappedRows)
@@ -368,15 +415,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
         const updated = { ...row, [field]: value }
 
         // Auto-calculate total when quantity or unitPrice changes
-        const unitPrice = Number(updated.unitPrice || 0)
-        const quantity = Number(updated.quantity || 0)
-
-        // For packet sales: total = packets × items per packet × price per item
-        if (updated.isPacketSale && updated.totalItemsPerPacket) {
-          updated.totalPrice = unitPrice * quantity * updated.totalItemsPerPacket
-        } else {
-          updated.totalPrice = unitPrice * quantity
-        }
+        updated.totalPrice = getRowTotalPrice(updated)
 
         return updated
       }),
@@ -761,7 +800,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
           productName: item.product?.name || '',
           productCode: item.product?.productCode || item.product?.sku || '',
           unitPrice: item.unitPrice,
-          quantity: item.packetQuantity || item.quantity,
+          quantity: item.isPacketSale ? getPacketQuantity(item) ?? item.quantity : item.quantity,
         }))
         const newItems = rows.map((row) => ({
           productId: String(row.productId || ''),

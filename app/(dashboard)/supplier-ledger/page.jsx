@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import BackButton from "@/components/BackButton"
 import Tabs from "@/components/tabs"
 import { Button } from "@/components/ui/button"
@@ -67,8 +67,8 @@ function formatDateTime(_date) {
 }
 
 export default function SupplierLedgerPage() {
-  const router = useRouter ? useRouter() : undefined;
-    // searchParams already declared above, remove duplicate
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const initialTab = Number(searchParams.get("tab") ?? 0);
   const [selectedSupplierId, setSelectedSupplierId] = useState(""); // Default to empty - require supplier selection
   const [selectedDispatchOrderId, setSelectedDispatchOrderId] = useState("none");
