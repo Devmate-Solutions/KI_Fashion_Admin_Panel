@@ -5,10 +5,21 @@ import BackButton from "@/components/BackButton"
 import Tabs from "../../../components/tabs"
 import DataTable from "../../../components/data-table"
 import FormDialog from "../../../components/form-dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { AddBuyerForm, EditBuyerForm } from "../../../components/forms/buyer-form"
 import { AddSupplierForm, EditSupplierForm } from "../../../components/forms/supplier-form"
 import { useBuyers, useCreateBuyer, useUpdateBuyer, useDeleteBuyer } from "../../../lib/hooks/useBuyers"
-import { useSuppliers, useAllSuppliers, useCreateSupplier, useUpdateSupplier, useDeleteSupplier } from "../../../lib/hooks/useSuppliers"
+import { useAllSuppliers, useCreateSupplier, useUpdateSupplier, useHardDeleteSupplier, useSupplierDeleteSummary } from "../../../lib/hooks/useSuppliers"
+import { useAuthStore } from "@/store/store"
 
 function currency(n) {
   const num = Number(n || 0)
@@ -16,6 +27,9 @@ function currency(n) {
 }
 
 export default function SetupPage() {
+  const user = useAuthStore((state) => state.user)
+  const isSuperAdmin = user?.role === "super-admin"
+
   // Fetch buyers data from backend
   const { data: buyersData = [], isLoading: buyersLoading } = useBuyers()
   
@@ -30,7 +44,7 @@ export default function SetupPage() {
   // Mutations for suppliers
   const createSupplierMutation = useCreateSupplier()
   const updateSupplierMutation = useUpdateSupplier()
-  const deleteSupplierMutation = useDeleteSupplier()
+  const hardDeleteSupplierMutation = useHardDeleteSupplier()
 
   // Buyer state
   const [openAddBuyerForm, setOpenAddBuyerForm] = useState(false)
@@ -41,6 +55,12 @@ export default function SetupPage() {
   const [openAddSupplierForm, setOpenAddSupplierForm] = useState(false)
   const [openEditSupplierForm, setOpenEditSupplierForm] = useState(false)
   const [editingSupplier, setEditingSupplier] = useState(null)
+  const [supplierDeleteTarget, setSupplierDeleteTarget] = useState(null)
+
+  const {
+    data: supplierDeleteSummary,
+    isLoading: supplierDeleteSummaryLoading,
+  } = useSupplierDeleteSummary(supplierDeleteTarget?.id, Boolean(supplierDeleteTarget?.id))
 
   const buyerColumns = useMemo(
     () => [
@@ -145,16 +165,42 @@ export default function SetupPage() {
   }
 
   const handleDeleteSupplier = async (supplier) => {
-     
-    if (window.confirm(`Are you sure you want to delete supplier "${supplier.name}"? This will deactivate the supplier.`)) {
-      try {
-        const result = await deleteSupplierMutation.mutateAsync(supplier.id);
-         
-      } catch (error) {
-        console.error('Error deleting supplier:', error);
-      }
+    if (!isSuperAdmin) {
+      return
+    }
+
+    setSupplierDeleteTarget(supplier)
+  }
+
+  const handleConfirmSupplierDelete = async () => {
+    if (!supplierDeleteTarget) {
+      return
+    }
+
+    try {
+      await hardDeleteSupplierMutation.mutateAsync(supplierDeleteTarget.id)
+      setSupplierDeleteTarget(null)
+    } catch (error) {
+      console.error('Error permanently deleting supplier:', error)
     }
   }
+
+  const supplierDeleteCounts = supplierDeleteSummary?.counts || {}
+  const supplierDeleteImpactItems = [
+    ["Products deleted", supplierDeleteCounts.productsToDelete],
+    ["Product mappings removed", supplierDeleteCounts.productMappingsToRemove],
+    ["Dispatch orders deleted", supplierDeleteCounts.dispatchOrdersToDelete],
+    ["Supplier ledger entries deleted", supplierDeleteCounts.supplierLedgerEntriesToDelete],
+    ["Dispatch-linked ledger entries deleted", supplierDeleteCounts.dispatchLinkedLedgerEntriesToDelete],
+    ["Supplier payment receipts deleted", supplierDeleteCounts.supplierPaymentReceiptsToDelete],
+    ["Returns deleted", supplierDeleteCounts.returnsToDelete],
+    ["Packet stock records deleted", supplierDeleteCounts.packetStockToDelete],
+    ["Packet templates deleted", supplierDeleteCounts.packetTemplatesToDelete],
+    ["Inventory records deleted", supplierDeleteCounts.inventoryRecordsToDelete],
+    ["Inventory purchase batches removed", supplierDeleteCounts.inventoryPurchaseBatchesToRemove],
+    ["Supplier users deleted", supplierDeleteCounts.supplierUsersToDelete],
+    ["Linked users unlinked", supplierDeleteCounts.linkedUsersToUnlink],
+  ].filter(([, count]) => Number(count || 0) > 0)
 
   // Suppliers
   const supplierColumns = useMemo(
@@ -232,7 +278,7 @@ export default function SetupPage() {
                   loading={suppliersLoading}
                   onAddNew={() => setOpenAddSupplierForm(true)}
                   onEdit={handleEditSupplier}
-                  onDelete={handleDeleteSupplier}
+                  onDelete={isSuperAdmin ? handleDeleteSupplier : undefined}
                 />
                 {/* Legacy reference (must use Source URL) */}
                 <details className="rounded-[4px] border border-border bg-card p-3">
@@ -288,6 +334,59 @@ export default function SetupPage() {
         onSubmit={handleUpdateSupplier}
         loading={updateSupplierMutation.isPending}
       />
+
+      <AlertDialog open={!!supplierDeleteTarget} onOpenChange={(open) => !open && setSupplierDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permanently Delete Supplier?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove {supplierDeleteTarget?.name || 'this supplier'} and all related operational and financial records. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-3 text-sm">
+            <div className="rounded-md border border-destructive/20 bg-destructive/5 p-3 text-destructive">
+              Hard delete includes dispatch orders, supplier ledger history, payment receipts, returns, packet stock, inventory links, and supplier portal accounts.
+            </div>
+
+            {supplierDeleteSummaryLoading ? (
+              <p className="text-muted-foreground">Loading impact summary...</p>
+            ) : supplierDeleteSummary ? (
+              <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
+                <div className="flex items-center justify-between font-medium">
+                  <span>Total affected records</span>
+                  <span>{supplierDeleteSummary.totalAffectedRecords || 0}</span>
+                </div>
+                {supplierDeleteImpactItems.length > 0 ? (
+                  <div className="space-y-1 text-muted-foreground">
+                    {supplierDeleteImpactItems.map(([label, count]) => (
+                      <div key={label} className="flex items-center justify-between gap-4">
+                        <span>{label}</span>
+                        <span className="font-medium text-foreground">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No related records were found beyond the supplier profile.</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">Unable to load delete impact summary.</p>
+            )}
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={hardDeleteSupplierMutation.isPending}>Keep Supplier</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmSupplierDelete}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={hardDeleteSupplierMutation.isPending || supplierDeleteSummaryLoading}
+            >
+              {hardDeleteSupplierMutation.isPending ? "Deleting..." : "Delete Permanently"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

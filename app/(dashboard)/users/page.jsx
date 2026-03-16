@@ -10,6 +10,17 @@ import { DistributorForm } from "../../../components/forms/distributor-form"
 import { useUsers, useUpdateUser, useDeactivateUser, useDeleteUser, useCreateUser, useRegisterUser, useRegeneratePassword } from "../../../lib/hooks/useUsers"
 import { usePasswordResetRequests, useCompleteRequest, useCancelRequest, useDeleteRequest } from "../../../lib/hooks/usePasswordResetRequests"
 import { useAuthStore } from "@/store/store"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../../components/ui/alert-dialog"
+import { useHardDeleteSupplier, useSupplierDeleteSummary } from "../../../lib/hooks/useSuppliers"
 import { Button } from "../../../components/ui/button"
 import Tabs from "../../../components/tabs"
 import { Plus, Eye, EyeOff, Copy, RefreshCw, CheckCircle, X, Trash2 } from "lucide-react"
@@ -45,6 +56,12 @@ export default function UsersPage() {
   const createUserMutation = useCreateUser()
   const registerUserMutation = useRegisterUser()
   const regeneratePasswordMutation = useRegeneratePassword()
+  const hardDeleteSupplierMutation = useHardDeleteSupplier()
+  const [supplierDeleteTarget, setSupplierDeleteTarget] = useState(null)
+  const {
+    data: supplierDeleteSummary,
+    isLoading: supplierDeleteSummaryLoading,
+  } = useSupplierDeleteSummary(supplierDeleteTarget?.id, Boolean(supplierDeleteTarget?.id))
   
   // Password reset requests
   const { data: passwordResetRequests = [], isLoading: isLoadingRequests } = usePasswordResetRequests({ status: passwordResetStatusFilter })
@@ -311,6 +328,43 @@ export default function UsersPage() {
     }
   }
 
+  const handleDeleteSupplierUser = (userRow) => {
+    if (!isAdmin) return
+    const supplierId = userRow._original?.supplier
+    if (!supplierId) {
+      toast.error('This supplier user is not linked to a supplier entity.')
+      return
+    }
+    setSupplierDeleteTarget({ id: String(supplierId), name: userRow.name })
+  }
+
+  const handleConfirmSupplierDelete = async () => {
+    if (!supplierDeleteTarget) return
+    try {
+      await hardDeleteSupplierMutation.mutateAsync(supplierDeleteTarget.id)
+      setSupplierDeleteTarget(null)
+    } catch (error) {
+      console.error('Error permanently deleting supplier:', error)
+    }
+  }
+
+  const supplierDeleteCounts = supplierDeleteSummary?.counts || {}
+  const supplierDeleteImpactItems = [
+    ["Products deleted", supplierDeleteCounts.productsToDelete],
+    ["Product mappings removed", supplierDeleteCounts.productMappingsToRemove],
+    ["Dispatch orders deleted", supplierDeleteCounts.dispatchOrdersToDelete],
+    ["Supplier ledger entries deleted", supplierDeleteCounts.supplierLedgerEntriesToDelete],
+    ["Dispatch-linked ledger entries deleted", supplierDeleteCounts.dispatchLinkedLedgerEntriesToDelete],
+    ["Supplier payment receipts deleted", supplierDeleteCounts.supplierPaymentReceiptsToDelete],
+    ["Returns deleted", supplierDeleteCounts.returnsToDelete],
+    ["Packet stock records deleted", supplierDeleteCounts.packetStockToDelete],
+    ["Packet templates deleted", supplierDeleteCounts.packetTemplatesToDelete],
+    ["Inventory records deleted", supplierDeleteCounts.inventoryRecordsToDelete],
+    ["Inventory purchase batches removed", supplierDeleteCounts.inventoryPurchaseBatchesToRemove],
+    ["Supplier users deleted", supplierDeleteCounts.supplierUsersToDelete],
+    ["Linked users unlinked", supplierDeleteCounts.linkedUsersToUnlink],
+  ].filter(([, count]) => Number(count || 0) > 0)
+
   // Password reset request handlers
   const handleCompleteRequest = async (request) => {
     if (!window.confirm(`Are you sure you want to complete the password reset request for "${request.userEmail}"? A new password will be generated.`)) {
@@ -456,7 +510,7 @@ export default function UsersPage() {
             data={filteredUsers}
             loading={isLoading}
             onEdit={handleEditUser}
-            onDelete={handleDeleteUser}
+            onDelete={isAdmin ? handleDeleteSupplierUser : undefined}
             additionalActions={(row) => (
               <Button
                 variant="outline"
@@ -635,6 +689,59 @@ export default function UsersPage() {
         initialData={editingUser}
         loading={updateUserMutation.isPending}
       />
+
+      <AlertDialog open={!!supplierDeleteTarget} onOpenChange={(open) => !open && setSupplierDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permanently Delete Supplier?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove {supplierDeleteTarget?.name || 'this supplier'} and all related operational and financial records. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-3 text-sm">
+            <div className="rounded-md border border-destructive/20 bg-destructive/5 p-3 text-destructive">
+              Hard delete includes dispatch orders, supplier ledger history, payment receipts, returns, packet stock, inventory links, and supplier portal accounts.
+            </div>
+
+            {supplierDeleteSummaryLoading ? (
+              <p className="text-muted-foreground">Loading impact summary...</p>
+            ) : supplierDeleteSummary ? (
+              <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
+                <div className="flex items-center justify-between font-medium">
+                  <span>Total affected records</span>
+                  <span>{supplierDeleteSummary.totalAffectedRecords || 0}</span>
+                </div>
+                {supplierDeleteImpactItems.length > 0 ? (
+                  <div className="space-y-1 text-muted-foreground">
+                    {supplierDeleteImpactItems.map(([label, count]) => (
+                      <div key={label} className="flex items-center justify-between gap-4">
+                        <span>{label}</span>
+                        <span className="font-medium text-foreground">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No related records were found beyond the supplier profile.</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">Unable to load delete impact summary.</p>
+            )}
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={hardDeleteSupplierMutation.isPending}>Keep Supplier</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmSupplierDelete}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={hardDeleteSupplierMutation.isPending || supplierDeleteSummaryLoading}
+            >
+              {hardDeleteSupplierMutation.isPending ? "Deleting..." : "Delete Permanently"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Password Modal */}
       {completedPasswordModal.open && (

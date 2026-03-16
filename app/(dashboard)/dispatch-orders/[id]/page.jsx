@@ -242,6 +242,9 @@ export default function DispatchOrderDetailPage({ params }) {
   const isPending = dispatchOrder?.status === "pending" || dispatchOrder?.status === "pending-approval";
   const canEdit = isPending; // Both pending and pending-approval can be edited
   const isEligibleForEdit = ['confirmed', 'picked_up', 'in_transit', 'delivered'].includes(dispatchOrder?.status);
+  const canDeleteDispatchOrder =
+    !!dispatchOrder &&
+    (isSuperAdmin || (isAdmin && dispatchOrder.status === "pending"));
 
 
   // Initialize exchange rate and percentage from dispatch order or defaults
@@ -1468,7 +1471,12 @@ export default function DispatchOrderDetailPage({ params }) {
 
   // Delete order handler
   const handleDelete = useCallback(() => {
-    if (!dispatchOrderId) return;
+    if (!dispatchOrderId || !dispatchOrder) return;
+
+    if (!canDeleteDispatchOrder) {
+      toast.error("Only pending dispatch orders can be deleted");
+      return;
+    }
 
     deleteMutation.mutate(dispatchOrderId, {
       onSuccess: () => {
@@ -1476,7 +1484,7 @@ export default function DispatchOrderDetailPage({ params }) {
         router.push("/dispatch-orders");
       },
     });
-  }, [dispatchOrderId, deleteMutation, router]);
+  }, [canDeleteDispatchOrder, dispatchOrder, dispatchOrderId, deleteMutation, router]);
 
   if (isLoading) {
     return (
@@ -3101,27 +3109,29 @@ export default function DispatchOrderDetailPage({ params }) {
                 </Card>
               </CardContent>
               <CardFooter className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-border">
-                <Button
-                  onClick={() => setShowDeleteDialog(true)}
-                  disabled={
-                    confirmMutation.isPending || deleteMutation.isPending
-                  }
-                  variant="destructive"
-                  size="lg"
-                  className="min-w-[160px] gap-2"
-                >
-                  {deleteMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="h-4 w-4" />
-                      Delete Order
-                    </>
-                  )}
-                </Button>
+                {canDeleteDispatchOrder && (
+                  <Button
+                    onClick={() => setShowDeleteDialog(true)}
+                    disabled={
+                      confirmMutation.isPending || deleteMutation.isPending
+                    }
+                    variant="destructive"
+                    size="lg"
+                    className="min-w-[160px] gap-2"
+                  >
+                    {deleteMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4" />
+                        Delete Order
+                      </>
+                    )}
+                  </Button>
+                )}
                 {/* Super-admin: Confirm Order button (for both pending and pending-approval) */}
                 {isSuperAdmin && (dispatchOrder?.status === 'pending' || dispatchOrder?.status === 'pending-approval') && (
                   <Button
