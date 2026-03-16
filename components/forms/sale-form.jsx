@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { buyersAPI } from "@/lib/api/endpoints/buyers"
 import { salesAPI } from "@/lib/api/endpoints/sales"
 import { productsAPI } from "@/lib/api/endpoints/products"
+import { logisticsCompaniesAPI } from "@/lib/api/endpoints/logisticsCompanies"
 import { useBuyers } from "@/lib/hooks/useBuyers"
 import { MultiSelect } from "@/components/ui/multi-select"
 import { SEASON_OPTIONS, normalizeSeasonArray } from "@/lib/constants/seasons"
@@ -171,6 +172,12 @@ export default function SaleForm({ onSave, initialData, saleId }) {
   const [discount, setDiscount] = useState(null)
   const [cash, setCash] = useState(null)
   const [bank, setBank] = useState(null)
+  const [addShippingCost, setAddShippingCost] = useState(false)
+  const [buyerShippingCharge, setBuyerShippingCharge] = useState(0)
+  const [shippingBoxes, setShippingBoxes] = useState(0)
+  const [logisticsCompanyId, setLogisticsCompanyId] = useState("")
+  const [logisticsCompanies, setLogisticsCompanies] = useState([])
+  const [isLoadingLogisticsCompanies, setIsLoadingLogisticsCompanies] = useState(false)
 
   // Pre-populate form when initialData is provided (edit mode)
   useEffect(() => {
@@ -186,6 +193,11 @@ export default function SaleForm({ onSave, initialData, saleId }) {
     if (initialData.totalDiscount != null) setDiscount(initialData.totalDiscount)
     if (initialData.cashPayment != null) setCash(initialData.cashPayment)
     if (initialData.bankPayment != null) setBank(initialData.bankPayment)
+    const hasShipping = Boolean(initialData.addShippingCost) || Number(initialData.buyerShippingCharge || initialData.shippingCost || 0) > 0
+    setAddShippingCost(hasShipping)
+    setBuyerShippingCharge(Number(initialData.buyerShippingCharge ?? initialData.shippingCost ?? 0))
+    setShippingBoxes(Number(initialData.shippingBoxes || 0))
+    setLogisticsCompanyId(String(initialData.logisticsCompany?._id || initialData.logisticsCompany || ""))
     // Buyer
     if (initialData.buyer) {
       const buyerIdVal = initialData.buyer?._id || initialData.buyer
@@ -276,6 +288,45 @@ export default function SaleForm({ onSave, initialData, saleId }) {
     }
 
     fetchAllBuyers()
+  }, [])
+
+  // Fetch logistics companies for optional shipping tracking
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchLogisticsCompanies() {
+      try {
+        setIsLoadingLogisticsCompanies(true)
+        const response = await logisticsCompaniesAPI.getAll({ isActive: true, limit: 1000 })
+        let list = []
+        if (response.data?.data && Array.isArray(response.data.data)) {
+          list = response.data.data
+        } else if (response.data && Array.isArray(response.data)) {
+          list = response.data
+        } else if (Array.isArray(response)) {
+          list = response
+        }
+
+        if (!cancelled) {
+          setLogisticsCompanies(list)
+        }
+      } catch (err) {
+        console.error('Error fetching logistics companies:', err)
+        if (!cancelled) {
+          setLogisticsCompanies([])
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingLogisticsCompanies(false)
+        }
+      }
+    }
+
+    fetchLogisticsCompanies()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // Fetch products (all products for selling)
@@ -546,14 +597,28 @@ export default function SaleForm({ onSave, initialData, saleId }) {
     }
   }
 
+  const selectedLogisticsCompany = useMemo(() => {
+    return logisticsCompanies.find(
+      (company) => String(company._id || company.id) === String(logisticsCompanyId)
+    )
+  }, [logisticsCompanies, logisticsCompanyId])
+
+  const logisticsBoxRate = Number(selectedLogisticsCompany?.rates?.boxRate || 0)
+  const computedLogisticsPayable = addShippingCost
+    ? Math.max(0, Number(shippingBoxes || 0) * logisticsBoxRate)
+    : 0
+  const effectiveBuyerShippingCharge = addShippingCost
+    ? Math.max(0, Number(buyerShippingCharge || 0))
+    : 0
+
   // Derived totals
   const totals = useMemo(() => {
-    const grandTotal = rows.reduce((sum, row) => sum + Number(row.totalPrice || 0), 0)
+    const grandTotal = rows.reduce((sum, row) => sum + Number(row.totalPrice || 0), 0) + effectiveBuyerShippingCharge
     const totalAfterDiscount = Math.max(0, grandTotal - Number(discount || 0))
     const paid = Number(cash || 0) + Number(bank || 0)
     const remaining = totalAfterDiscount - paid
     return { grandTotal, totalAfterDiscount, paid, remaining }
-  }, [rows, discount, cash, bank])
+  }, [rows, effectiveBuyerShippingCharge, discount, cash, bank])
 
   // Keyboard shortcuts
   function handlePaymentKeyDown(e, field) {
@@ -603,6 +668,23 @@ export default function SaleForm({ onSave, initialData, saleId }) {
     if (invalidRows.length > 0) {
       setError('Please fill in product name, code, unit price, and quantity for all rows')
       return
+    }
+
+    if (addShippingCost) {
+      if (!logisticsCompanyId) {
+        setError('Please select a logistics company when shipping is enabled')
+        return
+      }
+
+      if (!shippingBoxes || Number(shippingBoxes) < 1) {
+        setError('Number of boxes must be at least 1 when shipping is enabled')
+        return
+      }
+
+      if (Number(buyerShippingCharge || 0) < 0) {
+        setError('Shipping charge cannot be negative')
+        return
+      }
     }
 
     try {
@@ -720,13 +802,19 @@ export default function SaleForm({ onSave, initialData, saleId }) {
 
       // Calculate subtotal and grandTotal
       const subtotal = itemsWithProducts.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0)
-      const grandTotal = Math.max(0, subtotal - Number(discount || 0))
+      const grandTotal = Math.max(0, subtotal + effectiveBuyerShippingCharge - Number(discount || 0))
 
       const payload = {
         saleDate: saleDate,
         items: itemsWithProducts,
         totalDiscount: Number(discount || 0),
-        shippingCost: 0,
+        addShippingCost: addShippingCost,
+        buyerShippingCharge: effectiveBuyerShippingCharge,
+        shippingCost: effectiveBuyerShippingCharge,
+        shippingBoxes: addShippingCost ? Number(shippingBoxes || 0) : 0,
+        logisticsCompanyId: addShippingCost ? logisticsCompanyId : null,
+        logisticsBoxRateSnapshot: addShippingCost ? logisticsBoxRate : 0,
+        logisticsPayable: addShippingCost ? computedLogisticsPayable : 0,
         cashPayment: Number(cash || 0),
         bankPayment: Number(bank || 0),
         paymentMethod: cash > 0 ? 'cash' : bank > 0 ? 'online' : 'credit',
@@ -788,6 +876,20 @@ export default function SaleForm({ onSave, initialData, saleId }) {
           requestedChanges.buyer = { from: initialData.buyer?.name || initialData.buyer, to: pendingPayload.buyer }
         if (pendingPayload.totalDiscount !== (initialData.totalDiscount || 0))
           requestedChanges.totalDiscount = { from: initialData.totalDiscount || 0, to: pendingPayload.totalDiscount }
+        if (Boolean(pendingPayload.addShippingCost) !== Boolean(initialData.addShippingCost))
+          requestedChanges.addShippingCost = { from: Boolean(initialData.addShippingCost), to: Boolean(pendingPayload.addShippingCost) }
+        if (Number(pendingPayload.buyerShippingCharge || 0) !== Number(initialData.buyerShippingCharge ?? initialData.shippingCost ?? 0))
+          requestedChanges.buyerShippingCharge = {
+            from: Number(initialData.buyerShippingCharge ?? initialData.shippingCost ?? 0),
+            to: Number(pendingPayload.buyerShippingCharge || 0)
+          }
+        if (Number(pendingPayload.shippingBoxes || 0) !== Number(initialData.shippingBoxes || 0))
+          requestedChanges.shippingBoxes = { from: Number(initialData.shippingBoxes || 0), to: Number(pendingPayload.shippingBoxes || 0) }
+        if (String(pendingPayload.logisticsCompanyId || '') !== String(initialData.logisticsCompany?._id || initialData.logisticsCompany || ''))
+          requestedChanges.logisticsCompany = {
+            from: initialData.logisticsCompany?.name || initialData.logisticsCompany || '',
+            to: pendingPayload.logisticsCompanyId || ''
+          }
         if (pendingPayload.cashPayment !== (initialData.cashPayment || 0))
           requestedChanges.cashPayment = { from: initialData.cashPayment || 0, to: pendingPayload.cashPayment }
         if (pendingPayload.bankPayment !== (initialData.bankPayment || 0))
@@ -1528,16 +1630,120 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                 £{totals.grandTotal.toFixed(2)}
               </span>
             </div>
+            {addShippingCost && (
+              <div className="flex justify-between items-center p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-md">
+                <span className="text-sm font-medium">Buyer Shipping Charge</span>
+                <span className="text-base font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                  £{effectiveBuyerShippingCharge.toFixed(2)}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-950/30 rounded-md">
               <span className="text-sm font-medium">Total After Discount</span>
               <span className="text-lg font-semibold tabular-nums text-blue-700 dark:text-blue-400">
                 £{totals.totalAfterDiscount.toFixed(2)}
               </span>
             </div>
+            {addShippingCost && (
+              <div className="flex justify-between items-center p-3 bg-amber-50 dark:bg-amber-950/30 rounded-md border border-amber-200 dark:border-amber-900">
+                <span className="text-sm font-medium">Logistics Payable</span>
+                <span className="text-base font-semibold tabular-nums text-amber-700 dark:text-amber-400">
+                  £{computedLogisticsPayable.toFixed(2)}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Middle: Input fields */}
           <div className="space-y-3">
+            <div className="rounded-md border border-border p-3 space-y-3">
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="add-shipping-cost"
+                  checked={addShippingCost}
+                  onChange={(e) => {
+                    const checked = e.target.checked
+                    setAddShippingCost(checked)
+                    if (!checked) {
+                      setBuyerShippingCharge(0)
+                      setShippingBoxes(0)
+                      setLogisticsCompanyId("")
+                    }
+                  }}
+                  className="h-5 w-5 rounded border-border text-primary focus:ring-primary mt-0.5 flex-shrink-0"
+                />
+                <Label htmlFor="add-shipping-cost" className="text-sm font-semibold cursor-pointer">
+                  Add Shipping Cost
+                </Label>
+              </div>
+
+              {addShippingCost && (
+                <div className="space-y-3 pl-7">
+                  <div className="space-y-2">
+                    <Label htmlFor="buyer-shipping-charge">Amount</Label>
+                    <Input
+                      id="buyer-shipping-charge"
+                      type="text"
+                      inputMode="decimal"
+                      value={buyerShippingCharge}
+                      onChange={(e) => {
+                        const sanitized = e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')
+                        setBuyerShippingCharge(sanitized)
+                      }}
+                      onBlur={(e) => {
+                        const val = parseFloat(e.target.value)
+                        setBuyerShippingCharge(!isNaN(val) ? val : 0)
+                      }}
+                      placeholder=""
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="shipping-boxes">Number of Boxes</Label>
+                    <Input
+                      id="shipping-boxes"
+                      type="text"
+                      inputMode="numeric"
+                      value={shippingBoxes}
+                      onChange={(e) => {
+                        const sanitized = e.target.value.replace(/[^0-9]/g, '')
+                        setShippingBoxes(sanitized === '' ? '' : Number(sanitized))
+                      }}
+                      onBlur={(e) => {
+                        const val = parseInt(e.target.value, 10)
+                        setShippingBoxes(!isNaN(val) ? val : 0)
+                      }}
+                      placeholder=""
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="sale-logistics-company">Logistics Company</Label>
+                    <Select
+                      value={logisticsCompanyId || undefined}
+                      onValueChange={(value) => setLogisticsCompanyId(value || "")}
+                      disabled={isLoadingLogisticsCompanies}
+                    >
+                      <SelectTrigger id="sale-logistics-company">
+                        <SelectValue placeholder={isLoadingLogisticsCompanies ? "Loading..." : "Select logistics company"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {logisticsCompanies.map((company) => (
+                          <SelectItem
+                            key={String(company._id || company.id)}
+                            value={String(company._id || company.id)}
+                          >
+                            {company.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="discount">Discount</Label>
               <Input
@@ -1700,6 +1906,10 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                 setDiscount(0)
                 setCash(0)
                 setBank(0)
+                setAddShippingCost(false)
+                setBuyerShippingCharge(0)
+                setShippingBoxes(0)
+                setLogisticsCompanyId("")
                 setError(null)
               }}
               disabled={isSaving}

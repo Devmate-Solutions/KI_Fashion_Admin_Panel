@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -53,6 +53,14 @@ export default function RequestReviewPanel({ open, onClose, requestId }) {
   const [reviewNote, setReviewNote] = useState("");
   const [showRejectForm, setShowRejectForm] = useState(false);
 
+  // Reset form state whenever the dialog closes so stale note/sub-panel don't persist
+  useEffect(() => {
+    if (!open) {
+      setReviewNote("");
+      setShowRejectForm(false);
+    }
+  }, [open]);
+
   const handleApprove = async (forceApprove = false) => {
     try {
       await approveMutation.mutateAsync({
@@ -87,7 +95,8 @@ export default function RequestReviewPanel({ open, onClose, requestId }) {
   const isProcessing = approveMutation.isPending || rejectMutation.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    // Prevent closing via backdrop/Escape key while a mutation is in-flight
+    <Dialog open={open} onOpenChange={isProcessing ? undefined : onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center p-8">
