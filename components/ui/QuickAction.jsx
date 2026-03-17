@@ -5,21 +5,26 @@ const themes = {
   purple: "from-purple-500 to-violet-600 shadow-purple-200 text-white hover:shadow-purple-300",
   emerald: "from-emerald-500 to-teal-600 shadow-emerald-200 text-white hover:shadow-emerald-300",
   slate: "from-slate-700 to-slate-900 shadow-slate-200 text-white hover:shadow-slate-300",
+  none: "",
 };
 
 export default function QuickAction({
   label,
+  title, // Support title as alias for label
   icon: Icon,
   onClick,
   color = "blue",
   description,
+  className,
 }) {
+  const displayLabel = label || title;
   return (
     <button
       onClick={onClick}
       className={cn(
         "flex flex-col items-start gap-3 p-5 rounded-lg bg-gradient-to-br transition-all duration-300 active:scale-[0.98] text-left group overflow-hidden relative w-full",
-        themes[color] || themes.blue
+        themes[color] || themes.blue,
+        className
       )}
     >
       <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
@@ -29,7 +34,7 @@ export default function QuickAction({
         <Icon className="h-5 w-5" />
       </div>
       <div>
-        <span className="font-bold text-base block">{label}</span>
+        <span className="font-bold text-base block">{displayLabel}</span>
         {description && (
           <span className="text-[11px] text-white/70 block mt-0.5 leading-tight">
             {description}

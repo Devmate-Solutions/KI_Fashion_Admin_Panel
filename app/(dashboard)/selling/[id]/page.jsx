@@ -68,6 +68,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import ProductImageGallery from "@/components/ui/ProductImageGallery";
+import { printSaleThermalReceipt } from "@/components/reports/SaleThermalReceiptPrint";
 
 // Helper to get image array from various sources
 const getImageArray = (item) => {
@@ -287,6 +288,13 @@ export default function SaleDetailPage({ params }) {
     });
   };
 
+  const handlePrintReceipt = () => {
+    const printed = printSaleThermalReceipt(sale);
+    if (!printed) {
+      toast.error("Receipt popup blocked. Please allow popups and try again.");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -334,6 +342,10 @@ export default function SaleDetailPage({ params }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handlePrintReceipt}>
+            <Printer className="h-4 w-4 mr-2" />
+            Print Receipt
+          </Button>
           <Button
             variant="outline"
             onClick={() => router.push(`/selling/${saleId}/edit`)}

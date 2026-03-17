@@ -42,8 +42,11 @@ import {
   useAddStock,
   useReduceStock,
   useAdjustStock,
+  inventoryKeys,
 } from "@/lib/hooks/useInventory";
 import { usePacketStockList } from "@/lib/hooks/usePacketStock";
+import { productsAPI } from "@/lib/api/endpoints/products";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import { Boxes, Loader2, MoveRight, RefreshCcw, Package, Barcode, Printer, QrCode, Copy, Check, Scissors, Trash2, ScanLine } from "lucide-react";
 import ProductImageGallery from "@/components/ui/ProductImageGallery";
@@ -258,6 +261,15 @@ const inventoryColumns = [
     ),
   },
   {
+    header: "Min Sell Price",
+    accessor: "minSellingPrice",
+    render: (row) => (
+      <span className="tabular-nums font-medium">
+        {formatDecimal(row.pricing?.minSellingPrice ?? row.pricing?.sellingPrice ?? 0)}
+      </span>
+    ),
+  },
+  {
     header: "Value",
     accessor: "totalValue",
     render: (row) => (
@@ -331,6 +343,7 @@ function currency(n) {
 const PAGE_SIZE_OPTIONS = [10, 20, 25, 50, 100];
 
 export default function StockPage() {
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialTab = Number(searchParams.get("tab") ?? 0);
@@ -575,6 +588,8 @@ export default function StockPage() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [reduceDialogOpen, setReduceDialogOpen] = useState(false);
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
+  const [minPriceDialogOpen, setMinPriceDialogOpen] = useState(false);
+  const [isSavingMinPrice, setIsSavingMinPrice] = useState(false);
 
   const handleApplyFilters = (event) => {
     event.preventDefault();
@@ -654,6 +669,38 @@ export default function StockPage() {
       setAdjustDialogOpen(false);
     } catch (error) {
       // toast handled
+    }
+  }
+
+  async function submitMinSellingPrice(values) {
+    const productId = values.product;
+    const minSellingPrice = Number(values.minSellingPrice);
+
+    if (!productId) {
+      toast.error("Please select a product");
+      return;
+    }
+
+    if (!Number.isFinite(minSellingPrice) || minSellingPrice < 0) {
+      toast.error("Minimum selling price must be a valid non-negative number");
+      return;
+    }
+
+    try {
+      setIsSavingMinPrice(true);
+      await productsAPI.updateMinSellingPrice(productId, minSellingPrice);
+      toast.success("Minimum selling price updated");
+      setMinPriceDialogOpen(false);
+
+      await queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      await queryClient.invalidateQueries({ queryKey: inventoryKeys.detail(productId) });
+      if (selectedProductId) {
+        await queryClient.invalidateQueries({ queryKey: inventoryKeys.detail(selectedProductId) });
+      }
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to update minimum selling price");
+    } finally {
+      setIsSavingMinPrice(false);
     }
   }
 
@@ -967,6 +1014,15 @@ export default function StockPage() {
             </span>
           </div>
         </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-8"
+          onClick={() => setMinPriceDialogOpen(true)}
+        >
+          Update Min Sell Price
+        </Button>
         {/* Pagination Controls */}
         {inventoryPagination && (inventoryPagination.totalItems > 0) && (
           <div className="flex items-center gap-4">
@@ -1511,11 +1567,20 @@ export default function StockPage() {
     {
       header: "Price/Pkt",
       accessor: "suggestedSellingPrice",
-      render: (row) => (
-        <div className="text-right tabular-nums">
-          {currency(row.suggestedSellingPrice || 0)}
-        </div>
-      ),
+      render: (row) => {
+        const perItemMin = Number(
+          row.product?.pricing?.minSellingPrice ?? row.product?.pricing?.sellingPrice
+        );
+        const effectivePacketPrice = Number.isFinite(perItemMin)
+          ? perItemMin * (row.totalItemsPerPacket || 1)
+          : (row.suggestedSellingPrice || 0);
+
+        return (
+          <div className="text-right tabular-nums">
+            {currency(effectivePacketPrice)}
+          </div>
+        );
+      },
     },
     {
       header: "Actions",
@@ -1575,9 +1640,16 @@ export default function StockPage() {
 
     items.forEach((p) => {
       const available = (p.availablePackets || 0) - (p.reservedPackets || 0);
+      const perItemMin = Number(
+        p.product?.pricing?.minSellingPrice ?? p.product?.pricing?.sellingPrice
+      );
+      const effectivePacketPrice = Number.isFinite(perItemMin)
+        ? perItemMin * (p.totalItemsPerPacket || 1)
+        : (p.suggestedSellingPrice || 0);
+
       totalPackets += available;
       totalItems += available * (p.totalItemsPerPacket || 1);
-      totalValue += available * (p.suggestedSellingPrice || 0);
+      totalValue += available * effectivePacketPrice;
       if (available > 0 && available <= 5) lowStockCount++;
     });
 
@@ -1879,6 +1951,39 @@ export default function StockPage() {
         onClose={() => setAdjustDialogOpen(false)}
         onSubmit={submitAdjustStock}
         loading={adjustStockMutation.isPending}
+      />
+
+      <FormDialog
+        open={minPriceDialogOpen}
+        title="Update Minimum Selling Price"
+        fields={[
+          {
+            name: "product",
+            label: "Product",
+            type: "select",
+            required: true,
+            placeholder: "Select product",
+            options: productOptions,
+          },
+          {
+            name: "minSellingPrice",
+            label: "Minimum Selling Price",
+            type: "number",
+            required: true,
+            min: 0,
+            step: 0.01,
+          },
+        ]}
+        initialValues={{
+          product: selectedProductId,
+          minSellingPrice:
+            selectedInventory?.pricing?.minSellingPrice ??
+            selectedInventory?.pricing?.sellingPrice ??
+            0,
+        }}
+        onClose={() => setMinPriceDialogOpen(false)}
+        onSubmit={submitMinSellingPrice}
+        loading={isSavingMinPrice}
       />
 
       {/* Packet Detail Dialog */}

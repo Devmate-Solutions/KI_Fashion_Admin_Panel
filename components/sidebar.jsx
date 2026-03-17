@@ -27,7 +27,8 @@ import {
   RotateCcw,
   Settings2,
   ClipboardCheck,
-  ListChecks
+  ListChecks,
+  Megaphone
 } from "lucide-react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { useAuthStore } from "@/store/store";
@@ -52,6 +53,7 @@ const items = [
   // { href: "/daily-report-form", label: "Daily Reports", icon: ClipboardList },
   { href: "/logistics", label: "Logistics", icon: Truck },
   { href: "/logistics-ledger", label: "Logistics Ledger", icon: Truck },
+  { href: "/campaigns", label: "Campaigns", icon: Megaphone },
   { type: "separator", label: "Settings" },
   // { href: "/setup", label: "System Setup", icon: Settings },
   // { href: "/product-types", label: "Product Types", icon: Package },

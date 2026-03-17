@@ -300,6 +300,7 @@ export default function DispatchOrderDetailPage({ params }) {
           productCode: item.productCode || "",
           quantity: item.quantity || 0,
           costPrice: item.costPrice || 0,
+          minSellingPrice: item.minSellingPrice ?? item.product?.pricing?.minSellingPrice ?? item.product?.pricing?.sellingPrice ?? 0,
           primaryColor: Array.isArray(item.primaryColor)
             ? item.primaryColor
             : item.primaryColor
@@ -792,6 +793,7 @@ export default function DispatchOrderDetailPage({ params }) {
         discount: String(data.currentDiscount ?? '0'),
         items: (data.items || []).map(item => ({
           costPrice: String(item.currentCostPrice ?? ''),
+          minSellingPrice: String(item.currentMinSellingPrice ?? ''),
           quantity: String(item.orderedQuantity ?? ''),
           soldQty: item.soldQuantity ?? 0,
           productName: item.productName || '',
@@ -832,6 +834,10 @@ export default function DispatchOrderDetailPage({ params }) {
         discount: parseFloat(confirmedEditForm.discount),
         items: confirmedEditForm.items.map(item => ({
           costPrice: parseFloat(item.costPrice),
+          minSellingPrice:
+            item.minSellingPrice === '' || item.minSellingPrice === undefined || item.minSellingPrice === null
+              ? undefined
+              : parseFloat(item.minSellingPrice),
           quantity: parseInt(item.quantity),
           productName: String(item.productName || '').trim(),
           productCode: String(item.productCode || '').trim().toUpperCase(),
@@ -867,6 +873,9 @@ export default function DispatchOrderDetailPage({ params }) {
             const orig = impactData.items?.[i];
             if (orig && item.costPrice !== orig.currentCostPrice) {
               requestedChanges[`items[${i}].costPrice`] = { from: orig.currentCostPrice, to: item.costPrice };
+            }
+            if (orig && item.minSellingPrice !== orig.currentMinSellingPrice) {
+              requestedChanges[`items[${i}].minSellingPrice`] = { from: orig.currentMinSellingPrice, to: item.minSellingPrice };
             }
             if (orig && item.quantity !== orig.orderedQuantity) {
               requestedChanges[`items[${i}].quantity`] = { from: orig.orderedQuantity, to: item.quantity };
@@ -1117,6 +1126,7 @@ export default function DispatchOrderDetailPage({ params }) {
           productCode: itemData.productCode,
           quantity: parseFloat(itemData.quantity),
           costPrice: parseFloat(itemData.costPrice),
+          minSellingPrice: parseFloat(itemData.minSellingPrice) || 0,
           primaryColor: itemData.primaryColor,
           size: itemData.size,
           season: itemData.season,
@@ -1248,6 +1258,7 @@ export default function DispatchOrderDetailPage({ params }) {
           productCode: itemData.productCode,
           quantity: parseFloat(itemData.quantity),
           costPrice: parseFloat(itemData.costPrice),
+          minSellingPrice: parseFloat(itemData.minSellingPrice) || 0,
           primaryColor: itemData.primaryColor,
           size: itemData.size,
           season: finalSeason, // Explicitly use only itemData.season, never fallback
@@ -2052,6 +2063,9 @@ export default function DispatchOrderDetailPage({ params }) {
                     Cost Price
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Min Sell Price
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Supplier Payment
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -2831,6 +2845,44 @@ export default function DispatchOrderDetailPage({ params }) {
                         ) : (
                           <span className="text-muted-foreground">
                             {item.costPrice?.toFixed(2) || "—"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right align-top">
+                        {isPending && !isRemoved ? (
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={itemData.minSellingPrice ?? ""}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                              setEditedItems({
+                                ...editedItems,
+                                [item.index]: {
+                                  ...itemData,
+                                  minSellingPrice: sanitized,
+                                },
+                              });
+                            }}
+                            className="h-8 text-sm w-24 text-right"
+                          />
+                        ) : isEditingConfirmed && item.originalIndex !== null ? (
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={confirmedEditForm.items[item.originalIndex]?.minSellingPrice ?? ''}
+                            onChange={(e) => setConfirmedEditForm(prev => {
+                              const items = [...prev.items];
+                              items[item.originalIndex] = { ...items[item.originalIndex], minSellingPrice: e.target.value };
+                              return { ...prev, items };
+                            })}
+                            className="h-8 text-sm w-24 text-right border-violet-400 focus:border-violet-500"
+                          />
+                        ) : (
+                          <span className="text-foreground font-medium">
+                            {Number(item.minSellingPrice ?? item.product?.pricing?.minSellingPrice ?? 0).toFixed(2)}
                           </span>
                         )}
                       </td>

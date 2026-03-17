@@ -5,11 +5,17 @@ import { useCallback } from "react"
 import toast from "react-hot-toast"
 import SaleForm from "@/components/forms/sale-form"
 import BackButton from "@/components/BackButton"
+import { printSaleThermalReceipt } from "@/components/reports/SaleThermalReceiptPrint"
 
 export default function NewSellingPage() {
   const router = useRouter()
 
   const handleSave = useCallback((saleData) => {
+    const printed = printSaleThermalReceipt(saleData)
+    if (!printed) {
+      toast.error("Receipt popup blocked. Please allow popups and try printing from sale details.")
+    }
+
     // Success! Show notification and navigate back
     toast.success(`Sale created successfully! ID: ${saleData.id || saleData._id || 'N/A'}`, {
       duration: 4000,
