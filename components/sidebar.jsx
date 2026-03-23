@@ -59,7 +59,7 @@ const items = [
   // { href: "/delivery-personnel", label: "Delivery Staff", icon: Truck },
   { href: "/cost-types", label: "Cost Config", icon: Settings2 },
   { type: "separator", label: "Governance" },
-  {href: "/campaign", label: "Campaigns", icon: ListChecks },
+  {href: "/campaigns", label: "Campaigns", icon: ListChecks },
   { href: "/approval-queue", label: "Approval Queue", icon: ClipboardCheck, superAdminOnly: true, hasBadge: true },
   { href: "/my-requests", label: "My Requests", icon: ListChecks },
 ];
