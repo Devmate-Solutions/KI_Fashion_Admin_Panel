@@ -61,7 +61,6 @@ export function CampaignForm({
   products = [],
   suppliers = [],
 }) {
-  const [productSearch, setProductSearch] = useState("");
   const [form, setForm] = useState({
     name: "",
     campaignType: "discount",
@@ -122,29 +121,14 @@ export function CampaignForm({
     };
 
     setForm(next);
-    setProductSearch("");
   }, [open, initialData]);
 
   const productOptions = useMemo(() => {
-    const q = productSearch.trim().toLowerCase();
-    const base = products.map((product) => ({
+    return products.map((product) => ({
       value: String(product._id || product.id),
       label: `${product.name || "Unnamed"} (${product.sku || "NO-SKU"})`,
       search: `${product.name || ""} ${product.sku || ""} ${product.productCode || ""}`.toLowerCase(),
     }));
-
-    if (!q) return base;
-    return base.filter((item) => item.search.includes(q));
-  }, [products, productSearch]);
-
-  const categoryOptions = useMemo(() => {
-    const values = [...new Set(products.map((p) => p.category).filter(Boolean))];
-    return values.map((value) => ({ value, label: value }));
-  }, [products]);
-
-  const brandOptions = useMemo(() => {
-    const values = [...new Set(products.map((p) => p.brand).filter(Boolean))];
-    return values.map((value) => ({ value, label: value }));
   }, [products]);
 
   const supplierOptions = useMemo(() => {
@@ -326,47 +310,14 @@ export function CampaignForm({
 
           <div className="space-y-2">
             <Label>Products (manual selection)</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Search products by name/SKU"
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setProductSearch("")}
-              >
-                Clear
-              </Button>
-            </div>
             <MultiSelect
               options={productOptions}
               value={form.productIds}
               onChange={(next) => setField("productIds", next)}
               placeholder="Select products"
+              searchable
+              searchPlaceholder="Search by product name or SKU"
             />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Categories</Label>
-              <MultiSelect
-                options={categoryOptions}
-                value={form.categories}
-                onChange={(next) => setField("categories", next)}
-                placeholder="Select categories"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Brands</Label>
-              <MultiSelect
-                options={brandOptions}
-                value={form.brands}
-                onChange={(next) => setField("brands", next)}
-                placeholder="Select brands"
-              />
-            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { useInventoryList } from "@/lib/hooks/useInventory";
+import { useInventoryList, useInventoryValuationReport } from "@/lib/hooks/useInventory";
 import {
   useDashboardSummary,
   useSalesReport,
@@ -115,16 +115,20 @@ export default function HomePage() {
   const { data: inventoryData, isLoading: inventoryLoading } = useInventoryList(
     { limit: 100 }
   );
+  const { data: inventoryValuationData, isLoading: inventoryValuationLoading } =
+    useInventoryValuationReport();
   // Removed useDailyCashSummary per user request
   const { data: supplierLedgerData } = useAllSupplierLedgers({ limit: 10 });
   const { data: buyerLedgerData } = useAllBuyerLedgers({ limit: 10 });
   const { data: productSummaryData, isLoading: productSummaryLoading } = useProductSummaryReport();
 
   const inventoryItems = inventoryData?.items || [];
-  const totalStockValue = inventoryItems.reduce(
+  const fallbackStockValue = inventoryItems.reduce(
     (sum, item) => sum + (item.totalValue || 0),
     0
   );
+  const totalStockValue =
+    inventoryValuationData?.summary?.totalInventoryValue ?? fallbackStockValue;
   const lowStockCount = inventoryItems.filter(
     (item) => item.lowStock || item.needsReorder
   ).length;
@@ -199,7 +203,7 @@ export default function HomePage() {
           label="Warehouse Value"
           value={currency(totalStockValue)}
           icon={Package}
-          loading={inventoryLoading}
+          loading={inventoryLoading || inventoryValuationLoading}
           color="purple"
           description="Total inventory on-hand"
           onClick={() => router.push("/stock")}

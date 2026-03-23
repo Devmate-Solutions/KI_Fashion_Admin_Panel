@@ -26,6 +26,24 @@ const CustomInput = forwardRef(({ value, onClick, onChange, placeholder, classNa
 
 CustomInput.displayName = 'CustomInput';
 
+function parseDateValue(value) {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+
+  if (typeof value === 'string') {
+    const isoDateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoDateOnlyMatch) {
+      const [, year, month, day] = isoDateOnlyMatch;
+      return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  return null;
+}
+
 const BritishDatePicker = forwardRef(({
   value,
   onChange,
@@ -37,8 +55,7 @@ const BritishDatePicker = forwardRef(({
   disabled = false,
   ...props
 }, ref) => {
-  // Convert string to Date object if needed
-  const selectedDate = value ? (typeof value === 'string' ? new Date(value) : value) : null;
+  const selectedDate = parseDateValue(value);
 
   return (
     <DatePicker

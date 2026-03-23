@@ -12,8 +12,11 @@ export function MultiSelect({
   placeholder = "Select options",
   disabled = false,
   className = "",
+  searchable = false,
+  searchPlaceholder = "Search options",
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
   const dropdownContentRef = useRef(null);
@@ -24,6 +27,16 @@ export function MultiSelect({
     placement: 'bottom' // 'bottom' or 'top'
   });
 
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredOptions =
+    searchable && normalizedQuery
+      ? options.filter((option) => {
+          const base = String(option.label || "").toLowerCase();
+          const haystack = String(option.search || base).toLowerCase();
+          return base.includes(normalizedQuery) || haystack.includes(normalizedQuery);
+        })
+      : options;
+
   const updateDropdownPosition = () => {
     if (buttonRef.current) {
       const buttonRect = buttonRef.current.getBoundingClientRect();
@@ -31,7 +44,7 @@ export function MultiSelect({
       const viewportWidth = window.innerWidth;
       
       // Estimate dropdown height (max 240px for max-h-60, but could be less)
-      const estimatedDropdownHeight = Math.min(options.length * 40 + 16, 240);
+      const estimatedDropdownHeight = Math.min(filteredOptions.length * 40 + 64, 240);
       const spaceBelow = viewportHeight - buttonRect.bottom;
       const spaceAbove = buttonRect.top;
       
@@ -123,7 +136,7 @@ export function MultiSelect({
         if (rafId) cancelAnimationFrame(rafId);
       };
     }
-  }, [isOpen, options.length]);
+  }, [isOpen, filteredOptions.length]);
 
   const handleToggle = (optionValue) => {
     if (disabled) return;
@@ -180,10 +193,21 @@ export function MultiSelect({
           }}
         >
           <div className="p-2">
-            {options.length === 0 ? (
+            {searchable && (
+              <div className="mb-2">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder={searchPlaceholder}
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                />
+              </div>
+            )}
+            {filteredOptions.length === 0 ? (
               <div className="px-2 py-1.5 text-sm text-muted-foreground">No options available</div>
             ) : (
-              options.map((option) => {
+              filteredOptions.map((option) => {
                 const isSelected = value.includes(option.value);
                 return (
                   <div
@@ -233,6 +257,9 @@ export function MultiSelect({
           if (!disabled) {
             const newIsOpen = !isOpen;
             setIsOpen(newIsOpen);
+            if (!newIsOpen) {
+              setSearchQuery("");
+            }
             if (newIsOpen) {
               // Use requestAnimationFrame to ensure DOM is updated
               requestAnimationFrame(() => {

@@ -168,7 +168,7 @@ export default function DataTable({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[640px]">
-              <thead className="bg-muted/30 sticky top-0 z-10">
+              <thead className="bg-muted/30 sticky top-0 ">
                 <tr className="border-b border-border">
                   {expandableRow && (
                     <th className="px-2 py-2.5 sm:py-3 w-8"></th>

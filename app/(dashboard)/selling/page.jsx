@@ -32,6 +32,14 @@ const getImageArray = (item) => {
   return [];
 };
 
+function formatLocalDate(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ""
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 function currency(n) {
   const num = Number(n || 0)
   return `£${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -46,14 +54,32 @@ export default function SellingPage() {
   const [deleteRequestTarget, setDeleteRequestTarget] = useState(null)
   const initialTab = Number(searchParams.get("tab") ?? 0)
   const [activeTab, setActiveTab] = useState(initialTab)
-  const today = new Date().toISOString().split("T")[0]
+  const today = formatLocalDate(new Date())
   const [dateRange, setDateRange] = useState({ from: today, to: today })
 
   // Fetch sales data
   const { data: sellingRows = [], isLoading: salesLoading } = useSales({
-    startDate: dateRange.from || undefined,
-    endDate: dateRange.to || undefined,
+    limit: 500,
   })
+
+  const filteredSellingRows = useMemo(() => {
+    const fromBoundary = dateRange.from ? new Date(dateRange.from) : null
+    const toBoundary = dateRange.to ? new Date(dateRange.to) : null
+
+    if (fromBoundary && Number.isNaN(fromBoundary.getTime())) return []
+    if (toBoundary && Number.isNaN(toBoundary.getTime())) return []
+
+    if (fromBoundary) fromBoundary.setHours(0, 0, 0, 0)
+    if (toBoundary) toBoundary.setHours(23, 59, 59, 999)
+
+    return sellingRows.filter((row) => {
+      const rowDate = new Date(row?.date)
+      if (Number.isNaN(rowDate.getTime())) return false
+      if (fromBoundary && rowDate < fromBoundary) return false
+      if (toBoundary && rowDate > toBoundary) return false
+      return true
+    })
+  }, [sellingRows, dateRange.from, dateRange.to])
 
   // Fetch buyers for payment modal
   const { data: buyers = [] } = useBuyers({ limit: 100 })
@@ -385,7 +411,7 @@ export default function SellingPage() {
                     <BritishDatePicker
                       value={dateRange.from || null}
                       onChange={(date) => {
-                        setDateRange(r => ({ ...r, from: date ? date.toISOString().split("T")[0] : "" }))
+                        setDateRange(r => ({ ...r, from: date ? formatLocalDate(date) : "" }))
                       }}
                     />
                   </div>
@@ -394,7 +420,7 @@ export default function SellingPage() {
                     <BritishDatePicker
                       value={dateRange.to || null}
                       onChange={(date) => {
-                        setDateRange(r => ({ ...r, to: date ? date.toISOString().split("T")[0] : "" }))
+                        setDateRange(r => ({ ...r, to: date ? formatLocalDate(date) : "" }))
                       }}
                     />
                   </div>
@@ -408,7 +434,7 @@ export default function SellingPage() {
                   <DataTable
                     title="Selling"
                     columns={sellingColumns}
-                    data={sellingRows}
+                    data={filteredSellingRows}
                     onAddNew={handleAddNew}
                     loading={salesLoading}
                     onEdit={handleEdit}

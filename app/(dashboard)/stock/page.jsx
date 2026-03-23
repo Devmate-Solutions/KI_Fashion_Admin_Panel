@@ -39,11 +39,13 @@ import {
   useInventoryList,
   useInventoryItem,
   useInventoryMovements,
+  useInventoryValuationReport,
   useAddStock,
   useReduceStock,
   useAdjustStock,
   inventoryKeys,
 } from "@/lib/hooks/useInventory";
+import { useStockSummaryReport } from "@/lib/hooks/useReports";
 import { usePacketStockList } from "@/lib/hooks/usePacketStock";
 import { productsAPI } from "@/lib/api/endpoints/products";
 import { useQueryClient } from "@tanstack/react-query";
@@ -427,6 +429,8 @@ export default function StockPage() {
     isLoading: inventoryLoading,
     isFetching: inventoryFetching,
   } = useInventoryList(inventoryParams);
+  const { data: inventoryValuationData } = useInventoryValuationReport();
+  const { data: stockSummaryData } = useStockSummaryReport();
 
   const inventoryItems = inventoryData?.items ?? [];
 
@@ -468,6 +472,24 @@ export default function StockPage() {
     (sum, item) => sum + (item.totalValue || 0),
     0
   );
+  const stockSummaryProducts = stockSummaryData?.products || [];
+  const stockSummaryTotalValue = Number(stockSummaryData?.totalStockValue || 0);
+  const stockSummaryTotalStockItems = stockSummaryProducts.reduce(
+    (sum, product) => sum + Number(product.stockInHand || 0),
+    0
+  );
+  const stockSummaryTotalProducts = Number(
+    stockSummaryData?.totalItems || stockSummaryProducts.length || 0
+  );
+  const stockSummaryLowStockItems = Number(stockSummaryData?.lowStockItems || 0);
+  const hasStockSummaryValue = stockSummaryData?.totalStockValue !== undefined;
+  const hasStockSummaryItems = stockSummaryData?.products !== undefined;
+  const hasStockSummaryLowStock = stockSummaryData?.lowStockItems !== undefined;
+  const hasStockSummaryProducts = stockSummaryData?.totalItems !== undefined;
+  const globalStockValue =
+    (hasStockSummaryValue ? stockSummaryTotalValue : undefined) ??
+    inventoryValuationData?.summary?.totalInventoryValue ??
+    totalStockValue;
   const totalStockItems = filteredInventoryItems.reduce(
     (sum, item) => sum + (item.currentStock || 0),
     0
@@ -476,6 +498,15 @@ export default function StockPage() {
     (item) => item.lowStock || item.needsReorder
   ).length;
   const totalProducts = filteredInventoryItems.length;
+  const globalTotalStockItems =
+    (hasStockSummaryItems ? stockSummaryTotalStockItems : undefined) ??
+    totalStockItems;
+  const globalLowStockCount =
+    (hasStockSummaryLowStock ? stockSummaryLowStockItems : undefined) ??
+    lowStockCount;
+  const globalTotalProducts =
+    (hasStockSummaryProducts ? stockSummaryTotalProducts : undefined) ??
+    totalProducts;
 
   // Debug: Log first item to check image data
   React.useEffect(() => {
@@ -822,7 +853,7 @@ export default function StockPage() {
           <CardContent className="flex space-x-1 px-3 pt-0">
             <div>Stock Value:</div>
             <div className="text-lg font-bold">
-              {totalStockValue.toLocaleString(undefined, {
+              {globalStockValue.toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}
@@ -835,7 +866,7 @@ export default function StockPage() {
           <CardContent className="flex space-x-1 px-3 pt-0">
             <div>Total Items:</div>
             <div className="text-lg font-bold">
-              {formatNumber(totalStockItems)}
+              {formatNumber(globalTotalStockItems)}
             </div>
           </CardContent>
         </Card>
@@ -843,7 +874,7 @@ export default function StockPage() {
         <Card>
           <CardContent className="flex space-x-1 px-3 pt-0">
             <div>Total Products:</div>
-            <div className="text-lg font-bold">{totalProducts}</div>
+            <div className="text-lg font-bold">{globalTotalProducts}</div>
           </CardContent>
         </Card>
 
@@ -851,7 +882,7 @@ export default function StockPage() {
           <CardContent className="flex space-x-1 px-3 pt-0">
             <div>Low Stock Items:</div>
             <div className="text-lg font-bold text-amber-600">
-              {lowStockCount}
+              {globalLowStockCount}
             </div>
           </CardContent>
         </Card>
