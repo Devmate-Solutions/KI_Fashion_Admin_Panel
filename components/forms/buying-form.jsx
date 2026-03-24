@@ -1480,16 +1480,16 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[80px]">
                   Image
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[150px]">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[100px]">
                   Season
                 </th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[100px]">
                   Cost Price
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[100px]">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[120px]">
                   Primary Color
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[100px]">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[120px]">
                   Size
                 </th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[100px]">
@@ -1774,7 +1774,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                               e.target.focus();
                             }
                           }}
-                          placeholder="Enter color and press Enter"
+                          placeholder=""
                           className="h-8 text-sm"
                         />
                         <Button
@@ -1885,7 +1885,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                               e.target.focus();
                             }
                           }}
-                          placeholder="Enter size and press Enter"
+                          placeholder=""
                           className="h-8 text-sm"
                         />
                         <Button

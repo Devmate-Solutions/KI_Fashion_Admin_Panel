@@ -157,12 +157,12 @@ export default function DailySalesReportPage() {
 
   const totalsRow = {
     saleNumber: "TOTAL",
-    subtotal: totals.subtotal,
-    discount: totals.discount,
-    grandTotal: totals.grandTotal,
-    bankPayment: totals.bankPayment,
-    cashPayment: totals.cashPayment,
-    remaining: totals.grandTotal - (totals.bankPayment + totals.cashPayment),
+    subtotal: currency(totals.subtotal),
+    discount: currency(totals.discount),
+    grandTotal: currency(totals.grandTotal),
+    bankPayment: currency(totals.bankPayment),
+    cashPayment: currency(totals.cashPayment),
+    remaining: currency(totals.grandTotal - (totals.bankPayment + totals.cashPayment)),
   }
 
   return (

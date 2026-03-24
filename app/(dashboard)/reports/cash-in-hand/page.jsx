@@ -181,14 +181,14 @@ export default function CashInHandReportPage() {
     // Column totals row (summing numeric columns)
     const totalsRow = {
         sno: "TOTAL",
-        salesCash: summary.totalSalesCash || 0,
-        salesBank: summary.totalSalesBank || 0,
-        salesRemainingBalance: transactions.reduce((s, t) => s + (t.salesRemainingBalance || 0), 0),
-        ledgerCash: summary.totalLedgerCash || 0,
-        ledgerBank: summary.totalLedgerBank || 0,
-        expenseCash: summary.totalExpenseCash || 0,
-        expenseBank: summary.totalExpenseBank || 0,
-        totalCashInHand: netCashInHand,
+        salesCash: currency(summary.totalSalesCash || 0),
+        salesBank: currency(summary.totalSalesBank || 0),
+        salesRemainingBalance: currency(transactions.reduce((s, t) => s + (t.salesRemainingBalance || 0), 0)),
+        ledgerCash: currency(summary.totalLedgerCash || 0),
+        ledgerBank: currency(summary.totalLedgerBank || 0),
+        expenseCash: currency(summary.totalExpenseCash || 0),
+        expenseBank: currency(summary.totalExpenseBank || 0),
+        totalCashInHand: currency(netCashInHand),
     }
 
     const summaryCards = [
@@ -239,7 +239,7 @@ export default function CashInHandReportPage() {
                 showTotals={true}
                 totalsRow={totalsRow}
                 totalColumns={[
-                    { title: "Total Transactions", key: "sno", value: transactions.length },
+                    { title: "Total Cash in Hand", value: "totalCashInHand" },
                 ]}
                 searchableColumns={["id", "name", "transactionType"]}
                 pageSize={100}

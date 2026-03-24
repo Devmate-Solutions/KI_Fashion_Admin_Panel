@@ -182,9 +182,9 @@ export default function StockInHandReportPage() {
     itemsBought: totals.totalBought,
     itemsSold: totals.totalSold,
     currentStock: totals.totalStock,
-    totalValue: totals.totalValue,
-    landedPrice: totals.totalValue,
-    minSellPrice: totals.totalValue,
+    totalValue: currency(totals.totalValue),
+    landedPrice: currency(totals.totalValue),
+    minSellPrice: currency(totals.totalValue),
   }
 
   return (
@@ -205,8 +205,8 @@ export default function StockInHandReportPage() {
         loading={isLoading}
         showTotals={true}
         totalsRow={totalsRow}
-        totalColumns={[{ title: "Total", value: "minSellPrice" }]}
-
+        totalColumns={[{ title: "Total Stock", value: "minSellPrice" }]}
+        searchableColumns={["supplierName", "productCode", "productName"]}
       />
     </ReportLayout>
   )
