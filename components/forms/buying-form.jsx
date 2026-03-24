@@ -97,6 +97,9 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
   const [newSupplierName, setNewSupplierName] = useState("");
   const [newSupplierPhone, setNewSupplierPhone] = useState("");
   const [newSupplierPhoneAreaCode, setNewSupplierPhoneAreaCode] = useState("");
+  const [newSupplierCompany, setNewSupplierCompany] = useState("");
+  const [newSupplierEmail, setNewSupplierEmail] = useState("");
+  const [newSupplierAddress, setNewSupplierAddress] = useState("");
   const [isCreatingSupplier, setIsCreatingSupplier] = useState(false);
   const newSupplierPhoneInputRef = useRef(null);
 
@@ -116,8 +119,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
   const [invoiceDate, setInvoiceDate] = useState(
     new Date().toISOString().split("T")[0]
   );
-  const [exchangeRate, setExchangeRate] = useState(1.0);
-  const [percentage, setPercentage] = useState(0);
+  const [exchangeRate, setExchangeRate] = useState("");
+  const [percentage, setPercentage] = useState("");
 
   // Cart rows
   const [rows, setRows] = useState([]);
@@ -296,15 +299,30 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       return;
     }
 
+    if (!newSupplierEmail.trim()) {
+      setError("Please enter supplier email");
+      return;
+    }
+
+    if (!newSupplierAddress.trim()) {
+      setError("Please enter supplier address");
+      return;
+    }
+
     try {
       setIsCreatingSupplier(true);
       setError(null);
 
-      // Create supplier with minimal fields (name and phone)
+      // Create supplier with required fields for quick-add flow
       const response = await suppliersAPI.create({
         name: newSupplierName.trim(),
         phone: newSupplierPhone.trim(),
         phoneAreaCode: newSupplierPhoneAreaCode.trim() || undefined,
+        company: newSupplierCompany.trim() || undefined,
+        email: newSupplierEmail.trim(),
+        address: {
+          street: newSupplierAddress.trim(),
+        },
       });
 
       const newSupplier = response.data?.data || response.data;
@@ -326,6 +344,9 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         setNewSupplierName("");
         setNewSupplierPhone("");
         setNewSupplierPhoneAreaCode("");
+        setNewSupplierCompany("");
+        setNewSupplierEmail("");
+        setNewSupplierAddress("");
         setShowAddSupplier(false);
       }
     } catch (err) {
@@ -390,8 +411,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         // Auto-calculate supplier payment and landed price when cost price, exchange rate, or percentage changes
         const costPrice = Number(updated.costPrice || 0);
         const quantity = Number(updated.quantity || 0);
-        const exRate = Number(exchangeRate || 1);
-        const percent = Number(percentage || 0);
+        const exRate = Number(exchangeRate);
+        const percent = Number(percentage);
+        const hasValidExchangeRate = !isNaN(exRate) && exRate > 0;
+        const hasValidPercentage = !isNaN(percent) && percent >= 0;
 
         // Calculations (matching confirm order page):
         // Supplier Payment Amount = costPrice (NO exchange rate, NO profit margin) - what admin pays supplier in supplier currency
@@ -400,7 +423,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
         // Landed Price = (Cost Price / Exchange Rate) × (1 + Percentage/100) - for inventory valuation in base currency
         // Truncate to 2 decimal places (no rounding) for display consistency with backend
-        const landedPrice = truncateToTwoDecimals((costPrice / exRate) * (1 + percent / 100));
+        const landedPrice =
+          hasValidExchangeRate && hasValidPercentage
+            ? truncateToTwoDecimals((costPrice / exRate) * (1 + percent / 100))
+            : 0;
         const landedTotal = truncateToTwoDecimals(landedPrice * quantity);
 
         updated.supplierPaymentAmount = supplierPaymentAmount;
@@ -420,8 +446,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         r.map((row) => {
           const costPrice = Number(row.costPrice || 0);
           const quantity = Number(row.quantity || 0);
-          const exRate = Number(exchangeRate || 1);
-          const percent = Number(percentage || 0);
+          const exRate = Number(exchangeRate);
+          const percent = Number(percentage);
+          const hasValidExchangeRate = !isNaN(exRate) && exRate > 0;
+          const hasValidPercentage = !isNaN(percent) && percent >= 0;
 
           // Supplier Payment Amount (what admin pays supplier - NO exchange rate, NO profit margin)
           // Formula: costPrice × quantity (in supplier currency)
@@ -431,7 +459,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           // Landed Price (for inventory valuation - WITH profit margin)
           // Formula: (cost price / exchange rate) × (1 + percentage/100)
           // Truncate to 2 decimal places (no rounding) for display consistency with backend
-          const landedPrice = truncateToTwoDecimals((costPrice / exRate) * (1 + percent / 100));
+          const landedPrice =
+            hasValidExchangeRate && hasValidPercentage
+              ? truncateToTwoDecimals((costPrice / exRate) * (1 + percent / 100))
+              : 0;
           const landedTotal = truncateToTwoDecimals(landedPrice * quantity);
 
           return {
@@ -760,6 +791,22 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       return;
     }
 
+    const parsedExchangeRate = Number(exchangeRate);
+    if (
+      exchangeRate === "" ||
+      isNaN(parsedExchangeRate) ||
+      parsedExchangeRate <= 0
+    ) {
+      setError("Exchange rate is required and must be greater than 0");
+      return;
+    }
+
+    const parsedPercentage = Number(percentage);
+    if (percentage === "" || isNaN(parsedPercentage) || parsedPercentage < 0) {
+      setError("Percentage is required and must be 0 or greater");
+      return;
+    }
+
     // Validate box count only if logistics tracking is enabled
     if (enableLogisticsTracking && (!totalBoxes || Number(totalBoxes) < 1)) {
       setError("Number of boxes must be at least 1 when logistics tracking is enabled");
@@ -794,6 +841,23 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       setError(
         "Please fill in product name, code, season, cost price, and quantity for all rows"
       );
+      return;
+    }
+
+    const rowsMissingPackets = rows.filter((row) => {
+      const packetConfig = productPackets[row.id];
+      return !packetConfig || !Array.isArray(packetConfig.packets) || packetConfig.packets.length === 0;
+    });
+
+    if (rowsMissingPackets.length > 0) {
+      const missingLabels = rowsMissingPackets
+        .slice(0, 3)
+        .map((row) => {
+          const rowNumber = rows.findIndex((r) => r.id === row.id) + 1;
+          return row.productName || row.productCode || `Row ${rowNumber}`;
+        })
+        .join(", ");
+      setError(`Please configure packets for all products. Missing: ${missingLabels}`);
       return;
     }
 
@@ -998,8 +1062,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
           // Calculate supplier payment and landed price from cost price, exchange rate, and percentage
           const costPrice = Number(row.costPrice || 0);
-          const exRate = Number(exchangeRate || 1);
-          const percent = Number(percentage || 0);
+          const exRate = parsedExchangeRate;
+          const percent = parsedPercentage;
           const quantity = Number(row.quantity);
           
           // Validate quantity is a positive integer (no decimals allowed)
@@ -1073,10 +1137,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
           // Add packet configuration if configured
           const packetConfig = productPackets[row.id];
-          if (packetConfig && packetConfig.useVariantTracking) {
-            itemPayload.useVariantTracking = true;
-            itemPayload.packets = packetConfig.packets || [];
-          }
+          itemPayload.useVariantTracking = true;
+          itemPayload.packets = packetConfig?.packets || [];
 
           return itemPayload;
         })
@@ -1095,8 +1157,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       const payload = {
         supplier: supplierId, // Use supplier ID directly
         purchaseDate: invoiceDate,
-        exchangeRate: Number(exchangeRate || 1),
-        percentage: Number(percentage || 0),
+        exchangeRate: parsedExchangeRate,
+        percentage: parsedPercentage,
         subtotal: subtotal,
         totalDiscount: Number(discount || 0),
         totalTax: 0,
@@ -2325,9 +2387,12 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 variant="outline"
                 onClick={() => {
                   setRows([]);
+                  setProductPackets({});
                   setTotalBoxes(0);
                   setEnableLogisticsTracking(false);
                   setLogisticsCompanyId("");
+                  setExchangeRate("");
+                  setPercentage("");
                   setDiscount(0);
                   setCash(0);
                   setBank(0);
@@ -2371,6 +2436,9 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           setNewSupplierName("");
           setNewSupplierPhone("");
           setNewSupplierPhoneAreaCode("");
+          setNewSupplierCompany("");
+          setNewSupplierEmail("");
+          setNewSupplierAddress("");
           setError(null);
         }
         setShowAddSupplier(open);
@@ -2429,6 +2497,41 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 />
               </div>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-supplier-company">Company</Label>
+              <Input
+                id="new-supplier-company"
+                value={newSupplierCompany}
+                onChange={(e) => setNewSupplierCompany(e.target.value)}
+                placeholder="Enter company name"
+                disabled={isCreatingSupplier}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-supplier-email">
+                Email <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="new-supplier-email"
+                type="email"
+                value={newSupplierEmail}
+                onChange={(e) => setNewSupplierEmail(e.target.value)}
+                placeholder="Enter supplier email"
+                disabled={isCreatingSupplier}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-supplier-address">
+                Address <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="new-supplier-address"
+                value={newSupplierAddress}
+                onChange={(e) => setNewSupplierAddress(e.target.value)}
+                placeholder="Enter supplier address"
+                disabled={isCreatingSupplier}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -2438,6 +2541,9 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 setNewSupplierName("");
                 setNewSupplierPhone("");
                 setNewSupplierPhoneAreaCode("");
+                setNewSupplierCompany("");
+                setNewSupplierEmail("");
+                setNewSupplierAddress("");
                 setError(null);
               }}
               disabled={isCreatingSupplier}
@@ -2449,7 +2555,9 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               disabled={
                 isCreatingSupplier ||
                 !newSupplierName.trim() ||
-                !newSupplierPhone.trim()
+                !newSupplierPhone.trim() ||
+                !newSupplierEmail.trim() ||
+                !newSupplierAddress.trim()
               }
             >
               {isCreatingSupplier ? (

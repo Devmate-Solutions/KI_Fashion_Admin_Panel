@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import DataTable from "@/components/data-table"
-import { useDispatchOrders } from "@/lib/hooks/useDispatchOrders"
+import { useDispatchOrders, useDeleteDispatchOrder } from "@/lib/hooks/useDispatchOrders"
 import { useAuthStore } from "@/store/store"
-import { Eye, Search, Package, Clock, CheckCircle2, AlertCircle, Filter, Truck } from "lucide-react"
+import { Eye, Search, Package, Clock, CheckCircle2, AlertCircle, Filter, Truck, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const statusStyles = {
@@ -46,7 +46,18 @@ export default function DispatchOrdersPage() {
   }, [statusFilter])
 
   const { data: dispatchOrders = [], isLoading } = useDispatchOrders(params)
+  const deleteMutation = useDeleteDispatchOrder()
   const [searchQuery, setSearchQuery] = useState("")
+
+  const handleDelete = async (order) => {
+    if (window.confirm(`Are you sure you want to delete dispatch order ${order.orderNumber}?`)) {
+      try {
+        await deleteMutation.mutateAsync(order._id)
+      } catch (error) {
+        console.error('Error deleting dispatch order:', error)
+      }
+    }
+  }
 
   // Filter data based on search query
   const filteredData = useMemo(() => {
@@ -184,6 +195,21 @@ export default function DispatchOrdersPage() {
             <Eye className="h-4 w-4 mr-1.5" />
             View
           </Button>
+          {isSuperAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleDelete(row)
+              }}
+              disabled={deleteMutation.isPending}
+              className="text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors border-destructive/20"
+            >
+              <Trash2 className="h-4 w-4 mr-1.5" />
+              Delete
+            </Button>
+          )}
         </div>
       ),
     },
