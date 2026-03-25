@@ -13,6 +13,9 @@
   --primary: #2563eb; /* vibrant blue */
   --primary-foreground: #ffffff;
 
+  --popover: #ffffff;
+  --popover-foreground: #212529;
+
   --secondary: #e9ecef;
   --secondary-foreground: #212529;
 
