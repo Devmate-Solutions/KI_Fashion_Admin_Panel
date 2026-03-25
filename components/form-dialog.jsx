@@ -3,12 +3,12 @@
 import { useState, useEffect } from "react"
 import { Combobox } from "@/components/ui/combobox"
 
-export default function FormDialog({ 
-  open, 
-  title, 
-  fields, 
+export default function FormDialog({
+  open,
+  title,
+  fields,
   initialValues = {},
-  onClose, 
+  onClose,
   onSubmit,
   loading = false,
   children,
@@ -19,7 +19,7 @@ export default function FormDialog({
   // Initialize form data with default values or initial values (only if fields prop is provided)
   useEffect(() => {
     if (!fields || !Array.isArray(fields)) return
-    
+
     const initialData = {}
     fields.forEach(field => {
       if (initialValues[field.name] !== undefined) {
@@ -65,9 +65,9 @@ export default function FormDialog({
   // If children are provided, render them instead of fields-based form
   if (children) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={handleClose}>
-        <div 
-          className="bg-card rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+      <div className="fixed inset-0 z-50 flex items-center justify-center " onClick={handleClose}>
+        <div
+          className=" rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="p-4 border-b border-border flex items-center justify-between">
@@ -90,14 +90,14 @@ export default function FormDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={handleClose}>
-      <div 
+      <div
         className="bg-card rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-4 border-b border-border">
           <h2 className="text-lg font-semibold">{title}</h2>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-4">
           {Array.isArray(fields) && fields.map(field => (
             <div key={field.name}>
@@ -105,7 +105,7 @@ export default function FormDialog({
                 {field.label}
                 {field.required && <span className="text-destructive ml-1">*</span>}
               </label>
-              
+
               {field.type === "display" ? (
                 <div className="w-full px-3 py-2 border border-input rounded-md bg-muted/50 text-sm min-h-[40px] flex items-center">
                   {field.render ? field.render(formData) : (formData[field.name] || "—")}
