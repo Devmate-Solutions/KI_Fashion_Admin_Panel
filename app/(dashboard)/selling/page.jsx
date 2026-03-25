@@ -307,7 +307,16 @@ export default function SellingPage() {
         header: "Items",
         accessor: "items",
         render: (r) => (
-          <span>{r.items?.length || 0} item(s)</span>
+          <span>
+            {Array.isArray(r.items)
+              ? r.items.reduce((sum, item) => {
+                const saleItem = r.sale?.items?.[item.itemIndex]
+                const isWholePacket = saleItem?.isPacketSale && !item.isPartialReturn
+                const multiplier = isWholePacket ? (saleItem?.totalItemsPerPacket || 1) : 1
+                return sum + ((item.returnedQuantity || 0) * multiplier)
+              }, 0)
+              : 0} item(s)
+          </span>
         ),
       },
       {

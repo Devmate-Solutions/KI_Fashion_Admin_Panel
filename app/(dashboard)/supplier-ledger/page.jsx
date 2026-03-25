@@ -57,7 +57,7 @@ function currency(n) {
 
 
 function formatDateTime(_date) {
-  const dateTime = _date.createdAt || _date.date;
+  const dateTime = _date.date || _date.createdAt;
   if (!dateTime) return "-";
   const d = new Date(dateTime);
   const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -1172,8 +1172,8 @@ export default function SupplierLedgerPage() {
 
     // Sort by createdAt ASCENDING (oldest first) for running balance calculation
     mappedItems.sort((a, b) => {
-      const createdAtA = new Date(a.createdAt || a.date || 0).getTime()
-      const createdAtB = new Date(b.createdAt || b.date || 0).getTime()
+      const createdAtA = new Date(a.date || a.createdAt || 0).getTime()
+      const createdAtB = new Date(b.date || b.createdAt || 0).getTime()
       return createdAtA - createdAtB
     })
 
@@ -1234,8 +1234,8 @@ export default function SupplierLedgerPage() {
       for (const [supplierId, entries] of Object.entries(supplierEntriesMap)) {
         // Sort by createdAt ascending (oldest first)
         entries.sort((a, b) => {
-          const createdAtA = new Date(a.createdAt || a.date || 0).getTime()
-          const createdAtB = new Date(b.createdAt || b.date || 0).getTime()
+          const createdAtA = new Date(a.date || a.createdAt || 0).getTime()
+          const createdAtB = new Date(b.date || b.createdAt || 0).getTime()
           return createdAtA - createdAtB
         })
 
@@ -1538,7 +1538,7 @@ export default function SupplierLedgerPage() {
     const tableData = filteredLedgerTransactions.map(row => [
       row.entryNumber || '-',
       (() => {
-        const dateTime = row.createdAt || row.date
+        const dateTime = row.date || row.createdAt
         if (!dateTime) return '-'
         const d = new Date(dateTime)
         return `${d.toLocaleDateString('en-GB')} ${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true })}`

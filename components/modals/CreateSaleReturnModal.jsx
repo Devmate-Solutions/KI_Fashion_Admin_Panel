@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,6 +15,7 @@ import toast from "react-hot-toast"
 
 function friendlyError(msg) {
     if (!msg) return "Failed to create return"
+    if (msg.includes("Duplicate return request detected")) return "This return request was already submitted. Please refresh if you do not see it yet."
     if (msg.includes("composition total") || msg.includes("don't add up")) return "The return item quantities don't match the packet contents. Please review your selection."
     if (msg.includes("returnComposition must be provided")) return "Please specify which items you're returning from the packet."
     if (msg.includes("Original quantity mismatch")) return "Sale data has changed. Please refresh and try again."
@@ -26,11 +27,13 @@ export default function CreateSaleReturnModal({ open, onClose, sale }) {
     // selectedItems shape: { [itemIndex]: { selected, quantity, reason, returnMode: 'whole_packets'|'partial_items', variantSelections: {size_color: qty}, partialExpanded: bool } }
     const [notes, setNotes] = useState("")
     const createMutation = useCreateSaleReturn()
+    const submitLockRef = useRef(false)
 
     useEffect(() => {
         if (open) {
             setSelectedItems({})
             setNotes("")
+            submitLockRef.current = false
         }
     }, [open, sale])
 
@@ -126,6 +129,12 @@ export default function CreateSaleReturnModal({ open, onClose, sale }) {
     }
 
     const handleSubmit = () => {
+        if (createMutation.isPending || submitLockRef.current) {
+            return
+        }
+
+        submitLockRef.current = true
+
         const itemsToReturn = Object.entries(selectedItems)
             .filter(([_, data]) => data.selected && data.quantity > 0)
             .map(([idx, data]) => {
@@ -159,6 +168,7 @@ export default function CreateSaleReturnModal({ open, onClose, sale }) {
             })
 
         if (itemsToReturn.length === 0) {
+            submitLockRef.current = false
             return toast.error("Please select items to return")
         }
 
@@ -172,6 +182,7 @@ export default function CreateSaleReturnModal({ open, onClose, sale }) {
                     ? Math.floor(originalItem.quantity / (originalItem.totalItemsPerPacket || 1))
                     : originalItem.quantity)
             if (item.returnedQuantity > maxReturn) {
+                submitLockRef.current = false
                 return toast.error(`Return quantity exceeds sold quantity for ${originalItem.product?.name || 'item'}`)
             }
         }
@@ -182,10 +193,12 @@ export default function CreateSaleReturnModal({ open, onClose, sale }) {
             notes
         }, {
             onSuccess: () => {
+                submitLockRef.current = false
                 toast.success("Return created successfully")
                 onClose()
             },
             onError: (error) => {
+                submitLockRef.current = false
                 const msg = error?.response?.data?.message || error?.message
                 toast.error(friendlyError(msg))
             }

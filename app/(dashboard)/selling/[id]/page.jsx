@@ -16,6 +16,7 @@ import {
   useUpdatePayment,
   useDeleteSale,
 } from "@/lib/hooks/useSales";
+import { useSaleReturns } from "@/lib/hooks/useSaleReturns";
 import CreateSaleReturnModal from "@/components/modals/CreateSaleReturnModal";
 import { useAuthStore } from "@/store/store";
 import {
@@ -151,12 +152,17 @@ export default function SaleDetailPage({ params }) {
   const { id } = use(params);
   const saleId = id;
   const { data: saleResponse, isLoading } = useSale(saleId);
+  const { data: saleReturnsData = [] } = useSaleReturns({
+    sale: saleId,
+    status: "approved",
+    limit: 200,
+  });
   const sale = saleResponse?.data || saleResponse;
 
   const updatePaymentMutation = useUpdatePayment();
   const markDeliveredMutation = useMarkDelivered();
   const deleteMutation = useDeleteSale();
-  const { user } = useAuthStore();
+  const { user, hasPermission } = useAuthStore();
 
   // Payment dialog state
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
@@ -174,19 +180,41 @@ export default function SaleDetailPage({ params }) {
   // Return dialog state
   const [showReturnModal, setShowReturnModal] = useState(false);
 
+  const hasReturnPermission = hasPermission("sales:return");
+  const hasSaleItems = (sale?.items?.length || 0) > 0;
+  const isReturnedDelivery = sale?.deliveryStatus === "returned";
+  const canCreateReturn = hasReturnPermission && hasSaleItems && !isReturnedDelivery;
+
+  const returnActionTooltip = !hasReturnPermission
+    ? "You don't have permission to create sale returns"
+    : !hasSaleItems
+      ? "No items available for return"
+      : isReturnedDelivery
+        ? "This sale is already marked as returned"
+        : "Create a return for this sale";
+
   // Calculate totals
   const financials = useMemo(() => {
     if (!sale) return null;
+
+    const approvedReturns = Array.isArray(saleReturnsData)
+      ? saleReturnsData.filter((ret) => ret?.status === "approved")
+      : [];
+    const approvedReturnValue = approvedReturns.reduce(
+      (sum, ret) => sum + Number(ret?.totalReturnValue || 0),
+      0
+    );
 
     const subtotal = sale.subtotal || 0;
     const totalDiscount = sale.totalDiscount || 0;
     const totalTax = sale.totalTax || 0;
     const shippingCost = sale.shippingCost || 0;
     const grandTotal = sale.grandTotal || 0;
+    const netGrandTotal = grandTotal - approvedReturnValue;
     const cashPayment = sale.cashPayment || 0;
     const bankPayment = sale.bankPayment || 0;
     const totalPaid = cashPayment + bankPayment;
-    const remainingBalance = grandTotal - totalPaid;
+    const remainingBalance = netGrandTotal - totalPaid;
 
     return {
       subtotal,
@@ -194,12 +222,14 @@ export default function SaleDetailPage({ params }) {
       totalTax,
       shippingCost,
       grandTotal,
+      approvedReturnValue,
+      netGrandTotal,
       cashPayment,
       bankPayment,
       totalPaid,
       remainingBalance,
     };
-  }, [sale]);
+  }, [sale, saleReturnsData]);
 
   // Get customer info
   const customer = useMemo(() => {
@@ -342,6 +372,15 @@ export default function SaleDetailPage({ params }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowReturnModal(true)}
+            disabled={!canCreateReturn}
+            title={returnActionTooltip}
+          >
+            <RefreshCcw className="h-4 w-4 mr-2" />
+            Add Return
+          </Button>
           <Button variant="outline" onClick={handlePrintReceipt}>
             <Printer className="h-4 w-4 mr-2" />
             Print Receipt
@@ -712,8 +751,13 @@ export default function SaleDetailPage({ params }) {
                   Grand Total
                 </Label>
                 <p className="font-bold text-xl text-amber-900">
-                  {currency(financials?.grandTotal || 0)}
+                  {currency(financials?.netGrandTotal || 0)}
                 </p>
+                {(financials?.approvedReturnValue || 0) > 0 && (
+                  <p className="text-xs text-emerald-700 mt-1">
+                    Return Adjustments: -{currency(financials?.approvedReturnValue || 0)}
+                  </p>
+                )}
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground flex items-center gap-1">
@@ -747,7 +791,23 @@ export default function SaleDetailPage({ params }) {
             </div>
           </div>
         </CardContent>
-       
+
+        <CardFooter className="border-t border-amber-200 bg-amber-50/50 rounded-b-lg flex items-center justify-between gap-2 py-3">
+          <p className="text-xs text-muted-foreground">
+            {canCreateReturn
+              ? "Create return for this sale"
+              : returnActionTooltip}
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => setShowReturnModal(true)}
+            disabled={!canCreateReturn}
+            title={returnActionTooltip}
+          >
+            <RefreshCcw className="h-4 w-4 mr-2" />
+            Add Return
+          </Button>
+        </CardFooter>
       </Card>
 
       {/* Payment Dialog */}

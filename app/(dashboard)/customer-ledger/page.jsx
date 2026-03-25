@@ -39,7 +39,7 @@ function formatNumber(n) {
 }
 
 function formatDateTime(_date) {
-  const dateTime = _date.createdAt || _date.date;
+  const dateTime = _date.date || _date.createdAt;
   if (!dateTime) return "-";
   const d = new Date(dateTime);
   const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -229,7 +229,8 @@ export default function CustomerLedgerPage() {
     let filteredEntries = allLedgerData.entries.filter(entry =>
       entry.transactionType === 'sale' ||
       entry.transactionType === 'receipt' ||
-      entry.transactionType === 'adjustment'
+      entry.transactionType === 'adjustment' ||
+      entry.transactionType === 'return'
     )
 
 
@@ -241,6 +242,8 @@ export default function CustomerLedgerPage() {
         typeLabel = `Receipt - ${entry.paymentMethod === 'bank' ? 'Bank' : 'Cash'}`
       } else if (entry.transactionType === 'sale') {
         typeLabel = 'Sale'
+      } else if (entry.transactionType === 'return') {
+        typeLabel = 'Return'
       }
 
       // Readable Reference
@@ -257,6 +260,7 @@ export default function CustomerLedgerPage() {
 
       const cashPaid = (entry.transactionType === 'receipt' && entry.paymentMethod === 'cash') ? (entry.credit || 0) : 0
       const bankPaid = (entry.transactionType === 'receipt' && entry.paymentMethod === 'bank') ? (entry.credit || 0) : 0
+      const returnAmount = entry.transactionType === 'return' ? (entry.credit || 0) : 0
 
       return {
         id: entry._id || entry.id,
@@ -270,6 +274,7 @@ export default function CustomerLedgerPage() {
         credit: Number(entry.credit) || 0, // Receipt (They paid, we received)
         cashPaid,
         bankPaid,
+        returnAmount,
         balance: 0,
         reference: readableReference,
         referenceId: (entry.referenceId && typeof entry.referenceId === 'object') ? entry.referenceId._id : entry.referenceId,
@@ -279,7 +284,7 @@ export default function CustomerLedgerPage() {
     })
 
     // Sort by createdAt ASC for running balance
-    mappedItems.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    mappedItems.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
     // Calculate Running Balance
     let runningBalance = 0
@@ -546,7 +551,7 @@ export default function CustomerLedgerPage() {
     { header: "Type", accessor: "type", render: (row) => <span>{row.type}</span> },
     {
       header: "Reference", accessor: "reference", render: (row) => (
-        row.referenceId ? <Link href={`/selling/${row.referenceId}`} className="text-blue-600 hover:underline">{row.reference}</Link> : row.reference
+        row.referenceId && row.transactionType !== 'return' ? <Link href={`/selling/${row.referenceId}`} className="text-blue-600 hover:underline">{row.reference}</Link> : <span>{row.reference}</span>
       )
     },
     {
@@ -555,8 +560,18 @@ export default function CustomerLedgerPage() {
       )
     },
     {
-      header: "Credit (Received)", accessor: "credit", render: (row) => (
-        <span className={row.credit > 0 ? "text-green-600 font-medium" : "text-muted-foreground"}>{row.credit > 0 ? formatNumber(row.credit) : '-'}</span>
+      header: "Cash Paid", accessor: "cashPaid", render: (row) => (
+        <span className={row.cashPaid > 0 ? "text-green-600 font-medium" : "text-muted-foreground"}>{row.cashPaid > 0 ? formatNumber(row.cashPaid) : '-'}</span>
+      )
+    },
+    {
+      header: "Bank Paid", accessor: "bankPaid", render: (row) => (
+        <span className={row.bankPaid > 0 ? "text-green-600 font-medium" : "text-muted-foreground"}>{row.bankPaid > 0 ? formatNumber(row.bankPaid) : '-'}</span>
+      )
+    },
+    {
+      header: "Return", accessor: "returnAmount", render: (row) => (
+        <span className={row.returnAmount > 0 ? "text-orange-600 font-medium" : "text-muted-foreground"}>{row.returnAmount > 0 ? formatNumber(row.returnAmount) : '-'}</span>
       )
     },
     { header: "Balance", accessor: "balance", render: (row) => <span className="font-bold tabular-nums">{formatNumber(row.balance)}</span> }
@@ -666,7 +681,7 @@ export default function CustomerLedgerPage() {
         render: (row) => (
           <span className={`font-bold tabular-nums ${row.balanceAfter > 0 ? 'text-red-600' : row.balanceAfter < 0 ? 'text-green-600' : ''}`}>
             {formatNumber(Math.abs(row.balanceAfter))}
-            {row.balanceAfter < 0 && <span className="text-xs ml-1">(CR)</span>}
+            {row.balanceAfter < 0 && <span className="text-xs ml-1"></span>}
           </span>
         )
       },

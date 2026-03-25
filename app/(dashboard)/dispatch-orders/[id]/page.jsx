@@ -15,6 +15,7 @@ import {
   useSubmitApproval,
   useReturnDispatchItems,
   useDeleteDispatchOrder,
+  useDispatchOrderPacketStocks,
 } from "@/lib/hooks/useDispatchOrders";
 import { useAuthStore } from "@/store/store";
 import { ledgerAPI } from "@/lib/api/endpoints/ledger";
@@ -68,6 +69,11 @@ import {
   X,
   Printer,
   FilePen,
+  Euro,
+  Coins,
+  Scissors,
+  FileText,
+  ChevronRight,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { dispatchOrdersAPI } from "@/lib/api/endpoints/dispatchOrders";
@@ -145,6 +151,12 @@ export default function DispatchOrderDetailPage({ params }) {
   const [percentage, setPercentage] = useState("");
   const [returnNotes, setReturnNotes] = useState("");
   const [showAllReturnItems, setShowAllReturnItems] = useState(false);
+  const { data: packetStocks = [], isLoading: packetsLoading } = useDispatchOrderPacketStocks(dispatchOrderId);
+  const [selectedPacketForReturn, setSelectedPacketForReturn] = useState(null);
+  const [returnType, setReturnType] = useState("packet"); // 'packet', 'loose', 'break'
+  const [breakReturnItems, setBreakReturnItems] = useState([]); // Array of { size, color, quantity }
+  const [returnQuantity, setReturnQuantity] = useState(1);
+  const [showReturnDialog, setShowReturnDialog] = useState(false);
 
   // Editable order fields state (supplier is NOT editable)
   const [editedLogisticsCompany, setEditedLogisticsCompany] = useState(null);
@@ -1377,75 +1389,40 @@ export default function DispatchOrderDetailPage({ params }) {
   ]);
 
 
-  const handleReturn = async () => {
-    // Validate return quantities
-    const returnedItems = Object.entries(returnQuantities)
-      .filter(([_, qty]) => {
-        const qtyNum = parseFloat(qty);
-        return qtyNum > 0 && !isNaN(qtyNum);
-      })
-      .map(([itemIndex, quantity]) => {
-        const item = itemsWithDetails.find(
-          (i) => i.index === parseInt(itemIndex)
-        );
-        const qtyNum = parseFloat(quantity);
-        const remainingQty = item ? item.quantity - item.totalReturned : 0;
-
-        // Validate quantity doesn't exceed remaining
-        if (qtyNum > remainingQty) {
-          toast.error(
-            `Return quantity for ${item?.productName || "item"
-            } exceeds remaining quantity (${remainingQty})`
-          );
-          return null;
-        }
-
-        // Get reason - use custom reason if "Other" is selected
-        let reason = returnReasons[itemIndex] || "";
-        if (reason === "Other" && returnReasons[`${itemIndex}-custom`]) {
-          reason = returnReasons[`${itemIndex}-custom`];
-        }
-
-        return {
-          itemIndex: parseInt(itemIndex),
-          quantity: qtyNum,
-          reason: reason,
-        };
-      })
-      .filter(Boolean); // Remove null entries from validation failures
-
-    if (returnedItems.length === 0) {
-      toast.error(
-        "Please specify at least one item to return with a valid quantity"
-      );
-      return;
-    }
-
-    // Ensure returnedItems is a valid array
-    if (!Array.isArray(returnedItems) || returnedItems.length === 0) {
-      toast.error("Invalid return items. Please try again.");
+  const handlePacketReturn = async () => {
+    if (!selectedPacketForReturn) {
+      toast.error("Please select an item to return");
       return;
     }
 
     const payload = {
-      returnedItems: returnedItems,
-      notes: returnNotes || "",
+      id: dispatchOrderId,
+      returnedItems: [
+        {
+          productId: selectedPacketForReturn.product?._id || selectedPacketForReturn.product,
+          packetStockId: selectedPacketForReturn._id,
+          returnType: returnType,
+          quantity: returnType === 'packet' ? 1 : (returnType === 'loose' ? returnQuantity : 1),
+          breakItems: returnType === 'break' ? breakReturnItems.map(i => ({
+            size: i.size,
+            color: i.color,
+            quantity: i.returnQuantity
+          })) : undefined,
+          reason: returnNotes,
+        }
+      ],
+      notes: returnNotes,
     };
 
     try {
-      await returnMutation.mutateAsync({
-        id: dispatchOrderId,
-        returnedItems: payload.returnedItems,
-        notes: payload.notes,
-      });
-
-      // Reset form on success
-      setReturnQuantities({});
-      setReturnReasons({});
+      await returnMutation.mutateAsync(payload);
+      toast.success("Return processed successfully");
+      setSelectedPacketForReturn(null);
+      setReturnQuantity(1);
+      setBreakReturnItems([]);
       setReturnNotes("");
-      setShowAllReturnItems(false);
+      setShowReturnDialog(false);
     } catch (error) {
-      // Error is handled by the mutation's onError
       console.error("Return error:", error);
     }
   };
@@ -3541,323 +3518,291 @@ export default function DispatchOrderDetailPage({ params }) {
             </Card>
           )}
 
-          {/* Return Form - Enhanced Design */}
+          {/* Return Form - Packet Aware */}
           <Card className="border border-border bg-card">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-rose-500/10 flex items-center justify-center">
-                  <Package className="h-5 w-5 text-rose-600" />
+            <CardHeader className="pb-3 border-b border-border mb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-rose-500/10 flex items-center justify-center">
+                    <Package className="h-5 w-5 text-rose-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg font-semibold">Stock to Return</CardTitle>
+                    <p className="text-sm text-muted-foreground">Select packets or loose items to return to supplier</p>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-lg font-semibold">Return Items</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">Select items to return and provide reasons</p>
-                </div>
+                {packetsLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
               </div>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {returnableItems.length === 0 ? (
+            <CardContent>
+              {!packetsLoading && packetStocks.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
                     <CheckCircle2 className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <p className="text-sm font-medium text-muted-foreground">No items available to return</p>
+                  <p className="text-sm font-medium text-muted-foreground">No stock available for return</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-muted/30 border-b border-border sticky top-0 z-10">
+                    <thead className="bg-muted/30 border-b border-border">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Image</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Product</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Code</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Remaining</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Return Qty</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Reason</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Type</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Product</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Composition</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">Stock Qty</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {returnableItems.map((item, idx) => {
-                        const remainingQty = item.quantity - item.totalReturned;
-                        const hasReturnQty =
-                          returnQuantities[item.index] &&
-                          parseFloat(returnQuantities[item.index]) > 0;
-
-                        return (
-                          <tr
-                            key={item.index}
-                            className={cn(
-                              "transition-colors hover:bg-muted/20",
-                              hasReturnQty && "bg-rose-50/30"
+                      {packetStocks.map((stock) => (
+                        <tr key={stock._id} className="hover:bg-muted/20 transition-colors">
+                          <td className="px-4 py-3">
+                            <Badge variant="outline" className={cn(
+                              stock.isLoose ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-blue-50 text-blue-700 border-blue-200"
+                            )}>
+                              {stock.isLoose ? "Loose" : "Packet"}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-foreground">{stock.product?.productName}</div>
+                            <div className="text-xs text-muted-foreground font-mono">{stock.product?.productCode}</div>
+                          </td>
+                          <td className="px-4 py-3">
+                            {!stock.isLoose ? (
+                              <div className="flex flex-wrap gap-1">
+                                {stock.composition?.map((item, idx) => (
+                                  <Badge key={idx} variant="secondary" className="text-[10px] px-1.5 py-0">
+                                    {item.size} / {item.color}: {item.quantity}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-xs text-muted-foreground">
+                                {stock.composition?.[0]?.size} / {stock.composition?.[0]?.color}
+                              </div>
                             )}
-                          >
-                            <td className="px-4 py-3">
-                              <ProductImageGallery
-                                images={getImageArray(item)}
-                                productId={item.product?._id?.toString()}
-                                alt={item.productName || "Product"}
-                                size="sm"
-                                maxVisible={3}
-                                showCount={true}
-                              />
-                            </td>
-                            <td className="px-4 py-3">
-                              <div>
-                                <div className="font-semibold text-foreground">
-                                  {item.productName}
-                                </div>
-                                {item.primaryColor && (
-                                  <div className="text-xs text-muted-foreground mt-1">
-                                    Color: {item.primaryColor}
-                                  </div>
-                                )}
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  Original: {item.quantity} • Returned:{" "}
-                                  <span className="text-destructive font-medium">
-                                    {item.totalReturned}
-                                  </span>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className="font-mono text-xs font-medium text-foreground">
-                                {item.productCode}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <span
-                                className={cn(
-                                  "font-semibold",
-                                  remainingQty === 0 && "text-muted-foreground"
-                                )}
-                              >
-                                {remainingQty}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <div className="flex justify-center">
-                                <Input
-                                  id={`return-qty-${item.index}`}
-                                  type="text"
-                                  inputMode="numeric"
-                                  max={remainingQty}
-                                  step="1"
-                                  value={returnQuantities[item.index] || ""}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    // Allow only numbers
-                                    const sanitized = val.replace(/[^0-9]/g, '');
-                                    if (
-                                      sanitized === "" ||
-                                      (parseFloat(sanitized) >= 0 &&
-                                        parseFloat(sanitized) <= remainingQty)
-                                    ) {
-                                      setReturnQuantities({
-                                        ...returnQuantities,
-                                        [item.index]: val,
-                                      });
-                                    }
+                          </td>
+                          <td className="px-4 py-3 text-center font-semibold">
+                            {stock.totalQuantity}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex justify-end gap-2">
+                              {!stock.isLoose && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 border-rose-200 text-rose-600 hover:bg-rose-50"
+                                  onClick={() => {
+                                    setSelectedPacketForReturn(stock);
+                                    setReturnType('packet');
+                                    setReturnQuantity(1);
+                                    setShowReturnDialog(true);
                                   }}
-                                  placeholder=""
-                                  className="h-8 text-sm w-20 text-center"
-                                  disabled={remainingQty === 0}
-                                />
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex gap-2">
-                                <Select
-                                  value={returnReasons[item.index] || ""}
-                                  onValueChange={(value) =>
-                                    setReturnReasons({
-                                      ...returnReasons,
-                                      [item.index]: value,
-                                    })
-                                  }
-                                  disabled={remainingQty === 0}
                                 >
-                                  <SelectTrigger className="h-8 text-sm w-32">
-                                    <SelectValue placeholder="Select reason" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {PRESET_RETURN_REASONS.map((reason) => (
-                                      <SelectItem key={reason} value={reason}>
-                                        {reason}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                {returnReasons[item.index] &&
-                                  returnReasons[item.index] === "Other" && (
-                                    <Input
-                                      id={`return-reason-custom-${item.index}`}
-                                      value={
-                                        returnReasons[`${item.index}-custom`] ||
-                                        ""
-                                      }
-                                      onChange={(e) =>
-                                        setReturnReasons({
-                                          ...returnReasons,
-                                          [`${item.index}-custom`]:
-                                            e.target.value,
-                                        })
-                                      }
-                                      placeholder="Specify reason"
-                                      className="h-8 text-sm flex-1"
-                                      disabled={remainingQty === 0}
-                                    />
-                                  )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                                  Return Full
+                                </Button>
+                              )}
+                              {!stock.isLoose && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8"
+                                  onClick={() => {
+                                    setSelectedPacketForReturn(stock);
+                                    setReturnType('break');
+                                    setBreakReturnItems(stock.composition.map(item => ({ ...item, returnQuantity: 0 })));
+                                    setShowReturnDialog(true);
+                                  }}
+                                >
+                                  Break & Return
+                                </Button>
+                              )}
+                              {stock.isLoose && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 border-rose-200 text-rose-600 hover:bg-rose-50"
+                                  onClick={() => {
+                                    setSelectedPacketForReturn(stock);
+                                    setReturnType('loose');
+                                    setReturnQuantity(1);
+                                    setShowReturnDialog(true);
+                                  }}
+                                >
+                                  Return Loose
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
               )}
             </CardContent>
-
-            <CardFooter className="flex flex-col gap-6 pt-6 border-t border-border">
-              <div className="w-full">
-                <Label
-                  htmlFor="return-notes"
-                  className="text-sm font-semibold mb-2 block text-foreground"
-                >
-                  Additional Notes{" "}
-                  <span className="text-muted-foreground font-normal text-xs">
-                    (Optional)
-                  </span>
-                </Label>
-                <Textarea
-                  id="return-notes"
-                  value={returnNotes}
-                  onChange={(e) => setReturnNotes(e.target.value)}
-                  placeholder="Any additional information about this return..."
-                  className="min-h-[100px] text-sm"
-                  rows={4}
-                />
-              </div>
-
-              {/* Return Summary */}
-              {Object.values(returnQuantities).some(
-                (qty) => qty && parseFloat(qty) > 0
-              ) && (
-                  <Card className="border border-border bg-muted/20">
-                    <CardContent className="p-6">
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="h-10 w-10 rounded-lg bg-rose-500/10 flex items-center justify-center">
-                          <Package className="h-5 w-5 text-rose-600" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-foreground">Return Summary</h3>
-                      </div>
-
-                      <div className="space-y-6">
-                        {/* Items List */}
-                        <div className="bg-card rounded-lg p-4 border border-border">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Items to Return</p>
-                          <div className="space-y-2">
-                            {Object.entries(returnQuantities)
-                              .filter(([_, qty]) => qty && parseFloat(qty) > 0)
-                              .map(([itemIndex, qty]) => {
-                                const item = itemsWithDetails.find(
-                                  (i) => i.index === parseInt(itemIndex)
-                                );
-                                return (
-                                  <div
-                                    key={itemIndex}
-                                    className="flex items-center justify-between py-3 px-4 bg-muted/30 rounded-md border border-border hover:bg-muted/50 transition-colors"
-                                  >
-                                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                                      <div className="h-2 w-2 rounded-full bg-rose-500 flex-shrink-0"></div>
-                                      <span className="text-sm font-medium text-foreground truncate">
-                                        {item?.productName || "Unknown Item"}
-                                      </span>
-                                    </div>
-                                    <Badge variant="outline" className="ml-2 bg-rose-50 border-rose-200 text-rose-700 font-semibold">
-                                      {qty} {parseFloat(qty) === 1 ? 'item' : 'items'}
-                                    </Badge>
-                                  </div>
-                                );
-                              })}
-                          </div>
-                        </div>
-
-                        {/* Summary Stats */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-card rounded-lg p-4 border border-border">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Package className="h-4 w-4 text-rose-600" />
-                              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Items</span>
-                            </div>
-                            <p className="text-2xl font-bold text-foreground">
-                              {
-                                Object.values(returnQuantities).filter(
-                                  (qty) => qty && parseFloat(qty) > 0
-                                ).length
-                              }
-                            </p>
-                          </div>
-                          <div className="bg-card rounded-lg p-4 border border-border">
-                            <div className="flex items-center gap-2 mb-2">
-                              <CheckCircle2 className="h-4 w-4 text-rose-600" />
-                              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Quantity</span>
-                            </div>
-                            <p className="text-2xl font-bold text-foreground">
-                              {Object.values(returnQuantities).reduce(
-                                (sum, qty) => sum + (parseFloat(qty) || 0),
-                                0
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-6 border-t border-border">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => {
-                    setReturnQuantities({});
-                    setReturnReasons({});
-                    setReturnNotes("");
-                  }}
-                  disabled={returnMutation.isPending}
-                  className="min-w-[140px] gap-2"
-                >
-                  <XCircle className="h-4 w-4" />
-                  Clear Form
-                </Button>
-                <Button
-                  onClick={handleReturn}
-                  disabled={
-                    returnMutation.isPending ||
-                    Object.values(returnQuantities).every(
-                      (qty) => !qty || parseFloat(qty) <= 0
-                    )
-                  }
-                  size="lg"
-                  className="min-w-[160px] gap-2"
-                >
-                  {returnMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4" />
-                      Submit Return
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Return Selection/Action Dialog */}
+      <Dialog open={showReturnDialog} onOpenChange={setShowReturnDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader className="border-b pb-3">
+            <DialogTitle className="flex items-center gap-2 text-rose-600">
+              <Package size={20} />
+              Return to Supplier
+            </DialogTitle>
+            <DialogDescription className="text-xs pt-1">
+              {returnType === 'packet' && "Returning full packet. This will be removed from stock."}
+              {returnType === 'loose' && "Specify loose quantity to return."}
+              {returnType === 'break' && "Select items to return. Rest will stay in loose stock."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Header: Item Summary */}
+            <div className="flex justify-between items-center bg-muted/20 p-3 rounded border">
+              <div>
+                <div className="font-bold">{selectedPacketForReturn?.product?.productName}</div>
+                <div className="text-[10px] ">
+                  {selectedPacketForReturn?.product?.productCode} | {selectedPacketForReturn?.barcode}
+                </div>
+              </div>
+              <Badge variant="outline" className="text-[10px] uppercase">
+                {selectedPacketForReturn?.isLoose ? "Loose" : "Packet"}
+              </Badge>
+            </div>
+
+            {/* Compact Financials */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="border rounded p-3 bg-rose-50/30">
+                <div className="text-[10px] font-bold text-rose-600 uppercase">Return Value</div>
+                <div className="text-xl font-bold">
+                  {(() => {
+                    const unitPrice = selectedPacketForReturn?.costPricePerPacket / (selectedPacketForReturn?.totalItemsPerPacket || 1);
+                    let totalToReturn = 0;
+                    if (returnType === 'packet') totalToReturn = selectedPacketForReturn?.totalItemsPerPacket || 0;
+                    else if (returnType === 'loose') totalToReturn = returnQuantity;
+                    else if (returnType === 'break') totalToReturn = breakReturnItems.reduce((sum, item) => sum + item.returnQuantity, 0);
+                    return (totalToReturn * unitPrice).toFixed(2);
+                  })()}
+                </div>
+              </div>
+              <div className="border rounded p-3 bg-muted/10">
+                <div className="text-[10px] font-bold text-muted-foreground uppercase">Quantity</div>
+                <div className="text-xl font-bold uppercase">
+                  {(() => {
+                    if (returnType === 'packet') return selectedPacketForReturn?.totalItemsPerPacket || 0;
+                    if (returnType === 'loose') return returnQuantity;
+                    if (returnType === 'break') return breakReturnItems.reduce((sum, item) => sum + item.returnQuantity, 0);
+                    return 0;
+                  })()}
+                  <span className="text-[10px] ml-1">Units</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Selection Area */}
+            {returnType === 'packet' && (
+              <div className="space-y-2">
+                <div className="text-[10px] font-bold text-muted-foreground uppercase opacity-70">Packet Content</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedPacketForReturn?.composition?.map((item, idx) => (
+                    <div key={idx} className="bg-muted/30 px-2 py-1 rounded text-[10px] border">
+                      <span className="font-bold">{item.quantity}</span> {item.size}/{item.color}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {returnType === 'loose' && (
+              <div className="flex items-center gap-3 p-3 border rounded bg-amber-50/10">
+                <Label className="text-xs shrink-0">Return Quantity:</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={selectedPacketForReturn?.totalQuantity}
+                  value={returnQuantity}
+                  onChange={(e) => setReturnQuantity(Math.min(parseInt(e.target.value) || 1, selectedPacketForReturn?.totalQuantity || 1))}
+                  className="h-9 w-24 text-sm font-bold"
+                />
+                <span className="text-[10px] text-muted-foreground">Max: {selectedPacketForReturn?.totalQuantity}</span>
+              </div>
+            )}
+
+            {returnType === 'break' && (
+              <div className="space-y-2">
+                <div className="text-[10px] font-bold text-muted-foreground uppercase opacity-70">Select Items to Return</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {breakReturnItems.map((item, idx) => (
+                    <div key={idx} className={cn(
+                      "flex items-center justify-between p-2 border rounded text-xs",
+                      item.returnQuantity > 0 ? "bg-rose-50/50 border-rose-200" : "bg-card"
+                    )}>
+                      <div>
+                        <span className="font-bold">{item.size}</span> / {item.color}
+                        <div className="text-[9px] opacity-60">Stock: {item.quantity}</div>
+                      </div>
+                      <Input
+                        type="number"
+                        className="w-14 h-7 text-center text-xs px-1"
+                        min={0}
+                        max={item.quantity}
+                        value={item.returnQuantity}
+                        onChange={(e) => {
+                          const newItems = [...breakReturnItems];
+                          newItems[idx].returnQuantity = Math.min(parseInt(e.target.value) || 0, item.quantity);
+                          setBreakReturnItems(newItems);
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Note */}
+            <div className="space-y-2 pt-2">
+              <Label className="text-[10px] font-bold text-muted-foreground uppercase">Reason & Notes</Label>
+              <div className="grid gap-2">
+                <Select onValueChange={(val) => setReturnNotes(prev => prev ? `${val}. ${prev}` : val)}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select reason..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {["Defective", "Wrong Item", "Over-shipped", "Damaged", "Quality Issue"].map((reason) => (
+                      <SelectItem key={reason} value={reason}>{reason}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Textarea
+                  value={returnNotes}
+                  onChange={(e) => setReturnNotes(e.target.value)}
+                  placeholder="Additional notes..."
+                  className="min-h-[60px] text-xs"
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="border-t pt-4">
+            <Button variant="ghost" size="sm" onClick={() => setShowReturnDialog(false)} disabled={returnMutation.isPending}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handlePacketReturn}
+              disabled={returnMutation.isPending || (returnType === 'break' && breakReturnItems.every(i => i.returnQuantity <= 0))}
+            >
+              {returnMutation.isPending ? "Processing..." : "Confirm Return"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Packet Configuration Modal */}
       <PacketConfigurationModal
