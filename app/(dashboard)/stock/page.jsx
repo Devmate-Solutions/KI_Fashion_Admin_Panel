@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -536,7 +536,7 @@ export default function StockPage() {
   const productOptions = useMemo(
     () =>
       inventoryItems.map((item) => ({
-        label: `${item.productName} (${item.sku || "No SKU"})`,
+        label: `${item.productName} (${item.sku || "No SKU"}) - ${item.supplierName || "No Supplier"}`,
         value: item.productId,
       })),
     [inventoryItems]
@@ -1866,9 +1866,9 @@ export default function StockPage() {
     {
       name: "product",
       label: "Product",
-      type: "select",
+      type: "combobox",
       required: true,
-      placeholder: "Select product",
+      placeholder: "Search product...",
       options: productOptions,
     },
     {
@@ -1887,9 +1887,9 @@ export default function StockPage() {
     {
       name: "product",
       label: "Product",
-      type: "select",
+      type: "combobox",
       required: true,
-      placeholder: "Select product",
+      placeholder: "Search product...",
       options: productOptions,
     },
     {
@@ -1908,10 +1908,20 @@ export default function StockPage() {
     {
       name: "product",
       label: "Product",
-      type: "select",
+      type: "combobox",
       required: true,
-      placeholder: "Select product",
+      placeholder: "Search product...",
       options: productOptions,
+      onChange: (value, currentData) => {
+        const item = inventoryItems.find(i => i.productId === value);
+        if (item) {
+          return {
+            ...currentData,
+            newQuantity: item.currentStock || 0
+          };
+        }
+        return currentData;
+      }
     },
     {
       name: "newQuantity",
@@ -1991,10 +2001,27 @@ export default function StockPage() {
           {
             name: "product",
             label: "Product",
-            type: "select",
+            type: "combobox",
             required: true,
-            placeholder: "Select product",
+            placeholder: "Search product...",
             options: productOptions,
+            onChange: (value, currentData) => {
+              const item = inventoryItems.find(i => i.productId === value);
+              if (item) {
+                return {
+                  ...currentData,
+                  minSellingPrice: item.pricing?.minSellingPrice ?? item.pricing?.sellingPrice ?? 0,
+                  landedCost: item.averageCostPrice || 0
+                };
+              }
+              return currentData;
+            }
+          },
+          {
+            name: "landedCost",
+            label: "Landed Cost",
+            type: "display",
+            render: (data) => currency(data.landedCost || 0)
           },
           {
             name: "minSellingPrice",
@@ -2011,6 +2038,7 @@ export default function StockPage() {
             selectedInventory?.pricing?.minSellingPrice ??
             selectedInventory?.pricing?.sellingPrice ??
             0,
+          landedCost: selectedInventory?.averageCostPrice ?? 0
         }}
         onClose={() => setMinPriceDialogOpen(false)}
         onSubmit={submitMinSellingPrice}
