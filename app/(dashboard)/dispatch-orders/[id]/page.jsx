@@ -1464,7 +1464,7 @@ export default function DispatchOrderDetailPage({ params }) {
     if (!dispatchOrderId || !dispatchOrder) return;
 
     if (!canDeleteDispatchOrder) {
-      toast.error("Only pending dispatch orders can be deleted");
+      toast.error("You do not have permission to delete this order");
       return;
     }
 
