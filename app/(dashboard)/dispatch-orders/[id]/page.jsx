@@ -1065,6 +1065,7 @@ export default function DispatchOrderDetailPage({ params }) {
     editedLogisticsCompany,
     editedDispatchDate,
     exchangeRate,
+    percentage,
     itemsToRemove,
     newItems,
     itemVerifications,
