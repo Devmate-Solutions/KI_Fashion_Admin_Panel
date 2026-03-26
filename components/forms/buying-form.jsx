@@ -1360,7 +1360,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   <svg className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span>Rate to convert supplier currency to base currency (£)</span>
+                  <span>Rate to convert supplier currency to base currency</span>
                 </p>
               </div>
 
@@ -1533,34 +1533,40 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           <table className="w-full text-sm">
             <thead className="bg-muted/30 border-b border-border sticky top-0 z-10">
               <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[150px]">
+                <th className="text-left px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider min-w-[120px]">
                   Name
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[120px]">
+                <th className="text-left px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider min-w-[100px]">
                   Code
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[80px]">
+                <th className="text-left px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider min-w-[60px]">
                   Image
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[100px]">
+                <th className="text-left px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider min-w-[120px]">
                   Season
                 </th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[100px]">
+                <th className="text-right px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider min-w-[80px]">
                   Cost Price
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[120px]">
-                  Primary Color
+                <th className="text-right px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider min-w-[80px]">
+                  Landed Price
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[120px]">
+                <th className="text-right px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider min-w-[90px]">
+                  Landed Total
+                </th>
+                <th className="text-left px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider min-w-[100px]">
+                  Color
+                </th>
+                <th className="text-left px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider min-w-[100px]">
                   Size
                 </th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[100px]">
-                  Total Quantity
+                <th className="text-right px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider min-w-[80px]">
+                  Qty
                 </th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[120px]">
-                  Packet Config
+                <th className="text-center px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider min-w-[100px]">
+                  Packets
                 </th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-20">Action</th>
+                <th className="text-center px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider w-16">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -1590,31 +1596,31 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   className="hover:bg-muted/20 transition-colors"
                 >
                   {/* Name */}
-                  <td className="px-4 py-3">
+                  <td className="px-2 py-2">
                     <Input
                       value={row.productName}
                       onChange={(e) => {
                         updateRow(row.id, "productName", e.target.value);
                       }}
-                      placeholder="Enter product name"
-                      className="h-9 text-sm"
+                      placeholder="Name"
+                      className="h-8 text-xs px-2"
                     />
                   </td>
 
                   {/* Code */}
-                  <td className="px-4 py-3">
+                  <td className="px-2 py-2">
                     <Input
                       value={row.productCode}
                       onChange={(e) => {
                         updateRow(row.id, "productCode", e.target.value);
                       }}
-                      placeholder="Enter product code"
-                      className="h-9 text-sm"
+                      placeholder="Code"
+                      className="h-8 text-xs px-2"
                     />
                   </td>
 
                   {/* Image - Compact display with 1 tile */}
-                  <td className="px-4 py-3 w-[100px]">
+                  <td className="px-2 py-2 w-[80px]">
                     {(() => {
                       const existingPreviews = imagePreviews[row.id] || {};
                       const existingImageKeys = Object.keys(
@@ -1699,7 +1705,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                               >
                                 <img
                                   src={allImages[0].url}
-                                  alt="Product image"
+                                  alt="Product"
                                   className="h-full w-full object-cover"
                                   onError={(e) => {
                                     e.target.style.display = "none";
@@ -1750,23 +1756,23 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   </td>
 
                   {/* Season */}
-                  <td className="px-4 py-3 relative">
-                    <div className="min-w-[180px]">
+                  <td className="px-2 py-2 relative">
+                    <div className="min-w-[140px]">
                       <MultiSelect
                         options={SEASON_OPTIONS}
                         value={Array.isArray(row.season) ? row.season : []}
                         onChange={(selectedSeasons) =>
                           updateRow(row.id, "season", selectedSeasons)
                         }
-                        placeholder="Select seasons"
+                        placeholder="Seasons"
                         disabled={isSaving}
-                        className="w-full"
+                        className="w-full text-xs"
                       />
                     </div>
                   </td>
 
                   {/* Cost Price */}
-                  <td className="px-4 py-3">
+                  <td className="px-2 py-2">
                     <Input
                       type="text"
                       inputMode="decimal"
@@ -1787,13 +1793,27 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                           sanitized === "" ? "" : sanitized
                         );
                       }}
-                      className="h-9 text-sm text-right tabular-nums"
+                      className="h-8 text-xs text-right tabular-nums px-2"
                     />
                   </td>
 
+                  {/* Landed Price (New) */}
+                  <td className="px-2 py-2 text-right">
+                    <span className="text-xs font-medium text-foreground tabular-nums">
+                      {Number(row.landedPrice || 0).toFixed(2)}
+                    </span>
+                  </td>
+
+                  {/* Landed Total (New) */}
+                  <td className="px-2 py-2 text-right">
+                    <span className="text-xs font-semibold text-primary tabular-nums">
+                      {Number(row.landedTotal || 0).toFixed(2)}
+                    </span>
+                  </td>
+
                   {/* Primary Color - Always visible input */}
-                  <td className="px-4 py-3">
-                    <div className="space-y-2">
+                  <td className="px-2 py-2">
+                    <div className="space-y-1">
                       <div className="flex items-center gap-1">
                         <Input
                           type="text"
@@ -1837,7 +1857,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                             }
                           }}
                           placeholder=""
-                          className="h-8 text-sm"
+                          className="h-7 text-xs px-1"
                         />
                         <Button
                           type="button"
@@ -1879,7 +1899,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                             {row.primaryColor.slice(0, 2).map((color, idx) => (
                               <span
                                 key={idx}
-                                className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium border border-blue-200 max-w-[80px] truncate"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded-md text-[10px] font-medium border border-blue-200 max-w-[70px] truncate"
                                 title={color}
                               >
                                 <span className="truncate">{color}</span>
@@ -1908,8 +1928,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   </td>
 
                   {/* Size - Always visible input */}
-                  <td className="px-4 py-3">
-                    <div className="space-y-2">
+                  <td className="px-2 py-2">
+                    <div className="space-y-1">
                       <div className="flex items-center gap-1">
                         <Input
                           type="text"
@@ -1948,7 +1968,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                             }
                           }}
                           placeholder=""
-                          className="h-8 text-sm"
+                          className="h-7 text-xs px-1"
                         />
                         <Button
                           type="button"
@@ -1984,7 +2004,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                           {row.size.slice(0, 2).map((size, idx) => (
                             <span
                               key={idx}
-                              className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md text-xs font-medium border border-emerald-200 max-w-[80px] truncate"
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-md text-[10px] font-medium border border-emerald-200 max-w-[70px] truncate"
                               title={size}
                             >
                               <span className="truncate">{size}</span>
@@ -2013,7 +2033,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   </td>
 
                   {/* Total Quantity */}
-                  <td className="px-4 py-3">
+                  <td className="px-2 py-2">
                     <Input
                       type="text"
                       inputMode="numeric"
@@ -2035,12 +2055,12 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                           );
                         }
                       }}
-                      className="h-9 text-sm text-right tabular-nums"
+                      className="h-8 text-xs text-right tabular-nums px-2"
                     />
                   </td>
 
                   {/* Packet Configuration */}
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-2 py-2 text-center">
                     <Button
                       type="button"
                       variant="outline"
@@ -2052,28 +2072,28 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                         });
                         setPacketModalOpen(true);
                       }}
-                      className="h-9 text-xs gap-1.5"
+                      className="h-8 text-[10px] gap-1 px-2"
                       title="Configure packets"
                     >
                       {productPackets[row.id]?.useVariantTracking ? (
                         <span className="text-emerald-600 font-medium">Configured</span>
                       ) : (
-                        <span>Configure</span>
+                        <span>Config</span>
                       )}
                     </Button>
                   </td>
 
                   {/* Action */}
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-2 py-2 text-center text-xs">
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => removeRow(row.id)}
-                      className="h-9 w-9 p-0 hover:bg-destructive/10 hover:text-destructive transition-colors"
+                      className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive transition-colors shrink-0"
                       title="Remove row"
                     >
-                      <TrashIcon className="h-4 w-4" />
+                      <TrashIcon className="h-3.5 w-3.5" />
                     </Button>
                   </td>
                 </tr>
@@ -2153,7 +2173,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 </div>
               </div>
               <div className="text-2xl font-bold text-foreground tabular-nums">
-                £{totals.supplierPaymentTotal.toFixed(2)}
+                {totals.supplierPaymentTotal.toFixed(2)}
               </div>
             </div>
 
@@ -2167,7 +2187,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   </div>
                 </div>
                 <div className="text-2xl font-bold tabular-nums text-primary mb-2">
-                  £{totals.supplierPaymentAfterDiscount.toFixed(2)}
+                  {totals.supplierPaymentAfterDiscount.toFixed(2)}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Amount due after discount
@@ -2188,7 +2208,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 </div>
               </div>
               <div className="text-2xl font-bold text-foreground tabular-nums">
-                £{totals.grandTotal.toFixed(2)}
+                {totals.grandTotal.toFixed(2)}
               </div>
             </div>
           </div>
@@ -2343,7 +2363,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                         : "text-emerald-700"
                     }`}
                   >
-                    £{Math.abs(totals.remaining).toFixed(2)}
+                    {Math.abs(totals.remaining).toFixed(2)}
                   </div>
                   <p className={`text-sm ${
                     totals.remaining > 0 
