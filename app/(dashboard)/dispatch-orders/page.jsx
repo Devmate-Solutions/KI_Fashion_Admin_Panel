@@ -50,11 +50,31 @@ export default function DispatchOrdersPage() {
   const [searchQuery, setSearchQuery] = useState("")
 
   const handleDelete = async (order) => {
-    if (window.confirm(`Are you sure you want to delete dispatch order ${order.orderNumber}?`)) {
+    const isConfirmed = order.status === 'confirmed' || order.status === 'delivered' || order.status === 'picked_up' || order.status === 'in_transit';
+    
+    // Check for payments (some fields might be null, so use optional chaining)
+    const hasPayments = (order.paymentDetails?.cashPayment > 0) || (order.paymentDetails?.bankPayment > 0);
+
+    let message = `Are you sure you want to delete dispatch order ${order.orderNumber}?`;
+    
+    if (isConfirmed) {
+      message = `WARNING: This is a ${order.status.toUpperCase()} order. 
+      
+Deleting it will permanently remove:
+- All financial ledger entries (debt & charges)
+- All associated payment records
+- All inventory stock batches and packet barcodes
+
+This action CANNOT be undone. ${hasPayments ? '\n\nAssociated payments will be reversed.' : ''}
+
+Do you still want to proceed?`;
+    }
+
+    if (window.confirm(message)) {
       try {
         await deleteMutation.mutateAsync(order._id)
       } catch (error) {
-        console.error('Error deleting dispatch order:', error)
+        // Error is handled by mutation onError in the hook
       }
     }
   }
