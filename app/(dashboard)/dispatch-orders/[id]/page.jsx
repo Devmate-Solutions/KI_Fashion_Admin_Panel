@@ -3498,7 +3498,7 @@ export default function DispatchOrderDetailPage({ params }) {
                                     {returnDoc.items?.map(
                                       (item, itemIdx) => (
                                         <div key={itemIdx}>
-                                          Item {item.itemIndex}:{" "}
+                                          <span className="font-mono bg-muted px-1 rounded mr-1">{item.productCode}</span>
                                           {item.returnedQuantity} qty -{" "}
                                           {item.reason || "No reason"}
                                         </div>
