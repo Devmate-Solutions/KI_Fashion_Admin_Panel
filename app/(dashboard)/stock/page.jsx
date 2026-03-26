@@ -282,12 +282,15 @@ const inventoryColumns = [
   },
   {
     header: "Date",
-    accessor: "lastStockUpdate",
-    render: (row) => (
-      <div className="text-sm text-muted-foreground">
-        {row.lastStockUpdate ? new Date(row.lastStockUpdate).toLocaleDateString('en-GB') : "—"}
-      </div>
-    ),
+    accessor: "firstArrivalDate",
+    render: (row) => {
+      const displayDate = row.firstArrivalDate || row.createdAt || row.lastStockUpdate;
+      return (
+        <div className="text-sm text-muted-foreground">
+          {displayDate ? new Date(displayDate).toLocaleDateString('en-GB') : "—"}
+        </div>
+      );
+    },
   },
 ];
 
