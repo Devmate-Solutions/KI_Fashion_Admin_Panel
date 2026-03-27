@@ -35,8 +35,12 @@ export default function PrintableTable({
     // Global search filter
     const q = normalize(query)
     let base = q
-      ? safeData.filter((row) => searchableColumns.some((key) => normalize(row[key]).includes(q))
-      )
+      ? safeData.filter((row) => {
+          const keysToSearch = (searchableColumns && searchableColumns.length > 0)
+            ? searchableColumns
+            : safeColumns.map((c) => c.accessor).filter(Boolean)
+          return keysToSearch.some((key) => normalize(row[key]).includes(q))
+        })
       : safeData
 
 
