@@ -301,6 +301,7 @@ export default function PacketConfigurationModal({
     // Clean up and save
     const cleanPackets = packets.map((packet) => ({
       packetNumber: packet.packetNumber,
+      totalItems: parseInt(packet.totalItems || packet.totalItemsPerPacket) || 0,
       totalItemsPerPacket: parseInt(packet.totalItemsPerPacket || packet.totalItems) || 0,
       composition: packet.composition
         .filter((item) => item.size && item.color && item.quantity)

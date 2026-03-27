@@ -1173,7 +1173,13 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           // Add packet configuration if configured
           const packetConfig = productPackets[row.id];
           itemPayload.useVariantTracking = true;
-          itemPayload.packets = packetConfig?.packets || [];
+          
+          // Heal packets to ensure both totalItems and totalItemsPerPacket exist (requirement for manual entry)
+          itemPayload.packets = (packetConfig?.packets || []).map(p => ({
+            ...p,
+            totalItems: parseInt(p.totalItems || p.totalItemsPerPacket) || 0,
+            totalItemsPerPacket: parseInt(p.totalItemsPerPacket || p.totalItems) || 0
+          }));
 
           return itemPayload;
         })
