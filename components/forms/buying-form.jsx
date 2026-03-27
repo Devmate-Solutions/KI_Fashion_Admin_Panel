@@ -869,7 +869,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       }
 
       // Check total quantity matches
-      const totalInPackets = packetConfig.packets.reduce((sum, p) => sum + (parseInt(p.totalItems) || 0), 0);
+      const totalInPackets = packetConfig.packets.reduce((sum, p) => sum + (parseInt(p.totalItemsPerPacket || p.totalItems) || 0), 0);
       if (totalInPackets !== parseInt(row.quantity)) {
         packetErrors.push(`${rowLabel}: Packet quantity (${totalInPackets}) does not match row quantity (${row.quantity})`);
       }
@@ -999,6 +999,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   costPrice: Number(row.costPrice || 0),
                   sellingPrice: Number(row.costPrice || 0) * 1.2, // Default 20% markup
                 },
+                useVariantTracking: true, // IMPORTANT: Enable variant tracking for packet stock
                 unit: "piece",
               };
 
