@@ -46,6 +46,7 @@ export default function PacketConfigurationModal({
   const [activeId, setActiveId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [skipConfigured, setSkipConfigured] = useState(false);
+  const [localError, setLocalError] = useState(null);
 
   // 'packets' or 'loose'
   const [configMode, setConfigMode] = useState("packets");
@@ -133,6 +134,7 @@ export default function PacketConfigurationModal({
       ]);
       setExpandedPacket("packet-1");
     }
+    setLocalError(null);
   }, [activeId, packetsByItem]);
 
   // Handle mode switching
@@ -279,6 +281,22 @@ export default function PacketConfigurationModal({
 
   const handleSave = () => {
     if (!activeItem) return;
+    setLocalError(null);
+
+    const totalItemsInPackets = calculateTotalItems();
+    const expectedTotal = parseInt(activeItem?.quantity || 0);
+
+    if (totalItemsInPackets !== expectedTotal) {
+      setLocalError(`Total quantity (${totalItemsInPackets}) must match target (${expectedTotal})`);
+      return;
+    }
+
+    // Check if any packet is empty
+    const hasEmptyPacket = packets.some(p => !p.composition || p.composition.length === 0);
+    if (hasEmptyPacket) {
+      setLocalError("Each packet must have at least one color/size configuration");
+      return;
+    }
 
     // Clean up and save
     const cleanPackets = packets.map((packet) => ({
@@ -443,6 +461,8 @@ export default function PacketConfigurationModal({
           </div>
         </div>
 
+
+
         {/* Product Summary Card */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pb-1">
           <div className="md:col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-3 shadow-sm flex items-center justify-between">
@@ -486,6 +506,13 @@ export default function PacketConfigurationModal({
             </div>
           </div>
         </div>
+
+        {localError && (
+          <div className="p-3 rounded-lg border border-red-200 bg-red-50 flex items-center gap-2 text-red-700 text-sm">
+            <AlertCircle className="h-4 w-4" />
+            <span>{localError}</span>
+          </div>
+        )}
 
         {/* Configuration Area */}
         <div className="space-y-3">

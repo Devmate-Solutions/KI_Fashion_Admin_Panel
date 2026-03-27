@@ -823,6 +823,11 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         const isValidInteger = !isNaN(quantity) && 
                                 quantity > 0 && 
                                 Number.isInteger(quantity);
+
+        // Colors and sizes are now required for all rows to ensure packet stock can be created
+        const hasColors = Array.isArray(row.primaryColor) ? row.primaryColor.length > 0 : (typeof row.primaryColor === 'string' && row.primaryColor.trim());
+        const hasSizes = Array.isArray(row.size) ? row.size.length > 0 : (typeof row.size === 'string' && row.size.trim());
+
         return (
           !row.productName ||
           !row.productCode ||
@@ -832,32 +837,61 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           isNaN(costPrice) ||
           costPrice <= 0 ||
           !row.quantity ||
-          !isValidInteger
+          !isValidInteger ||
+          !hasColors ||
+          !hasSizes
         );
       }
     );
 
     if (invalidRows.length > 0) {
       setError(
-        "Please fill in product name, code, season, cost price, and quantity for all rows"
+        "Please fill in product name, code, season, cost price, quantity, primary color, and size for all rows"
       );
       return;
     }
 
-    const rowsMissingPackets = rows.filter((row) => {
+    // Strict Packet Validation
+    const packetErrors = [];
+    rows.forEach((row) => {
       const packetConfig = productPackets[row.id];
-      return !packetConfig || !Array.isArray(packetConfig.packets) || packetConfig.packets.length === 0;
+      const rowLabel = row.productName || row.productCode || `Row ${rows.findIndex(r => r.id === row.id) + 1}`;
+      
+      if (!packetConfig || !Array.isArray(packetConfig.packets) || packetConfig.packets.length === 0) {
+        packetErrors.push(`${rowLabel}: No packet configuration found`);
+        return;
+      }
+
+      // Check each packet has composition
+      const emptyPackets = packetConfig.packets.filter(p => !Array.isArray(p.composition) || p.composition.length === 0);
+      if (emptyPackets.length > 0) {
+        packetErrors.push(`${rowLabel}: Some packets have no composition (colors/sizes)`);
+      }
+
+      // Check total quantity matches
+      const totalInPackets = packetConfig.packets.reduce((sum, p) => sum + (parseInt(p.totalItems) || 0), 0);
+      if (totalInPackets !== parseInt(row.quantity)) {
+        packetErrors.push(`${rowLabel}: Packet quantity (${totalInPackets}) does not match row quantity (${row.quantity})`);
+      }
+
+      // Validate that all colors/sizes in packets match the row's colors/sizes
+      const rowColors = Array.isArray(row.primaryColor) ? row.primaryColor : [row.primaryColor];
+      const rowSizes = Array.isArray(row.size) ? row.size : [row.size];
+      
+      packetConfig.packets.forEach(p => {
+        p.composition?.forEach(c => {
+          if (!rowColors.includes(c.color)) {
+            packetErrors.push(`${rowLabel}: Color "${c.color}" in packet not found in row colors`);
+          }
+          if (!rowSizes.includes(c.size)) {
+            packetErrors.push(`${rowLabel}: Size "${c.size}" in packet not found in row sizes`);
+          }
+        });
+      });
     });
 
-    if (rowsMissingPackets.length > 0) {
-      const missingLabels = rowsMissingPackets
-        .slice(0, 3)
-        .map((row) => {
-          const rowNumber = rows.findIndex((r) => r.id === row.id) + 1;
-          return row.productName || row.productCode || `Row ${rowNumber}`;
-        })
-        .join(", ");
-      setError(`Please configure packets for all products. Missing: ${missingLabels}`);
+    if (packetErrors.length > 0) {
+      setError(`Packet Configuration Error: ${packetErrors[0]}`); // Show first error
       return;
     }
 
@@ -1108,21 +1142,21 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
             itemPayload.costPrice = costPrice;
           }
 
-          // primaryColor can be array or string
+          // primaryColor: send as array for backend processing
           if (Array.isArray(row.primaryColor) && row.primaryColor.length > 0) {
             itemPayload.primaryColor = row.primaryColor;
           } else if (
             typeof row.primaryColor === "string" &&
             row.primaryColor.trim()
           ) {
-            itemPayload.primaryColor = row.primaryColor.trim();
+            itemPayload.primaryColor = [row.primaryColor.trim()]; // Normalize to array
           }
 
-          // size can be array or string
+          // size: send as array for backend processing
           if (Array.isArray(row.size) && row.size.length > 0) {
             itemPayload.size = row.size;
           } else if (typeof row.size === "string" && row.size.trim()) {
-            itemPayload.size = row.size.trim();
+            itemPayload.size = [row.size.trim()]; // Normalize to array
           }
 
           if (row.material) {
