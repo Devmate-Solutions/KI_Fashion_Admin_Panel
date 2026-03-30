@@ -79,7 +79,7 @@ export default function BuyingPage() {
 
   const [page, setPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
-  const today = new Date().toISOString().split("T")[0]
+  const today = new Date().toLocaleDateString('en-CA')
   const [dateRange, setDateRange] = useState({ from: today, to: today })
 
   // When searching, fetch more results for better client-side filtering
@@ -660,7 +660,7 @@ export default function BuyingPage() {
                     <BritishDatePicker
                       value={dateRange.from || null}
                       onChange={(date) => {
-                        setDateRange(r => ({ ...r, from: date ? date.toISOString().split("T")[0] : "" }))
+                        setDateRange(r => ({ ...r, from: date ? date.toLocaleDateString('en-CA') : "" }))
                         setPage(1)
                       }}
                     />
@@ -670,7 +670,7 @@ export default function BuyingPage() {
                     <BritishDatePicker
                       value={dateRange.to || null}
                       onChange={(date) => {
-                        setDateRange(r => ({ ...r, to: date ? date.toISOString().split("T")[0] : "" }))
+                        setDateRange(r => ({ ...r, to: date ? date.toLocaleDateString('en-CA') : "" }))
                         setPage(1)
                       }}
                     />

@@ -65,9 +65,9 @@ export default function FormDialog({
   // If children are provided, render them instead of fields-based form
   if (children) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center " onClick={handleClose}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={handleClose}>
         <div
-          className=" rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+          className="bg-card border border-border rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="p-4 border-b border-border flex items-center justify-between">

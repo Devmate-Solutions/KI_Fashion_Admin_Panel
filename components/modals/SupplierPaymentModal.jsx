@@ -61,7 +61,7 @@ export default function SupplierPaymentModal({
     // Set default date to today when modal opens
     useEffect(() => {
         if (open && !form.date) {
-            const today = new Date().toISOString().split('T')[0]
+            const today = new Date().toLocaleDateString('en-CA')
             setForm(prev => ({ ...prev, date: today }))
         }
     }, [open])
@@ -328,7 +328,7 @@ export default function SupplierPaymentModal({
                     {/* Entity Selector - Text Search Input */}
                     {showEntitySelector && (
                         <div className="space-y-2">
-                            <Label htmlFor="entity-search">Select Supplier</Label>
+                            <Label htmlFor="entity-search">Select a Supplier</Label>
                             <div className="relative">
                                 <Input
                                     id="entity-search"
@@ -406,7 +406,7 @@ export default function SupplierPaymentModal({
                                                     : initialBalance || 0));
                                         return originalBalance > 0 ? 'text-red-600' : 'text-green-600';
                                     })()}`}>
-                                        {formatAmount(totalBalance)} 
+                                        {formatAmount(totalBalance)}
                                     </p>
 
                                 </div>
@@ -521,7 +521,7 @@ export default function SupplierPaymentModal({
                             value={form.date ? new Date(form.date) : new Date()}
                             onChange={(date) => {
                                 if (date) {
-                                    setForm({ ...form, date: date.toISOString().split("T")[0] });
+                                    setForm({ ...form, date: date.toLocaleDateString('en-CA') });
                                 }
                             }}
                             disabled={!isSuperAdmin}

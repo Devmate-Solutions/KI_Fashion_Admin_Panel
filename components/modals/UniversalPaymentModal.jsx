@@ -298,7 +298,7 @@ export default function UniversalPaymentModal({
                             value={form.date ? new Date(form.date) : new Date()}
                             onChange={(date) => {
                                 if (date) {
-                                    setForm({ ...form, date: date.toISOString().split("T")[0] });
+                                    setForm({ ...form, date: date.toLocaleDateString('en-CA') });
                                 }
                             }}
                             disabled={!isSuperAdmin}

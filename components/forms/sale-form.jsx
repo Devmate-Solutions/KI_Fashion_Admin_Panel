@@ -151,7 +151,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
   const nameLookupTimeoutRefs = useRef({})
 
   // Metadata fields
-  const [saleDate, setSaleDate] = useState(new Date().toISOString().split("T")[0])
+  const [saleDate, setSaleDate] = useState(new Date().toLocaleDateString('en-CA'))
   const [saleType, setSaleType] = useState("wholesale")
   const [notes, setNotes] = useState("") // separate notes field for edit
 
@@ -184,7 +184,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
     if (!initialData) return
 
     // Date
-    if (initialData.saleDate) setSaleDate(new Date(initialData.saleDate).toISOString().split('T')[0])
+    if (initialData.saleDate) setSaleDate(new Date(initialData.saleDate).toLocaleDateString('en-CA'))
     // Type
     if (initialData.saleType) setSaleType(initialData.saleType)
     // Notes
@@ -868,7 +868,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
       const saleRef = initialData?.saleNumber || `#${String(saleId).slice(-6)}`
       const requestedChanges = {}
       if (initialData) {
-        if (pendingPayload.saleDate !== new Date(initialData.saleDate).toISOString().split('T')[0])
+        if (pendingPayload.saleDate !== new Date(initialData.saleDate).toLocaleDateString('en-CA'))
           requestedChanges.saleDate = { from: initialData.saleDate, to: pendingPayload.saleDate }
         if (pendingPayload.saleType !== initialData.saleType)
           requestedChanges.saleType = { from: initialData.saleType, to: pendingPayload.saleType }
@@ -991,7 +991,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                   value={saleDate ? new Date(saleDate) : new Date()}
                   onChange={(date) => {
                     if (date) {
-                      setSaleDate(date.toISOString().split("T")[0]);
+                      setSaleDate(date.toLocaleDateString('en-CA'));
                     }
                   }}
                   disabled={!isSuperAdmin}

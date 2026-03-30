@@ -31,7 +31,7 @@ function getDefaultDateRange() {
   const today = new Date()
   return {
     from: "",
-    to: today.toISOString().split("T")[0],
+    to: today.toLocaleDateString('en-CA'),
   }
 }
 

@@ -17,10 +17,10 @@ import { useDispatchOrders } from "@/lib/hooks/useDispatchOrders"
 import { Loader2, Check, Search, X } from "lucide-react"
 
 export default function ExpenseFormNew({ expense, onSave, onCancel, isLoading }) {
-  const today = new Date().toISOString().split('T')[0]
+  const today = new Date().toLocaleDateString('en-CA')
 
   const [formData, setFormData] = useState({
-    expenseDate: expense?.date ? new Date(expense.date).toISOString().split('T')[0] : today,
+    expenseDate: expense?.date ? new Date(expense.date).toLocaleDateString('en-CA') : today,
     costType: expense?.costTypeId || '',
     amount: expense?.amount || '',
     paymentMethod: expense?.paymentMethod && expense?.paymentMethod !== 'split' ? expense.paymentMethod : 'cash',
@@ -146,7 +146,7 @@ export default function ExpenseFormNew({ expense, onSave, onCancel, isLoading })
         </Label>
         <BritishDatePicker
           value={formData.expenseDate}
-          onChange={(date) => handleChange('expenseDate', date ? date.toISOString().split('T')[0] : '')}
+          onChange={(date) => handleChange('expenseDate', date ? date.toLocaleDateString('en-CA') : '')}
           maxDate={null}
           className={errors.expenseDate ? 'border-red-500' : ''}
         />
@@ -251,7 +251,7 @@ export default function ExpenseFormNew({ expense, onSave, onCancel, isLoading })
 
       {/* Selected Reference (Read-only) */}
       <div className="space-y-2">
-        <Label htmlFor="selectedRefInfo">Selected Reference</Label>
+        <Label htmlFor="selectedRefInfo">Selected Referenc e</Label>
         <div className="flex gap-2">
           <Input
             id="selectedRefInfo"

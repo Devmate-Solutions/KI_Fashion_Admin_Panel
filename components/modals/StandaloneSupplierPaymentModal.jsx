@@ -55,13 +55,13 @@ export default function StandaloneSupplierPaymentModal({
     })
 
     // Fetch suppliers internally
-    const { data: allSuppliers = [], isLoading: suppliersLoading } = useAllSuppliers({ 
-        limit: 100 
+    const { data: allSuppliers = [], isLoading: suppliersLoading } = useAllSuppliers({
+        limit: 100
     })
 
     // Fetch all ledger entries internally
-    const { data: allLedgerData, isLoading: ledgerLoading } = useAllSupplierLedgers({ 
-        limit: 1000 
+    const { data: allLedgerData, isLoading: ledgerLoading } = useAllSupplierLedgers({
+        limit: 1000
     })
 
     // Calculate supplier balance map internally
@@ -130,7 +130,7 @@ export default function StandaloneSupplierPaymentModal({
     // Set default date to today when modal opens
     useEffect(() => {
         if (open && !form.date) {
-            const today = new Date().toISOString().split('T')[0]
+            const today = new Date().toLocaleDateString('en-CA')
             setForm(prev => ({ ...prev, date: today }))
         }
     }, [open])
@@ -344,7 +344,7 @@ export default function StandaloneSupplierPaymentModal({
                     {/* Entity Selector - Text Search Input */}
                     {!isLoading && showEntitySelector && (
                         <div className="space-y-2">
-                            <Label htmlFor="entity-search">Select Supplier</Label>
+                            <Label htmlFor="entity-search">Select a Supplier</Label>
                             <div className="relative">
                                 <Input
                                     id="entity-search"
@@ -505,7 +505,7 @@ export default function StandaloneSupplierPaymentModal({
                                 value={form.date ? new Date(form.date) : new Date()}
                                 onChange={(date) => {
                                     if (date) {
-                                        setForm({ ...form, date: date.toISOString().split("T")[0] });
+                                        setForm({ ...form, date: date.toLocaleDateString('en-CA') });
                                     }
                                 }}
                                 disabled={!isSuperAdmin || isSubmitting}

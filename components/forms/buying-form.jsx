@@ -117,7 +117,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
   // Metadata fields (removed tc and TC_OPTIONS)
   const [invoiceDate, setInvoiceDate] = useState(
-    new Date().toISOString().split("T")[0]
+    new Date().toLocaleDateString('en-CA')
   );
   const [exchangeRate, setExchangeRate] = useState("");
   const [percentage, setPercentage] = useState("");

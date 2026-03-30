@@ -66,8 +66,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }) {
     setNotes(orig.notes || "");
     setTotalDiscount(String(orig.totalDiscount ?? 0));
     setShippingCost(String(orig.shippingCost ?? 0));
-    setSaleDate(orig.saleDate ? new Date(orig.saleDate).toISOString().split("T")[0] : "");
-    setDeliveryDate(orig.deliveryDate ? new Date(orig.deliveryDate).toISOString().split("T")[0] : "");
+    setSaleDate(orig.saleDate ? new Date(orig.saleDate).toLocaleDateString('en-CA') : "");
+    setDeliveryDate(orig.deliveryDate ? new Date(orig.deliveryDate).toLocaleDateString('en-CA') : "");
     setShowRequestDialog(false);
     setRequestedChanges(null);
     setRawPayload(null);
@@ -110,8 +110,8 @@ export default function EditSaleDialog({ open, onClose, sale, onSuccess }) {
     const origNotes = orig.notes || "";
     const origDiscount = String(orig.totalDiscount ?? 0);
     const origShipping = String(orig.shippingCost ?? 0);
-    const origSaleDate = orig.saleDate ? new Date(orig.saleDate).toISOString().split("T")[0] : "";
-    const origDeliveryDate = orig.deliveryDate ? new Date(orig.deliveryDate).toISOString().split("T")[0] : "";
+    const origSaleDate = orig.saleDate ? new Date(orig.saleDate).toLocaleDateString('en-CA') : "";
+    const origDeliveryDate = orig.deliveryDate ? new Date(orig.deliveryDate).toLocaleDateString('en-CA') : "";
 
     if (notes !== origNotes) changes.notes = { from: origNotes, to: notes };
     if (totalDiscount !== origDiscount) changes.totalDiscount = { from: origDiscount, to: totalDiscount };

@@ -284,7 +284,7 @@ export default function DispatchOrderDetailPage({ params }) {
       if (dispatchOrder.dispatchDate) {
         // Format date for input field (YYYY-MM-DD)
         const date = new Date(dispatchOrder.dispatchDate);
-        const formatted = date.toISOString().split("T")[0];
+        const formatted = date.toLocaleDateString('en-CA');
         setEditedDispatchDate(formatted);
       }
 

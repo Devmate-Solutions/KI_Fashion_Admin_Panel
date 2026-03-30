@@ -16,7 +16,7 @@ function currency(n) {
 }
 
 export default function CashTrackingPage() {
-  const today = new Date().toISOString().split('T')[0]
+  const today = new Date().toLocaleDateString('en-CA')
   const [selectedDate, setSelectedDate] = useState(today)
   
   const { data: cashData, isLoading, error } = useDailyCashSummary(selectedDate)

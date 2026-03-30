@@ -31,7 +31,7 @@ export default function ReportLayout({
   const formatDateForInput = (date) => {
     if (!date) return ""
     if (typeof date === "string") return date
-    return date.toISOString().split("T")[0]
+    return date.toLocaleDateString('en-CA')
   }
 
   return (
@@ -101,7 +101,7 @@ export default function ReportLayout({
                     )}
                     <BritishDatePicker
                       value={dateRange.from || null}
-                      onChange={(date) => onDateChange({ ...dateRange, from: date ? date.toISOString().split("T")[0] : "" })}
+                      onChange={(date) => onDateChange({ ...dateRange, from: date ? date.toLocaleDateString('en-CA') : "" })}
                       maxDate={null}
                       className="w-40 h-9 z-index-10"
                     />
@@ -111,7 +111,7 @@ export default function ReportLayout({
                   <Label htmlFor="toDate" className="text-xs">To Date</Label>
                   <BritishDatePicker
                     value={dateRange.to || null}
-                    onChange={(date) => onDateChange({ ...dateRange, to: date ? date.toISOString().split("T")[0] : "" })}
+                    onChange={(date) => onDateChange({ ...dateRange, to: date ? date.toLocaleDateString('en-CA') : "" })}
                     maxDate={null}
                     className="w-40 h-9 z-index-10"
                   />

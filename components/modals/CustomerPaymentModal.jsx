@@ -60,7 +60,7 @@ export default function CustomerPaymentModal({
     // Set default date to today when modal opens
     useEffect(() => {
         if (open && !form.date) {
-            const today = new Date().toISOString().split('T')[0]
+            const today = new Date().toLocaleDateString('en-CA')
             setForm(prev => ({ ...prev, date: today }))
         }
     }, [open])
@@ -521,7 +521,7 @@ export default function CustomerPaymentModal({
                             value={form.date ? new Date(form.date) : new Date()}
                             onChange={(date) => {
                                 if (date) {
-                                    setForm({ ...form, date: date.toISOString().split("T")[0] });
+                                    setForm({ ...form, date: date.toLocaleDateString('en-CA') });
                                 }
                             }}
                             disabled={!isSuperAdmin}

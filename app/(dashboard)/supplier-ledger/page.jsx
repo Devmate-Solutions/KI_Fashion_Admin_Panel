@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge"
 import { useQueryClient } from "@tanstack/react-query"
 import toast from "react-hot-toast"
 import SupplierPaymentModal from "@/components/modals/SupplierPaymentModal"
+import ManualSupplierDebtModal from "@/components/modals/ManualSupplierDebtModal"
 import { useAuthStore } from "@/store/store"
 import DeleteRequestDialog from "@/components/modals/DeleteRequestDialog"
 import SupplierPaymentReceiptModal from "@/components/modals/SupplierPaymentReceiptModal"
@@ -91,6 +92,7 @@ export default function SupplierLedgerPage() {
 
   // Universal payment modal state
   const [universalPaymentOpen, setUniversalPaymentOpen] = useState(false)
+  const [manualDebtOpen, setManualDebtOpen] = useState(false)
 
   // Auth and delete request state
   const user = useAuthStore((s) => s.user)
@@ -577,16 +579,16 @@ export default function SupplierLedgerPage() {
       })
     }
 
-    // Filter to only show payment entries (for payment tab)
+    // Filter to show payment and adjustment entries (for history tab)
     allTransactions = allTransactions.filter(txn => {
-      return txn.transactionType === 'payment' || txn.type === 'payment'
+      return txn.transactionType === 'payment' || txn.type === 'payment' || txn.transactionType === 'adjustment'
     })
 
     return allTransactions.map(txn => {
       // Determine transaction type label
       let typeLabel = txn.type || txn.transactionType || '-'
       if (txn.transactionType === 'adjustment') {
-        typeLabel = 'Adjustment'
+        typeLabel = 'Supplier Debt'
       } else if (txn.referenceModel === 'DispatchOrder') {
         if (txn.transactionType === 'payment') {
           typeLabel = `Payment (${txn.paymentMethod === 'cash' ? 'Cash' : 'Bank'})`
@@ -1021,11 +1023,12 @@ export default function SupplierLedgerPage() {
   const allLedgerTransactions = useMemo(() => {
     if (!allLedgerData?.entries) return []
 
-    // Show purchases, payments, and returns (complete ledger history)
-    let filteredEntries = allLedgerData.entries.filter(entry =>
+    // Show purchases, payments, returns, and adjustments (complete ledger history)
+    let filteredEntries = (allLedgerData?.entries || []).filter(entry =>
       entry.transactionType === 'purchase' ||
       entry.transactionType === 'payment' ||
-      entry.transactionType === 'return'
+      entry.transactionType === 'return' ||
+      entry.transactionType === 'adjustment'
     )
 
     // Apply Consolidated Filter
@@ -1039,6 +1042,9 @@ export default function SupplierLedgerPage() {
         }
         if (ledgerFilterBy === 'return') {
           return entry.transactionType === 'return'
+        }
+        if (ledgerFilterBy === 'adjustment') {
+          return entry.transactionType === 'adjustment'
         }
         if (ledgerFilterBy === 'discount') {
           // Check if purchase has discount
@@ -1061,7 +1067,7 @@ export default function SupplierLedgerPage() {
 
       // Distinguish between purchases, payments, returns, and adjustments
       if (entry.transactionType === 'adjustment') {
-        typeLabel = 'Adjustment'
+        typeLabel = 'Supplier Debt'
       } else if (entry.transactionType === 'payment') {
         // Payment entry
         if (entry.paymentMethod === 'cash') {
@@ -1119,6 +1125,8 @@ export default function SupplierLedgerPage() {
         }
       } else if (entry.reference || entry.referenceNumber) {
         readableReference = entry.reference || entry.referenceNumber
+      } else if (entry.transactionType === 'adjustment') {
+        readableReference = entry.description || entry.notes || 'Manual Adjustment'
       }
 
       // Calculate separate payment amounts
@@ -1212,7 +1220,8 @@ export default function SupplierLedgerPage() {
       const relevantEntries = allLedgerData.entries.filter(entry =>
         entry.transactionType === 'purchase' ||
         entry.transactionType === 'payment' ||
-        entry.transactionType === 'return'
+        entry.transactionType === 'return' ||
+        entry.transactionType === 'adjustment'
       )
 
       // Group entries by supplier and calculate individual running balances
@@ -1350,10 +1359,10 @@ export default function SupplierLedgerPage() {
         accessor: "type",
         render: (row) => {
           const label = row.type || '-'
-          if (label === 'Adjustment') {
+          if (label === 'Supplier Debt') {
             return (
               <span className="inline-flex items-center rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-700">
-                Adjustment
+                Supplier Debt
               </span>
             )
           }
@@ -1737,6 +1746,7 @@ export default function SupplierLedgerPage() {
                 <SelectItem value="bank">Bank</SelectItem>
                 <SelectItem value="discount">Discount</SelectItem>
                 <SelectItem value="return">Return</SelectItem>
+                <SelectItem value="adjustment">Supplier Debt</SelectItem>
               </SelectContent>
             </Select>
           )}
@@ -2724,6 +2734,14 @@ export default function SupplierLedgerPage() {
             </div>
           )}
           <Button
+            onClick={() => setManualDebtOpen(true)}
+            variant="outline"
+            className="border-red-200 hover:bg-red-50 text-red-600 h-11 px-6 shadow-sm"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Supplier Debt
+          </Button>
+          <Button
             onClick={() => setUniversalPaymentOpen(true)}
             className="bg-primary hover:bg-primary/90 h-11 px-6 shadow-sm"
           >
@@ -2765,6 +2783,26 @@ export default function SupplierLedgerPage() {
           queryClient.invalidateQueries({ queryKey: ['pending-balances'] })
           queryClient.invalidateQueries({ queryKey: ['ledger', 'supplier'] })
           queryClient.invalidateQueries({ queryKey: ['supplier-payment-receipts'] })
+        }}
+      />
+
+      <ManualSupplierDebtModal
+        open={manualDebtOpen}
+        onClose={() => setManualDebtOpen(false)}
+        entities={dropdownSuppliers}
+        entityId={selectedSupplierId !== 'all' ? selectedSupplierId : ''}
+        entityName={
+          selectedSupplierId !== 'all'
+            ? (dropdownSuppliers.find(s => String(s.id) === selectedSupplierId)?.name ||
+              dropdownSuppliers.find(s => String(s.id) === selectedSupplierId)?.company ||
+              'Supplier')
+            : ''
+        }
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['pending-balances'] })
+          queryClient.invalidateQueries({ queryKey: ['ledger', 'supplier'] })
+          queryClient.invalidateQueries({ queryKey: ['ledger'] })
+          queryClient.invalidateQueries({ queryKey: ['suppliers'] })
         }}
       />
 

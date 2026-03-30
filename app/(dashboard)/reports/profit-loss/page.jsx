@@ -125,7 +125,7 @@ export default function ProfitLossReportPage() {
       header: "Average Cost",
       accessor: "averageCost",
       align: "right",
-      render: (row) => currency(row.averageCost || 0),
+      render: (row) => currency(row.averageCost * row.itemsSold || 0),
     },
     {
       header: "PNL",

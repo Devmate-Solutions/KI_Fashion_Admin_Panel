@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label"
 
 export default function ExpenseForm({ onSave }) {
   // Metadata fields
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split("T")[0])
+  const [expenseDate, setExpenseDate] = useState(new Date().toLocaleDateString('en-CA'))
   const [tc, setTc] = useState("")
   const [exchangeRate, setExchangeRate] = useState(1.0)
   const [numberOfItems, setNumberOfItems] = useState(0)
@@ -100,24 +100,24 @@ export default function ExpenseForm({ onSave }) {
       setError('Please select an expense date')
       return
     }
-    
+
     if (!tc) {
       setError('Please select TC')
       return
     }
-    
+
     if (rows.length === 0) {
       setError('Please add at least one product')
       return
     }
-    
+
     // Validate that all rows have required fields
-    const invalidRows = rows.filter(row => 
-      !row.productCode || 
-      !row.quantity || 
+    const invalidRows = rows.filter(row =>
+      !row.productCode ||
+      !row.quantity ||
       row.quantity <= 0
     )
-    
+
     if (invalidRows.length > 0) {
       setError('Please fill in product code and quantity for all rows')
       return
@@ -126,7 +126,7 @@ export default function ExpenseForm({ onSave }) {
     try {
       setIsSaving(true)
       setError(null)
-      
+
       // Prepare payload
       const payload = {
         expenseDate,
@@ -153,7 +153,7 @@ export default function ExpenseForm({ onSave }) {
       if (onSave) {
         await onSave(payload)
       }
-      
+
     } catch (err) {
       console.error('Error saving expense:', err)
       setError(err.message || 'Failed to save expense. Please try again.')
@@ -181,11 +181,11 @@ export default function ExpenseForm({ onSave }) {
       )}
 
       {/* Section 1: Expense Details */}
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <section className="rounded-lg border border-border p-6 shadow-sm">
         <h2 className="text-base font-semibold mb-4">Expense Details</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="expense-date">Date</Label>
+            <Label htmlFor="expense-date">Datmdddde</Label>
             <Input
               id="expense-date"
               type="date"
@@ -374,7 +374,7 @@ export default function ExpenseForm({ onSave }) {
                   <td className="p-2">
                     <Input
                       type="text"
-              inputMode="decimal"
+                      inputMode="decimal"
                       value={row.unitPrice}
                       onChange={(e) => {
                         const value = e.target.value;
@@ -388,7 +388,7 @@ export default function ExpenseForm({ onSave }) {
                   <td className="p-2">
                     <Input
                       type="text"
-              inputMode="decimal"
+                      inputMode="decimal"
                       value={row.totalPrice.toFixed(2)}
                       readOnly
                       disabled

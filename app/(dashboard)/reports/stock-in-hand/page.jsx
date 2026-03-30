@@ -22,8 +22,8 @@ function formatDate(date) {
 function getDefaultDateRange() {
   const today = new Date()
   return {
-    from: today.toISOString().split("T")[0],
-    to: today.toISOString().split("T")[0],
+    from: today.toLocaleDateString('en-CA'),
+    to: today.toLocaleDateString('en-CA'),
   }
 }
 

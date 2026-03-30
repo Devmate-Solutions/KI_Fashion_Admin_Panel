@@ -96,7 +96,7 @@ function currency(n) {
 export default function HomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date().toLocaleDateString('en-CA');
 
   // Fetch all dashboard data
   const { data: dashboardData, isLoading: dashboardLoading } =
@@ -104,7 +104,7 @@ export default function HomePage() {
   const fourteenDaysAgo = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() - 14);
-    return d.toISOString().split("T")[0];
+    return d.toLocaleDateString('en-CA');
   }, []);
   const { data: salesData, isLoading: salesLoading } = useSalesReport({ startDate: fourteenDaysAgo, endDate: today });
   const { data: financialData, isLoading: financialLoading } =

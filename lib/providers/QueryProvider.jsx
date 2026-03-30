@@ -10,11 +10,12 @@ export default function QueryProvider({ children }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 5 * 60 * 1000, // 5 minutes
-            cacheTime: 10 * 60 * 1000, // 10 minutes
+            staleTime: 10 * 1000, // 10 seconds
+            gcTime: 10 * 60 * 1000, // 10 minutes
             retry: 1,
             refetchOnWindowFocus: true,
             refetchOnReconnect: true,
+            refetchInterval: 30 * 1000, // 30 seconds global polling
           },
           mutations: {
             retry: 0,
