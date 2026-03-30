@@ -184,8 +184,6 @@ export function EmployeeForm({ open, onClose, onSubmit, initialData = null, load
                 <SelectContent>
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="employee">Employee</SelectItem>
-                  <SelectItem value="accountant">Accountant</SelectItem>
-                  <SelectItem value="viewer">Viewer</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -243,7 +241,7 @@ export function EmployeeForm({ open, onClose, onSubmit, initialData = null, load
             </div>
           )}
 
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label className="text-sm font-semibold">Permissions</Label>
             <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
               <div className="grid grid-cols-2 gap-3">
@@ -265,33 +263,33 @@ export function EmployeeForm({ open, onClose, onSubmit, initialData = null, load
                 ))}
               </div>
             </div>
-          </div>
+          </div> */}
 
-        <DialogFooter className="gap-3 pt-4 border-t border-border/60">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={onClose} 
-            disabled={loading}
-            className="h-10 px-5"
-          >
-            Cancel
-          </Button>
-          <Button 
-            type="submit" 
-            disabled={loading}
-            className="h-10 px-5 gap-2"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              initialData ? 'Update Employee' : 'Create Employee'
-            )}
-          </Button>
-        </DialogFooter>
+          <DialogFooter className="gap-3 pt-4 border-t border-border/60">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={loading}
+              className="h-10 px-5"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="h-10 px-5 gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                initialData ? 'Update Employee' : 'Create Employee'
+              )}
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

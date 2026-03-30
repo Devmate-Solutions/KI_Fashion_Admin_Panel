@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthStore } from '@/store/store';
 import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
 
 // Validation schema using Zod
 const loginSchema = z.object({
@@ -27,7 +28,7 @@ const loginSchema = z.object({
 function LoginFormInner() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
-  
+
   const login = useAuthStore((state) => state.login);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -43,9 +44,9 @@ function LoginFormInner() {
   }, [searchParams, router]);
 
   // Setup form with validation
-  const { 
-    register, 
-    handleSubmit, 
+  const {
+    register,
+    handleSubmit,
     formState: { errors, isSubmitting },
     watch,
   } = useForm({
@@ -99,8 +100,8 @@ function LoginFormInner() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Email Field */}
             <div>
-              <label 
-                htmlFor="email" 
+              <label
+                htmlFor="email"
                 className="block text-sm font-medium text-foreground mb-2"
               >
                 Email Address
@@ -126,8 +127,8 @@ function LoginFormInner() {
 
             {/* Password Field */}
             <div>
-              <label 
-                htmlFor="password" 
+              <label
+                htmlFor="password"
                 className="block text-sm font-medium text-foreground mb-2"
               >
                 Password
@@ -175,9 +176,9 @@ function LoginFormInner() {
                 />
                 <span className="ml-2 text-sm text-muted-foreground">Remember me</span>
               </label>
-              <a href="/forgot-password" className="text-sm text-primary hover:text-primary/80 transition-colors">
+              <Link href="/reset-password" className="text-sm text-primary hover:text-primary/80 transition-colors">
                 Forgot password?
-              </a>
+              </Link>
             </div>
 
             {/* Submit Button */}

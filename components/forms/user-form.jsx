@@ -75,7 +75,7 @@ export function UserForm({ open, onClose, onSubmit, initialData = null, loading 
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }))
     }
-    
+
     // Auto-focus phone number field when area code is complete
     if (field === 'phoneAreaCode' && value.length >= 5 && phoneInputRef.current) {
       phoneInputRef.current.focus()
@@ -214,9 +214,6 @@ export function UserForm({ open, onClose, onSubmit, initialData = null, loading 
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="manager">Manager</SelectItem>
                 <SelectItem value="employee">Employee</SelectItem>
-                <SelectItem value="accountant">Accountant</SelectItem>
-                <SelectItem value="supplier">Supplier</SelectItem>
-                <SelectItem value="distributor">Buyer</SelectItem>
               </SelectContent>
             </Select>
           </div>
