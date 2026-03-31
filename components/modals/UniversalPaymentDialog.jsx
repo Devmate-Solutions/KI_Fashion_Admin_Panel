@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Check, ChevronsUpDown, Loader2, User, Building2, Calculator, Calendar as CalendarIcon, Info } from "lucide-react"
+import { Check, ChevronsUpDown, Loader2, User, Building2, Calculator, Calendar as CalendarIcon, Info, CreditCard } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { suppliersAPI } from "@/lib/api/endpoints/suppliers"
 import { buyersAPI } from "@/lib/api/endpoints/buyers"
@@ -45,7 +45,7 @@ export default function UniversalPaymentDialog({ open, onClose }) {
       } else {
         response = await buyersAPI.getAll({ search, limit: 20 })
       }
-      
+
       const data = response.data?.data || response.data || []
       // Standardize entity objects
       const standardized = data.map(e => ({
@@ -87,12 +87,12 @@ export default function UniversalPaymentDialog({ open, onClose }) {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault()
-    
+
     if (!selectedEntity) {
       toast.error("Please select a user")
       return
     }
-    
+
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
       toast.error("Please enter a valid amount")
       return
@@ -124,14 +124,14 @@ export default function UniversalPaymentDialog({ open, onClose }) {
       }
 
       await ledgerAPI.createEntry(payload)
-      
+
       toast.success("Entry recorded successfully")
-      
+
       // Invalidate relevant queries
       queryClient.invalidateQueries(["ledger"])
       queryClient.invalidateQueries(["pending-balances"])
       queryClient.invalidateQueries([entityType === 'supplier' ? 'suppliers' : 'buyers'])
-      
+
       onClose()
     } catch (error) {
       console.error("Submission error:", error)
@@ -148,23 +148,15 @@ export default function UniversalPaymentDialog({ open, onClose }) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl">
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-6 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold flex items-center gap-3">
-              <Calculator className="h-6 w-6 text-blue-400" />
-              Universal Payment & Adjustment
-            </DialogTitle>
-            <p className="text-slate-400 text-sm mt-1 uppercase tracking-wider font-semibold">Super Admin Tool</p>
-          </DialogHeader>
-        </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+
+        <form onSubmit={handleSubmit} className="p-4 space-y-6">
           <div className="grid grid-cols-2 gap-4">
             {/* Entity Type Selection */}
             <div className="space-y-2">
               <Label className="text-xs font-bold text-slate-500 uppercase">Target Entity</Label>
-              <RadioGroup 
-                value={entityType} 
+              <RadioGroup
+                value={entityType}
                 onValueChange={handleEntityChange}
                 className="grid grid-cols-2 gap-2"
               >
@@ -194,8 +186,8 @@ export default function UniversalPaymentDialog({ open, onClose }) {
             {/* Payment Type Selection */}
             <div className="space-y-2">
               <Label className="text-xs font-bold text-slate-500 uppercase">Transaction Nature</Label>
-              <RadioGroup 
-                value={paymentType} 
+              <RadioGroup
+                value={paymentType}
                 onValueChange={setPaymentType}
                 className="grid grid-cols-2 gap-2"
               >
@@ -250,8 +242,8 @@ export default function UniversalPaymentDialog({ open, onClose }) {
                 </PopoverTrigger>
                 <PopoverContent className="w-[450px] p-0" align="start">
                   <Command shouldFilter={false}>
-                    <CommandInput 
-                      placeholder={`Search ${entityType}...`} 
+                    <CommandInput
+                      placeholder={`Search ${entityType}...`}
                       onValueChange={(val) => fetchEntities(val)}
                     />
                     <CommandList>
@@ -312,7 +304,7 @@ export default function UniversalPaymentDialog({ open, onClose }) {
                     "text-lg font-bold",
                     paymentType === 'credit' ? "text-green-600" : "text-amber-600"
                   )}>
-                    {paymentType === 'credit' 
+                    {paymentType === 'credit'
                       ? currency(Math.max(0, Math.abs(selectedEntity.balance) - (parseFloat(formData.amount) || 0)))
                       : currency(Math.abs(selectedEntity.balance) + (parseFloat(formData.amount) || 0))
                     }
@@ -332,9 +324,8 @@ export default function UniversalPaymentDialog({ open, onClose }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="amount" className="text-xs font-bold text-slate-500 uppercase">Amount Set (£)</Label>
+              <Label htmlFor="amount" className="text-xs font-bold text-slate-500 uppercase">Amount Set</Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">£</span>
                 <Input
                   id="amount"
                   type="number"
@@ -394,15 +385,15 @@ export default function UniversalPaymentDialog({ open, onClose }) {
           </div>
         </form>
 
-        <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+        <DialogFooter className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
           <Button variant="ghost" onClick={onClose} className="font-bold text-slate-500 hover:text-slate-700">
             DISCARD
           </Button>
-          <Button 
-            onClick={handleSubmit} 
+          <Button
+            onClick={handleSubmit}
             disabled={isSubmitting || !selectedEntity || !formData.amount}
             className={cn(
-              "px-8 py-6 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all h-auto",
+              "px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all h-auto",
               paymentType === 'credit' ? "bg-green-600 hover:bg-green-700 shadow-green-200" : "bg-blue-600 hover:bg-blue-700 shadow-blue-200"
             )}
           >
