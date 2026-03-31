@@ -21,6 +21,7 @@ export default function ReportLayout({
   summary = [],
   onExport = null,
   showBeginningButton = false,
+  hideDateFilter = false,
 }) {
   const printRef = useRef(null)
 
@@ -81,8 +82,8 @@ export default function ReportLayout({
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap items-end gap-3">
-            {dateRange && onDateChange && (
+                  <div className="flex flex-wrap items-end gap-3">
+            {dateRange && onDateChange && !hideDateFilter && (
               <>
                 <div className="flex flex-col gap-1">
                   <Label htmlFor="fromDate" className="text-xs">From Date</Label>
@@ -118,8 +119,6 @@ export default function ReportLayout({
                 </div>
               </>
             )}
-
-
           </div>
         </div>
       </div>

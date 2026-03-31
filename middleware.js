@@ -38,7 +38,7 @@
 //  */
 // export function middleware(request) {
 //   const { pathname } = request.nextUrl;
-  
+
 //   // Allow API auth routes
 //   if (API_AUTH_ROUTES.some(route => pathname.startsWith(route))) {
 //     return NextResponse.next();
@@ -46,7 +46,7 @@
 
 //   // Get authentication token from cookies
 //   const token = request.cookies.get('auth_token')?.value;
-  
+
 //   // Check if route is public
 //   const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route));
 //   const isAuthRoute = AUTH_ROUTES.some(route => pathname.startsWith(route));
@@ -61,7 +61,7 @@
 //       loginUrl.searchParams.set('redirect', pathname);
 //       return NextResponse.redirect(loginUrl);
 //     }
-    
+
 //     // Allow access to public routes
 //     return NextResponse.next();
 //   }
@@ -69,7 +69,7 @@
 //   // ============================================
 //   // 2. Handle Authenticated Users
 //   // ============================================
-  
+
 //   // If authenticated user tries to access auth pages, redirect to dashboard
 //   if (isAuthRoute) {
 //     return NextResponse.redirect(new URL('/dashboard', request.url));
@@ -78,7 +78,7 @@
 //   // ============================================
 //   // 3. Check Route Permissions
 //   // ============================================
-  
+
 //   // Find matching route permission config
 //   const routeConfig = Object.entries(ROUTE_PERMISSIONS).find(([route]) => 
 //     pathname.startsWith(route)
@@ -86,7 +86,7 @@
 
 //   if (routeConfig) {
 //     const decoded = decodeToken(token);
-    
+
 //     if (!decoded) {
 //       // Invalid token, redirect to login
 //       return NextResponse.redirect(new URL('/login', request.url));
@@ -102,7 +102,7 @@
 //       const hasRequiredPermission = routeConfig.permissions.some(permission => 
 //         hasPermission(token, permission)
 //       );
-      
+
 //       if (!hasRequiredPermission) {
 //         return NextResponse.redirect(new URL('/unauthorized', request.url));
 //       }
@@ -112,7 +112,7 @@
 //   // ============================================
 //   // 4. Add User Info to Request Headers
 //   // ============================================
-  
+
 //   // Add decoded token data to headers for use in server components
 //   const decoded = decodeToken(token);
 //   if (decoded) {
@@ -121,7 +121,7 @@
 //     requestHeaders.set('x-user-email', decoded.email);
 //     requestHeaders.set('x-user-role', decoded.role);
 //     // requestHeaders.set('x-user-permissions', decoded.permissions.join(','));
-    
+
 //     return NextResponse.next({
 //       request: {
 //         headers: requestHeaders,
@@ -170,20 +170,20 @@ const ROUTE_PERMISSIONS = {
   '/products': { permissions: ['products'] },
   '/inventory': { permissions: ['inventory'] },
   '/purchases': { permissions: ['purchases'] },
-  '/expenses': { },
-  '/users': {  },
-  '/reports': { },
+  '/expenses': { roles: ['super-admin', 'admin', 'employee'] },
+  '/users': {},
+  '/reports': { roles: ['super-admin', 'admin', 'employee'] },
   '/settings': { roles: ['super-admin'] },
-  '/logistics': {roles: ['super-admin']},                                  // Any authenticated user can access logistics
+  '/logistics': { roles: ['super-admin'] },                                  // Any authenticated user can access logistics
   '/dispatch-orders': { roles: ['super-admin', 'admin'] }, // Admin and manager can access dispatch orders
   '/campaigns': { roles: ['super-admin', 'admin'] },
   '/product-types': { roles: ['super-admin'] },            // Admin only
-  '/cost-types': { },               // Admin only
+  '/cost-types': {},               // Admin only
   '/delivery-personnel': { roles: ['super-admin'] },       // Admin only
-  '/home': {},                                       // Any authenticated user
-  '/buying': {},                                     // Any authenticated user
-  '/selling': {},                                    // Any authenticated user
-  '/stock': {},                                      // Any authenticated user
+  '/home': { roles: ['super-admin', 'admin'] },                                       // Any authenticated user
+  '/buying': { roles: ['super-admin', 'admin', 'employee'] },
+  '/selling': { roles: ['super-admin', 'admin', 'employee'] },
+  '/stock': { roles: ['super-admin', 'admin', 'employee'] },
   '/customer-ledger': {},                            // Any authenticated user
   '/supplier-ledger': {},                            // Any authenticated user
   '/daily-report-form': {},                          // Any authenticated user
@@ -196,7 +196,7 @@ const ROUTE_PERMISSIONS = {
  */
 export function middleware(request) {
   const { pathname } = request.nextUrl;
-  
+
   // Allow API auth routes
   if (API_AUTH_ROUTES.some(route => pathname.startsWith(route))) {
     return NextResponse.next();
@@ -204,7 +204,7 @@ export function middleware(request) {
 
   // Get authentication token from cookies
   const token = request.cookies.get('auth_token')?.value;
-  
+
   // Check if route is public
   const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route));
   const isAuthRoute = AUTH_ROUTES.some(route => pathname.startsWith(route));
@@ -219,7 +219,7 @@ export function middleware(request) {
       loginUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(loginUrl);
     }
-    
+
     // Allow access to public routes
     return NextResponse.next();
   }
@@ -227,7 +227,7 @@ export function middleware(request) {
   // ============================================
   // 2. Handle Authenticated Users
   // ============================================
-  
+
   // Check if user has CRM portal access
   // This prevents suppliers, distributors, and buyers from accessing CRM dashboard
   if (!hasCrmAccess(token)) {
@@ -239,24 +239,26 @@ export function middleware(request) {
     response.cookies.delete('auth_token');
     return response;
   }
-  
-  // If authenticated user tries to access auth pages, redirect to dispatch-orders
+
+  // If authenticated user tries to access auth pages, redirect to dispatch-orders (or /buying for employee)
   if (isAuthRoute) {
-    return NextResponse.redirect(new URL('/dispatch-orders', request.url));
+    const decoded = decodeToken(token);
+    const redirectTo = decoded?.role === 'employee' ? '/buying' : '/dispatch-orders';
+    return NextResponse.redirect(new URL(redirectTo, request.url));
   }
 
   // ============================================
   // 3. Check Route Permissions
   // ============================================
-  
+
   // Find matching route permission config
-  const routeConfig = Object.entries(ROUTE_PERMISSIONS).find(([route]) => 
+  const routeConfig = Object.entries(ROUTE_PERMISSIONS).find(([route]) =>
     pathname.startsWith(route)
   )?.[1];
 
   if (routeConfig) {
     const decoded = decodeToken(token);
-    
+
     if (!decoded) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
@@ -264,7 +266,7 @@ export function middleware(request) {
     // Check role requirements
     if (routeConfig.roles) {
       const hasRequiredRole = hasRole(token, routeConfig.roles);
-      
+
       if (!hasRequiredRole) {
         return NextResponse.redirect(new URL('/unauthorized', request.url));
       }
@@ -272,10 +274,10 @@ export function middleware(request) {
 
     // Check permission requirements
     if (routeConfig.permissions) {
-      const hasRequiredPermission = routeConfig.permissions.some(permission => 
+      const hasRequiredPermission = routeConfig.permissions.some(permission =>
         hasPermission(token, permission)
       );
-      
+
       if (!hasRequiredPermission) {
         return NextResponse.redirect(new URL('/unauthorized', request.url));
       }
@@ -285,7 +287,7 @@ export function middleware(request) {
   // ============================================
   // 4. Add User Info to Request Headers
   // ============================================
-  
+
   // Add decoded token data to headers for use in server components
   const decoded = decodeToken(token);
   if (decoded) {
@@ -294,7 +296,7 @@ export function middleware(request) {
     requestHeaders.set('x-user-email', decoded.email);
     requestHeaders.set('x-user-role', decoded.role);
     // requestHeaders.set('x-user-permissions', decoded.permissions.join(','));
-    
+
     return NextResponse.next({
       request: {
         headers: requestHeaders,

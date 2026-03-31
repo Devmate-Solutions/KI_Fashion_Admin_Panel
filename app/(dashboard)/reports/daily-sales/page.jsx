@@ -8,6 +8,7 @@ import { useDailySalesReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
 import { getDefaultDateRange } from "@/lib/utils/getDefaultDateRange"
+import { useAuthStore } from "@/store/store"
 import toast from "react-hot-toast"
 
 function currency(n) {
@@ -21,7 +22,16 @@ function formatDate(date) {
 }
 
 export default function DailySalesReportPage() {
-  const [dateRange, setDateRange] = useState(getDefaultDateRange())
+  const user = useAuthStore((s) => s.user)
+  const isEmployee = user?.role === "employee"
+
+  const [dateRange, setDateRange] = useState(() => {
+    const defaults = getDefaultDateRange()
+    if (isEmployee) {
+      return { from: defaults.to, to: defaults.to }
+    }
+    return defaults
+  })
 
   const { data, isLoading, isError, error, refetch } = useDailySalesReport({
     startDate: dateRange.from,
@@ -171,6 +181,7 @@ export default function DailySalesReportPage() {
       description="All sales transactions for the selected date range"
       dateRange={dateRange}
       onDateChange={setDateRange}
+      hideDateFilter={isEmployee}
       onRefresh={refetch}
       onExport={handleExport}
       loading={isLoading}

@@ -60,6 +60,8 @@ export default function SellingPage() {
   // Fetch sales data
   const { data: sellingRows = [], isLoading: salesLoading } = useSales({
     limit: 500,
+    startDate: dateRange.from,
+    endDate: dateRange.to,
   })
 
   const filteredSellingRows = useMemo(() => {
@@ -249,7 +251,10 @@ export default function SellingPage() {
   }
 
   // Sales Return
-  const { data: salesReturnData, isLoading: salesReturnLoading } = useSaleReturns()
+  const { data: salesReturnData, isLoading: salesReturnLoading } = useSaleReturns({
+    startDate: dateRange.from,
+    endDate: dateRange.to,
+  })
   const salesReturnRows = salesReturnData || []
   const [selectedReturn, setSelectedReturn] = useState(null)
 

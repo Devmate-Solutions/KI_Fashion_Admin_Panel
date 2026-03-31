@@ -7,6 +7,7 @@ import PrintableTable from "@/components/reports/PrintableTable"
 import { useReceivablesReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import { useAuthStore } from "@/store/store"
 import toast from "react-hot-toast"
 
 function formatNumber(n) {
@@ -36,7 +37,16 @@ function getDefaultDateRange() {
 }
 
 export default function ReceivablesReportPage() {
-  const [dateRange, setDateRange] = useState(getDefaultDateRange())
+  const user = useAuthStore((s) => s.user)
+  const isEmployee = user?.role === "employee"
+
+  const [dateRange, setDateRange] = useState(() => {
+    const defaults = getDefaultDateRange()
+    if (isEmployee) {
+      return { from: defaults.to, to: defaults.to }
+    }
+    return defaults
+  })
   const router = useRouter()
 
   const { data, isLoading, isError, error, refetch } = useReceivablesReport({
@@ -127,7 +137,8 @@ export default function ReceivablesReportPage() {
       loading={isLoading}
       error={isError ? error : null}
       summary={summary}
-      showBeginningButton={true}
+      showBeginningButton={!isEmployee}
+      hideDateFilter={isEmployee}
     >
       <PrintableTable
         columns={columns}

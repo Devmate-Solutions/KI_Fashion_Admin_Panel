@@ -6,6 +6,7 @@ import PrintableTable from "@/components/reports/PrintableTable"
 import { useCashInHandReport } from "@/lib/hooks/useReports"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
 import { getDefaultDateRange } from "@/lib/utils/getDefaultDateRange"
+import { useAuthStore } from "@/store/store"
 import toast from "react-hot-toast"
 
 function currency(n) {
@@ -22,7 +23,16 @@ function formatDate(date) {
 const DASH = <span className="text-muted-foreground">—</span>
 
 export default function CashInHandReportPage() {
-    const [dateRange, setDateRange] = useState(getDefaultDateRange())
+    const user = useAuthStore((s) => s.user)
+    const isEmployee = user?.role === "employee"
+
+    const [dateRange, setDateRange] = useState(() => {
+        const defaults = getDefaultDateRange()
+        if (isEmployee) {
+            return { from: defaults.to, to: defaults.to }
+        }
+        return defaults
+    })
 
     const { data, isLoading, isError, error, refetch } = useCashInHandReport({
         startDate: dateRange.from,
@@ -229,6 +239,7 @@ export default function CashInHandReportPage() {
             loading={isLoading}
             error={isError ? error : null}
             summary={summaryCards}
+            hideDateFilter={isEmployee}
         >
             <PrintableTable
                 columns={columns}

@@ -66,9 +66,10 @@ function LoginFormInner() {
     setError(null);
 
     try {
-      await login(data.email, data.password);
-      // Honour the ?redirect param set by the middleware, fall back to /dispatch-orders
-      const redirectTo = searchParams.get('redirect') || '/dispatch-orders';
+      const user = await login(data.email, data.password);
+      // Honour the ?redirect param set by the middleware, fall back to /buying for employee, /dispatch-orders for others
+      const defaultRedirect = user?.role === 'employee' ? '/buying' : '/dispatch-orders';
+      const redirectTo = searchParams.get('redirect') || defaultRedirect;
       router.push(redirectTo);
     } catch (err) {
       console.error("Login error:", err); // Debug log
@@ -176,9 +177,9 @@ function LoginFormInner() {
                 />
                 <span className="ml-2 text-sm text-muted-foreground">Remember me</span>
               </label>
-              <Link href="/reset-password" className="text-sm text-primary hover:text-primary/80 transition-colors">
+              {/* <Link href="/reset-password" className="text-sm text-primary hover:text-primary/80 transition-colors">
                 Forgot password?
-              </Link>
+              </Link> */}
             </div>
 
             {/* Submit Button */}

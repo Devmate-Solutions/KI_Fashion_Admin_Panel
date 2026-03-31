@@ -7,6 +7,7 @@ import PrintableTable from "@/components/reports/PrintableTable"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
 import { useProfitLossReport } from "@/lib/hooks/useReports"
 import { getDefaultDateRange } from "@/lib/utils/getDefaultDateRange"
+import { useAuthStore } from "@/store/store"
 import toast from "react-hot-toast"
 
 function currency(n) {
@@ -20,7 +21,16 @@ function formatDate(date) {
 }
 
 export default function ProfitLossReportPage() {
-  const [dateRange, setDateRange] = useState(getDefaultDateRange())
+  const user = useAuthStore((s) => s.user)
+  const isEmployee = user?.role === "employee"
+
+  const [dateRange, setDateRange] = useState(() => {
+    const defaults = getDefaultDateRange()
+    if (isEmployee) {
+      return { from: defaults.to, to: defaults.to }
+    }
+    return defaults
+  })
 
   const { data, isLoading, isError, error, refetch } = useProfitLossReport({
     startDate: dateRange.from,
@@ -188,6 +198,7 @@ export default function ProfitLossReportPage() {
       loading={isLoading}
       error={isError ? error : null}
       summary={summaryCards}
+      hideDateFilter={isEmployee}
     >
       <PrintableTable
         columns={columns}

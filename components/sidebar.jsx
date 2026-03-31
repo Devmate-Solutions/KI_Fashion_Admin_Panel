@@ -27,7 +27,8 @@ import {
   RotateCcw,
   Settings2,
   ClipboardCheck,
-  ListChecks
+  ListChecks,
+  History
 } from "lucide-react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { useAuthStore } from "@/store/store";
@@ -59,8 +60,9 @@ const items = [
   // { href: "/delivery-personnel", label: "Delivery Staff", icon: Truck },
   { href: "/cost-types", label: "Cost Config", icon: Settings2 },
   { type: "separator", label: "Governance" },
-  {href: "/campaigns", label: "Campaigns", icon: ListChecks },
+  { href: "/campaigns", label: "Campaigns", icon: ListChecks },
   { href: "/approval-queue", label: "Approval Queue", icon: ClipboardCheck, superAdminOnly: true, hasBadge: true },
+  { href: "/audit-trail", label: "Audit Trail", icon: History, superAdminOnly: true },
   { href: "/my-requests", label: "My Requests", icon: ListChecks },
 ];
 
@@ -86,10 +88,43 @@ export default function Sidebar() {
   const [reportsOpen, setReportsOpen] = useState(false);
   const user = useAuthStore((s) => s.user);
   const isSuperAdmin = user?.role === "super-admin";
+  const isEmployee = user?.role === "employee";
   const { data: pendingCount } = usePendingRequestCount();
 
   // Filter items based on role
-  const visibleItems = items.filter((it) => !it.superAdminOnly || isSuperAdmin);
+  const visibleItems = items.filter((it, index, array) => {
+    // Hide superAdminOnly items
+    if (it.superAdminOnly && !isSuperAdmin) return false;
+
+    // Specific restrictions for employee
+    if (isEmployee) {
+      const allowedEmployeeHrefs = ["/buying", "/selling", "/stock", "/expenses", "/reports"];
+      if (it.href && !allowedEmployeeHrefs.includes(it.href)) return false;
+    }
+
+    return true;
+  }).filter((it, index, array) => {
+    // Second pass: Remove redundant separators
+    if (it.type === "separator") {
+      // Check if there are any non-separator items before the next separator or end of list
+      const nextItems = array.slice(index + 1);
+      const hasNextContent = nextItems.some(next => next.type !== "separator");
+      const isNextSeparator = nextItems[0]?.type === "separator";
+
+      if (!hasNextContent || isNextSeparator) return false;
+    }
+    return true;
+  });
+
+  // Filter report links for employee
+  const filteredReportLinks = isEmployee
+    ? reportLinks.filter(rl => [
+      "/reports/receivables",
+      "/reports/daily-sales",
+      "/reports/profit-loss",
+      "/reports/cash-in-hand"
+    ].includes(rl.href))
+    : reportLinks;
 
   useEffect(() => {
     const saved =
@@ -172,7 +207,7 @@ export default function Sidebar() {
                       </Collapsible.Trigger>
                       <Collapsible.Content className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
                         <ul className="mt-1 space-y-1">
-                          {reportLinks.map((report) => {
+                          {filteredReportLinks.map((report) => {
                             const active = pathname === report.href;
                             return (
                               <li key={report.href}>
@@ -316,7 +351,7 @@ export default function Sidebar() {
                       {!collapsed && (
                         <Collapsible.Content className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
                           <ul className="mt-1 space-y-1">
-                            {reportLinks.map((report) => {
+                            {filteredReportLinks.map((report) => {
                               const active = pathname === report.href;
                               return (
                                 <li key={report.href}>
