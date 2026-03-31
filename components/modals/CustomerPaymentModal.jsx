@@ -187,6 +187,7 @@ export default function CustomerPaymentModal({
             // Use the new payment API that creates a payment receipt
             let lastPaymentNumber = null
             let totalCreated = 0
+            let isPendingApproval = false
 
             if (form.paymentDirection === 'debit') {
                 // For debit transactions, create single payment with adjustment reason
@@ -199,6 +200,7 @@ export default function CustomerPaymentModal({
                     paymentDirection: form.paymentDirection,
                     debitReason: 'adjustment'
                 })
+                if (debitResult.status === 202) isPendingApproval = true
                 lastPaymentNumber = debitResult.data?.data?.payment?.paymentNumber
                 totalCreated++
             } else {
@@ -212,6 +214,7 @@ export default function CustomerPaymentModal({
                         description: form.notes || `Cash payment from ${entityName}`,
                         paymentDirection: form.paymentDirection
                     })
+                    if (cashResult.status === 202) isPendingApproval = true
                     lastPaymentNumber = cashResult.data?.data?.payment?.paymentNumber
                     totalCreated++
                 }
@@ -225,9 +228,18 @@ export default function CustomerPaymentModal({
                         description: form.notes || `Bank payment from ${entityName}`,
                         paymentDirection: form.paymentDirection
                     })
+                    if (bankResult.status === 202) isPendingApproval = true
                     lastPaymentNumber = bankResult.data?.data?.payment?.paymentNumber
                     totalCreated++
                 }
+            }
+
+            if (isPendingApproval) {
+                toast.success('Backdated payment request submitted for approval.')
+                handleClose()
+                const router = window.nextRouter || { push: (url) => window.location.href = url }
+                router.push('/approvals/edit-requests')
+                return
             }
 
             const typeLabel = form.paymentDirection === 'debit' ? 'debit transaction' : 'payment'
@@ -524,7 +536,7 @@ export default function CustomerPaymentModal({
                                     setForm({ ...form, date: date.toLocaleDateString('en-CA') });
                                 }
                             }}
-                            disabled={!isSuperAdmin}
+                            restrictByRole={true}
                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         />
                     </div>

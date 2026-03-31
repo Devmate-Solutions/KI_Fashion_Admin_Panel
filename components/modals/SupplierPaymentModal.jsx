@@ -194,6 +194,7 @@ export default function SupplierPaymentModal({
 
         try {
             if (transactionType === 'credit') {
+                let isPendingApproval = false
                 const createdReceiptNumbers = []
 
                 // Credit transactions (payments)
@@ -206,6 +207,7 @@ export default function SupplierPaymentModal({
                         date: form.date,
                         description: form.notes || `Cash payment to ${entityName}`
                     })
+                    if (response.status === 202) isPendingApproval = true
                     const receiptNumber = response?.data?.data?.receipt?.receiptNumber
                     if (receiptNumber) {
                         createdReceiptNumbers.push(receiptNumber)
@@ -219,10 +221,19 @@ export default function SupplierPaymentModal({
                         date: form.date,
                         description: form.notes || `Bank payment to ${entityName}`
                     })
+                    if (response.status === 202) isPendingApproval = true
                     const receiptNumber = response?.data?.data?.receipt?.receiptNumber
                     if (receiptNumber) {
                         createdReceiptNumbers.push(receiptNumber)
                     }
+                }
+
+                if (isPendingApproval) {
+                    toast.success('Backdated payment request submitted for approval.')
+                    handleClose()
+                    const router = window.nextRouter || { push: (url) => window.location.href = url }
+                    router.push('/approvals/edit-requests')
+                    return
                 }
 
                 toast.success(
@@ -240,10 +251,9 @@ export default function SupplierPaymentModal({
 
                 handleClose()
                 onSuccess?.({ receiptNumbers: createdReceiptNumbers })
-                return
             } else {
                 // Debit transactions (charges/adjustments)
-                await ledgerAPI.createEntry({
+                const response = await ledgerAPI.createEntry({
                     type: 'supplier',
                     entityId: entityId,
                     entityModel: 'Supplier',
@@ -253,19 +263,27 @@ export default function SupplierPaymentModal({
                     description: form.notes || `Debit adjustment for ${entityName}`
                 })
 
+                if (response.status === 202) {
+                    toast.success('Backdated adjustment request submitted for approval.')
+                    handleClose()
+                    const router = window.nextRouter || { push: (url) => window.location.href = url }
+                    router.push('/approvals/edit-requests')
+                    return
+                }
+
                 toast.success(`Charge of ${formatAmount(debitAmount)} recorded successfully`)
+
+                // Invalidate queries to refresh data
+                queryClient.invalidateQueries({ queryKey: ['pending-balances'] })
+                queryClient.invalidateQueries({ queryKey: ['ledger', 'supplier'] })
+                queryClient.invalidateQueries({ queryKey: ['ledger'] })
+                queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+                queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] })
+                queryClient.invalidateQueries({ queryKey: ['supplier-payment-receipts'] })
+
+                handleClose()
+                onSuccess?.()
             }
-
-            // Invalidate queries to refresh data
-            queryClient.invalidateQueries({ queryKey: ['pending-balances'] })
-            queryClient.invalidateQueries({ queryKey: ['ledger', 'supplier'] })
-            queryClient.invalidateQueries({ queryKey: ['ledger'] })
-            queryClient.invalidateQueries({ queryKey: ['suppliers'] })
-            queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] })
-            queryClient.invalidateQueries({ queryKey: ['supplier-payment-receipts'] })
-
-            handleClose()
-            onSuccess?.()
         } catch (error) {
             console.error('Error creating transaction:', error)
             toast.error(error.response?.data?.message || error.message || 'Failed to record transaction')
@@ -524,7 +542,7 @@ export default function SupplierPaymentModal({
                                     setForm({ ...form, date: date.toLocaleDateString('en-CA') });
                                 }
                             }}
-                            disabled={!isSuperAdmin}
+                            restrictByRole={true}
                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         />
                     </div>

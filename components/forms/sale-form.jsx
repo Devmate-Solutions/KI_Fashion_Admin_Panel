@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useState, useRef } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -89,6 +91,7 @@ const getRowTotalPrice = (row) => {
 // Matches buying-form.jsx structure and design
 
 export default function SaleForm({ onSave, initialData, saleId }) {
+  const router = useRouter()
   const isEditMode = !!saleId
   const { user } = useAuthStore()
   const isSuperAdmin = user?.role === 'super-admin'
@@ -843,6 +846,12 @@ export default function SaleForm({ onSave, initialData, saleId }) {
         response = await salesAPI.create(payload)
       }
 
+      if (response.status === 202) {
+        toast.success('Backdated sale request submitted for super-admin approval.')
+        router.push('/approvals/edit-requests')
+        return
+      }
+
       if (onSave) {
         onSave(response.data?.data || response.data)
       }
@@ -994,7 +1003,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                       setSaleDate(date.toLocaleDateString('en-CA'));
                     }
                   }}
-                  disabled={!isSuperAdmin}
+                  restrictByRole={true}
                   className="h-11 w-full pl-10 pr-3 text-base font-medium rounded-lg border border-input bg-background"
                   placeholder="DD/MM/YYYY"
                 />

@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label"
 import { saleReturnsAPI } from "@/lib/api/endpoints/saleReturns"
 import toast from "react-hot-toast"
 import { Badge } from "@/components/ui/badge"
+import BritishDatePicker from "@/components/BritishDatePicker"
+import { useRouter } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -37,6 +39,8 @@ export default function SaleReturnFormFrictionless({ onSave }) {
   const [showResults, setShowResults] = useState(false)
   const [salesExpanded, setSalesExpanded] = useState(true)
   const [selectedItems, setSelectedItems] = useState([])
+  const [returnDate, setReturnDate] = useState(new Date())
+  const router = useRouter()
   
   // Item Selection Dialog (for selecting items from a sale)
   const [itemDialogOpen, setItemDialogOpen] = useState(false)
@@ -324,28 +328,37 @@ export default function SaleReturnFormFrictionless({ onSave }) {
 
       const saleGroups = groupBySale()
 
-      // Process each sale group
       for (const group of saleGroups) {
+        const itemsData = group.items.map(item => ({
+          itemIndex: item.itemIndex,
+          product: item.product,
+          originalQuantity: item.originalQuantity,
+          returnedQuantity: item.returnQty,
+          unitPrice: item.unitPrice,
+          reason: item.reason,
+          // Tell backend this is a partial item return (returnedQuantity is in items, not packets)
+          isPartialReturn: item.returnMode === 'partial_items' || false,
+          // For partial item returns, send explicit composition; for whole-packet, backend auto-derives
+          returnComposition: item.returnMode === 'partial_items' && item.returnCompositionDetails
+            ? item.returnCompositionDetails
+            : undefined
+        }))
+
         const payload = {
           sale: group.saleId,
-          items: group.items.map(item => ({
-            itemIndex: item.itemIndex,
-            product: item.product,
-            originalQuantity: item.originalQuantity,
-            returnedQuantity: item.returnQty,
-            unitPrice: item.unitPrice,
-            reason: item.reason,
-            // Tell backend this is a partial item return (returnedQuantity is in items, not packets)
-            isPartialReturn: item.returnMode === 'partial_items' || false,
-            // For partial item returns, send explicit composition; for whole-packet, backend auto-derives
-            returnComposition: item.returnMode === 'partial_items' && item.returnCompositionDetails
-              ? item.returnCompositionDetails
-              : undefined
-          })),
-          notes: `Sale return processed - ${group.items.length} item(s) from ${group.saleNumber}`
+          items: itemsData,
+          notes: `Sale return processed - ${group.items.length} item(s) from ${group.saleNumber}`,
+          returnDate: returnDate.toISOString()
         }
 
-        await saleReturnsAPI.create(payload)
+        const response = await saleReturnsAPI.create(payload)
+
+        if (response?.status === 202) {
+          toast.success('Backdated sale return request submitted for approval.')
+          router.push('/approvals/edit-requests')
+          if (onSave) onSave()
+          return
+        }
       }
 
       const itemCount = selectedItems.length
@@ -386,13 +399,25 @@ export default function SaleReturnFormFrictionless({ onSave }) {
       {/* Universal Search */}
       <Card className="border-2 border-primary">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Universal Search
-          </CardTitle>
-          <CardDescription>
-            Search by sale number, invoice number, or customer name - find sales to process returns!
-          </CardDescription>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Search className="h-5 w-5" />
+                Universal Search
+              </CardTitle>
+              <CardDescription>
+                Search by sale number, invoice number, or customer name - find sales to process returns!
+              </CardDescription>
+            </div>
+            <div className="w-[200px]">
+              <Label className="text-xs mb-1 block">Return Date</Label>
+              <BritishDatePicker
+                selected={returnDate}
+                onChange={setReturnDate}
+                restrictByRole={true}
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="relative">

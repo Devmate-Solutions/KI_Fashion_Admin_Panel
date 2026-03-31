@@ -101,12 +101,24 @@ export default function ExpensesPage() {
   const handleSave = async (formData) => {
     try {
       if (editingExpense) {
-        await updateMutation.mutateAsync({
+        const response = await updateMutation.mutateAsync({
           id: editingExpense.id,
           data: formData
         })
+        if (response?.status === 202) {
+          router.push('/approvals/edit-requests')
+          setShowForm(false)
+          setEditingExpense(null)
+          return
+        }
       } else {
-        await createMutation.mutateAsync(formData)
+        const response = await createMutation.mutateAsync(formData)
+        if (response?.status === 202) {
+          router.push('/approvals/edit-requests')
+          setShowForm(false)
+          setEditingExpense(null)
+          return
+        }
       }
       setShowForm(false)
       setEditingExpense(null)

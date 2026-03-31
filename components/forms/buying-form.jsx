@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -77,6 +79,7 @@ import { useSupplierUsers } from "@/lib/hooks/useSupplierUsers";
 // Integrated with backend APIs for suppliers and purchases
 
 export default function BuyingForm({ initialSuppliers = [], onSave }) {
+  const router = useRouter();
   // Loading and error states
   const [isLoadingSuppliers, setIsLoadingSuppliers] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -1253,6 +1256,12 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
       const response = await purchasesAPI.create(payload);
 
+      if (response.status === 202) {
+        toast.success('Backdated purchase request submitted for super-admin approval.');
+        router.push('/approvals/edit-requests');
+        return;
+      }
+
       // Success! Call parent callback with response
       if (onSave) {
         onSave(response.data?.data || response.data);
@@ -1360,6 +1369,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   <BritishDatePicker 
                     value={new Date(invoiceDate)} 
                     onChange={(date) => setInvoiceDate(date)}
+                    restrictByRole={true}
                     className="h-11 w-full rounded-lg border border-input bg-background pl-10 pr-3 py-2 text-sm font-medium text-foreground outline-none transition-all duration-200 focus:ring-2 focus:ring-ring focus:border-transparent hover:border-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder="DD/MM/YYYY"
                   />

@@ -79,8 +79,18 @@ export default function BuyingPage() {
 
   const [page, setPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
-  const today = new Date().toLocaleDateString('en-CA')
-  const [dateRange, setDateRange] = useState({ from: today, to: today })
+  const today = useMemo(() => new Date().toLocaleDateString('en-CA'), [])
+  const yesterday = useMemo(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 1)
+    return d.toLocaleDateString('en-CA')
+  }, [])
+
+  const [dateRange, setDateRange] = useState(() => {
+    const initialDate = user?.role === 'employee' ? yesterday : today
+    return { from: initialDate, to: initialDate }
+  })
+
 
   // When searching, fetch more results for better client-side filtering
   // When not searching, use normal pagination

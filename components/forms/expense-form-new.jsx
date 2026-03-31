@@ -147,6 +147,7 @@ export default function ExpenseFormNew({ expense, onSave, onCancel, isLoading })
         <BritishDatePicker
           value={formData.expenseDate}
           onChange={(date) => handleChange('expenseDate', date ? date.toLocaleDateString('en-CA') : '')}
+          restrictByRole={true}
           maxDate={null}
           className={errors.expenseDate ? 'border-red-500' : ''}
         />

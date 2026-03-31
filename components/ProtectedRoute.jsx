@@ -15,8 +15,8 @@ import { AlertCircle } from 'lucide-react';
  *   <UsersPage />
  * </ProtectedRoute>
  */
-export function ProtectedRoute({ 
-  children, 
+export function ProtectedRoute({
+  children,
   requiredPermissions = [],
   requiredRoles = [],
   fallback
@@ -36,18 +36,18 @@ export function ProtectedRoute({
 
     // Check role requirements
     if (user && requiredRoles.length > 0 && !hasRole(requiredRoles)) {
-      router.push('/unauthorized');
+      router.push('/buying');
       return;
     }
 
     // Check permission requirements (user must have ALL specified permissions)
     if (user && requiredPermissions.length > 0) {
-      const hasAllPermissions = requiredPermissions.every(permission => 
+      const hasAllPermissions = requiredPermissions.every(permission =>
         hasPermission(permission)
       );
-      
+
       if (!hasAllPermissions) {
-        router.push('/unauthorized');
+        router.push('/buying');
         return;
       }
     }
@@ -69,10 +69,10 @@ export function ProtectedRoute({
 
   // Check permissions before rendering
   if (user && requiredPermissions.length > 0) {
-    const hasAllPermissions = requiredPermissions.every(permission => 
+    const hasAllPermissions = requiredPermissions.every(permission =>
       hasPermission(permission)
     );
-    
+
     if (!hasAllPermissions) {
       return null;
     }

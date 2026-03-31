@@ -89,6 +89,7 @@ import DeleteRequestDialog from "@/components/modals/DeleteRequestDialog";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { SEASON_OPTIONS } from "@/lib/constants/seasons";
 import { cn } from "@/lib/utils";
+import BritishDatePicker from "@/components/BritishDatePicker";
 
 // Helper to get image array from various sources
 const getImageArray = (item) => {
@@ -1179,12 +1180,19 @@ export default function DispatchOrderDetailPage({ params }) {
     };
 
     submitApprovalMutation.mutate(approvalData, {
-      onSuccess: () => {
+      onSuccess: (data) => {
         setCashPayment("0");
         setBankPayment("0");
         setExchangeRate("0");
         setPercentage("0");
         setActiveTab("confirm");
+        
+        if (data?.status === 'pending') {
+          toast.success(data?.message || "Backdated order submitted for approval");
+          router.push("/approvals/edit-requests");
+          return;
+        }
+        
         toast.success("Order submitted for approval successfully!");
       },
     });
@@ -1316,12 +1324,18 @@ export default function DispatchOrderDetailPage({ params }) {
 
 
     confirmMutation.mutate(confirmData, {
-      onSuccess: () => {
+      onSuccess: (data) => {
         setCashPayment("0");
         setBankPayment("0");
         setExchangeRate("0");
         setPercentage("0");
         setActiveTab("confirm");
+
+        if (data?.status === 'pending') {
+          toast.success(data?.message || "Backdated confirmation submitted for approval");
+          router.push("/approvals/edit-requests");
+          return;
+        }
 
         // Open barcode print modal with auto-print after confirmation
         setTimeout(() => {
@@ -1827,13 +1841,11 @@ export default function DispatchOrderDetailPage({ params }) {
                 <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-16 shrink-0">Date</span>
                 {isPending && editingField === "dispatchDate" ? (
                   <div className="flex gap-1 items-center">
-                    <Input
-                      type="date"
+                    <BritishDatePicker
                       value={editedDispatchDate}
                       onChange={(e) => setEditedDispatchDate(e.target.value)}
-                      onBlur={() => setEditingField(null)}
-                      className="h-7 text-xs border-blue-500 border-2 w-36"
-                      autoFocus
+                      restrictByRole={true}
+                      className="h-7 text-xs border-blue-500 border-2 w-42"
                     />
                     <Button size="sm" variant="ghost" onClick={() => setEditingField(null)} className="h-7 px-1.5">
                       <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />

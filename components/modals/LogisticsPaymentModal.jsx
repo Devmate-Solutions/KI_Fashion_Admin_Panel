@@ -240,6 +240,7 @@ export default function LogisticsPaymentModal({
 
     try {
       if (transactionType === 'credit') {
+        let isPendingApproval = false
         // Credit transactions (payments)
         // Process sequentially to avoid race conditions with pending charges
         // Cash payment is processed first, then bank payment sees updated balances
@@ -250,6 +251,7 @@ export default function LogisticsPaymentModal({
             date: form.date,
             description: form.notes || `Cash payment to ${entityName}`
           })
+          if (cashResponse.status === 202) isPendingApproval = true
           setApiResponses(prev => [...prev, {
             type: 'Cash Payment',
             response: cashResponse,
@@ -264,11 +266,20 @@ export default function LogisticsPaymentModal({
             date: form.date,
             description: form.notes || `Bank payment to ${entityName}`
           })
+          if (bankResponse.status === 202) isPendingApproval = true
           setApiResponses(prev => [...prev, {
             type: 'Bank Payment',
             response: bankResponse,
             timestamp: new Date().toISOString()
           }])
+        }
+
+        if (isPendingApproval) {
+          toast.success('Backdated payment request submitted for approval.')
+          handleClose()
+          const router = window.nextRouter || { push: (url) => window.location.href = url }
+          router.push('/approvals/edit-requests')
+          return
         }
 
         toast.success(`Payment of ${currency(totalCreditPayment)} recorded successfully`)
@@ -284,6 +295,14 @@ export default function LogisticsPaymentModal({
           description: form.notes || `Debit adjustment for ${entityName}`
         })
         
+        if (debitResponse.status === 202) {
+          toast.success('Backdated adjustment request submitted for approval.')
+          handleClose()
+          const router = window.nextRouter || { push: (url) => window.location.href = url }
+          router.push('/approvals/edit-requests')
+          return
+        }
+
         setApiResponses(prev => [...prev, {
           type: 'Debit Adjustment',
           response: debitResponse,
@@ -569,7 +588,7 @@ export default function LogisticsPaymentModal({
                         setForm({ ...form, date: date.toLocaleDateString('en-CA') });
                     }
                 }}
-                disabled={!isSuperAdmin}
+                restrictByRole={true}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>

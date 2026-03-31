@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label"
 import { returnsAPI } from "@/lib/api/endpoints/returns"
 import toast from "react-hot-toast"
 import { Badge } from "@/components/ui/badge"
+import BritishDatePicker from "@/components/BritishDatePicker"
+import { useRouter } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -36,6 +38,8 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
   const [showResults, setShowResults] = useState(false)
   const [packetsExpanded, setPacketsExpanded] = useState(true)
   const [selectedItems, setSelectedItems] = useState([])
+  const [returnDate, setReturnDate] = useState(new Date())
+  const router = useRouter()
   
   // Variant Selection Dialog
   const [variantDialogOpen, setVariantDialogOpen] = useState(false)
@@ -506,10 +510,18 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
               ? `Partial packet return - ${item.barcode} (${item.returnQty} items)`
               : `Barcode return - ${item.barcode}`,
             costPrice: isPartial ? perItemPrice : item.costPrice,
-            totalAmount: totalAmount
+            totalAmount: totalAmount,
+            returnDate: returnDate.toISOString()
           }
 
           const response = await returnsAPI.createPacketReturn(payload)
+
+          if (response?.status === 202) {
+            toast.success('Backdated packet return request submitted for approval.')
+            router.push('/approvals/edit-requests')
+            if (onSave) onSave()
+            return
+          }
 
           // Capture break results for partial returns
           if (isPartial) {
@@ -540,13 +552,20 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
               costPrice: item.costPrice,
               totalAmount: item.returnQty * item.costPrice
             })),
-            returnDate: new Date().toISOString(),
+            returnDate: returnDate.toISOString(),
             cashRefund: 0,
             accountCredit: totalCreditAmount,
             notes: `Product return - ${group.products.length} item(s)`
           }
 
           const response = await returnsAPI.createProductReturn(payload)
+
+          if (response?.status === 202) {
+            toast.success('Backdated product return request submitted for approval.')
+            router.push('/approvals/edit-requests')
+            if (onSave) onSave()
+            return
+          }
           
           const summary = response.data?.data?.summary || response.data?.summary
           if (summary?.packetAdjustments?.count > 0) {
@@ -611,13 +630,25 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
       {/* Universal Search */}
       <Card className="border-2 border-primary">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Universal Search
-          </CardTitle>
-          <CardDescription>
-            Search by product name, code, barcode, or supplier name - no supplier selection needed!
-          </CardDescription>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Search className="h-5 w-5" />
+                Universal Search
+              </CardTitle>
+              <CardDescription>
+                Search by product name, code, barcode, or supplier name - no supplier selection needed!
+              </CardDescription>
+            </div>
+            <div className="w-[200px]">
+              <Label className="text-xs mb-1 block">Return Date</Label>
+              <BritishDatePicker
+                selected={returnDate}
+                onChange={setReturnDate}
+                restrictByRole={true}
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="relative">

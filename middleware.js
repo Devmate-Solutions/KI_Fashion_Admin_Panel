@@ -94,7 +94,7 @@
 
 //     // Check role requirements
 //     if (routeConfig.roles && !hasRole(token, routeConfig.roles)) {
-//       return NextResponse.redirect(new URL('/unauthorized', request.url));
+//       return NextResponse.redirect(new URL('/buying', request.url));
 //     }
 
 //     // Check permission requirements
@@ -104,7 +104,7 @@
 //       );
 
 //       if (!hasRequiredPermission) {
-//         return NextResponse.redirect(new URL('/unauthorized', request.url));
+//         return NextResponse.redirect(new URL('/buying', request.url));
 //       }
 //     }
 //   }
@@ -268,7 +268,7 @@ export function middleware(request) {
       const hasRequiredRole = hasRole(token, routeConfig.roles);
 
       if (!hasRequiredRole) {
-        return NextResponse.redirect(new URL('/unauthorized', request.url));
+        return NextResponse.redirect(new URL('/buying', request.url));
       }
     }
 
@@ -279,7 +279,7 @@ export function middleware(request) {
       );
 
       if (!hasRequiredPermission) {
-        return NextResponse.redirect(new URL('/unauthorized', request.url));
+        return NextResponse.redirect(new URL('/buying', request.url));
       }
     }
   }

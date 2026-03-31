@@ -1,6 +1,7 @@
 import React, { forwardRef } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import { useAuthStore } from '../store/store';
 
 // Custom input component that integrates with react-hook-form
 const CustomInput = forwardRef(({ value, onClick, onChange, placeholder, className = '', error, ...props }, ref) => {
@@ -53,20 +54,29 @@ const BritishDatePicker = forwardRef(({
   minDate = null,
   placeholder = 'DD/MM/YYYY',
   disabled = false,
+  restrictByRole = false,
   ...props
 }, ref) => {
+  const { user } = useAuthStore();
   const selectedDate = parseDateValue(value);
 
+  // Define date restrictions based on user role
+  const isEmployee = user?.role === 'employee';
+  
+  // If restrictByRole is true and user is an employee, restrict to today only
+  const finalMaxDate = (restrictByRole && isEmployee) ? new Date() : maxDate;
+  const finalMinDate = (restrictByRole && isEmployee) ? new Date() : minDate;
+  
   return (
     <DatePicker
       ref={ref}
       selected={selectedDate}
       onChange={onChange}
       dateFormat="dd/MM/yyyy"
-      maxDate={maxDate}
-      minDate={minDate}
+      maxDate={finalMaxDate}
+      minDate={finalMinDate}
       placeholderText={placeholder}
-      disabled={disabled}
+      disabled={disabled || (restrictByRole && isEmployee)}
       showYearDropdown
       showMonthDropdown
       dropdownMode="select"
