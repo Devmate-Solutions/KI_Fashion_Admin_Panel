@@ -5,13 +5,16 @@ import Image from "next/image"
 import Link from "next/link"
 import { UserMenu } from "./auth/UserMenu"
 import { useAuthStore } from '@/store/store';
-import { Menu } from "lucide-react"
+import { Menu, Calculator } from "lucide-react"
 import { useState } from "react"
+import UniversalPaymentDialog from "./modals/UniversalPaymentDialog"
 
 import { Search } from "lucide-react"
 
 export default function TopBar() {
-    const { loadUser } = useAuthStore();
+    const { user, loadUser } = useAuthStore();
+    const [showUniversalModal, setShowUniversalModal] = useState(false);
+    const isSuperAdmin = user?.role === 'super-admin';
 
   // Load user on mount - instant from token, then background refresh
   useEffect(() => {
@@ -38,6 +41,17 @@ export default function TopBar() {
           </div>
 
           <div className="flex items-center gap-3 sm:gap-6 flex-shrink-0">
+            {/* Super Admin Universal Payment Trigger */}
+            {isSuperAdmin && (
+              <button
+                onClick={() => setShowUniversalModal(true)}
+                className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-100 transition-all font-bold text-xs shadow-sm hover:shadow-md active:scale-95"
+              >
+                <Calculator className="h-4 w-4" />
+                <span>LEDGER TOOL</span>
+              </button>
+            )}
+
             {/* Mobile Menu Button - Right Side */}
             <button
               type="button"
@@ -51,6 +65,13 @@ export default function TopBar() {
           </div>
         </div>
       </div>
+
+      {isSuperAdmin && (
+        <UniversalPaymentDialog 
+          open={showUniversalModal} 
+          onClose={() => setShowUniversalModal(false)} 
+        />
+      )}
     </header>
   )
 }
