@@ -116,7 +116,7 @@ export function DistributorForm({ open, onClose, onSubmit, initialData = null, l
           email: formData.email,
           phone: formData.phone,
           phoneAreaCode: formData.phoneAreaCode || undefined,
-          address: formData.address || undefined,
+          address: formData.address ? { street: formData.address, country: 'Pakistan' } : undefined,
           taxNumber: formData.taxNumber || undefined,
           notes: 'Created by admin via CRM',
         }

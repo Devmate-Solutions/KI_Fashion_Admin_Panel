@@ -140,7 +140,7 @@ export function UserForm({ open, onClose, onSubmit, initialData = null, loading 
           phoneAreaCode: formData.phoneAreaCode || undefined,
           alternatePhone: formData.alternatePhone || undefined,
           alternatePhoneAreaCode: formData.alternatePhoneAreaCode || undefined,
-          address: formData.address || undefined,
+          address: formData.address ? { street: formData.address, country: 'Pakistan' } : undefined,
           notes: 'Created by admin via CRM',
         }
         submitData.signupSource = 'crm'
@@ -152,7 +152,7 @@ export function UserForm({ open, onClose, onSubmit, initialData = null, loading 
           email: formData.email,
           phone: formData.phone,
           phoneAreaCode: formData.phoneAreaCode || undefined,
-          address: formData.address || undefined,
+          address: formData.address ? { street: formData.address, country: 'Pakistan' } : undefined,
           taxNumber: formData.taxNumber || undefined,
           notes: 'Created by admin via CRM',
         }
