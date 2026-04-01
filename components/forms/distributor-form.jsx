@@ -109,7 +109,7 @@ export function DistributorForm({ open, onClose, onSubmit, initialData = null, l
 
       if (!initialData) {
         // Build distributor profile
-        submitData.role = 'distributor'
+        submitData.role = 'buyer'
         submitData.distributorProfile = {
           name: formData.name,
           company: formData.company,

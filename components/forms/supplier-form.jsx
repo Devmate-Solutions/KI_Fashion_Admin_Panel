@@ -124,6 +124,7 @@ export function AddSupplierForm({ open, onClose, onSubmit, loading = false }) {
       // Clean up profile-specific fields from main data
       delete submitData.company
       delete submitData.alternatePhone
+      delete submitData.alternatePhoneAreaCode
 
       onSubmit(submitData)
     }
@@ -396,6 +397,11 @@ export function EditSupplierForm({ open, supplier, onClose, onSubmit, loading = 
       if (!submitData.password) {
         delete submitData.password
       }
+
+      // Clean up profile-specific fields from main data
+      delete submitData.company
+      delete submitData.alternatePhone
+      delete submitData.alternatePhoneAreaCode
 
       onSubmit(submitData)
     }

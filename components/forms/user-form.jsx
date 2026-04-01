@@ -166,6 +166,7 @@ export function UserForm({ open, onClose, onSubmit, initialData = null, loading 
       // Clean up profile-specific fields from main data
       delete submitData.company
       delete submitData.alternatePhone
+      delete submitData.alternatePhoneAreaCode
       delete submitData.taxNumber
 
       onSubmit(submitData)
