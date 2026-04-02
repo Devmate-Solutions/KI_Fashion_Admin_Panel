@@ -1033,6 +1033,50 @@ export default function DispatchOrderDetailPage({ params }) {
       );
     }
 
+    // Check all active items have valid min selling prices
+    const invalidMinSellPriceItems = [];
+    dispatchOrder.items?.forEach((item, originalIdx) => {
+      if (!itemsToRemove.includes(originalIdx)) {
+        const itemData = editedItems[originalIdx] || item;
+        const minSellPrice = parseFloat(itemData?.minSellingPrice);
+        if (
+          itemData?.minSellingPrice === "" ||
+          itemData?.minSellingPrice === null ||
+          itemData?.minSellingPrice === undefined ||
+          isNaN(minSellPrice) ||
+          minSellPrice <= 0
+        ) {
+          invalidMinSellPriceItems.push(originalIdx + 1);
+        }
+      }
+    });
+
+    if (invalidMinSellPriceItems.length > 0) {
+      errors.push(
+        `Items missing min selling price: #${invalidMinSellPriceItems.join(", #")}`
+      );
+    }
+
+    const invalidNewMinSellPriceItems = [];
+    newItems.forEach((item, idx) => {
+      const minSellPrice = parseFloat(item?.minSellingPrice);
+      if (
+        item?.minSellingPrice === "" ||
+        item?.minSellingPrice === null ||
+        item?.minSellingPrice === undefined ||
+        isNaN(minSellPrice) ||
+        minSellPrice <= 0
+      ) {
+        invalidNewMinSellPriceItems.push(idx + 1);
+      }
+    });
+
+    if (invalidNewMinSellPriceItems.length > 0) {
+      errors.push(
+        `New items missing min selling price: #${invalidNewMinSellPriceItems.join(", #")}`
+      );
+    }
+
     // Check if total boxes is confirmed
     if (!totalBoxesConfirmed) {
       errors.push("Total boxes must be confirmed before order confirmation");
@@ -1082,6 +1126,9 @@ export default function DispatchOrderDetailPage({ params }) {
     if (!url || typeof url !== 'string') return url;
     return url.split('?')[0];
   };
+
+  const confirmValidation = useMemo(() => validateOrderBeforeConfirm(), [validateOrderBeforeConfirm]);
+  const canProceedWithConfirm = confirmValidation.isValid;
 
   const handleSubmitApproval = useCallback(() => {
 
@@ -1337,11 +1384,7 @@ export default function DispatchOrderDetailPage({ params }) {
           return;
         }
 
-        // Open barcode print modal with auto-print after confirmation
-        setTimeout(() => {
-          setIsPostConfirmPrint(true);
-          setShowBarcodePrintModal(true);
-        }, 500);
+        router.push("/dispatch-orders");
       },
     });
   }, [
@@ -1362,12 +1405,13 @@ export default function DispatchOrderDetailPage({ params }) {
     confirmMutation,
     confirmOrderSupplierCurrency.discount,
     totalBoxesConfirmed,
+    router,
   ]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Ctrl+Enter to confirm/submit (only in confirm tab and form is valid)
+      // Ctrl+Enter to confirm (only in confirm tab and form is valid)
       if (
         e.key === "Enter" &&
         e.ctrlKey &&
@@ -1378,11 +1422,9 @@ export default function DispatchOrderDetailPage({ params }) {
         e.preventDefault();
         const { isValid } = validateOrderBeforeConfirm();
         if (isValid) {
-          // Super-admin: confirm, Admin: submit approval (only for pending)
-          if (isSuperAdmin) {
+          // Super-admin/admin: confirm directly
+          if (isSuperAdmin || isAdmin) {
             handleConfirm();
-          } else if (isAdmin && dispatchOrder.status === 'pending') {
-            handleSubmitApproval();
           }
         } else {
           toast.error("Please fix validation errors before submitting");
@@ -1398,7 +1440,6 @@ export default function DispatchOrderDetailPage({ params }) {
     dispatchOrder,
     validateOrderBeforeConfirm,
     handleConfirm,
-    handleSubmitApproval,
     isSuperAdmin,
     isAdmin,
   ]);
@@ -3191,8 +3232,8 @@ export default function DispatchOrderDetailPage({ params }) {
                     )}
                   </Button>
                 )}
-                {/* Super-admin: Confirm Order button (for both pending and pending-approval) */}
-                {isSuperAdmin && (dispatchOrder?.status === 'pending' || dispatchOrder?.status === 'pending-approval') && (
+                {/* Super-admin/admin: Confirm Order button (for both pending and pending-approval) */}
+                {(isSuperAdmin || isAdmin) && (dispatchOrder?.status === 'pending' || dispatchOrder?.status === 'pending-approval') && (
                   <Button
                     onClick={() => {
 
@@ -3201,11 +3242,11 @@ export default function DispatchOrderDetailPage({ params }) {
                     disabled={
                       confirmMutation.isPending ||
                       deleteMutation.isPending ||
-                      !totalBoxesConfirmed
+                      !canProceedWithConfirm
                     }
                     size="lg"
                     className="min-w-[160px] gap-2"
-                    title={!totalBoxesConfirmed ? "Please confirm total boxes before confirming order" : ""}
+                    title={!canProceedWithConfirm ? (confirmValidation.errors[0] || "Please complete all required confirmation fields") : ""}
                   >
                     {confirmMutation.isPending ? (
                       <>
@@ -3216,35 +3257,6 @@ export default function DispatchOrderDetailPage({ params }) {
                       <>
                         <CheckCircle2 className="h-4 w-4" />
                         Confirm Order
-                      </>
-                    )}
-                  </Button>
-                )}
-                {/* Admin: Submit Approval button (for pending and pending-approval orders) */}
-                {isAdmin && (dispatchOrder?.status === 'pending' || dispatchOrder?.status === 'pending-approval') && (
-                  <Button
-                    onClick={() => {
-
-                      handleSubmitApproval();
-                    }}
-                    disabled={
-                      submitApprovalMutation.isPending ||
-                      deleteMutation.isPending ||
-                      !totalBoxesConfirmed
-                    }
-                    size="lg"
-                    className="min-w-[160px] gap-2"
-                    title={!totalBoxesConfirmed ? "Please confirm total boxes before submitting for approval" : ""}
-                  >
-                    {submitApprovalMutation.isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-4 w-4" />
-                        {dispatchOrder?.status === 'pending-approval' ? 'Re-submit for Approval' : 'Submit Approval'}
                       </>
                     )}
                   </Button>

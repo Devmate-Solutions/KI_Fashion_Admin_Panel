@@ -3,8 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/store';
-import { LogOut, User, Settings, CircleUser, Lock } from 'lucide-react';
-import Image from 'next/image';
+import { LogOut, CircleUser, Lock } from 'lucide-react';
 
 /**
  * User Menu Dropdown Component
@@ -63,33 +62,8 @@ export function UserMenu() {
             </span>
           </div>
 
-          {/* Menu Items */}
-          <div className="py-2">
-            <button
-              onClick={() => {
-                router.push('/profile');
-                setIsOpen(false);
-              }}
-              className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-all duration-150 ease-in-out rounded-md mx-2"
-            >
-              <User className="w-4 h-4 mr-3" />
-              My Profile
-            </button>
-            
-            <button
-              onClick={() => {
-                router.push('/settings');
-                setIsOpen(false);
-              }}
-              className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-all duration-150 ease-in-out rounded-md mx-2"
-            >
-              <Settings className="w-4 h-4 mr-3" />
-              Settings
-            </button>
-          </div>
-
           {/* Reset Password */}
-          <div className="border-t border-gray-200">
+          <div className="border-t border-gray-200 mt-1">
             <button
               onClick={() => {
                 router.push(`/reset-password?email=${encodeURIComponent(user.email)}`);
