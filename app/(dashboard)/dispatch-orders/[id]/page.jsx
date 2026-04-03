@@ -970,6 +970,10 @@ export default function DispatchOrderDetailPage({ params }) {
   const validateOrderBeforeConfirm = useCallback(() => {
     const errors = [];
 
+    if (!dispatchOrder) {
+      return { isValid: false, errors };
+    }
+
     // Check order-level fields (supplier is not editable, so we check the original)
     if (!dispatchOrder?.supplier) {
       errors.push("Supplier is required");
@@ -989,7 +993,7 @@ export default function DispatchOrderDetailPage({ params }) {
 
     // Get active items (not removed)
     const activeItems =
-      dispatchOrder.items?.filter((_, idx) => !itemsToRemove.includes(idx)) ||
+      dispatchOrder?.items?.filter((_, idx) => !itemsToRemove.includes(idx)) ||
       [];
     const totalActiveItems = activeItems.length + newItems.length;
 
@@ -999,7 +1003,7 @@ export default function DispatchOrderDetailPage({ params }) {
 
     // Check all active items are verified
     const unverifiedItems = [];
-    dispatchOrder.items?.forEach((_, originalIdx) => {
+    dispatchOrder?.items?.forEach((_, originalIdx) => {
       if (
         !itemsToRemove.includes(originalIdx) &&
         !itemVerifications[originalIdx]
@@ -1014,7 +1018,7 @@ export default function DispatchOrderDetailPage({ params }) {
 
     // Check all active items have valid quantities
     const invalidQuantityItems = [];
-    dispatchOrder.items?.forEach((_, originalIdx) => {
+    dispatchOrder?.items?.forEach((_, originalIdx) => {
       if (!itemsToRemove.includes(originalIdx)) {
         const itemData = editedItems[originalIdx];
         if (
@@ -1035,7 +1039,7 @@ export default function DispatchOrderDetailPage({ params }) {
 
     // Check all active items have valid min selling prices
     const invalidMinSellPriceItems = [];
-    dispatchOrder.items?.forEach((item, originalIdx) => {
+    dispatchOrder?.items?.forEach((item, originalIdx) => {
       if (!itemsToRemove.includes(originalIdx)) {
         const itemData = editedItems[originalIdx] || item;
         const minSellPrice = parseFloat(itemData?.minSellingPrice);
@@ -1090,7 +1094,7 @@ export default function DispatchOrderDetailPage({ params }) {
 
     // Check that all active items have packet configuration
     const unconfiguredItemNumbers = [];
-    dispatchOrder.items?.forEach((item, originalIdx) => {
+    dispatchOrder?.items?.forEach((item, originalIdx) => {
       if (!itemsToRemove.includes(originalIdx)) {
         if (!item.packets || item.packets.length === 0) {
           unconfiguredItemNumbers.push(originalIdx + 1);
