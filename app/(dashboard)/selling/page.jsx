@@ -394,10 +394,10 @@ export default function SellingPage() {
       {/* Page header to match other sections */}
       <header className="mb-4 sticky">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-      <div className="">
-        <BackButton fallbackPath="/home" label="Back" />
-      </div>
-          
+          <div className="">
+            <BackButton fallbackPath="/home" label="Back" />
+          </div>
+
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <Button
               onClick={() => setPaymentModalOpen(true)}
@@ -407,7 +407,7 @@ export default function SellingPage() {
               <Plus className="h-4 w-4 mr-1" />
               Add Payment
             </Button>
-           
+
           </div>
         </div>
       </header>
@@ -438,11 +438,11 @@ export default function SellingPage() {
                       }}
                     />
                   </div>
-                  {(dateRange.from || dateRange.to) && (
+                  {/* {(dateRange.from || dateRange.to) && (
                     <Button variant="outline" size="sm" onClick={() => setDateRange({ from: "", to: "" })}>
                       Clear
                     </Button>
-                  )}
+                  )} */}
                 </div>
                 <div className="">
                   <DataTable

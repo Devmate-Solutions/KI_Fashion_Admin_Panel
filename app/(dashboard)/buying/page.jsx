@@ -668,93 +668,146 @@ export default function BuyingPage() {
         <BackButton fallbackPath="/home" label="Back" />
       </div>
 
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-end gap-3 mb-4">
+          <div className="flex flex-col gap-1">
+            <Label className="text-xs">From Date</Label>
+            <BritishDatePicker
+              value={dateRange.from || null}
+              onChange={(date) => {
+                setDateRange(r => ({ ...r, from: date ? date.toLocaleDateString('en-CA') : "" }))
+                setPage(1)
+              }}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-xs">To Date</Label>
+            <BritishDatePicker
+              value={dateRange.to || null}
+              onChange={(date) => {
+                setDateRange(r => ({ ...r, to: date ? date.toLocaleDateString('en-CA') : "" }))
+                setPage(1)
+              }}
+            />
+          </div>
+          {/* {(dateRange.from || dateRange.to) && (
+                    <Button variant="outline" size="sm" onClick={() => { setDateRange({ from: "", to: "" }); setPage(1) }}>
+                      Clear
+                    </Button>
+                  )} */}
+        </div>
+        <div className="">
+          <DataTable
+            title="Buying"
+            columns={buyingColumns}
+            data={displayRows}
+            onAddNew={handleAddNew}
+            loading={purchasesLoading}
+            manualPagination={true}
+            currentPage={pagination.currentPage || page || 1}
+            totalPages={pagination.totalPages || 1}
+            totalItems={pagination.totalItems || buyingRows.length}
+            onPageChange={(newPage) => {
+              setPage(newPage)
+            }}
+            onSearch={(query) => {
+              setSearchQuery(query)
+              setPage(1) // Reset to first page when searching
+            }}
+            pageSize={20}
+            expandableRow={true}
+          />
+        </div>
+
+
+      </div>
 
       {/* Internal tabs using shared Tabs component */}
       {/* {JSON.stringify(buyingRows)} */}
       <Tabs
         tabs={[
-          {
-            label: "Buying",
-            content: (
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-end gap-3 mb-4">
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs">From Date</Label>
-                    <BritishDatePicker
-                      value={dateRange.from || null}
-                      onChange={(date) => {
-                        setDateRange(r => ({ ...r, from: date ? date.toLocaleDateString('en-CA') : "" }))
-                        setPage(1)
-                      }}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs">To Date</Label>
-                    <BritishDatePicker
-                      value={dateRange.to || null}
-                      onChange={(date) => {
-                        setDateRange(r => ({ ...r, to: date ? date.toLocaleDateString('en-CA') : "" }))
-                        setPage(1)
-                      }}
-                    />
-                  </div>
-                  {(dateRange.from || dateRange.to) && (
-                    <Button variant="outline" size="sm" onClick={() => { setDateRange({ from: "", to: "" }); setPage(1) }}>
-                      Clear
-                    </Button>
-                  )}
-                </div>
-                <div className="">
-                  <DataTable
-                    title="Buying"
-                    columns={buyingColumns}
-                    data={displayRows}
-                    onAddNew={handleAddNew}
-                    loading={purchasesLoading}
-                    manualPagination={true}
-                    currentPage={pagination.currentPage || page || 1}
-                    totalPages={pagination.totalPages || 1}
-                    totalItems={pagination.totalItems || buyingRows.length}
-                    onPageChange={(newPage) => {
-                      setPage(newPage)
-                    }}
-                    onSearch={(query) => {
-                      setSearchQuery(query)
-                      setPage(1) // Reset to first page when searching
-                    }}
-                    pageSize={20}
-                    expandableRow={true}
-                  />
-                </div>
+          // {
+          //   label: "Buying",
+          //   content: (
+          //     <div className="space-y-4">
+          //       <div className="flex flex-wrap items-end gap-3 mb-4">
+          //         <div className="flex flex-col gap-1">
+          //           <Label className="text-xs">From Date</Label>
+          //           <BritishDatePicker
+          //             value={dateRange.from || null}
+          //             onChange={(date) => {
+          //               setDateRange(r => ({ ...r, from: date ? date.toLocaleDateString('en-CA') : "" }))
+          //               setPage(1)
+          //             }}
+          //           />
+          //         </div>
+          //         <div className="flex flex-col gap-1">
+          //           <Label className="text-xs">To Date</Label>
+          //           <BritishDatePicker
+          //             value={dateRange.to || null}
+          //             onChange={(date) => {
+          //               setDateRange(r => ({ ...r, to: date ? date.toLocaleDateString('en-CA') : "" }))
+          //               setPage(1)
+          //             }}
+          //           />
+          //         </div>
+          //         {/* {(dateRange.from || dateRange.to) && (
+          //           <Button variant="outline" size="sm" onClick={() => { setDateRange({ from: "", to: "" }); setPage(1) }}>
+          //             Clear
+          //           </Button>
+          //         )} */}
+          //       </div>
+          //       <div className="">
+          //         <DataTable
+          //           title="Buying"
+          //           columns={buyingColumns}
+          //           data={displayRows}
+          //           onAddNew={handleAddNew}
+          //           loading={purchasesLoading}
+          //           manualPagination={true}
+          //           currentPage={pagination.currentPage || page || 1}
+          //           totalPages={pagination.totalPages || 1}
+          //           totalItems={pagination.totalItems || buyingRows.length}
+          //           onPageChange={(newPage) => {
+          //             setPage(newPage)
+          //           }}
+          //           onSearch={(query) => {
+          //             setSearchQuery(query)
+          //             setPage(1) // Reset to first page when searching
+          //           }}
+          //           pageSize={20}
+          //           expandableRow={true}
+          //         />
+          //       </div>
 
 
-              </div>
-            ),
-          },
-          {
-            label: "Buying Return",
-            content: (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold">Return History</h2>
-                  <Button
-                    onClick={() => router.push('/buying/return')}
-                    className="bg-rose-600 hover:bg-rose-700"
-                  >
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Create Product Return
-                  </Button>
-                </div>
-                <DataTable
-                  title="Return History"
-                  columns={buyingReturnColumns}
-                  data={buyingReturnRows}
-                  loading={returnsLoading}
-                  onRowClick={(row) => setSelectedReturn(row)}
-                />
-              </div>
-            ),
-          },
+          //     </div>
+          //   ),
+          // },
+          // {
+          //   label: "Buying Return",
+          //   content: (
+          //     <div className="space-y-4">
+          //       <div className="flex items-center justify-between mb-4">
+          //         <h2 className="text-lg font-semibold">Return History</h2>
+          //         <Button
+          //           onClick={() => router.push('/buying/return')}
+          //           className="bg-rose-600 hover:bg-rose-700"
+          //         >
+          //           <RotateCcw className="h-4 w-4 mr-2" />
+          //           Create Product Return
+          //         </Button>
+          //       </div>
+          //       <DataTable
+          //         title="Return History"
+          //         columns={buyingReturnColumns}
+          //         data={buyingReturnRows}
+          //         loading={returnsLoading}
+          //         onRowClick={(row) => setSelectedReturn(row)}
+          //       />
+          //     </div>
+          //   ),
+          // },
         ]}
         // Tab state sync
         defaultTab={Number(searchParams.get("tab") ?? 0)}
