@@ -242,7 +242,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
       })
       setRows(mappedRows)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData])
 
   // Refs for keyboard navigation
@@ -616,12 +616,14 @@ export default function SaleForm({ onSave, initialData, saleId }) {
 
   // Derived totals
   const totals = useMemo(() => {
-    const grandTotal = rows.reduce((sum, row) => sum + Number(row.totalPrice || 0), 0) + effectiveBuyerShippingCharge
-    const totalAfterDiscount = Math.max(0, grandTotal - Number(discount || 0))
+    // subtotal is just the sum of items
+    const subtotal = rows.reduce((sum, row) => sum + Number(row.totalPrice || 0), 0)
+    // grandTotal includes shipping (logistics payable) and subtracts discount
+    const grandTotal = Math.max(0, subtotal + computedLogisticsPayable - Number(discount || 0))
     const paid = Number(cash || 0) + Number(bank || 0)
-    const remaining = totalAfterDiscount - paid
-    return { grandTotal, totalAfterDiscount, paid, remaining }
-  }, [rows, effectiveBuyerShippingCharge, discount, cash, bank])
+    const remaining = grandTotal - paid
+    return { subtotal, grandTotal, paid, remaining }
+  }, [rows, computedLogisticsPayable, discount, cash, bank])
 
   // Keyboard shortcuts
   function handlePaymentKeyDown(e, field) {
@@ -805,15 +807,15 @@ export default function SaleForm({ onSave, initialData, saleId }) {
 
       // Calculate subtotal and grandTotal
       const subtotal = itemsWithProducts.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0)
-      const grandTotal = Math.max(0, subtotal + effectiveBuyerShippingCharge - Number(discount || 0))
+      const grandTotal = Math.max(0, subtotal + (addShippingCost ? computedLogisticsPayable : 0) - Number(discount || 0))
 
       const payload = {
         saleDate: saleDate,
         items: itemsWithProducts,
         totalDiscount: Number(discount || 0),
         addShippingCost: addShippingCost,
-        buyerShippingCharge: effectiveBuyerShippingCharge,
-        shippingCost: effectiveBuyerShippingCharge,
+        buyerShippingCharge: addShippingCost ? computedLogisticsPayable : 0,
+        shippingCost: addShippingCost ? computedLogisticsPayable : 0,
         shippingBoxes: addShippingCost ? Number(shippingBoxes || 0) : 0,
         logisticsCompanyId: addShippingCost ? logisticsCompanyId : null,
         logisticsBoxRateSnapshot: addShippingCost ? logisticsBoxRate : 0,
@@ -1633,34 +1635,37 @@ export default function SaleForm({ onSave, initialData, saleId }) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Left: Calculated totals */}
           <div className="space-y-3">
-            <div className="flex justify-between items-center p-3 bg-muted/30 rounded-md">
-              <span className="text-sm font-medium">Grand Total</span>
+            <div className="flex justify-between items-center p-3 bg-muted/30 rounded-md border border-border/50">
+              <span className="text-sm font-medium text-muted-foreground">Net Total</span>
               <span className="text-lg font-semibold tabular-nums">
+                £{totals.subtotal.toFixed(2)}
+              </span>
+            </div>
+            
+            {addShippingCost && (
+              <div className="flex justify-between items-center p-3 bg-orange-50 dark:bg-orange-950/20 rounded-md border border-orange-100 dark:border-orange-900/30">
+                <span className="text-sm font-medium text-orange-800 dark:text-orange-300">Logistics Payable</span>
+                <span className="text-base font-semibold tabular-nums text-orange-700 dark:text-orange-400">
+                  + £{computedLogisticsPayable.toFixed(2)}
+                </span>
+              </div>
+            )}
+
+            {Number(discount || 0) > 0 && (
+              <div className="flex justify-between items-center p-3 bg-rose-50 dark:bg-rose-950/20 rounded-md border border-rose-100 dark:border-rose-900/30">
+                <span className="text-sm font-medium text-rose-800 dark:text-rose-300">Discount</span>
+                <span className="text-base font-semibold tabular-nums text-rose-700 dark:text-rose-400">
+                  - £{Number(discount).toFixed(2)}
+                </span>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center p-3 bg-primary/5 dark:bg-primary/10 rounded-md border-2 border-primary/20">
+              <span className="text-sm font-bold text-primary">Grand Total</span>
+              <span className="text-xl font-bold tabular-nums text-primary">
                 £{totals.grandTotal.toFixed(2)}
               </span>
             </div>
-            {addShippingCost && (
-              <div className="flex justify-between items-center p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-md">
-                <span className="text-sm font-medium">Buyer Shipping Charge</span>
-                <span className="text-base font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                  £{effectiveBuyerShippingCharge.toFixed(2)}
-                </span>
-              </div>
-            )}
-            <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-950/30 rounded-md">
-              <span className="text-sm font-medium">Total After Discount</span>
-              <span className="text-lg font-semibold tabular-nums text-blue-700 dark:text-blue-400">
-                £{totals.totalAfterDiscount.toFixed(2)}
-              </span>
-            </div>
-            {addShippingCost && (
-              <div className="flex justify-between items-center p-3 bg-amber-50 dark:bg-amber-950/30 rounded-md border border-amber-200 dark:border-amber-900">
-                <span className="text-sm font-medium">Logistics Payable</span>
-                <span className="text-base font-semibold tabular-nums text-amber-700 dark:text-amber-400">
-                  £{computedLogisticsPayable.toFixed(2)}
-                </span>
-              </div>
-            )}
           </div>
 
           {/* Middle: Input fields */}
@@ -1689,24 +1694,6 @@ export default function SaleForm({ onSave, initialData, saleId }) {
 
               {addShippingCost && (
                 <div className="space-y-3 pl-7">
-                  <div className="space-y-2">
-                    <Label htmlFor="buyer-shipping-charge">Amount</Label>
-                    <Input
-                      id="buyer-shipping-charge"
-                      type="text"
-                      inputMode="decimal"
-                      value={buyerShippingCharge}
-                      onChange={(e) => {
-                        const sanitized = e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')
-                        setBuyerShippingCharge(sanitized)
-                      }}
-                      onBlur={(e) => {
-                        const val = parseFloat(e.target.value)
-                        setBuyerShippingCharge(!isNaN(val) ? val : 0)
-                      }}
-                      placeholder=""
-                    />
-                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="shipping-boxes">Number of Boxes</Label>
@@ -1828,19 +1815,17 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                 className="text-lg"
               />
             </div>
-            <div className={`flex justify-between items-center p-3 rounded-md border-2 ${
-              totals.remaining < 0
-                ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900'
-                : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900'
-            }`}>
+            <div className={`flex justify-between items-center p-3 rounded-md border-2 ${totals.remaining < 0
+              ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900'
+              : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900'
+              }`}>
               <span className="text-sm font-medium">
                 {totals.remaining < 0 ? 'Remaining Balance' : 'Remaining Balance'}
               </span>
-              <span className={`text-lg font-bold tabular-nums ${
-                totals.remaining < 0
-                  ? 'text-green-700 dark:text-green-400'
-                  : 'text-amber-700 dark:text-amber-400'
-              }`}>
+              <span className={`text-lg font-bold tabular-nums ${totals.remaining < 0
+                ? 'text-green-700 dark:text-green-400'
+                : 'text-amber-700 dark:text-amber-400'
+                }`}>
                 £{totals.remaining.toFixed(2)}
               </span>
             </div>
