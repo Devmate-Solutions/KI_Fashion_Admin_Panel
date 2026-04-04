@@ -324,16 +324,21 @@ export function EditSupplierForm({ open, supplier, onClose, onSubmit, loading = 
   useEffect(() => {
     if (open && supplier) {
       // Extract supplier data - could be from populated 'supplier' field or 'supplierProfile'
-      const supplierData = supplier.supplier || supplier.supplierProfile || {}
+      // Safely ensure it's an object, not a string ID
+      const supplierData = (supplier.supplier && typeof supplier.supplier === 'object') 
+        ? supplier.supplier 
+        : (supplier.supplierProfile && typeof supplier.supplierProfile === 'object' 
+            ? supplier.supplierProfile 
+            : {});
       
-      // Handle address (could be string or object)
-      let addressStr = ''
-      if (typeof supplierData.address === 'string') {
-        addressStr = supplierData.address
-      } else if (supplierData.address && typeof supplierData.address === 'object') {
-        addressStr = supplierData.address.fullAddress || supplierData.address.street || ''
-      } else if (typeof supplier.address === 'string') {
-        addressStr = supplier.address
+      // Handle address extraction from multiple possible sources
+      let addressStr = '';
+      const rawAddress = supplierData.address || supplier.address;
+      
+      if (typeof rawAddress === 'string') {
+        addressStr = rawAddress;
+      } else if (rawAddress && typeof rawAddress === 'object') {
+        addressStr = rawAddress.fullAddress || rawAddress.street || '';
       }
 
       setFormData({
