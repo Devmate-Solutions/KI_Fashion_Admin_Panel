@@ -342,14 +342,14 @@ export function EditSupplierForm({ open, supplier, onClose, onSubmit, loading = 
       }
 
       setFormData({
-        name: supplier.name || supplierData.name || '',
-        email: supplier.email || supplierData.email || '',
-        phone: supplier.phone || supplierData.phone || '',
-        phoneAreaCode: supplier.phoneAreaCode || supplierData.phoneAreaCode || '',
+        name: supplier.name || '', // Always prefer name from User table (ARBAZ AHMED)
+        email: supplier.email || '', 
+        phone: supplierData.phone || supplier.phone || '', // Pull from supplier special phone or user phone
+        phoneAreaCode: supplierData.phoneAreaCode || supplier.phoneAreaCode || '',
         address: addressStr,
-        company: supplierData.company || supplier.company || '',
-        alternatePhone: supplierData.alternatePhone || supplier.alternatePhone || '',
-        alternatePhoneAreaCode: supplierData.alternatePhoneAreaCode || supplier.alternatePhoneAreaCode || '',
+        company: supplierData.company || '', // Pull company from Supplier table
+        alternatePhone: supplierData.alternatePhone || '',
+        alternatePhoneAreaCode: supplierData.alternatePhoneAreaCode || '',
       })
       setErrors({})
     }
