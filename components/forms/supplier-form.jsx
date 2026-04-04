@@ -325,16 +325,16 @@ export function EditSupplierForm({ open, supplier, onClose, onSubmit, loading = 
 
   useEffect(() => {
     if (open && supplier) {
-      // Extract supplier data - could be from supplierProfile or direct fields
-      const supplierData = supplier.supplierProfile || supplier
+      // Extract supplier data - could be from populated 'supplier' field or 'supplierProfile'
+      const supplierData = supplier.supplier || supplier.supplierProfile || supplier
       setFormData({
-        name: supplierData.name || '',
-        email: supplierData.email || supplier.email || '',
+        name: supplier.name || supplierData.name || '',
+        email: supplier.email || supplierData.email || '',
         password: '',
         confirmPassword: '',
-        phone: supplierData.phone || supplier.phone || '',
-        phoneAreaCode: supplierData.phoneAreaCode || supplier.phoneAreaCode || '',
-        address: supplierData.address || supplier.address || '',
+        phone: supplier.phone || supplierData.phone || '',
+        phoneAreaCode: supplier.phoneAreaCode || supplierData.phoneAreaCode || '',
+        address: supplier.address || supplierData.address || '',
         company: supplierData.company || supplier.company || '',
         alternatePhone: supplierData.alternatePhone || supplier.alternatePhone || '',
         alternatePhoneAreaCode: supplierData.alternatePhoneAreaCode || supplier.alternatePhoneAreaCode || '',
@@ -398,6 +398,13 @@ export function EditSupplierForm({ open, supplier, onClose, onSubmit, loading = 
         delete submitData.password
       }
 
+      // Package supplier-specific fields
+      submitData.supplierProfile = {
+        company: submitData.company,
+        alternatePhone: submitData.alternatePhone || undefined,
+        alternatePhoneAreaCode: submitData.alternatePhoneAreaCode || undefined,
+      }
+
       // Clean up profile-specific fields from main data
       delete submitData.company
       delete submitData.alternatePhone
@@ -459,7 +466,6 @@ export function EditSupplierForm({ open, supplier, onClose, onSubmit, loading = 
               value={formData.company}
               onChange={(e) => handleChange('company', e.target.value)}
               className="h-11"
-              disabled={true}
             />
           </div>
 

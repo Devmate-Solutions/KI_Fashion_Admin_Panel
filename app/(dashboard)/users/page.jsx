@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../../components/ui/alert-dialog"
-import { useHardDeleteSupplier, useSupplierDeleteSummary } from "../../../lib/hooks/useSuppliers"
+import { useHardDeleteSupplier, useSupplierDeleteSummary, useUpdateSupplier } from "../../../lib/hooks/useSuppliers"
 import { Button } from "../../../components/ui/button"
 import Tabs from "../../../components/tabs"
 import { Plus, Eye, EyeOff, Copy, RefreshCw, CheckCircle, X, Trash2 } from "lucide-react"
@@ -57,6 +57,7 @@ export default function UsersPage() {
   const registerUserMutation = useRegisterUser()
   const regeneratePasswordMutation = useRegeneratePassword()
   const hardDeleteSupplierMutation = useHardDeleteSupplier()
+  const updateSupplierMutation = useUpdateSupplier()
   const [supplierDeleteTarget, setSupplierDeleteTarget] = useState(null)
   const {
     data: supplierDeleteSummary,
@@ -297,10 +298,23 @@ export default function UsersPage() {
 
   const handleUpdateUser = async (formData) => {
     try {
+      const supplierProfile = formData.supplierProfile;
+      const dataToUpdate = { ...formData };
+      delete dataToUpdate.supplierProfile;
+
       await updateUserMutation.mutateAsync({
         id: editingUser._id || editingUser.id,
-        data: formData
+        data: dataToUpdate
       })
+
+      if (supplierProfile && (editingUser.supplier?._id || editingUser.supplierProfile?._id || editingUser.supplier)) {
+        const supplierId = editingUser.supplier?._id || editingUser.supplierProfile?._id || editingUser.supplier;
+        await updateSupplierMutation.mutateAsync({
+          id: supplierId,
+          data: supplierProfile
+        })
+      }
+
       setOpenEditForm(false)
       setEditingUser(null)
     } catch (error) {

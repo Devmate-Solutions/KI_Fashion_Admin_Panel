@@ -46,6 +46,7 @@ const normalizeBarcodeData = (apiData) => {
       data: item.data,
       dataUrl: item.dataUrl,
     })),
+    priceMap: apiData.priceMap || {},
   };
 };
 
@@ -128,6 +129,7 @@ export default function BarcodePrintModal({
   });
 
   const _data = data?.data;
+  const priceMap = _data?.priceMap || {};
 
   // Expand barcodes by quantity for printing
   const expandedBarcodes = useMemo(
@@ -158,127 +160,32 @@ export default function BarcodePrintModal({
     setExpandedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Build the print HTML for a set of barcodes
+  // Build the print HTML for a set of barcodes — 50mm × 25mm labels (Zebra ZD421)
   const buildPrintHtml = useCallback(
-    (barcodesToPrint, showCoverSheet = true, productFilter = null) => {
+    (barcodesToPrint) => {
       const expanded = expandBarcodesByQuantity(barcodesToPrint);
       if (expanded.length === 0) return null;
 
-      // Group expanded barcodes by product for separators
-      const grouped = {};
-      expanded.forEach((item) => {
-        const key = item.productCode || item.productName || "Unknown";
-        if (!grouped[key]) {
-          grouped[key] = {
-            productCode: item.productCode,
-            productName: item.productName,
-            labels: [],
-          };
-        }
-        grouped[key].labels.push(item);
-      });
-
-      const productEntries = Object.values(grouped);
-
-      // --- Cover Sheet ---
-      let coverSheetHtml = "";
-      if (showCoverSheet && !productFilter) {
-        const productRows = productEntries
-          .map((g) => {
-            const packetCount = g.labels.filter((l) => !l.isLoose).length;
-            const looseCount = g.labels.filter((l) => l.isLoose).length;
-            return `
-            <tr>
-              <td style="padding:4px 8px;border:1px solid #ccc;font-size:8pt;font-weight:600;">${g.productName || "—"}</td>
-              <td style="padding:4px 8px;border:1px solid #ccc;font-size:8pt;font-family:'Courier New',monospace;">${g.productCode || "—"}</td>
-              <td style="padding:4px 8px;border:1px solid #ccc;font-size:8pt;text-align:center;">${packetCount}</td>
-              <td style="padding:4px 8px;border:1px solid #ccc;font-size:8pt;text-align:center;">${looseCount}</td>
-              <td style="padding:4px 8px;border:1px solid #ccc;font-size:8pt;text-align:center;font-weight:bold;">${g.labels.length}</td>
-            </tr>`;
-          })
-          .join("");
-
-        coverSheetHtml = `
-          <div class="cover-sheet">
-            <div style="font-size:12pt;font-weight:bold;margin-bottom:3mm;text-align:center;">
-              ORDER #${_data?.orderNumber || ""}
-            </div>
-            <div style="font-size:8pt;text-align:center;margin-bottom:3mm;color:#555;">
-              Supplier: ${_data?.supplierName || "—"}
-            </div>
-            <table style="width:100%;border-collapse:collapse;margin-bottom:3mm;">
-              <thead>
-                <tr style="background:#f0f0f0;">
-                  <th style="padding:3px 6px;border:1px solid #ccc;font-size:7pt;text-align:left;">Product</th>
-                  <th style="padding:3px 6px;border:1px solid #ccc;font-size:7pt;text-align:left;">Code</th>
-                  <th style="padding:3px 6px;border:1px solid #ccc;font-size:7pt;text-align:center;">Pkts</th>
-                  <th style="padding:3px 6px;border:1px solid #ccc;font-size:7pt;text-align:center;">Loose</th>
-                  <th style="padding:3px 6px;border:1px solid #ccc;font-size:7pt;text-align:center;">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${productRows}
-                <tr style="background:#f5f5f5;">
-                  <td colspan="4" style="padding:4px 8px;border:1px solid #ccc;font-size:8pt;font-weight:bold;text-align:right;">GRAND TOTAL</td>
-                  <td style="padding:4px 8px;border:1px solid #ccc;font-size:10pt;font-weight:bold;text-align:center;">${expanded.length}</td>
-                </tr>
-              </tbody>
-            </table>
-            <div style="font-size:7pt;color:#888;text-align:center;">
-              ${productEntries.length} product(s) • ${expanded.length} sticker(s) to apply
-            </div>
-          </div>
-        `;
-      }
-
-      // --- Labels with product separators ---
+      // Build individual labels
       let labelsHtml = "";
-      productEntries.forEach((group, groupIdx) => {
-        // Product separator page (skip if printing single product)
-        if (!productFilter && productEntries.length > 1) {
-          const pktCount = group.labels.filter((l) => !l.isLoose).length;
-          const looseCount = group.labels.filter((l) => l.isLoose).length;
-          labelsHtml += `
-            <div class="product-separator">
-              <div style="font-size:10pt;font-weight:bold;margin-bottom:2mm;">
-                ${group.productName || "Unknown Product"}
-              </div>
-              <div style="font-size:8pt;font-family:'Courier New',monospace;color:#555;margin-bottom:2mm;">
-                ${group.productCode || ""}
-              </div>
-              <div style="font-size:8pt;">
-                ${pktCount > 0 ? `<span style="background:#e3f2fd;color:#1976d2;padding:1px 4px;border-radius:2px;margin-right:4px;">${pktCount} PACKET${pktCount > 1 ? "S" : ""}</span>` : ""}
-                ${looseCount > 0 ? `<span style="background:#fff3e0;color:#f57c00;padding:1px 4px;border-radius:2px;">${looseCount} LOOSE</span>` : ""}
-              </div>
-              <div style="font-size:7pt;color:#888;margin-top:2mm;">
-                ${group.labels.length} sticker(s) below
-              </div>
-            </div>
-          `;
-        }
+      expanded.forEach((item) => {
+        const compositionText = formatComposition(item);
+        const barcodeStr = item.data || item.barcodeNumber || "";
+        const price = priceMap[barcodeStr] || 0;
+        const priceText = price > 0 ? `£${price.toFixed(2)}` : "";
 
-        // Individual labels
-        group.labels.forEach((item) => {
-          const compositionText = formatComposition(item);
-          const typeBadge = item.isLoose
-            ? `<span class="type-badge type-loose">LOOSE</span>`
-            : `<span class="type-badge type-packet">PACKET</span>`;
-         
-
-          labelsHtml += `
-            <div class="barcode-label">
-             
-              ${compositionText ? `<div class="barcode-number">${compositionText}</div>` : ""}
-              <div class="barcode-image">
-                <img src="${item.dataUrl || item.barcodeImage}" alt="${item.data || item.barcodeNumber}" />
-              </div>
-              <div class="product-info">
-                <div class="product-name">${item.productName || ""}</div>
+        labelsHtml += `
+            <div class="label">
+              <div class="header-section">
                 <div class="product-code">${item.productCode || ""}</div>
+                ${priceText ? `<div class="price">Min Sell Price: ${priceText}</div>` : ""}
+              </div>
+              ${compositionText ? `<div class="composition">${compositionText}</div>` : ""}
+              <div class="barcode-img">
+                <img src="${item.dataUrl || item.barcodeImage}" alt="${barcodeStr}" />
               </div>
             </div>
           `;
-        });
       });
 
       return `
@@ -290,8 +197,8 @@ export default function BarcodePrintModal({
         <title>Barcode Labels - Order ${_data?.orderNumber || ""}</title>
         <style>
           @page {
-            size: 50mm auto;
-            margin: 1mm;
+            size: 50mm 25mm;
+            margin: 0;
           }
           * {
             box-sizing: border-box;
@@ -301,129 +208,93 @@ export default function BarcodePrintModal({
           body {
             font-family: Arial, sans-serif;
             background: white;
-            width: 48mm;
+            width: 50mm;
           }
-          .cover-sheet {
-            width: 48mm;
-            padding: 3mm 2mm;
-            text-align: center;
-            page-break-after: always;
-          }
-          .product-separator {
-            width: 48mm;
-            padding: 4mm 2mm;
-            text-align: center;
-            page-break-after: always;
-            border: 2px dashed #999;
+          .label {
+            width: 50mm;
+            height: 25mm;
+            padding: 0.5mm 1mm;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            min-height: 25mm;
-          }
-          .barcode-label {
-            width: 48mm;
-            padding: 1.5mm 2mm;
-            text-align: center;
+            justify-content: space-between;
+            overflow: hidden;
             page-break-after: always;
-            border-bottom: 1px dashed #ccc;
           }
-          .barcode-label:last-child {
+          .label:last-child {
             page-break-after: auto;
-            border-bottom: none;
           }
-          .label-top-row {
+          .header-section {
+            width: 100%;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            gap: 3mm;
-            margin-bottom: 1mm;
-          }
-          .type-badge {
-            font-size: 7pt;
-            font-weight: 700;
-            padding: 0.5mm 2mm;
-            border-radius: 1mm;
-            letter-spacing: 0.5px;
-          }
-          .type-packet {
-            background: #e3f2fd;
-            color: #1565c0;
-            border: 0.3mm solid #90caf9;
-          }
-          .type-loose {
-            background: #fff3e0;
-            color: #e65100;
-            border: 0.3mm solid #ffcc80;
-          }
-          .packet-num {
-            font-size: 7pt;
-            font-weight: 600;
-            color: #333;
-          }
-          .composition {
-            font-size: 7pt;
-            font-weight: 600;
-            color: #222;
-            margin-bottom: 1mm;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-          .barcode-image {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 0.5mm;
-          }
-          .barcode-image img {
-            max-width: 44mm;
-            height: auto;
-          }
-          .barcode-number {
-            font-size: 7pt;
-            font-weight: bold;
-            font-family: 'Courier New', monospace;
-            letter-spacing: 0.5px;
-            margin-bottom: 0.5mm;
-          }
-          .product-info {
-            border-top: 0.3mm solid #ddd;
-            padding-top: 0.5mm;
-          }
-          .product-name {
-            font-size: 6pt;
-            font-weight: 600;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            margin-bottom: 0.2mm;
           }
           .product-code {
-            font-size: 5pt;
-            color: #666;
+            font-size: 6.5pt;
+            font-weight: 800;
             font-family: 'Courier New', monospace;
+            color: #000;
+            text-align: center;
+            width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
           }
-          .label-counter {
+          .price {
             font-size: 6pt;
-            color: #888;
-            margin-top: 0.5mm;
-            font-style: italic;
+            font-weight: 700;
+            color: #000;
+            text-align: center;
+            width: 100%;
+            white-space: nowrap;
+          }
+          .composition {
+            font-size: 5.5pt;
+            font-weight: 600;
+            color: #333;
+            text-align: center;
+            width: 100%;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.3;
+            word-break: break-word;
+          }
+          .barcode-img {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex: 1;
+            width: 100%;
+            min-height: 0;
+            padding-top: 0.5mm;
+          }
+          .barcode-img img {
+            max-width: 46mm;
+            max-height: 12mm;
+            object-fit: contain;
+          }
+          .price {
+            font-size: 7pt;
+            font-weight: 800;
+            color: #000;
+            white-space: nowrap;
           }
           @media print {
-            body { width: 48mm; }
-            .barcode-label { border-bottom: none; }
-            .product-separator { border: none; }
+            body { width: 50mm; }
           }
         </style>
       </head>
       <body>
-        ${coverSheetHtml}
         ${labelsHtml}
       </body>
       </html>
     `;
     },
-    [_data]
+    [_data, priceMap]
   );
 
   // Print all or filtered by product
@@ -437,7 +308,7 @@ export default function BarcodePrintModal({
           )
         : _data.barcodes;
 
-      const html = buildPrintHtml(barcodesToPrint, !productCodeFilter, productCodeFilter);
+      const html = buildPrintHtml(barcodesToPrint);
       if (!html) return;
 
       const printWindow = window.open("", "_blank", "width=400,height=600");
@@ -551,6 +422,9 @@ export default function BarcodePrintModal({
                       across {productGroups.length} product
                       {productGroups.length !== 1 ? "s" : ""}
                     </p>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      🖨️ Zebra ZD421 • 50mm × 25mm labels
+                    </p>
                   </div>
                   <div className="flex gap-2">
                     {_data.barcodes.filter((b) => !b.isLoose).length > 0 && (
@@ -659,6 +533,8 @@ export default function BarcodePrintModal({
                         <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
                           {group.barcodes.map((item, idx) => {
                             const compText = formatComposition(item);
+                            const barcodeStr = item.data || item.barcodeNumber || "";
+                            const price = priceMap[barcodeStr] || 0;
                             return (
                               <div
                                 key={idx}
@@ -713,6 +589,13 @@ export default function BarcodePrintModal({
                                   {item.data}
                                 </div>
 
+                                {/* Price */}
+                                {price > 0 && (
+                                  <div className="text-[10px] font-bold text-green-700">
+                                    £{price.toFixed(2)}
+                                  </div>
+                                )}
+
                                 {/* Labels count */}
                                 {(item.quantity || 1) > 1 && (
                                   <Badge
@@ -739,7 +622,7 @@ export default function BarcodePrintModal({
         <div className="flex-shrink-0 flex justify-between items-center pt-4 border-t">
           <div className="text-sm text-muted-foreground">
             {totalLabels > 0 &&
-              `${totalLabels} sticker(s) will be printed (+ cover sheet & separators)`}
+              `${totalLabels} sticker(s) will be printed on 50×25mm labels`}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>

@@ -567,6 +567,94 @@ export default function SaleDetailPage({ params }) {
         </Accordion>
       )}
 
+      {/* Shipping & Logistics Information */}
+      {(sale.addShippingCost || Number(sale.shippingCost || 0) > 0 || Number(sale.buyerShippingCharge || 0) > 0 || sale.logisticsCompany) && (
+        <Accordion
+          type="single"
+          collapsible
+          defaultValue="shipping-info"
+          className="border border-orange-200 rounded-lg bg-orange-50/30"
+        >
+          <AccordionItem value="shipping-info" className="border-b-0">
+            <AccordionTrigger className="px-4 hover:no-underline bg-orange-50/50 rounded-t-lg">
+              <div className="flex items-center justify-between w-full pr-4">
+                <div className="flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-orange-600" />
+                  <span className="font-semibold text-orange-900">
+                    Shipping & Logistics
+                  </span>
+                </div>
+                {Number(sale.logisticsPayable || 0) > 0 && (
+                  <Badge className="bg-orange-500/15 text-orange-700 border-orange-300 text-xs">
+                    Logistics Cost: {currency(sale.logisticsPayable)}
+                  </Badge>
+                )}
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4 bg-white/60 rounded-b-lg">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 pt-2">
+                <div>
+                  <Label className="text-xs text-muted-foreground">
+                    Buyer Shipping Charge
+                  </Label>
+                  <p className="font-medium text-sm text-orange-800">
+                    {currency(sale.buyerShippingCharge ?? sale.shippingCost ?? 0)}
+                  </p>
+                </div>
+                {sale.logisticsCompany && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">
+                      Logistics Company
+                    </Label>
+                    <p className="font-medium text-sm">
+                      {sale.logisticsCompany.name || "—"}
+                      {sale.logisticsCompany.code && (
+                        <span className="text-xs text-muted-foreground ml-1">
+                          ({sale.logisticsCompany.code})
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )}
+                {Number(sale.logisticsBoxRateSnapshot || 0) > 0 && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">
+                      Box Rate (Snapshot)
+                    </Label>
+                    <p className="font-medium text-sm">
+                      {currency(sale.logisticsBoxRateSnapshot)}
+                    </p>
+                  </div>
+                )}
+                {Number(sale.shippingBoxes || 0) > 0 && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">
+                      Number of Boxes
+                    </Label>
+                    <p className="font-medium text-sm">
+                      {sale.shippingBoxes}
+                    </p>
+                  </div>
+                )}
+                {Number(sale.logisticsPayable || 0) > 0 && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground font-semibold">
+                      Logistics Payable
+                    </Label>
+                    <p className="font-bold text-sm text-red-600">
+                      {currency(sale.logisticsPayable)}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {sale.shippingBoxes || 0} boxes × {currency(sale.logisticsBoxRateSnapshot || 0)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      )}
+
       {/* Items Section */}
       <Accordion
         type="single"
@@ -733,7 +821,7 @@ export default function SaleDetailPage({ params }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
-          <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div>
               <Label className="text-xs text-muted-foreground">Subtotal</Label>
               <p className="font-medium text-lg">{currency(financials?.subtotal || 0)}</p>
@@ -742,6 +830,14 @@ export default function SaleDetailPage({ params }) {
               <Label className="text-xs text-muted-foreground">Discount</Label>
               <p className="font-medium text-lg text-red-600">-{currency(financials?.totalDiscount || 0)}</p>
             </div>
+            {Number(financials?.shippingCost || 0) > 0 && (
+              <div>
+                <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Truck className="h-3 w-3" /> Shipping Charge
+                </Label>
+                <p className="font-medium text-lg text-orange-600">+{currency(financials?.shippingCost || 0)}</p>
+              </div>
+            )}
           </div>
 
           <div className="border-t border-amber-200 mt-4 pt-4">

@@ -100,12 +100,12 @@ export default function BuyingPage() {
     startDate: dateRange.from || undefined,
     endDate: dateRange.to || undefined,
   })
-  
+
   // Get all rows from API and flatten items into individual rows
   const allBuyingRows = useMemo(() => {
     const purchases = purchasesData?.rows ?? []
     const flattened = []
-    
+
     purchases.forEach(purchase => {
       if (purchase.items && purchase.items.length > 0) {
         purchase.items.forEach((item, itemIndex) => {
@@ -135,44 +135,44 @@ export default function BuyingPage() {
         })
       }
     })
-    
+
     return flattened
   }, [purchasesData?.rows])
-  
+
   // Apply client-side filtering by Supplier name and Product names
   const buyingRows = useMemo(() => {
     if (!searchQuery.trim()) {
       return allBuyingRows
     }
-    
+
     const query = searchQuery.trim().toLowerCase()
-    
+
     return allBuyingRows.filter((row) => {
       // Search by supplier name
       const supplierMatch = row.supplierName?.toLowerCase().includes(query)
-      
+
       // Search by product name/code (now at row level)
       const productName = row.productName?.toLowerCase() || ""
       const productCode = row.productCode?.toLowerCase() || ""
       const productMatch = productName.includes(query) || productCode.includes(query)
-      
+
       return supplierMatch || productMatch
     })
   }, [allBuyingRows, searchQuery])
-  
+
   // Calculate pagination - use filtered results when searching
   const pagination = useMemo(() => {
     if (!searchQuery.trim()) {
       // No search - use API pagination
       return purchasesData?.pagination || {}
     }
-    
+
     // Search active - calculate pagination from filtered results
     const pageSize = 20
     const totalFiltered = buyingRows.length
     const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize))
     const currentPageNum = Math.min(page, totalPages)
-    
+
     return {
       currentPage: currentPageNum,
       totalPages,
@@ -180,13 +180,13 @@ export default function BuyingPage() {
       pageSize,
     }
   }, [buyingRows, searchQuery, page, purchasesData?.pagination])
-  
+
   // Get paginated rows for display
   const displayRows = useMemo(() => {
     if (!searchQuery.trim()) {
       return buyingRows // API already paginated
     }
-    
+
     // Client-side pagination for filtered results
     const pageSize = 20
     const startIndex = ((pagination.currentPage || 1) - 1) * pageSize
@@ -291,6 +291,53 @@ export default function BuyingPage() {
         },
       },
       {
+        header: "Boxes",
+        accessor: "totalBoxes",
+        render: (row) => {
+          // Match Dispatch Orders approach: purchases are created from dispatch orders
+          // so they should have totalBoxes at root level, same as dispatch orders
+          let totalBoxes = row.totalBoxes
+
+          // If not at root, check other possible locations
+          if (totalBoxes === undefined || totalBoxes === null) {
+            totalBoxes = row.raw?.totalBoxes
+          }
+
+          // Check dispatchOrder if populated
+          if ((totalBoxes === undefined || totalBoxes === null) && row.dispatchOrder) {
+            totalBoxes = row.dispatchOrder.totalBoxes
+          }
+
+          // Check raw dispatchOrder
+          if ((totalBoxes === undefined || totalBoxes === null) && row.raw?.dispatchOrder) {
+            totalBoxes = row.raw.dispatchOrder.totalBoxes
+          }
+
+          // Parse if string
+          if (typeof totalBoxes === 'string') {
+            const parsed = parseInt(totalBoxes)
+            totalBoxes = isNaN(parsed) ? 0 : parsed
+          }
+
+          // Default to 0 if still undefined/null (match Dispatch Orders behavior)
+          totalBoxes = totalBoxes ?? 0
+
+          // Display exactly like Dispatch Orders: show the number (including 0)
+          return <span className="tabular-nums text-sm font-semibold text-foreground">{totalBoxes}</span>
+        },
+      },
+      {
+        header: "Qty",
+        accessor: "quantity",
+        render: (row) => {
+          const itemQty = row.quantity || 0
+
+          return (
+            <span className="font-semibold text-foreground tabular-nums">{itemQty.toLocaleString()}</span>
+          )
+        },
+      },
+      {
         header: "Colors",
         accessor: "colors",
         render: (row, { isExpanded } = {}) => {
@@ -385,42 +432,7 @@ export default function BuyingPage() {
           return <TruncatedBadgeList items={sizeArray} max={3} colorClass="bg-green-100 text-green-800" />
         },
       },
-      {
-        header: "Boxes",
-        accessor: "totalBoxes",
-        render: (row) => {
-          // Match Dispatch Orders approach: purchases are created from dispatch orders
-          // so they should have totalBoxes at root level, same as dispatch orders
-          let totalBoxes = row.totalBoxes
 
-          // If not at root, check other possible locations
-          if (totalBoxes === undefined || totalBoxes === null) {
-            totalBoxes = row.raw?.totalBoxes
-          }
-
-          // Check dispatchOrder if populated
-          if ((totalBoxes === undefined || totalBoxes === null) && row.dispatchOrder) {
-            totalBoxes = row.dispatchOrder.totalBoxes
-          }
-
-          // Check raw dispatchOrder
-          if ((totalBoxes === undefined || totalBoxes === null) && row.raw?.dispatchOrder) {
-            totalBoxes = row.raw.dispatchOrder.totalBoxes
-          }
-
-          // Parse if string
-          if (typeof totalBoxes === 'string') {
-            const parsed = parseInt(totalBoxes)
-            totalBoxes = isNaN(parsed) ? 0 : parsed
-          }
-
-          // Default to 0 if still undefined/null (match Dispatch Orders behavior)
-          totalBoxes = totalBoxes ?? 0
-
-          // Display exactly like Dispatch Orders: show the number (including 0)
-          return <span className="tabular-nums text-sm font-semibold text-foreground">{totalBoxes}</span>
-        },
-      },
       // {
       //   header: "Ex. Rate",
       //   accessor: "exchangeRate",
@@ -439,6 +451,7 @@ export default function BuyingPage() {
       //     </span>
       //   ),
       // },
+
       {
         header: "Landed Price",
         accessor: "landedPrice",
@@ -577,7 +590,7 @@ export default function BuyingPage() {
             r.dispatchOrder?.createdAt ||
             r.dispatchOrder?.confirmedAt ||
             r.dispatchOrder?.dispatchDate;
-          
+
           // Fallback to batch deduction dates if no dispatch order
           if (!dateValue && r.items?.[0]?.batchDeductions?.[0]) {
             // Use the date from first batch deduction
@@ -586,12 +599,12 @@ export default function BuyingPage() {
               dateValue = firstBatch.createdAt;
             }
           }
-          
+
           // Last resort: use return date
           if (!dateValue) {
             dateValue = r.returnedAt;
           }
-          
+
           return (
             <span>
               {dateValue ? new Date(dateValue).toLocaleDateString('en-GB') : "—"}
@@ -654,7 +667,7 @@ export default function BuyingPage() {
       <div className="mb-3">
         <BackButton fallbackPath="/home" label="Back" />
       </div>
-      
+
 
       {/* Internal tabs using shared Tabs component */}
       {/* {JSON.stringify(buyingRows)} */}

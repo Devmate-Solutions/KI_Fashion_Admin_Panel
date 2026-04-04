@@ -1123,6 +1123,14 @@ export default function CustomerLedgerPage() {
     return buyerDetails?.balance || 0
   }, [allLedgerTransactions, buyerDetails])
 
+  // Calculate total balance for "All Buyers" view
+  const totalAllBuyersBalance = useMemo(() => {
+    return buyers.reduce((sum, b) => sum + (Number(b.balance) || 0), 0)
+  }, [buyers])
+
+  // Determine which balance to display
+  const displayBalance = selectedBuyerId === "all" ? totalAllBuyersBalance : currentBuyerLedgerBalance
+
   return (
     <div className="space-y-6">
       {/* Header - Enhanced */}
@@ -1172,14 +1180,42 @@ export default function CustomerLedgerPage() {
                   </div>
                 </div>
 
-                {selectedBuyerId !== "all" && (
-                  <div className="rounded-lg border bg-card p-4">
-                    <div className="text-sm text-muted-foreground">Current Buyer Balance</div>
-                    <div className="mt-1 text-2xl font-bold tabular-nums">
-                      {buyerDetailsLoading ? "Loading..." : formatNumber(currentBuyerLedgerBalance)}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+                    <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
+                      Total Entries
+                    </div>
+                    <div className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                      {filteredLedgerTransactions.length}
                     </div>
                   </div>
-                )}
+
+                  <div className={`rounded-lg border p-4 shadow-sm ${
+                    displayBalance >= 0 
+                      ? 'border-emerald-200 bg-emerald-50/30' 
+                      : 'border-red-200 bg-red-50/30'
+                  }`}>
+                    <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${
+                      displayBalance >= 0 ? 'text-emerald-700/80' : 'text-red-700/80'
+                    }`}>
+                      {selectedBuyerId === "all" ? "Total Buyer Balance" : "Current Buyer Balance"}
+                    </div>
+                    <div className={`mt-1 text-2xl font-bold tabular-nums ${
+                      displayBalance >= 0 ? 'text-emerald-700' : 'text-red-700'
+                    }`}>
+                      {buyerDetailsLoading && selectedBuyerId !== "all" 
+                        ? "Loading..." 
+                        : formatNumber(Math.abs(displayBalance))}
+                    </div>
+                    {/* <div className={`text-xs mt-1 ${
+                      displayBalance >= 0 ? 'text-emerald-600/80' : 'text-red-600/80'
+                    }`}>
+                      {displayBalance >= 0 
+                        ? (selectedBuyerId === "all" ? "Total owed by buyers" : "Amount owed by buyer")
+                        : (selectedBuyerId === "all" ? "Total we owe to buyers" : "Amount we owe buyer")}
+                    </div> */}
+                  </div>
+                </div>
 
                 {buyersError && (
                   <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">

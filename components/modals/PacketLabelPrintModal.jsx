@@ -31,6 +31,8 @@ export default function PacketLabelPrintModal({ open, onClose, packetId, packet 
     .map(c => `${c.color}/${c.size} × ${c.quantity}`)
     .join(", ") || "—";
 
+  const price = data?.minSellingPrice || data?.suggestedSellingPrice || 0;
+
   const handlePrint = () => {
     if (!data) return;
 
@@ -49,118 +51,109 @@ export default function PacketLabelPrintModal({ open, onClose, packetId, packet 
         <title>Barcode: ${data.barcode}</title>
         <style>
           @page {
-            size: 80mm 50mm;
-            margin: 2mm;
+            size: 50mm 25mm;
+            margin: 0;
           }
           
           * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
           }
           
           body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 10px;
+            width: 50mm;
+            height: 25mm;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
             background: white;
           }
           
-          .label-container {
-            background: white;
-            border: 2px solid #333;
-            border-radius: 8px;
-            padding: 15px;
-            width: 280px;
+          .label {
+            width: 48mm;
+            height: 23mm;
+            padding: 0.5mm 1mm;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            overflow: hidden;
+          }
+          
+          .header-section {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 0.2mm;
+          }
+          
+          .product-code {
+            font-size: 6.5pt;
+            font-weight: 800;
+            font-family: 'Courier New', monospace;
+            color: #000;
             text-align: center;
-          }
-          
-          .product-name {
-            font-size: 14px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
+            width: 100%;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
           }
           
-          .product-code {
-            font-size: 11px;
-            color: #666;
-            margin-bottom: 8px;
-            font-family: 'Courier New', monospace;
+          .composition {
+            font-size: 5.5pt;
+            font-weight: 600;
+            color: #333;
+            text-align: center;
+            width: 100%;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.3;
+            word-break: break-word;
           }
           
-          .barcode-image {
-            margin: 10px 0;
+          .barcode-img {
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 60px;
+            flex: 1;
+            width: 100%;
+            min-height: 0;
+            padding-top: 0.5mm;
           }
           
-          .barcode-image img {
-            max-width: 100%;
-            height: auto;
+          .barcode-img img {
+            max-width: 46mm;
+            max-height: 12mm;
+            object-fit: contain;
           }
           
-          .barcode-number {
-            font-size: 16px;
-            font-weight: bold;
-            font-family: 'Courier New', monospace;
-            letter-spacing: 2px;
+          .price {
+            font-size: 6pt;
+            font-weight: 700;
             color: #000;
-            margin: 8px 0;
-          }
-          
-          .composition {
-            font-size: 10px;
-            color: #666;
-            margin-bottom: 8px;
-          }
-          
-          .badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 600;
-            margin-bottom: 8px;
-          }
-          
-          .badge-packet {
-            background: #e3f2fd;
-            color: #1976d2;
-          }
-          
-          .badge-loose {
-            background: #fff3e0;
-            color: #f57c00;
+            text-align: center;
+            width: 100%;
+            white-space: nowrap;
           }
           
           @media print {
-            body {
-              padding: 0;
-              min-height: auto;
-            }
-            
-            .label-container {
-              border: 1px solid #000;
-            }
+            body { width: 50mm; height: 25mm; }
           }
         </style>
       </head>
       <body>
-        <div class="label-container">
-          <div class="product-name">${data.productName || "Unknown Product"}</div>
-          <div class="product-code">SKU: ${data.productCode || "N/A"}</div>
-          ${data.barcodeImage ? `<div class="barcode-image"><img src="${data.barcodeImage}" alt="Barcode" /></div>` : ''}
-          <div class="barcode-number">${data.barcode}</div>
+        <div class="label">
+          <div class="header-section">
+            <div class="product-code">${data.productCode || "N/A"}</div>
+            ${price > 0 ? `<div class="price">Min Sell Price: £${price.toFixed(2)}</div>` : ''}
+          </div>
           <div class="composition">${compositionText}</div>
-          <span class="badge ${data.isLoose ? 'badge-loose' : 'badge-packet'}">${data.isLoose ? 'LOOSE' : 'PACKET'}</span>
+          ${data.barcodeImage ? `<div class="barcode-img"><img src="${data.barcodeImage}" alt="Barcode" /></div>` : ''}
         </div>
       </body>
       </html>
@@ -191,43 +184,47 @@ export default function PacketLabelPrintModal({ open, onClose, packetId, packet 
             <p className="text-sm mt-1">{error.message || "Please try again"}</p>
           </div>
         ) : data ? (
-          <div className="border-2 border-gray-300 rounded-lg p-4 text-center bg-white">
-            <div className="font-semibold text-sm mb-1 truncate" title={data.productName}>
-              {data.productName || "Unknown Product"}
-            </div>
-            <div className="text-xs text-muted-foreground font-mono mb-3">
-              SKU: {data.productCode || "N/A"}
-            </div>
-            
-            {data.barcodeImage && (
-              <div className="flex justify-center items-center min-h-[60px] my-3">
-                <img 
-                  src={data.barcodeImage} 
-                  alt={data.barcode}
-                  className="max-w-full h-auto"
-                />
+          <>
+            {/* Label Preview — simulates 50mm × 25mm sticker */}
+            <div className="border-2 border-gray-300 rounded p-2 bg-white mx-auto" style={{ maxWidth: '280px', aspectRatio: '2 / 1' }}>
+              <div className="h-full flex flex-col justify-between">
+                {/* Top: Product Code + Price (Centered) */}
+                <div className="flex flex-col items-center">
+                  <span className="text-[10px] font-bold font-mono tracking-tighter text-center">
+                    {data.productCode || "N/A"}
+                  </span>
+                  {price > 0 && (
+                    <span className="text-[9px] font-bold text-gray-800 text-center">
+                      Min Sell Price: £{price.toFixed(2)}
+                    </span>
+                  )}
+                </div>
+                
+                {/* Composition — centered, wraps to 2 lines */}
+                <div className="text-[9px] font-semibold text-gray-600 text-center line-clamp-2">
+                  {compositionText}
+                </div>
+                
+                {/* Barcode Image (includes barcode number) */}
+                {data.barcodeImage && (
+                  <div className="flex justify-center items-center flex-1 min-h-0 my-1">
+                    <img 
+                      src={data.barcodeImage} 
+                      alt={data.barcode}
+                      className="max-w-full h-auto max-h-[50px]"
+                    />
+                  </div>
+                )}
               </div>
-            )}
-            
-            <div className="font-mono font-bold text-lg tracking-wider mb-2">
-              {data.barcode}
             </div>
             
-            <div className="text-xs text-muted-foreground mb-2">
-              {compositionText}
+            {/* Label info */}
+            <div className="text-center mt-2">
+              <p className="text-[10px] text-muted-foreground">
+                🖨️ Zebra ZD421 • 50mm × 25mm label
+              </p>
             </div>
-            
-            {/* <Badge 
-              variant={data.isLoose ? "secondary" : "default"}
-              className="mb-2"
-            >
-              {data.isLoose ? "LOOSE" : "PACKET"}
-            </Badge>
-            
-            <div className="text-lg font-bold text-green-700">
-              £{(data.suggestedSellingPrice || 0).toFixed(2)}
-            </div> */}
-          </div>
+          </>
         ) : null}
 
         <div className="flex justify-end gap-2 pt-2">
