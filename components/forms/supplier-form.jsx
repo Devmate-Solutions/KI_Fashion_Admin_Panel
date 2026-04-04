@@ -115,11 +115,21 @@ export function AddSupplierForm({ open, onClose, onSubmit, loading = false }) {
         phoneAreaCode: formData.phoneAreaCode || undefined,
         alternatePhone: formData.alternatePhone || undefined,
         alternatePhoneAreaCode: formData.alternatePhoneAreaCode || undefined,
-        address: formData.address ? { street: formData.address, country: 'Pakistan' } : undefined,
+        address: formData.address ? { 
+          street: formData.address, 
+          fullAddress: formData.address,
+          country: 'Pakistan' 
+        } : undefined,
         notes: 'Created by admin via CRM',
       }
       submitData.signupSource = 'crm'
       submitData.portalAccess = ['supplier']
+      
+      // Top-level fields for User document
+      submitData.phoneAreaCode = formData.phoneAreaCode || undefined
+      submitData.alternatePhone = formData.alternatePhone || undefined
+      submitData.alternatePhoneAreaCode = formData.alternatePhoneAreaCode || undefined
+      submitData.address = formData.address || undefined
 
       // Clean up profile-specific fields from main data
       delete submitData.company
@@ -404,13 +414,21 @@ export function EditSupplierForm({ open, supplier, onClose, onSubmit, loading = 
         email: submitData.email,
         alternatePhone: submitData.alternatePhone || undefined,
         alternatePhoneAreaCode: submitData.alternatePhoneAreaCode || undefined,
-        address: { street: submitData.address, country: 'Pakistan' }
+        address: { 
+          street: submitData.address, 
+          fullAddress: submitData.address,
+          country: 'Pakistan' 
+        }
       }
+
+      // Sync top-level phone fields for User document
+      submitData.alternatePhone = submitData.alternatePhone || undefined
+      submitData.alternatePhoneAreaCode = submitData.alternatePhoneAreaCode || undefined
 
       // Clean up profile-specific fields from main data to avoid redundancy
       delete submitData.company
-      delete submitData.alternatePhone
-      delete submitData.alternatePhoneAreaCode
+      // delete submitData.alternatePhone // keep for User update
+      // delete submitData.alternatePhoneAreaCode // keep for User update
 
       onSubmit(submitData)
     }
