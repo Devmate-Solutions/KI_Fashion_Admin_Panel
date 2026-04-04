@@ -311,8 +311,6 @@ export function EditSupplierForm({ open, supplier, onClose, onSubmit, loading = 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    password: '',
-    confirmPassword: '',
     phone: '',
     phoneAreaCode: '',
     address: '',
@@ -326,15 +324,24 @@ export function EditSupplierForm({ open, supplier, onClose, onSubmit, loading = 
   useEffect(() => {
     if (open && supplier) {
       // Extract supplier data - could be from populated 'supplier' field or 'supplierProfile'
-      const supplierData = supplier.supplier || supplier.supplierProfile || supplier
+      const supplierData = supplier.supplier || supplier.supplierProfile || {}
+      
+      // Handle address (could be string or object)
+      let addressStr = ''
+      if (typeof supplierData.address === 'string') {
+        addressStr = supplierData.address
+      } else if (supplierData.address && typeof supplierData.address === 'object') {
+        addressStr = supplierData.address.fullAddress || supplierData.address.street || ''
+      } else if (typeof supplier.address === 'string') {
+        addressStr = supplier.address
+      }
+
       setFormData({
         name: supplier.name || supplierData.name || '',
         email: supplier.email || supplierData.email || '',
-        password: '',
-        confirmPassword: '',
         phone: supplier.phone || supplierData.phone || '',
         phoneAreaCode: supplier.phoneAreaCode || supplierData.phoneAreaCode || '',
-        address: supplier.address || supplierData.address || '',
+        address: addressStr,
         company: supplierData.company || supplier.company || '',
         alternatePhone: supplierData.alternatePhone || supplier.alternatePhone || '',
         alternatePhoneAreaCode: supplierData.alternatePhoneAreaCode || supplier.alternatePhoneAreaCode || '',
@@ -370,15 +377,6 @@ export function EditSupplierForm({ open, supplier, onClose, onSubmit, loading = 
       newErrors.email = 'Invalid email format'
     }
 
-    // Password is optional for edit, but if provided, must be valid
-    if (formData.password && formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters'
-    }
-
-    if (formData.password && formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match'
-    }
-
     if (!formData.phone?.trim()) {
       newErrors.phone = 'Phone number is required'
     }
@@ -391,21 +389,20 @@ export function EditSupplierForm({ open, supplier, onClose, onSubmit, loading = 
     e.preventDefault()
     if (validate()) {
       const submitData = { ...formData }
-      delete submitData.confirmPassword
-
-      // Only include password if it was provided
-      if (!submitData.password) {
-        delete submitData.password
-      }
 
       // Package supplier-specific fields
       submitData.supplierProfile = {
+        name: submitData.name,
         company: submitData.company,
+        phone: submitData.phone,
+        phoneAreaCode: submitData.phoneAreaCode,
+        email: submitData.email,
         alternatePhone: submitData.alternatePhone || undefined,
         alternatePhoneAreaCode: submitData.alternatePhoneAreaCode || undefined,
+        address: { street: submitData.address, country: 'Pakistan' }
       }
 
-      // Clean up profile-specific fields from main data
+      // Clean up profile-specific fields from main data to avoid redundancy
       delete submitData.company
       delete submitData.alternatePhone
       delete submitData.alternatePhoneAreaCode
@@ -524,34 +521,6 @@ export function EditSupplierForm({ open, supplier, onClose, onSubmit, loading = 
               placeholder="Enter address"
             />
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password" className="text-sm font-semibold">Password <span className="text-xs text-muted-foreground">(leave blank to keep current)</span></Label>
-            <Input
-              id="password"
-              type="password"
-              value={formData.password}
-              onChange={(e) => handleChange('password', e.target.value)}
-              className={`h-11 ${errors.password ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
-              placeholder="Enter new password"
-            />
-            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
-          </div>
-
-          {formData.password && (
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-sm font-semibold">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={formData.confirmPassword}
-                onChange={(e) => handleChange('confirmPassword', e.target.value)}
-                className={`h-11 ${errors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
-                placeholder="Confirm new password"
-              />
-              {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
-            </div>
-          )}
 
         <DialogFooter className="gap-3 pt-4 border-t border-border/60">
           <Button 

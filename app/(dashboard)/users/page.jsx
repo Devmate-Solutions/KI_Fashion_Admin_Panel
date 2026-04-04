@@ -298,22 +298,10 @@ export default function UsersPage() {
 
   const handleUpdateUser = async (formData) => {
     try {
-      const supplierProfile = formData.supplierProfile;
-      const dataToUpdate = { ...formData };
-      delete dataToUpdate.supplierProfile;
-
       await updateUserMutation.mutateAsync({
         id: editingUser._id || editingUser.id,
-        data: dataToUpdate
+        data: formData
       })
-
-      if (supplierProfile && (editingUser.supplier?._id || editingUser.supplierProfile?._id || editingUser.supplier)) {
-        const supplierId = editingUser.supplier?._id || editingUser.supplierProfile?._id || editingUser.supplier;
-        await updateSupplierMutation.mutateAsync({
-          id: supplierId,
-          data: supplierProfile
-        })
-      }
 
       setOpenEditForm(false)
       setEditingUser(null)
