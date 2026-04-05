@@ -757,6 +757,25 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
   }
 
   // Save purchase to backend (updated to use supplier user ID)
+  const getSupplierIdFromProduct = (product) => {
+    if (!product) return null;
+    if (product.supplier?._id || product.supplier) {
+      return product.supplier._id || product.supplier;
+    }
+    const supplierEntry = Array.isArray(product.suppliers) ? product.suppliers[0] : null;
+    if (supplierEntry?.supplier?._id || supplierEntry?.supplier) {
+      return supplierEntry.supplier._id || supplierEntry.supplier;
+    }
+    return null;
+  };
+
+  const matchesSupplier = (product, expectedSupplierId) => {
+    if (!expectedSupplierId) return true;
+    const productSupplierId = getSupplierIdFromProduct(product);
+    if (!productSupplierId) return false;
+    return String(productSupplierId) === String(expectedSupplierId);
+  };
+
   const handleSave = async () => {
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/e0660d90-406d-498c-9b9c-ed0297888613', {
@@ -919,6 +938,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       const itemsWithProducts = await Promise.all(
         rows.map(async (row) => {
           let productId = row.productId;
+          const supplierFilter = supplierId ? { supplierId } : {};
 
           // If no productId but we have product name or code, try to find it
           if (!productId && (row.productName || row.productCode)) {
@@ -927,43 +947,47 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               if (row.productCode) {
                 try {
                   const codeResponse = await productsAPI.lookupByCode(
-                    row.productCode
+                    row.productCode,
+                    supplierFilter
                   );
                   const product = codeResponse.data?.data || codeResponse.data;
-                  if (product) {
+                  if (product && matchesSupplier(product, supplierId)) {
                     productId = product._id || product.id;
                   }
                 } catch (codeErr) {
                   // Code lookup failed, try name search
                   if (row.productName) {
                     const nameResponse = await productsAPI.search(
-                      row.productName
+                      row.productName,
+                      supplierFilter
                     );
                     const productsList =
                       nameResponse.data?.data || nameResponse.data || [];
                     const product =
                       productsList.find(
                         (p) =>
+                          matchesSupplier(p, supplierId) &&
                           p.name?.toLowerCase() ===
                           row.productName.trim().toLowerCase()
-                      ) || productsList[0];
-                    if (product) {
+                      ) || productsList.find((p) => matchesSupplier(p, supplierId));
+                    if (product && matchesSupplier(product, supplierId)) {
                       productId = product._id || product.id;
                     }
                   }
                 }
               } else if (row.productName) {
                 // Try name search
-                const nameResponse = await productsAPI.search(row.productName);
+                const nameResponse = await productsAPI.search(row.productName, supplierFilter);
                 const productsList =
                   nameResponse.data?.data || nameResponse.data || [];
                 const product =
                   productsList.find(
                     (p) =>
+                      matchesSupplier(p, supplierId) &&
                       p.name?.toLowerCase() ===
                       row.productName.trim().toLowerCase()
-                  ) || productsList[0];
-                if (product) {
+                  ) || productsList.find((p) => matchesSupplier(p, supplierId));
+                if (product && matchesSupplier(product, supplierId)) {
                   productId = product._id || product.id;
                 }
               }
