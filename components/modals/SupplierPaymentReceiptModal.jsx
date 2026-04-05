@@ -74,11 +74,11 @@ function buildPrintHtml(receipt) {
       <div class="grid">
         <div class="card">
           <h3>Balance Before</h3>
-          <p><strong>${formatNumber(Math.abs(receipt.balanceBefore || 0))}</strong>${receipt.balanceBefore < 0 ? " CR" : " DR"}</p>
+          <p><strong>${formatNumber(Math.abs(receipt.balanceBefore || 0))}</strong></p>
         </div>
         <div class="card">
           <h3>Balance After</h3>
-          <p><strong>${formatNumber(Math.abs(receipt.balanceAfter || 0))}</strong>${receipt.balanceAfter < 0 ? " CR" : " DR"}</p>
+          <p><strong>${formatNumber(Math.abs(receipt.balanceAfter || 0))}</strong></p>
         </div>
       </div>
 
@@ -156,13 +156,13 @@ export default function SupplierPaymentReceiptModal({ open, onOpenChange, receip
               <div className="rounded-lg bg-muted/30 p-4">
                 <p className="text-xs font-semibold text-muted-foreground uppercase">Balance Before</p>
                 <p className={`text-lg font-bold ${(receipt.balanceBefore || 0) >= 0 ? "text-red-600" : "text-green-600"}`}>
-                  {formatNumber(Math.abs(receipt.balanceBefore || 0))} {(receipt.balanceBefore || 0) < 0 ? "CR" : "DR"}
+                  {formatNumber(Math.abs(receipt.balanceBefore || 0))} 
                 </p>
               </div>
               <div className="rounded-lg bg-muted/30 p-4">
                 <p className="text-xs font-semibold text-muted-foreground uppercase">Balance After</p>
                 <p className={`text-lg font-bold ${(receipt.balanceAfter || 0) >= 0 ? "text-red-600" : "text-green-600"}`}>
-                  {formatNumber(Math.abs(receipt.balanceAfter || 0))} {(receipt.balanceAfter || 0) < 0 ? "CR" : "DR"}
+                  {formatNumber(Math.abs(receipt.balanceAfter || 0))} 
                 </p>
               </div>
             </div>
@@ -177,7 +177,7 @@ export default function SupplierPaymentReceiptModal({ open, onOpenChange, receip
                         <Badge variant="outline" className={distribution.isAdvance ? "border-amber-300 bg-amber-50 text-amber-700" : "border-blue-300 bg-blue-50 text-blue-700"}>
                           {distribution.isAdvance ? "Advance" : "Dispatch Order"}
                         </Badge>
-                        <span className="font-medium">{distribution.isAdvance ? "Stored as supplier advance" : orderNumber}</span>
+                        <span className="font-medium">{distribution.isAdvance ? "Supplier advance" : orderNumber}</span>
                       </div>
                       <p className="text-xs text-muted-foreground">
                         Previous: {formatNumber(distribution.previousBalance)} | New: {formatNumber(distribution.newBalance)}

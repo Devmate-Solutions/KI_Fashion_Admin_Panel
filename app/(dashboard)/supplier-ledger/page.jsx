@@ -512,7 +512,7 @@ export default function SupplierLedgerPage() {
         accessor: "balance",
         render: (row) => (
           <span className={`tabular-nums font-semibold ${row.balance >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-            {formatNumber(Math.abs(row.balance || 0))} {row.balance >= 0 ? 'DR' : 'CR'}
+            {formatNumber(Math.abs(row.balance || 0))} 
           </span>
         )
       }
@@ -1010,7 +1010,7 @@ export default function SupplierLedgerPage() {
         accessor: "balance",
         render: (row) => (
           <span className={`tabular-nums font-semibold ${row.balance >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-            {formatNumber(Math.abs(row.balance))} {row.balance >= 0 ? 'DR' : 'CR'}
+            {formatNumber(Math.abs(row.balance))} 
           </span>
         )
       }
@@ -1538,7 +1538,7 @@ export default function SupplierLedgerPage() {
     doc.text(`Cash Paid: ${formatNumber(totalCash)}`, 130, 52)
     doc.text(`Bank Paid: ${formatNumber(totalBank)}`, 180, 52)
     doc.text(`Returns: ${formatNumber(totalReturn)}`, 225, 52)
-    const balLabel = balance > 0 ? `Balance: ${formatNumber(Math.abs(balance))} DR` : `Balance: ${formatNumber(Math.abs(balance))} CR`
+    const balLabel = balance > 0 ? `Balance: ${formatNumber(Math.abs(balance))}` : `Balance: ${formatNumber(Math.abs(balance))}`
     doc.setTextColor(balance > 0 ? 200 : 0, balance > 0 ? 0 : 128, 0)
     doc.text(balLabel, pageWidth - 14, 52, { align: 'right' })
     doc.setTextColor(0, 0, 0)

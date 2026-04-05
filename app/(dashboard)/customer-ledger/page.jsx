@@ -1060,7 +1060,7 @@ export default function CustomerLedgerPage() {
                   ${row.paymentDirection !== 'debit' ? formatNumber(row.totalAmount) : '-'}
                 </td>
                 <td class="text-right font-bold ${row.balanceAfter > 0 ? 'text-red' : row.balanceAfter < 0 ? 'text-green' : ''}">
-                  ${formatNumber(Math.abs(row.balanceAfter))}${row.balanceAfter < 0 ? ' (CR)' : ''}
+                  ${formatNumber(Math.abs(row.balanceAfter))}
                 </td>
                 <td class="text-center" style="text-transform: capitalize;">${row.paymentMethod}</td>
                 <td class="text-center">
