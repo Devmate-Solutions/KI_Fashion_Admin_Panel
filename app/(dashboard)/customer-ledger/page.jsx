@@ -458,31 +458,76 @@ export default function CustomerLedgerPage() {
       <head>
         <title>Payment Receipt - ${receipt.receiptNumber}</title>
         <style>
-          body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
-          .header h1 { margin: 0; font-size: 24px; }
-          .header p { margin: 5px 0; color: #666; }
-          .receipt-info { display: flex; justify-content: space-between; margin-bottom: 20px; }
-          .info-box { background: #f5f5f5; padding: 15px; border-radius: 8px; }
-          .info-box h3 { margin: 0 0 10px 0; font-size: 14px; color: #666; }
-          .info-box p { margin: 5px 0; }
+          @page {
+            size: A4;
+            margin: 15mm;
+          }
+          body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            width: 100%; 
+            margin: 0; 
+            padding: 0; 
+            color: #333;
+            line-height: 1.5;
+          }
+          .receipt-container {
+            max-width: 180mm;
+            margin: 0 auto;
+          }
+          .header { 
+            text-align: center; 
+            margin-bottom: 25px; 
+            border-bottom: 2px solid #1e40af; 
+            padding-bottom: 15px; 
+          }
+          .header h1 { margin: 0; font-size: 24px; color: #1e40af; }
+          .header p { margin: 5px 0; color: #666; font-weight: 600; }
+          
+          .receipt-info { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 20px; 
+            margin-bottom: 20px; 
+          }
+          .info-box { 
+            background: #f8fafc; 
+            padding: 15px; 
+            border-radius: 8px; 
+            border: 1px solid #e2e8f0;
+          }
+          .info-box h3 { 
+            margin: 0 0 10px 0; 
+            font-size: 11px; 
+            color: #64748b; 
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+          }
+          .info-box p { margin: 4px 0; font-size: 13px; }
+          
           table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          th { background: #333; color: white; padding: 10px; text-align: left; }
-          .totals { margin-top: 20px; text-align: right; }
-          .totals p { margin: 5px 0; }
-          .totals .total { font-size: 18px; font-weight: bold; }
-          .status-badge { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 12px; }
+          th { background: #1e40af; color: white; padding: 10px; text-align: left; font-size: 11px; text-transform: uppercase; }
+          td { padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+          
+          .totals { margin-top: 15px; display: flex; flex-direction: column; align-items: flex-end; }
+          .totals-table { width: 250px; }
+          .totals-table td { padding: 5px 0; border: none; }
+          .totals-table td:last-child { text-align: right; font-weight: 700; }
+          .total-row { border-top: 2px solid #1e40af !important; font-size: 16px !important; }
+          
+          .status-badge { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 11px; font-weight: 700; }
           .status-active { background: #dcfce7; color: #166534; }
           .status-reversed { background: #fee2e2; color: #991b1b; }
-          .footer { margin-top: 40px; text-align: center; color: #666; font-size: 12px; }
+          
+          .footer { margin-top: 40px; text-align: center; color: #94a3b8; font-size: 11px; border-top: 1px solid #e2e8f0; padding-top: 15px; }
           @media print { body { padding: 0; } }
         </style>
       </head>
       <body>
-        <div class="header">
-          <h1>PAYMENT RECEIPT</h1>
-          <p>KI Fashion</p>
-        </div>
+        <div class="receipt-container">
+          <div class="header">
+            <h1>PAYMENT RECEIPT</h1>
+            <p>KI Fashion BMS</p>
+          </div>
         
         <div class="receipt-info">
           <div class="info-box">
@@ -515,10 +560,23 @@ export default function CustomerLedgerPage() {
           </tbody>
         </table>
 
+        </div>
+
         <div class="totals">
-          <p><strong>Balance Before:</strong> ${receipt.balances.before.toFixed(2)}</p>
-          <p class="total"><strong>Total Received:</strong> ${receipt.payment.totalAmount.toFixed(2)}</p>
-          <p><strong>Balance After:</strong> ${receipt.balances.after.toFixed(2)}</p>
+          <table class="totals-table">
+            <tr>
+              <td>Balance Before:</td>
+              <td>${receipt.balances.before.toFixed(2)}</td>
+            </tr>
+            <tr class="total-row">
+              <td>Total Received:</td>
+              <td>${receipt.payment.totalAmount.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td>Balance After:</td>
+              <td>${receipt.balances.after.toFixed(2)}</td>
+            </tr>
+          </table>
         </div>
 
         ${receipt.notes ? `<p><strong>Notes:</strong> ${receipt.notes}</p>` : ''}
@@ -778,20 +836,78 @@ export default function CustomerLedgerPage() {
       <head>
         <title>Payment Receipts Report - ${isAllCustomers ? 'All Customers' : (selectedEntity?.name || 'Customer')}</title>
         <style>
+          @page {
+            size: A4;
+            margin: 15mm;
+          }
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { 
             font-family: 'Segoe UI', Arial, sans-serif; 
-            max-width: 1100px; 
-            margin: 0 auto; 
-            padding: 30px;
+            width: 100%; 
+            margin: 0; 
+            padding: 0; 
             color: #333;
+            line-height: 1.4;
+            font-size: 12px;
+          }
+          .report-container {
+            max-width: 190mm;
+            margin: 0 auto;
           }
           .header { 
             text-align: center; 
-            margin-bottom: 30px; 
+            margin-bottom: 25px; 
             border-bottom: 3px solid #1e40af; 
-            padding-bottom: 20px; 
+            padding-bottom: 15px; 
           }
+          .header h1 { font-size: 26px; color: #1e40af; margin-bottom: 5px; }
+          .header p { color: #64748b; font-weight: 600; }
+          
+          .report-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+          }
+          
+          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+          th { background: #1e40af; color: white; padding: 10px; text-align: left; font-size: 11px; text-transform: uppercase; }
+          td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+          .text-right { text-align: right; }
+          
+          .summary-section { 
+            display: flex; 
+            justify-content: flex-end; 
+            margin-top: 20px; 
+          }
+          .summary-table { width: 300px; }
+          .summary-table td { border: none; padding: 5px 10px; }
+          .summary-table .total-row { border-top: 2px solid #1e40af; font-weight: bold; font-size: 15px; }
+          
+          .footer { margin-top: 40px; text-align: center; color: #94a3b8; font-size: 11px; padding-top: 15px; border-top: 1px solid #e2e8f0; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="report-container">
+          <div class="header">
+            <h1>PAYMENT RECEIPTS REPORT</h1>
+            <p>KI Fashion BMS</p>
+          </div>
+          
+          <div class="report-meta">
+            <div>
+              <p><strong>Customer:</strong> ${isAllCustomers ? 'All Customers' : (selectedEntity?.name || 'Customer')}</p>
+              <p><strong>Generated By:</strong> ${user?.name || 'System'}</p>
+            </div>
+            <div class="text-right">
+              <p><strong>Date:</strong> ${new Date().toLocaleDateString('en-GB')}</p>
+              <p><strong>Time:</strong> ${new Date().toLocaleTimeString('en-GB')}</p>
+            </div>
+          </div>
           .logo-section {
             margin-bottom: 15px;
           }

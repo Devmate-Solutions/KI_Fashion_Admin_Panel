@@ -197,7 +197,7 @@ export default function BarcodePrintModal({
         <title>Barcode Labels - Order ${_data?.orderNumber || ""}</title>
         <style>
           @page {
-            size: 50mm 25mm;
+            size: auto;
             margin: 0;
           }
           * {
@@ -208,83 +208,74 @@ export default function BarcodePrintModal({
           body {
             font-family: Arial, sans-serif;
             background: white;
-            width: 50mm;
+            width: 100%;
           }
           .label {
-            width: 50mm;
-            height: 25mm;
-            padding: 0.5mm 1mm;
+            width: 100%;
+            height: auto;
+            min-height: 25mm;
+            padding: 1mm 2mm;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: space-between;
+            justify-content: center;
             overflow: hidden;
             page-break-after: always;
+            border-bottom: 1px dashed #eee; /* Visual separator for non-cutting printers */
           }
           .label:last-child {
             page-break-after: auto;
+            border-bottom: none;
           }
           .header-section {
             width: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-bottom: 0.2mm;
+            margin-bottom: 1mm;
           }
           .product-code {
-            font-size: 6.5pt;
+            font-size: 8pt;
             font-weight: 800;
             font-family: 'Courier New', monospace;
             color: #000;
             text-align: center;
             width: 100%;
-            overflow: hidden;
-            text-overflow: ellipsis;
             white-space: nowrap;
           }
           .price {
-            font-size: 6pt;
-            font-weight: 700;
+            font-size: 8pt;
+            font-weight: 800;
             color: #000;
             text-align: center;
             width: 100%;
-            white-space: nowrap;
           }
           .composition {
-            font-size: 5.5pt;
+            font-size: 7pt;
             font-weight: 600;
             color: #333;
             text-align: center;
             width: 100%;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            line-height: 1.3;
-            word-break: break-word;
+            margin-bottom: 1mm;
+            line-height: 1.2;
           }
           .barcode-img {
             display: flex;
             justify-content: center;
             align-items: center;
-            flex: 1;
             width: 100%;
-            min-height: 0;
-            padding-top: 0.5mm;
+            max-width: 100%;
+            padding: 1mm 0;
           }
           .barcode-img img {
-            max-width: 46mm;
-            max-height: 12mm;
+            max-width: 100%;
+            height: auto;
+            max-height: 15mm;
             object-fit: contain;
           }
-          .price {
-            font-size: 7pt;
-            font-weight: 800;
-            color: #000;
-            white-space: nowrap;
-          }
           @media print {
-            body { width: 50mm; }
+            body { width: 100%; }
+            .label { border-bottom: none; }
           }
         </style>
       </head>

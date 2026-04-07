@@ -35,76 +35,132 @@ function buildPrintHtml(receipt) {
     <head>
       <title>Supplier Payment Receipt - ${receipt.receiptNumber}</title>
       <style>
-        body { font-family: Arial, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; color: #111827; }
-        .header { border-bottom: 2px solid #1f2937; padding-bottom: 16px; margin-bottom: 24px; }
-        .header h1 { margin: 0 0 4px 0; font-size: 24px; }
-        .meta { color: #6b7280; font-size: 13px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-        .card { border: 1px solid #d1d5db; border-radius: 8px; padding: 14px; }
-        .card h3 { margin: 0 0 10px 0; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; }
-        .card p { margin: 4px 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 18px; }
-        th { background: #111827; color: white; padding: 10px; text-align: left; font-size: 12px; }
+        @page {
+          size: A4;
+          margin: 15mm;
+        }
+        body { 
+          font-family: 'Segoe UI', IBM Plex Sans, Arial, sans-serif; 
+          width: 100%; 
+          margin: 0; 
+          padding: 0; 
+          color: #111827; 
+          line-height: 1.5;
+          font-size: 13px;
+        }
+        .container {
+          max-width: 180mm;
+          margin: 0 auto;
+        }
+        .header { 
+          border-bottom: 3px solid #111827; 
+          padding-bottom: 10px; 
+          margin-bottom: 25px;
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+        }
+        .header h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+        .receipt-no { font-family: monospace; font-size: 16px; font-weight: 600; color: #4b5563; }
+        
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; }
+        .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; background: #f9fafb; }
+        .card h3 { margin: 0 0 8px 0; font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
+        .card p { margin: 3px 0; font-size: 14px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background: #111827; color: white; padding: 12px 10px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
         .right { text-align: right; }
-        .footer { margin-top: 24px; color: #6b7280; font-size: 12px; }
+        .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 11px; display: flex; justify-content: space-between; }
+        
+        .summary-box {
+          margin-top: 20px;
+          display: flex;
+          justify-content: flex-end;
+        }
+        .summary-table {
+          width: 250px;
+        }
+        .summary-table tr td {
+          padding: 8px 0;
+          font-size: 14px;
+        }
+        .summary-table tr td:last-child {
+          text-align: right;
+          font-weight: 700;
+        }
+        .total-row {
+          border-top: 2px solid #111827;
+          font-size: 18px !important;
+        }
       </style>
     </head>
     <body>
-      <div class="header">
-        <h1>SUPPLIER PAYMENT RECEIPT</h1>
-        <div class="meta">Receipt ${receipt.receiptNumber}</div>
-      </div>
-
-      <div class="grid">
-        <div class="card">
-          <h3>Supplier</h3>
-          <p><strong>${receipt.supplierId?.name || "Unknown Supplier"}</strong></p>
-          ${receipt.supplierId?.company ? `<p>${receipt.supplierId.company}</p>` : ""}
-          ${receipt.supplierId?.supplierId ? `<p>ID: ${receipt.supplierId.supplierId}</p>` : ""}
+      <div class="container">
+        <div class="header">
+          <div>
+            <h1>PAYMENT RECEIPT</h1>
+            <p style="margin: 5px 0 0 0; color: #6b7280;">KI FASHION - Supplier Copy</p>
+          </div>
+          <div class="receipt-no">${receipt.receiptNumber}</div>
         </div>
-        <div class="card">
-          <h3>Receipt Details</h3>
-          <p><strong>Total:</strong> ${formatNumber(receipt.totalAmount)}</p>
-          <p><strong>Date:</strong> ${formatDateTime({ paymentDate: receipt.paymentDate })}</p>
-          <p><strong>Method:</strong> ${(receipt.paymentMethodSummary || "cash").toUpperCase()}</p>
-          <p><strong>Created By:</strong> ${receipt.createdBy?.name || "System"}</p>
+
+        <div class="grid">
+          <div class="card">
+            <h3>Supplier Information</h3>
+            <p><strong>${receipt.supplierId?.name || "Unknown Supplier"}</strong></p>
+            ${receipt.supplierId?.company ? `<p>${receipt.supplierId.company}</p>` : ""}
+            ${receipt.supplierId?.supplierId ? `<p style="font-family: monospace; font-size: 12px; margin-top: 5px;">ID: ${receipt.supplierId.supplierId}</p>` : ""}
+          </div>
+          <div class="card">
+            <h3>Payment Details</h3>
+            <p><strong>Date:</strong> ${formatDateTime({ paymentDate: receipt.paymentDate })}</p>
+            <p><strong>Method:</strong> ${(receipt.paymentMethodSummary || "cash").toUpperCase()}</p>
+            <p><strong>Total Amount:</strong> GBP ${formatNumber(receipt.totalAmount)}</p>
+          </div>
         </div>
-      </div>
 
-      <div class="grid">
-        <div class="card">
-          <h3>Balance Before</h3>
-          <p><strong>${formatNumber(Math.abs(receipt.balanceBefore || 0))}</strong></p>
+        <div class="grid">
+          <div class="card" style="border-left: 4px solid #ef4444;">
+            <h3>Balance Before</h3>
+            <p style="font-size: 18px; font-weight: 700;">${formatNumber(Math.abs(receipt.balanceBefore || 0))}</p>
+          </div>
+          <div class="card" style="border-left: 4px solid #10b981;">
+            <h3>Balance After</h3>
+            <p style="font-size: 18px; font-weight: 700;">${formatNumber(Math.abs(receipt.balanceAfter || 0))}</p>
+          </div>
         </div>
-        <div class="card">
-          <h3>Balance After</h3>
-          <p><strong>${formatNumber(Math.abs(receipt.balanceAfter || 0))}</strong></p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Allocation / Reference</th>
+              <th class="right">Amount Applied</th>
+              <th class="right">Previous Balance</th>
+              <th class="right">New Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${distributionRows}
+          </tbody>
+        </table>
+
+        ${receipt.notes ? `<div class="card" style="margin-top: 25px;"><h3>Notes & Remarks</h3><p>${receipt.notes}</p></div>` : ""}
+
+        <div class="footer">
+          <div>
+            <p>Orders affected: ${receipt.ordersAffected || 0}</p>
+            <p>Advance amount: ${formatNumber(receipt.advanceAmount || 0)}</p>
+          </div>
+          <div style="text-align: right;">
+            <p>Created by: ${receipt.createdBy?.name || "System"}</p>
+            <p>Generated: ${new Date().toLocaleString("en-GB")}</p>
+          </div>
         </div>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Dispatch Order</th>
-            <th class="right">Amount Applied</th>
-            <th class="right">Previous Balance</th>
-            <th class="right">New Balance</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${distributionRows}
-        </tbody>
-      </table>
-
-      ${receipt.notes ? `<div class="card" style="margin-top: 18px;"><h3>Notes</h3><p>${receipt.notes}</p></div>` : ""}
-
-      <div class="footer">
-        <p>Orders affected: ${receipt.ordersAffected || 0}</p>
-        <p>Advance amount: ${formatNumber(receipt.advanceAmount || 0)}</p>
       </div>
     </body>
     </html>
-  `
+  `;
 }
 
 export default function SupplierPaymentReceiptModal({ open, onOpenChange, receipt }) {

@@ -383,7 +383,7 @@ export default function SaleDetailPage({ params }) {
           </Button>
           <Button variant="outline" onClick={handlePrintReceipt}>
             <Printer className="h-4 w-4 mr-2" />
-            Print Receipt
+            Print Invoice
           </Button>
           <Button
             variant="outline"

@@ -389,6 +389,11 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
         const updated = { ...row, [field]: value };
 
+        // Clear productId if code or name is changed manually
+        if (field === "productCode" || field === "productName") {
+          updated.productId = "";
+        }
+
         // #region agent log
         fetch('http://127.0.0.1:7242/ingest/e0660d90-406d-498c-9b9c-ed0297888613', {
           method: 'POST',
@@ -955,25 +960,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                     productId = product._id || product.id;
                   }
                 } catch (codeErr) {
-                  // Code lookup failed, try name search
-                  if (row.productName) {
-                    const nameResponse = await productsAPI.search(
-                      row.productName,
-                      supplierFilter
-                    );
-                    const productsList =
-                      nameResponse.data?.data || nameResponse.data || [];
-                    const product =
-                      productsList.find(
-                        (p) =>
-                          matchesSupplier(p, supplierId) &&
-                          p.name?.toLowerCase() ===
-                          row.productName.trim().toLowerCase()
-                      ) || productsList.find((p) => matchesSupplier(p, supplierId));
-                    if (product && matchesSupplier(product, supplierId)) {
-                      productId = product._id || product.id;
-                    }
-                  }
+                  // If code lookup fails, we should NOT fallback to name search
+                  // because that leads to "Product code mismatch" if the name exists
+                  // with a different code. We'll let it proceed to create a new product.
+                  console.log(`Code lookup failed for ${row.productCode}, will create new or re-validate.`);
                 }
               } else if (row.productName) {
                 // Try name search

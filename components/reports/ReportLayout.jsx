@@ -220,7 +220,7 @@ export default function ReportLayout({
           
           /* Page setup */
           @page {
-            size: A4 landscape;
+            size: A4;
             margin: 1cm;
           }
           
