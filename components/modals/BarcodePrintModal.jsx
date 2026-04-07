@@ -172,13 +172,13 @@ export default function BarcodePrintModal({
         const compositionText = formatComposition(item);
         const barcodeStr = item.data || item.barcodeNumber || "";
         const price = priceMap[barcodeStr] || 0;
-        const priceText = price > 0 ? `£${price.toFixed(2)}` : "";
+        const priceText = price > 0 ? price.toFixed(2).replace(".", "") : "";
 
         labelsHtml += `
             <div class="label">
               <div class="header-section">
                 <div class="product-code">${item.productCode || ""}</div>
-                ${priceText ? `<div class="price">Min Sell Price: ${priceText}</div>` : ""}
+                ${priceText ? `<div class="price">${barcodeStr.slice(0, 3)}-${priceText}</div>` : ""}
               </div>
               ${compositionText ? `<div class="composition">${compositionText}</div>` : ""}
               <div class="barcode-img">
@@ -295,8 +295,8 @@ export default function BarcodePrintModal({
 
       const barcodesToPrint = productCodeFilter
         ? _data.barcodes.filter(
-            (b) => (b.productCode || b.productName) === productCodeFilter
-          )
+          (b) => (b.productCode || b.productName) === productCodeFilter
+        )
         : _data.barcodes;
 
       const html = buildPrintHtml(barcodesToPrint);
@@ -583,7 +583,7 @@ export default function BarcodePrintModal({
                                 {/* Price */}
                                 {price > 0 && (
                                   <div className="text-[10px] font-bold text-green-700">
-                                    £{price.toFixed(2)}
+                                    {barcodeStr.slice(0, 3)}-{price.toFixed(2).replace(".", "")}
                                   </div>
                                 )}
 

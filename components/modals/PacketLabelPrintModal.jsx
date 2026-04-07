@@ -139,11 +139,9 @@ export default function PacketLabelPrintModal({ open, onClose, packetId, packet 
       <body>
         <div class="label">
           <div class="header-section">
-            <div class="product-code">${data.productCode || "N/A"}</div>
-            ${price > 0 ? `<div class="price">Min Sell Price: £${price.toFixed(2)}</div>` : ''}
-          </div>
           <div class="composition">${compositionText}</div>
-          ${data.barcodeImage ? `<div class="barcode-img"><img src="${data.barcodeImage}" alt="Barcode" /></div>` : ''}
+          ${price > 0 ? `<div class="price">${data.barcode?.slice(0, 3)}-${price.toFixed(2).replace(".", "")}</div>` : ""}
+          ${data.barcodeImage ? `<div class="barcode-img"><img src="${data.barcodeImage}" alt="Barcode" /></div>` : ""}
         </div>
       </body>
       </html>
@@ -185,7 +183,7 @@ export default function PacketLabelPrintModal({ open, onClose, packetId, packet 
                   </span>
                   {price > 0 && (
                     <span className="text-[9px] font-bold text-gray-800 text-center">
-                      Min Sell Price: £{price.toFixed(2)}
+                      {data.barcode?.slice(0, 3)}-{price.toFixed(2).replace(".", "")}
                     </span>
                   )}
                 </div>
