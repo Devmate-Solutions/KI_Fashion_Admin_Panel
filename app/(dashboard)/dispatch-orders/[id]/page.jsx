@@ -887,14 +887,25 @@ export default function DispatchOrderDetailPage({ params }) {
         }
 
         const requestedChanges = {};
-        if (payload.exchangeRate !== confirmedEditImpact?.items?.[0] && confirmedEditImpact) {
+        if (confirmedEditImpact) {
           const impactData = confirmedEditImpact;
           const origER = dispatchOrder?.exchangeRate;
           const origPct = dispatchOrder?.percentage;
           const origDisc = dispatchOrder?.discount || 0;
+          
+          let origDate = "";
+          if (dispatchOrder.dispatchDate) {
+            const d = new Date(dispatchOrder.dispatchDate);
+            const y = d.getUTCFullYear();
+            const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(d.getUTCDate()).padStart(2, '0');
+            origDate = `${y}-${m}-${day}`;
+          }
+
           if (payload.exchangeRate !== origER) requestedChanges.exchangeRate = { from: origER, to: payload.exchangeRate };
           if (payload.percentage !== origPct) requestedChanges.percentage = { from: origPct, to: payload.percentage };
           if (payload.discount !== origDisc) requestedChanges.discount = { from: origDisc, to: payload.discount };
+          if (payload.dispatchDate !== origDate) requestedChanges.dispatchDate = { from: origDate, to: payload.dispatchDate };
           payload.items.forEach((item, i) => {
             const orig = impactData.items?.[i];
             if (orig && item.costPrice !== orig.currentCostPrice) {
