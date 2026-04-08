@@ -55,7 +55,7 @@ export default function SellingPage() {
   const initialTab = Number(searchParams.get("tab") ?? 0)
   const [activeTab, setActiveTab] = useState(initialTab)
   const today = formatLocalDate(new Date())
-  const [dateRange, setDateRange] = useState({ from: today, to: today })
+  const [dateRange, setDateRange] = useState({ from: "", to: "" })
 
   // Fetch sales data
   const { data: sellingRows = [], isLoading: salesLoading } = useSales({
@@ -252,6 +252,7 @@ export default function SellingPage() {
 
   // Sales Return
   const { data: salesReturnData, isLoading: salesReturnLoading } = useSaleReturns({
+    limit: 500,
     startDate: dateRange.from,
     endDate: dateRange.to,
   })

@@ -86,17 +86,14 @@ export default function BuyingPage() {
     return d.toLocaleDateString('en-CA')
   }, [])
 
-  const [dateRange, setDateRange] = useState(() => {
-    const initialDate = user?.role === 'employee' ? yesterday : today
-    return { from: initialDate, to: initialDate }
-  })
+  const [dateRange, setDateRange] = useState({ from: "", to: "" })
 
 
   // When searching, fetch more results for better client-side filtering
   // When not searching, use normal pagination
   const { data: purchasesData, isLoading: purchasesLoading } = usePurchases({
     page: searchQuery.trim() ? 1 : page, // Always start at page 1 when searching
-    limit: searchQuery.trim() ? 500 : 20, // Fetch more results when searching to enable client-side filtering
+    limit: 500, // Fetch more results to enable client-side filtering and show "all data"
     startDate: dateRange.from || undefined,
     endDate: dateRange.to || undefined,
   })
@@ -548,7 +545,11 @@ export default function BuyingPage() {
   }
 
   // Buying Return
-  const { data: returnsData, isLoading: returnsLoading, refetch: refetchReturns } = useReturns({ limit: 100 })
+  const { data: returnsData, isLoading: returnsLoading, refetch: refetchReturns } = useReturns({
+    limit: 500,
+    startDate: dateRange.from || undefined,
+    endDate: dateRange.to || undefined,
+  })
   const buyingReturnRows = returnsData || []
 
   const buyingReturnColumns = useMemo(
