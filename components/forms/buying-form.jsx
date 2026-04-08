@@ -377,6 +377,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       primaryColor: [],
       size: [],
       quantity: 1,
+      minSellingPrice: "",
       photo: null,
     };
     setRows((r) => [...r, newRow]);
@@ -863,6 +864,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           !row.costPrice ||
           isNaN(costPrice) ||
           costPrice <= 0 ||
+          !row.minSellingPrice ||
+          parseFloat(row.minSellingPrice) <= 0 ||
           !row.quantity ||
           !isValidInteger ||
           !hasColors ||
@@ -873,7 +876,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
     if (invalidRows.length > 0) {
       setError(
-        "Please fill in product name, code, season, cost price, quantity, primary color, and size for all rows"
+          "Please fill in product name, code, season, cost price, min sell price, quantity, primary color, and size for all rows"
       );
       return;
     }
@@ -1139,6 +1142,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           const itemPayload = {
             product: productId,
             quantity: Math.floor(quantity), // Ensure it's an integer
+            minSellingPrice: parseFloat(row.minSellingPrice) || 0,
             landedTotal: landedTotal,
           };
 
@@ -1613,6 +1617,9 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 <th className="text-right px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider min-w-[80px]">
                   Cost Price
                 </th>
+                <th className="text-right px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider min-w-[90px]">
+                  Min Sell Price
+                </th>
                 <th className="text-right px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider min-w-[80px]">
                   Landed Price
                 </th>
@@ -1836,7 +1843,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                     </div>
                   </td>
 
-                  {/* Cost Price */}
                   <td className="px-2 py-2">
                     <Input
                       type="text"
@@ -1844,21 +1850,32 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                       value={row.costPrice === 0 ? "" : String(row.costPrice || "")}
                       onChange={(e) => {
                         const value = e.target.value;
-                        // Allow only numbers and one decimal point
                         let sanitized = value
                           .replace(/[^0-9.]/g, "")
                           .replace(/(\..*)\./g, "$1");
-                        // Prevent just "." from being stored (allow ".5" but not standalone ".")
-                        if (sanitized === ".") {
-                          sanitized = "";
-                        }
-                        updateRow(
-                          row.id,
-                          "costPrice",
-                          sanitized === "" ? "" : sanitized
-                        );
+                        if (sanitized === ".") sanitized = "";
+                        updateRow(row.id, "costPrice", sanitized === "" ? "" : sanitized);
                       }}
                       className="h-8 text-xs text-right tabular-nums px-2"
+                    />
+                  </td>
+
+                  {/* Min Sell Price */}
+                  <td className="px-2 py-2">
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={row.minSellingPrice === "" ? "" : String(row.minSellingPrice || "")}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        let sanitized = value
+                          .replace(/[^0-9.]/g, "")
+                          .replace(/(\..*)\./g, "$1");
+                        if (sanitized === ".") sanitized = "";
+                        updateRow(row.id, "minSellingPrice", sanitized === "" ? "" : sanitized);
+                      }}
+                      placeholder="Min Sell"
+                      className={`h-8 text-xs text-right tabular-nums px-2 ${(!row.minSellingPrice || parseFloat(row.minSellingPrice) <= 0) ? "border-amber-500 bg-amber-50" : ""}`}
                     />
                   </td>
 
@@ -2495,7 +2512,12 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 onClick={handleSave}
                 size="lg"
                 className="gap-2 min-w-[160px] h-11 px-6 bg-primary hover:bg-primary/90 shadow-md hover:shadow-lg transition-all"
-                disabled={isSaving || isLoadingSuppliers}
+                disabled={
+                  isSaving ||
+                  isLoadingSuppliers ||
+                  rows.length === 0 ||
+                  rows.some(row => !row.minSellingPrice || parseFloat(row.minSellingPrice) <= 0)
+                }
               >
                 {isSaving ? (
                   <>

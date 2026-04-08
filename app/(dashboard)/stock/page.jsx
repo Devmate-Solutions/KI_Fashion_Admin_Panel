@@ -1157,7 +1157,7 @@ export default function StockPage() {
         title="Inventory"
         columns={inventoryColumns}
         data={filteredInventoryItems}
-        loading={inventoryLoading || inventoryFetching}
+        loading={inventoryLoading}
         enableSearch={false}
         paginate={false}
         expandableRow={true}
@@ -1174,12 +1174,7 @@ export default function StockPage() {
               <MoveRight className="h-4 w-4" />
               Stock movement history
             </div>
-            {detailLoading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading product
-                details...
-              </div>
-            ) : selectedInventory ? (
+            {selectedInventory ? (
               <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
                 <div>
                   <p className="text-muted-foreground">Current Stock</p>
@@ -1394,7 +1389,7 @@ export default function StockPage() {
         title="Stock Movements"
         columns={movementColumns}
         data={movementItems}
-        loading={movementLoading || movementFetching}
+        loading={movementLoading}
         enableSearch={false}
         paginate={false}
       />
@@ -1796,26 +1791,12 @@ export default function StockPage() {
       </form>
 
       {/* Data Table */}
-      {packetStockLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : packetStockItems.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>No packet configurations found</p>
-          <p className="text-sm">
-            Packet stocks are created when dispatch orders are confirmed
-          </p>
-        </div>
-      ) : (
-        <DataTable
-          columns={packetStockColumns}
-          data={packetStockItems}
-          onRowClick={(row) => setSelectedPacketDetail(row)}
-          loading={packetStockFetching}
-        />
-      )}
+      <DataTable
+        columns={packetStockColumns}
+        data={packetStockItems}
+        onRowClick={(row) => setSelectedPacketDetail(row)}
+        loading={packetStockLoading}
+      />
 
       {/* Pagination */}
       {packetStockPagination && packetStockPagination.pages > 1 && (

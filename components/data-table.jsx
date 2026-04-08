@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from "react"
 import { ChevronRight, ChevronDown } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 
 function normalize(v) {
   return String(v ?? "").toLowerCase()
@@ -141,11 +142,20 @@ export default function DataTable({
       </div>
 
       <div className="overflow-x-auto -mx-4 sm:mx-0">
-        {loading ? (
-          <div className="flex items-center justify-center p-8 sm:p-12">
-            <div className="text-center animate-in fade-in duration-300">
-              <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-3 border-primary border-t-transparent mx-auto mb-4 shadow-lg"></div>
-              <p className="text-xs sm:text-sm text-muted-foreground font-medium">Loading data...</p>
+        {loading && (!Array.isArray(data) || data.length === 0) ? (
+          <div className="p-4 space-y-4">
+            <div className="flex items-center space-x-4">
+              <Skeleton className="h-12 w-12 rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-[250px]" />
+                <Skeleton className="h-4 w-[200px]" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
             </div>
           </div>
         ) : !Array.isArray(data) || data.length === 0 ? (
