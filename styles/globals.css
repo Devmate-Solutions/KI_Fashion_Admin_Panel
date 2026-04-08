@@ -165,3 +165,7 @@
   color: #cbd5e1;
   cursor: not-allowed;
 }
+
+.react-datepicker-popper {
+  z-index: 9999 !important;
+}

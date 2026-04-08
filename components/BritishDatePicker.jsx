@@ -61,11 +61,11 @@ const BritishDatePicker = forwardRef(({
   const selectedDate = parseDateValue(value);
 
   // Define date restrictions based on user role
-  const isEmployee = user?.role === 'employee';
+  const isAdminOrSuperAdmin = user?.role === 'super-admin' || user?.role === 'admin';
   
-  // If restrictByRole is true and user is an employee, restrict to today only
-  const finalMaxDate = (restrictByRole && isEmployee) ? new Date() : maxDate;
-  const finalMinDate = (restrictByRole && isEmployee) ? new Date() : minDate;
+  // If restrictByRole is true and user is NOT an admin/super-admin, restrict to today only
+  const finalMaxDate = (restrictByRole && !isAdminOrSuperAdmin) ? new Date() : maxDate;
+  const finalMinDate = (restrictByRole && !isAdminOrSuperAdmin) ? new Date() : minDate;
   
   return (
     <DatePicker
@@ -76,7 +76,7 @@ const BritishDatePicker = forwardRef(({
       maxDate={finalMaxDate}
       minDate={finalMinDate}
       placeholderText={placeholder}
-      disabled={disabled || (restrictByRole && isEmployee)}
+      disabled={disabled || (restrictByRole && !isAdminOrSuperAdmin)}
       showYearDropdown
       showMonthDropdown
       dropdownMode="select"
