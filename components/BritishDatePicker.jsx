@@ -50,7 +50,7 @@ const BritishDatePicker = forwardRef(({
   onChange,
   className = '',
   error = false,
-  maxDate = new Date(),
+  maxDate = null,
   minDate = null,
   placeholder = 'DD/MM/YYYY',
   disabled = false,

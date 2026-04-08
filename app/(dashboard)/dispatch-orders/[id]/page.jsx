@@ -801,10 +801,21 @@ export default function DispatchOrderDetailPage({ params }) {
         currentSupplierPaymentTotal: data.currentSupplierPaymentTotal,
         items: data.items || [],
       });
+
+      let initialDispatchDate = "";
+      if (dispatchOrder.dispatchDate) {
+        const d = new Date(dispatchOrder.dispatchDate);
+        const y = d.getUTCFullYear();
+        const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(d.getUTCDate()).padStart(2, '0');
+        initialDispatchDate = `${y}-${m}-${day}`;
+      }
+
       setConfirmedEditForm({
         exchangeRate: String(data.currentExchangeRate ?? ''),
         percentage: String(data.currentPercentage ?? ''),
         discount: String(data.currentDiscount ?? '0'),
+        dispatchDate: initialDispatchDate,
         items: (data.items || []).map(item => ({
           costPrice: String(item.currentCostPrice ?? ''),
           minSellingPrice: String(item.currentMinSellingPrice ?? ''),
@@ -846,6 +857,7 @@ export default function DispatchOrderDetailPage({ params }) {
         exchangeRate: parseFloat(confirmedEditForm.exchangeRate),
         percentage: parseFloat(confirmedEditForm.percentage),
         discount: parseFloat(confirmedEditForm.discount),
+        dispatchDate: confirmedEditForm.dispatchDate || undefined,
         items: confirmedEditForm.items.map(item => ({
           costPrice: parseFloat(item.costPrice),
           minSellingPrice:
@@ -1881,10 +1893,18 @@ export default function DispatchOrderDetailPage({ params }) {
                   </span>
                 )}
               </div>
-              {/* Dispatch Date */}
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-16 shrink-0">Date</span>
-                {isPending && editingField === "dispatchDate" ? (
+                {isEditingConfirmed ? (
+                  <div className="flex gap-1 items-center">
+                    <BritishDatePicker
+                      value={confirmedEditForm.dispatchDate}
+                      onChange={(e) => setConfirmedEditForm(prev => ({ ...prev, dispatchDate: e.target.value }))}
+                      restrictByRole={true}
+                      className="h-7 text-xs border-violet-400 border-2 w-42"
+                    />
+                  </div>
+                ) : isPending && editingField === "dispatchDate" ? (
                   <div className="flex gap-1 items-center">
                     <BritishDatePicker
                       value={editedDispatchDate}
