@@ -1237,6 +1237,14 @@ export default function DispatchOrderDetailPage({ params }) {
       finalItems.push(item);
     });
 
+    const originalDispatchDate = dispatchOrder?.dispatchDate
+      ? new Date(dispatchOrder.dispatchDate).toLocaleDateString('en-CA')
+      : "";
+    const dispatchDatePayload =
+      editedDispatchDate && editedDispatchDate !== originalDispatchDate
+        ? editedDispatchDate
+        : undefined;
+
     const approvalData = {
       id: dispatchOrderId,
       items: finalItems,
@@ -1249,7 +1257,7 @@ export default function DispatchOrderDetailPage({ params }) {
         discount: confirmOrderSupplierCurrency.discount,
       },
       logisticsCompany: editedLogisticsCompany,
-      dispatchDate: editedDispatchDate,
+      dispatchDate: dispatchDatePayload,
       isTotalBoxesConfirmed: totalBoxesConfirmed,
     };
 
@@ -1379,6 +1387,14 @@ export default function DispatchOrderDetailPage({ params }) {
     // NOTE: Currently the backend confirmation endpoint only accepts payment fields
     // Full editing support (supplier, logistics, date, items) requires backend updates
     // For now, we'll send what the backend accepts
+    const originalDispatchDate = dispatchOrder?.dispatchDate
+      ? new Date(dispatchOrder.dispatchDate).toLocaleDateString('en-CA')
+      : "";
+    const dispatchDatePayload =
+      editedDispatchDate && editedDispatchDate !== originalDispatchDate
+        ? editedDispatchDate
+        : undefined;
+
     const confirmData = {
       id: dispatchOrderId,
       items: finalItems,
@@ -1391,7 +1407,7 @@ export default function DispatchOrderDetailPage({ params }) {
         discount: confirmOrderSupplierCurrency.discount,
       },
       logisticsCompany: editedLogisticsCompany,
-      dispatchDate: editedDispatchDate,
+      dispatchDate: dispatchDatePayload,
       isTotalBoxesConfirmed: totalBoxesConfirmed,
     };
 

@@ -122,6 +122,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
   const [invoiceDate, setInvoiceDate] = useState(
     new Date().toLocaleDateString('en-CA')
   );
+  const initialInvoiceDateRef = useRef(invoiceDate);
   const [exchangeRate, setExchangeRate] = useState("");
   const [percentage, setPercentage] = useState("");
 
@@ -1216,9 +1217,13 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       // Note: boxes are not part of manualEntryItemSchema, so we don't add them to items
       // If boxes are needed, they should be handled at the order level, not item level
 
+      const purchaseDatePayload =
+        invoiceDate && invoiceDate !== initialInvoiceDateRef.current
+          ? invoiceDate
+          : undefined;
+
       const payload = {
         supplier: supplierId, // Use supplier ID directly
-        purchaseDate: invoiceDate,
         exchangeRate: parsedExchangeRate,
         percentage: parsedPercentage,
         subtotal: subtotal,
@@ -1236,6 +1241,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         items: itemsWithProducts,
         totalBoxes: Number(totalBoxes || 0),
       };
+
+      if (purchaseDatePayload) {
+        payload.purchaseDate = purchaseDatePayload;
+      }
 
       // Add logistics company if enabled and selected
       if (enableLogisticsTracking && logisticsCompanyId) {
