@@ -106,12 +106,17 @@ export default function HomePage() {
     d.setDate(d.getDate() - 14);
     return d.toLocaleDateString('en-CA');
   }, []);
+  const thirtyDaysAgo = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toLocaleDateString('en-CA');
+  }, []);
   const { data: salesData, isLoading: salesLoading } = useSalesReport({ startDate: fourteenDaysAgo, endDate: today });
   const { data: financialData, isLoading: financialLoading } =
     useFinancialReport();
   const { data: suppliersData } = useSuppliersReport();
   const { data: customersData, isLoading: customersLoading } =
-    useCustomersReport();
+    useCustomersReport({ startDate: thirtyDaysAgo, endDate: today });
   const { data: inventoryData, isLoading: inventoryLoading } = useInventoryList(
     { limit: 100 }
   );
@@ -223,7 +228,7 @@ export default function HomePage() {
           icon={Users}
           loading={customersLoading}
           color="warning"
-          description="Total active this month"
+          description="Total active in last 30 days"
           onClick={() => router.push("/customer-ledger")}
         />
       </div>
