@@ -29,10 +29,15 @@ function getDefaultDateRange() {
 export default function ProductSummaryReportPage() {
   const [dateRange, setDateRange] = useState(getDefaultDateRange())
 
-  const { data, isLoading, isError, error, refetch } = useProductSummaryReport({
-    ...(dateRange.from ? { startDate: dateRange.from } : {}),
-    ...(dateRange.to ? { endDate: dateRange.to } : {}),
-  })
+  const reportParams = useMemo(() => {
+    return {
+      ...(dateRange.from ? { startDate: dateRange.from } : {}),
+      ...(dateRange.to ? { endDate: dateRange.to } : {}),
+      activityOnly: true,
+    }
+  }, [dateRange.from, dateRange.to])
+
+  const { data, isLoading, isError, error, refetch } = useProductSummaryReport(reportParams)
 
   const productData = useMemo(() => {
     return Array.isArray(data) ? data : data?.products || []

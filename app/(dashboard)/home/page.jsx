@@ -222,7 +222,7 @@ export default function HomePage() {
           description="Total orders this month"
           onClick={() => router.push("/selling")}
         />
-        <StatCard
+        {/* <StatCard
           label="Active Buyers"
           value={customersData?.totalActiveCustomers?.toString() || "0"}
           icon={Users}
@@ -230,107 +230,12 @@ export default function HomePage() {
           color="warning"
           description="Total active in last 30 days"
           onClick={() => router.push("/customer-ledger")}
-        />
+        /> */}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        {/* Sales Chart Section */}
-        <Card className="xl:col-span-8 border-none shadow-sm bg-white overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-6 pb-2">
-            <div className="space-y-1">
-              <CardTitle className="text-xl font-bold flex items-center gap-2">
-                <Activity className="h-5 w-5 text-blue-600" />
-                Sales Performance
-              </CardTitle>
-              <CardDescription>
-                Transaction trends over the last 14 days
-              </CardDescription>
-            </div>
-            <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-none font-bold">
-              +12% vs last week
-            </Badge>
-          </CardHeader>
-          <CardContent className="px-2 pt-4">
-            <div className="h-[320px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                  />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#94a3b8', fontSize: 12 }}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#94a3b8', fontSize: 12 }}
-                    tickFormatter={(v) => `£${v/1000}k`}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="sales"
-                    stroke="#2563eb"
-                    strokeWidth={3}
-                    fillOpacity={1}
-                    fill="url(#colorSales)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions Grid */}
-        <Card className="xl:col-span-4 border-none shadow-sm bg-slate-900 text-white overflow-hidden">
-          <CardHeader className="p-6">
-            <CardTitle className="text-xl font-bold flex items-center gap-2">
-              <Zap className="h-5 w-5 text-yellow-400" />
-              Quick Actions
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 grid grid-cols-2 gap-3">
-            <QuickAction
-              title="New Sale"
-              icon={Plus}
-              onClick={() => router.push("/selling")}
-              color="none"
-              className="bg-white/10 hover:bg-white/20 border-none text-white h-24"
-            />
-            <QuickAction
-              title="Add Product"
-              icon={Package}
-              onClick={() => router.push("/stock/product-types")}
-              color="none"
-              className="bg-white/10 hover:bg-white/20 border-none text-white h-24"
-            />
-            <QuickAction
-              title="Stock Count"
-              icon={Target}
-              onClick={() => setActiveTab(2)}
-              color="none"
-              className="bg-white/10 hover:bg-white/20 border-none text-white h-24"
-            />
-            <QuickAction
-              title="Reports"
-              icon={Activity}
-              onClick={() => router.push("/reports")}
-              color="none"
-              className="bg-white/10 hover:bg-white/20 border-none text-white h-24"
-            />
-          </CardContent>
-        </Card>
-
         {/* Inventory Health Section */}
-        <Card className="xl:col-span-6 border-none shadow-sm bg-white overflow-hidden">
+        {/* <Card className="xl:col-span-6 border-none shadow-sm bg-white overflow-hidden">
           <CardHeader className="p-6">
             <CardTitle className="text-xl font-bold flex items-center gap-2">
               <ShieldAlert className="h-5 w-5 text-rose-500" />
@@ -370,10 +275,10 @@ export default function HomePage() {
               ))}
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Underperforming Products */}
-        <Card className="xl:col-span-6 border-none shadow-sm bg-white overflow-hidden">
+        {/* <Card className="xl:col-span-6 border-none shadow-sm bg-white overflow-hidden">
           <CardHeader className="p-6">
             <CardTitle className="text-xl font-bold flex items-center gap-2">
               <TrendingDown className="h-5 w-5 text-amber-500" />
@@ -408,7 +313,7 @@ export default function HomePage() {
               )}
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Recent Activity Feed */}
         <Card className="xl:col-span-12 border-none shadow-sm bg-white overflow-hidden">

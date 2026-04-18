@@ -28,6 +28,7 @@ export default function ProductSummaryTab() {
     if (startDate && endDate) {
       p.startDate = startDate
       p.endDate = endDate
+      p.activityOnly = true
     }
     return p
   }, [startDate, endDate])
