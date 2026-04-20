@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { useState, useEffect, useMemo } from "react"
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,25 +9,23 @@ import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Check, ChevronsUpDown, Loader2, User, Building2, Calculator, Calendar as CalendarIcon, Info, CreditCard } from "lucide-react"
+import { Check, ChevronsUpDown, Loader2, User, Building2, Info, CreditCard } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { suppliersAPI } from "@/lib/api/endpoints/suppliers"
-import { buyersAPI } from "@/lib/api/endpoints/buyers"
 import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { useQueryClient } from "@tanstack/react-query"
+import { useAllSuppliers } from "@/lib/hooks/useSuppliers"
+import { useBuyers } from "@/lib/hooks/useBuyers"
 import toast from "react-hot-toast"
 import BritishDatePicker from "@/components/BritishDatePicker"
-import { format } from "date-fns"
 
 export default function UniversalPaymentDialog({ open, onClose }) {
   const queryClient = useQueryClient()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [entityType, setEntityType] = useState("supplier") // 'supplier' or 'buyer'
   const [paymentType, setPaymentType] = useState("credit") // 'credit' or 'debit'
-  const [selectedEntity, setSelectedEntity] = useState(null)
+  const [selectedEntityId, setSelectedEntityId] = useState(null)
   const [searchOpen, setSearchOpen] = useState(false)
-  const [entities, setEntities] = useState([])
-  const [isLoadingEntities, setIsLoadingEntities] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
   const [formData, setFormData] = useState({
     amount: "",
     date: new Date(),
@@ -35,40 +33,73 @@ export default function UniversalPaymentDialog({ open, onClose }) {
     paymentMethod: "cash"
   })
 
-  // Fetch entities for selection
-  const fetchEntities = useCallback(async (search = "") => {
-    setIsLoadingEntities(true)
-    try {
-      let response
-      if (entityType === "supplier") {
-        response = await suppliersAPI.getAll({ search, limit: 20 })
-      } else {
-        response = await buyersAPI.getAll({ search, limit: 20 })
-      }
+  const {
+    data: supplierEntities = [],
+    isFetching: isFetchingSuppliers,
+    refetch: refetchSuppliers,
+  } = useAllSuppliers({ limit: 500 })
 
-      const data = response.data?.data || response.data || []
-      // Standardize entity objects
-      const standardized = data.map(e => ({
-        id: e._id || e.id,
-        name: e.name || e.company || "Unknown",
-        company: e.company || "",
-        balance: e.currentBalance ?? e.balance ?? 0
-      }))
-      setEntities(standardized)
-    } catch (error) {
-      console.error("Error fetching entities:", error)
-      toast.error("Failed to fetch entities")
-    } finally {
-      setIsLoadingEntities(false)
+  const {
+    data: buyerEntities = [],
+    isFetching: isFetchingBuyers,
+    refetch: refetchBuyers,
+  } = useBuyers({ limit: 500 })
+
+  const entities = useMemo(() => {
+    const source = entityType === "supplier" ? supplierEntities : buyerEntities
+    return source.map((entity) => ({
+      ...entity,
+      id: entity.id,
+      name: entity.name || entity.company || "Unknown",
+      company: entity.company || "",
+      // Prefer canonical ledger-computed balance.
+      balance: Number(entity.balance ?? entity.currentBalance ?? 0),
+    }))
+  }, [entityType, supplierEntities, buyerEntities])
+
+  const filteredEntities = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return entities
+
+    return entities.filter((entity) => {
+      const searchable = `${entity.name} ${entity.company}`.toLowerCase()
+      return searchable.includes(query)
+    })
+  }, [entities, searchQuery])
+
+  const selectedEntity = useMemo(
+    () => entities.find((entity) => entity.id === selectedEntityId) || null,
+    [entities, selectedEntityId]
+  )
+
+  const isLoadingEntities = entityType === "supplier" ? isFetchingSuppliers : isFetchingBuyers
+
+  const formatAmount = (value) => {
+    const amount = Math.abs(Number(value) || 0)
+    if (entityType === "supplier") {
+      return amount.toLocaleString("en-GB", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
     }
-  }, [entityType])
+
+    return new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: "GBP",
+    }).format(amount)
+  }
 
   useEffect(() => {
     if (open) {
-      fetchEntities()
+      if (entityType === "supplier") {
+        refetchSuppliers()
+      } else {
+        refetchBuyers()
+      }
     } else {
       // Reset form on close
-      setSelectedEntity(null)
+      setSelectedEntityId(null)
+      setSearchQuery("")
       setFormData({
         amount: "",
         date: new Date(),
@@ -76,13 +107,12 @@ export default function UniversalPaymentDialog({ open, onClose }) {
         paymentMethod: "cash"
       })
     }
-  }, [open, fetchEntities])
+  }, [open, entityType, refetchSuppliers, refetchBuyers])
 
   const handleEntityChange = (type) => {
     setEntityType(type)
-    setSelectedEntity(null)
-    setEntities([])
-    fetchEntities() // Trigger fetch for new type
+    setSelectedEntityId(null)
+    setSearchQuery("")
   }
 
   const handleSubmit = async (e) => {
@@ -128,9 +158,9 @@ export default function UniversalPaymentDialog({ open, onClose }) {
       toast.success("Entry recorded successfully")
 
       // Invalidate relevant queries
-      queryClient.invalidateQueries(["ledger"])
-      queryClient.invalidateQueries(["pending-balances"])
-      queryClient.invalidateQueries([entityType === 'supplier' ? 'suppliers' : 'buyers'])
+      queryClient.invalidateQueries({ queryKey: ["ledger"] })
+      queryClient.invalidateQueries({ queryKey: ["suppliers"] })
+      queryClient.invalidateQueries({ queryKey: ["buyers"] })
 
       onClose()
     } catch (error) {
@@ -177,7 +207,7 @@ export default function UniversalPaymentDialog({ open, onClose }) {
                     className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-slate-50 peer-data-[state=checked]:border-blue-600 [&:has([data-state=checked])]:border-blue-600 cursor-pointer transition-all"
                   >
                     <User className="mb-1 h-5 w-5" />
-                    <span className="text-[10px] font-bold">CUSTOMER</span>
+                    <span className="text-[10px] font-bold">BUYER</span>
                   </Label>
                 </div>
               </RadioGroup>
@@ -218,7 +248,7 @@ export default function UniversalPaymentDialog({ open, onClose }) {
           {/* Entity Search & Balance Info */}
           <div className="space-y-4 rounded-xl border-2 border-slate-100 bg-slate-50/50 p-4">
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-slate-500 uppercase">Search {entityType === 'supplier' ? 'Supplier' : 'Customer'}</Label>
+              <Label className="text-xs font-bold text-slate-500 uppercase">Search {entityType === 'supplier' ? 'Supplier' : 'Buyer'}</Label>
               <Popover open={searchOpen} onOpenChange={setSearchOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -235,7 +265,7 @@ export default function UniversalPaymentDialog({ open, onClose }) {
                         {selectedEntity.company && <span className="text-[10px] text-slate-500 uppercase">{selectedEntity.company}</span>}
                       </div>
                     ) : (
-                      `Select ${entityType === 'supplier' ? 'supplier' : 'customer'}...`
+                      `Select ${entityType === 'supplier' ? 'supplier' : 'buyer'}...`
                     )}
                     {isLoadingEntities ? <Loader2 className="h-4 w-4 animate-spin shrink-0 opacity-50" /> : <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />}
                   </Button>
@@ -243,18 +273,19 @@ export default function UniversalPaymentDialog({ open, onClose }) {
                 <PopoverContent className="w-[450px] p-0" align="start">
                   <Command shouldFilter={false}>
                     <CommandInput
-                      placeholder={`Search ${entityType}...`}
-                      onValueChange={(val) => fetchEntities(val)}
+                      placeholder={`Search ${entityType === 'supplier' ? 'supplier' : 'buyer'}...`}
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
                     />
                     <CommandList>
                       <CommandEmpty>{isLoadingEntities ? "Searching..." : "No results found."}</CommandEmpty>
                       <CommandGroup>
-                        {entities.map((entity) => (
+                        {filteredEntities.map((entity) => (
                           <CommandItem
                             key={entity.id}
                             value={entity.id}
                             onSelect={() => {
-                              setSelectedEntity(entity)
+                              setSelectedEntityId(entity.id)
                               setSearchOpen(false)
                             }}
                             className="flex items-center justify-between p-3 cursor-pointer"
@@ -268,7 +299,7 @@ export default function UniversalPaymentDialog({ open, onClose }) {
                                 "text-sm font-mono font-bold",
                                 entity.balance > 0 ? (entityType === 'supplier' ? "text-red-600" : "text-amber-600") : "text-slate-400"
                               )}>
-                                {currency(Math.abs(entity.balance))}
+                                {formatAmount(entity.balance)}
                               </span>
                               <div className="text-[10px] text-slate-400 uppercase">Current</div>
                             </div>
@@ -295,7 +326,7 @@ export default function UniversalPaymentDialog({ open, onClose }) {
                     "text-xl font-black",
                     selectedEntity.balance > 0 ? "text-red-500" : "text-slate-400"
                   )}>
-                    {currency(Math.abs(selectedEntity.balance))}
+                    {formatAmount(selectedEntity.balance)}
                   </span>
                 </div>
                 <div className="text-right">
@@ -305,8 +336,8 @@ export default function UniversalPaymentDialog({ open, onClose }) {
                     paymentType === 'credit' ? "text-green-600" : "text-amber-600"
                   )}>
                     {paymentType === 'credit'
-                      ? currency(Math.max(0, Math.abs(selectedEntity.balance) - (parseFloat(formData.amount) || 0)))
-                      : currency(Math.abs(selectedEntity.balance) + (parseFloat(formData.amount) || 0))
+                      ? formatAmount(Math.max(0, Math.abs(selectedEntity.balance) - (parseFloat(formData.amount) || 0)))
+                      : formatAmount(Math.abs(selectedEntity.balance) + (parseFloat(formData.amount) || 0))
                     }
                   </span>
                 </div>
