@@ -22,7 +22,7 @@ export default function UniversalPaymentDialog({ open, onClose }) {
   const queryClient = useQueryClient()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [entityType, setEntityType] = useState("supplier") // 'supplier' or 'buyer'
-  const [paymentType, setPaymentType] = useState("credit") // 'credit' or 'debit'
+  const [paymentType, setPaymentType] = useState("debit") // 'credit' or 'debit'
   const [selectedEntityId, setSelectedEntityId] = useState(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -76,14 +76,18 @@ export default function UniversalPaymentDialog({ open, onClose }) {
     return Number.parseFloat(formData.amount) || 0
   }, [formData.amount])
 
+  const isPrimaryTransaction = useMemo(() => {
+    return entityType === "supplier" ? paymentType === "debit" : paymentType === "credit"
+  }, [entityType, paymentType])
+
   const previewBalance = useMemo(() => {
     if (!selectedEntity) return 0
 
     const baseBalance = Number(selectedEntity.balance) || 0
-    return paymentType === "credit"
+    return isPrimaryTransaction
       ? baseBalance - amountValue
       : baseBalance + amountValue
-  }, [selectedEntity, paymentType, amountValue])
+  }, [selectedEntity, isPrimaryTransaction, amountValue])
 
   const isLoadingEntities = entityType === "supplier" ? isFetchingSuppliers : isFetchingBuyers
 
@@ -124,6 +128,7 @@ export default function UniversalPaymentDialog({ open, onClose }) {
 
   const handleEntityChange = (type) => {
     setEntityType(type)
+    setPaymentType(type === "supplier" ? "debit" : "credit")
     setSelectedEntityId(null)
     setSearchQuery("")
   }
@@ -149,11 +154,11 @@ export default function UniversalPaymentDialog({ open, onClose }) {
         entityId: selectedEntity.id,
         entityModel: entityType === "supplier" ? "Supplier" : "Buyer",
         date: formData.date,
-        description: formData.note || (paymentType === "credit" ? `${entityType === 'supplier' ? 'Payment' : 'Receipt'}` : "Adjustment"),
+        description: formData.note || (isPrimaryTransaction ? `${entityType === 'supplier' ? 'Payment' : 'Receipt'}` : "Adjustment"),
         paymentMethod: formData.paymentMethod
       }
 
-      if (paymentType === "credit") {
+      if (isPrimaryTransaction) {
         // Payment/Receipt (Distribution)
         payload.transactionType = entityType === "supplier" ? "payment" : "receipt"
         payload.credit = amount
@@ -235,23 +240,23 @@ export default function UniversalPaymentDialog({ open, onClose }) {
                 className="grid grid-cols-2 gap-2"
               >
                 <div>
-                  <RadioGroupItem value="credit" id="pay-credit" className="peer sr-only" />
-                  <Label
-                    htmlFor="pay-credit"
-                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-slate-50 peer-data-[state=checked]:border-green-600 [&:has([data-state=checked])]:border-green-600 cursor-pointer transition-all"
-                  >
-                    <CreditCard className="mb-1 h-5 w-5" />
-                    <span className="text-[10px] font-bold uppercase">{entityType === 'supplier' ? 'DEBIT' : 'CREDIT'}</span>
-                  </Label>
-                </div>
-                <div>
                   <RadioGroupItem value="debit" id="pay-debit" className="peer sr-only" />
                   <Label
                     htmlFor="pay-debit"
-                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-slate-50 peer-data-[state=checked]:border-amber-600 [&:has([data-state=checked])]:border-amber-600 cursor-pointer transition-all"
+                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-slate-50 peer-data-[state=checked]:border-green-600 [&:has([data-state=checked])]:border-green-600 cursor-pointer transition-all"
                   >
                     <Info className="mb-1 h-5 w-5" />
-                    <span className="text-[10px] font-bold">{entityType !== 'supplier' ? 'DEBIT' : 'CREDIT'}</span>
+                    <span className="text-[10px] font-bold uppercase">DEBIT</span>
+                  </Label>
+                </div>
+                <div>
+                  <RadioGroupItem value="credit" id="pay-credit" className="peer sr-only" />
+                  <Label
+                    htmlFor="pay-credit"
+                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-slate-50 peer-data-[state=checked]:border-amber-600 [&:has([data-state=checked])]:border-amber-600 cursor-pointer transition-all"
+                  >
+                    <CreditCard className="mb-1 h-5 w-5" />
+                    <span className="text-[10px] font-bold uppercase">CREDIT</span>
                   </Label>
                 </div>
               </RadioGroup>
@@ -344,7 +349,7 @@ export default function UniversalPaymentDialog({ open, onClose }) {
                     {formatAmount(previewBalance)}
                   </span>
                 </div>
-                
+
               </div>
             )}
           </div>
@@ -394,7 +399,7 @@ export default function UniversalPaymentDialog({ open, onClose }) {
                   onChange={(e) => setFormData({ ...formData, note: e.target.value })}
                 />
               </div>
-              {paymentType === "credit" && (
+              {isPrimaryTransaction && (
                 <div className="w-1/3 flex flex-col gap-2">
                   <Button
                     type="button"
@@ -426,23 +431,22 @@ export default function UniversalPaymentDialog({ open, onClose }) {
 
         <DialogFooter className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
           <Button variant="ghost" onClick={onClose} className="font-bold text-slate-500 hover:text-slate-700">
-            DISCARD
+            Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={isSubmitting || !selectedEntity || !formData.amount}
             className={cn(
               "px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all h-auto",
-              paymentType === 'credit' ? "bg-green-600 hover:bg-green-700 shadow-green-200" : "bg-blue-600 hover:bg-blue-700 shadow-blue-200"
+              isPrimaryTransaction ? "bg-green-600 hover:bg-green-700 shadow-green-200" : "bg-blue-600 hover:bg-blue-700 shadow-blue-200"
             )}
           >
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                RECORDING...
               </>
             ) : (
-              `RECORD ${paymentType === 'credit' ? (entityType === 'supplier' ? 'PAYMENT' : 'RECEIPT') : 'ADJUSTMENT'}`
+              `Confirm`
             )}
           </Button>
         </DialogFooter>
