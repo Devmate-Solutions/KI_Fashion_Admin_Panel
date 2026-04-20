@@ -72,21 +72,39 @@ export default function UniversalPaymentDialog({ open, onClose }) {
     [entities, selectedEntityId]
   )
 
+  const amountValue = useMemo(() => {
+    return Number.parseFloat(formData.amount) || 0
+  }, [formData.amount])
+
+  const previewBalance = useMemo(() => {
+    if (!selectedEntity) return 0
+
+    const baseBalance = Number(selectedEntity.balance) || 0
+    return paymentType === "credit"
+      ? baseBalance - amountValue
+      : baseBalance + amountValue
+  }, [selectedEntity, paymentType, amountValue])
+
   const isLoadingEntities = entityType === "supplier" ? isFetchingSuppliers : isFetchingBuyers
 
-  const formatAmount = (value) => {
-    const amount = Math.abs(Number(value) || 0)
+  const formatAmount = (value, { signed = false } = {}) => {
+    const amount = Number(value) || 0
+    const displayAmount = Math.abs(amount)
     if (entityType === "supplier") {
-      return amount.toLocaleString("en-GB", {
+      const formatted = displayAmount.toLocaleString("en-GB", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })
+
+      return signed && amount < 0 ? `-${formatted}` : formatted
     }
 
-    return new Intl.NumberFormat("en-GB", {
+    const formatted = new Intl.NumberFormat("en-GB", {
       style: "currency",
       currency: "GBP",
-    }).format(amount)
+    }).format(displayAmount)
+
+    return signed && amount < 0 ? `-${formatted}` : formatted
   }
 
   useEffect(() => {
@@ -321,12 +339,14 @@ export default function UniversalPaymentDialog({ open, onClose }) {
             {selectedEntity && (
               <div className="flex items-center justify-between pt-2 border-t border-slate-200">
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 uppercase tracking-tighter">Current Balance</span>
+                  <span className="text-[10px] text-slate-400 uppercase tracking-tighter">
+                    {formData.amount ? "Live Balance" : "Current Balance"}
+                  </span>
                   <span className={cn(
                     "text-xl font-black",
-                    selectedEntity.balance > 0 ? "text-red-500" : "text-green-400"
+                    previewBalance > 0 ? "text-red-500" : "text-green-400"
                   )}>
-                    {formatAmount(selectedEntity.balance)}
+                    {formatAmount(previewBalance, { signed: true })}
                   </span>
                 </div>
                 
@@ -353,7 +373,11 @@ export default function UniversalPaymentDialog({ open, onClose }) {
                   className="pl-7 h-11 border-2 border-slate-200 focus:border-blue-500 focus:ring-0 text-lg font-bold"
                   placeholder="0.00"
                   value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    const sanitized = value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1")
+                    setFormData({ ...formData, amount: sanitized })
+                  }}
                   onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                 />
               </div>
