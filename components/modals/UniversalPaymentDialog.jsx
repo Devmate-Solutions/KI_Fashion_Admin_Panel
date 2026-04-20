@@ -228,7 +228,7 @@ export default function UniversalPaymentDialog({ open, onClose }) {
                     className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-slate-50 peer-data-[state=checked]:border-green-600 [&:has([data-state=checked])]:border-green-600 cursor-pointer transition-all"
                   >
                     <CreditCard className="mb-1 h-5 w-5" />
-                    <span className="text-[10px] font-bold uppercase">{entityType === 'supplier' ? 'PAYMENT' : 'RECEIPT'}</span>
+                    <span className="text-[10px] font-bold uppercase">{entityType === 'supplier' ? 'DEBIT' : 'CREDIT'}</span>
                   </Label>
                 </div>
                 <div>
@@ -238,7 +238,7 @@ export default function UniversalPaymentDialog({ open, onClose }) {
                     className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-slate-50 peer-data-[state=checked]:border-amber-600 [&:has([data-state=checked])]:border-amber-600 cursor-pointer transition-all"
                   >
                     <Info className="mb-1 h-5 w-5" />
-                    <span className="text-[10px] font-bold">ADJUSTMENT</span>
+                    <span className="text-[10px] font-bold">{entityType !== 'supplier' ? 'DEBIT' : 'CREDIT'}</span>
                   </Label>
                 </div>
               </RadioGroup>
