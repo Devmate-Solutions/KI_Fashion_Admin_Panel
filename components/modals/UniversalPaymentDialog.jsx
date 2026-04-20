@@ -87,24 +87,19 @@ export default function UniversalPaymentDialog({ open, onClose }) {
 
   const isLoadingEntities = entityType === "supplier" ? isFetchingSuppliers : isFetchingBuyers
 
-  const formatAmount = (value, { signed = false } = {}) => {
-    const amount = Number(value) || 0
-    const displayAmount = Math.abs(amount)
+  const formatAmount = (value) => {
+    const displayAmount = Math.abs(Number(value) || 0)
     if (entityType === "supplier") {
-      const formatted = displayAmount.toLocaleString("en-GB", {
+      return displayAmount.toLocaleString("en-GB", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })
-
-      return signed && amount < 0 ? `-${formatted}` : formatted
     }
 
-    const formatted = new Intl.NumberFormat("en-GB", {
+    return new Intl.NumberFormat("en-GB", {
       style: "currency",
       currency: "GBP",
     }).format(displayAmount)
-
-    return signed && amount < 0 ? `-${formatted}` : formatted
   }
 
   useEffect(() => {
@@ -346,7 +341,7 @@ export default function UniversalPaymentDialog({ open, onClose }) {
                     "text-xl font-black",
                     previewBalance > 0 ? "text-red-500" : "text-green-400"
                   )}>
-                    {formatAmount(previewBalance, { signed: true })}
+                    {formatAmount(previewBalance)}
                   </span>
                 </div>
                 
