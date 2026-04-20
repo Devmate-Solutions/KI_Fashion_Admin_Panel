@@ -16,7 +16,7 @@ function toNumber(value) {
 
 function formatMoney(value) {
   const n = toNumber(value);
-  return `GBP ${n.toFixed(2)}`;
+  return `£ ${n.toFixed(2)}`;
 }
 
 function getDisplayQuantity(item) {
@@ -316,7 +316,7 @@ function buildReceiptHtml(receipt) {
               </tr>
               <tr>
                 <td>Currency:</td>
-                <td>GBP</td>
+                <td>£</td>
               </tr>
             </table>
           </div>

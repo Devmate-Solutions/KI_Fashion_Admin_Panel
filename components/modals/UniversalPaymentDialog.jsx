@@ -321,26 +321,15 @@ export default function UniversalPaymentDialog({ open, onClose }) {
             {selectedEntity && (
               <div className="flex items-center justify-between pt-2 border-t border-slate-200">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Current Debt Balance</span>
+                  <span className="text-[10px] text-slate-400 uppercase tracking-tighter">Current Balance</span>
                   <span className={cn(
                     "text-xl font-black",
-                    selectedEntity.balance > 0 ? "text-red-500" : "text-slate-400"
+                    selectedEntity.balance > 0 ? "text-red-500" : "text-green-400"
                   )}>
                     {formatAmount(selectedEntity.balance)}
                   </span>
                 </div>
-                <div className="text-right">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Impact after {paymentType === 'credit' ? 'Credit' : 'Debit'}</div>
-                  <span className={cn(
-                    "text-lg font-bold",
-                    paymentType === 'credit' ? "text-green-600" : "text-amber-600"
-                  )}>
-                    {paymentType === 'credit'
-                      ? formatAmount(Math.max(0, Math.abs(selectedEntity.balance) - (parseFloat(formData.amount) || 0)))
-                      : formatAmount(Math.abs(selectedEntity.balance) + (parseFloat(formData.amount) || 0))
-                    }
-                  </span>
-                </div>
+                
               </div>
             )}
           </div>
