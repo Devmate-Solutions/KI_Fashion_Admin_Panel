@@ -326,9 +326,7 @@ export default function HomePage() {
                 </CardTitle>
                 <CardDescription>Latest ledger movements across the platform</CardDescription>
               </div>
-              <Button variant="ghost" className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50">
-                View All Records
-              </Button>
+              
             </div>
           </CardHeader>
           <CardContent className="p-0">

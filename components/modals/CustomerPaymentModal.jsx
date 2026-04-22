@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, CreditCard, Banknote, Wallet, Printer, ArrowDownCircle, ArrowUpCircle } from "lucide-react"
 import { paymentAPI } from "@/lib/api/endpoints/payments"
+import { ledgerAPI } from "@/lib/api/endpoints/ledger"
+
 import { useQueryClient } from "@tanstack/react-query"
 import toast from "react-hot-toast"
 import BritishDatePicker from "@/components/BritishDatePicker"
@@ -190,16 +192,29 @@ export default function CustomerPaymentModal({
             let isPendingApproval = false
 
             if (form.paymentDirection === 'debit') {
-                // For debit transactions, create single payment with adjustment reason
-                const debitResult = await paymentAPI.createCustomerPayment({
-                    customerId: entityId,
-                    amount: debitAmount,
-                    paymentMethod: 'adjustment',
+
+                const debitResult = await ledgerAPI.createEntry({
+                    type: 'buyer',
+                    entityId: entityId,
+                    entityModel:  "Buyer",
                     date: form.date,
                     description: form.notes || `Adjustment credit from ${entityName}`,
-                    paymentDirection: form.paymentDirection,
-                    debitReason: 'adjustment'
+                    transactionType: "adjustment",
+                    credit: 0,
+                    debit: debitAmount
                 })
+
+
+                // For debit transactions, create single payment with adjustment reason
+                // const debitResult = await paymentAPI.createCustomerPayment({
+                //     customerId: entityId,
+                //     amount: debitAmount,
+                //     paymentMethod: 'adjustment',
+                //     date: form.date,
+                //     description: form.notes || `Adjustment credit from ${entityName}`,
+                //     paymentDirection: form.paymentDirection,
+                //     debitReason: 'adjustment'
+                // })
                 if (debitResult.status === 202) isPendingApproval = true
                 lastPaymentNumber = debitResult.data?.data?.payment?.paymentNumber
                 totalCreated++
@@ -273,14 +288,14 @@ export default function CustomerPaymentModal({
     return (
         <Dialog open={open} onOpenChange={handleClose}>
             <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-hidden">
-                        <DialogHeader>
-                            <DialogTitle className="flex items-center gap-2">
-                                <Wallet className="h-5 w-5" />
-                                {form.paymentDirection === 'debit' ? 'Issue Customer Credit/Refund' : 'Receive Customer Payment'}
-                            </DialogTitle>
-                        </DialogHeader>
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Wallet className="h-5 w-5" />
+                        {form.paymentDirection === 'debit' ? 'Issue Customer Credit/Refund' : 'Receive Customer Payment'}
+                    </DialogTitle>
+                </DialogHeader>
 
-                        <div className="overflow-y-auto max-h-[60vh] space-y-4 py-4 px-2">
+                <div className="overflow-y-auto max-h-[60vh] space-y-4 py-4 px-2">
                     {/* Payment Direction Toggle */}
                     <div className="space-y-2">
                         <Label>Transaction Type</Label>
@@ -305,8 +320,8 @@ export default function CustomerPaymentModal({
                             </Button>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            {form.paymentDirection === 'credit' 
-                                ? 'Customer pays us - reduces their outstanding balance' 
+                            {form.paymentDirection === 'credit'
+                                ? 'Customer pays us - reduces their outstanding balance'
                                 : 'We owe customer - increases their credit (refund, price adjustment, etc.)'}
                         </p>
                     </div>
@@ -483,11 +498,10 @@ export default function CustomerPaymentModal({
 
                     {/* Total Payment Display */}
                     {totalPayment > 0 && (
-                        <div className={`rounded-lg border p-3 ${
-                            form.paymentDirection === 'debit' 
-                                ? 'bg-red-50 border-red-200' 
+                        <div className={`rounded-lg border p-3 ${form.paymentDirection === 'debit'
+                                ? 'bg-red-50 border-red-200'
                                 : (totalPayment > totalBalance && totalBalance > 0 ? 'bg-amber-50 border-amber-200' : 'bg-green-50')
-                        }`}>
+                            }`}>
                             <div className="flex items-center justify-between">
                                 <span className="text-sm font-medium">
                                     {form.paymentDirection === 'debit' ? 'Total Credit/Refund:' : 'Total Payment:'}
@@ -517,7 +531,7 @@ export default function CustomerPaymentModal({
                                 </div>
                             )}
                             <p className="text-xs text-muted-foreground mt-2">
-                                {form.paymentDirection === 'debit' 
+                                {form.paymentDirection === 'debit'
                                     ? '⚠️ This will increase the customer\'s credit balance.'
                                     : '💡 Payment will be automatically distributed to oldest sales first (FIFO).'}
                             </p>

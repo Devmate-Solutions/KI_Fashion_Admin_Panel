@@ -47,7 +47,7 @@ export default function ReportLayout({
             <div className="flex flex-row w-full justify-between gap-4">
               <h3 className="text-md mb-1 md:text-xl font-bold">{title}</h3>
               <div className="space-x-1">
-                {onRefresh && (
+                {/* {onRefresh && (
                   <Button
                     onClick={onRefresh}
                     variant="outline"
@@ -58,7 +58,7 @@ export default function ReportLayout({
                     <RefreshCw className={`h-4 w-4  ${loading ? 'animate-spin' : ''}`} />
 
                   </Button>
-                )}
+                )} */}
 
                 {onExport && (
                   <Button

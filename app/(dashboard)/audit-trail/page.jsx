@@ -8,8 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import BackButton from "@/components/BackButton";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { History, User, Globe, Laptop, Search, Calendar, Filter } from "lucide-react";
-import AuditLogDetailsPanel from "@/components/modals/AuditLogDetailsPanel";
+import { History, Globe, Laptop, Search, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -29,19 +28,15 @@ const columns = [
     accessor: "timestamp",
     cell: (row) => (
       <div className="flex flex-col">
-        <span className="text-xs font-medium">
+        <span className="text-xs font-medium text-slate-700 whitespace-nowrap">
           {new Date(row.timestamp).toLocaleDateString("en-GB", {
             day: "2-digit",
             month: "short",
-            year: "numeric",
-          })}
-        </span>
-        <span className="text-[10px] text-muted-foreground">
-          {new Date(row.timestamp).toLocaleTimeString("en-GB", {
+          })} {new Date(row.timestamp).toLocaleTimeString("en-GB", {
             hour: "2-digit",
             minute: "2-digit",
-            second: "2-digit",
-          })}
+            hour12: true
+          }).toUpperCase()}
         </span>
       </div>
     ),
@@ -111,7 +106,6 @@ export default function AuditTrailPage() {
   const [search, setSearch] = useState("");
   const [resourceFilter, setResourceFilter] = useState("");
   const [actionFilter, setActionFilter] = useState("");
-  const [selectedLogId, setSelectedLogId] = useState(null);
 
   // Guard: super-admin only
   useEffect(() => {
@@ -146,11 +140,7 @@ export default function AuditTrailPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-            {/* Quick Filter Placeholder or Export Button */}
-            <Button variant="outline" size="sm" className="h-9 gap-2">
-                <Calendar className="h-4 w-4" />
-                <span>Last 24 Hours</span>
-            </Button>
+            {/* Export or other actions could go here */}
         </div>
       </div>
 
@@ -221,7 +211,7 @@ export default function AuditTrailPage() {
           columns={columns}
           data={logs}
           loading={isLoading}
-          onRowClick={(row) => setSelectedLogId(row._id)}
+        onRowClick={(row) => router.push(`/audit-trail/${row._id}`)}
           enableSearch={false} // Using custom search bar above
           paginate={true}
           manualPagination={true}
@@ -234,11 +224,6 @@ export default function AuditTrailPage() {
         />
       </div>
 
-      <AuditLogDetailsPanel
-        open={!!selectedLogId}
-        onClose={() => setSelectedLogId(null)}
-        logId={selectedLogId}
-      />
       
       <style jsx global>{`
         .line-clamp-2 {

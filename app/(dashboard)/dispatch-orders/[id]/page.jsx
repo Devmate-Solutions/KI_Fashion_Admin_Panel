@@ -3418,6 +3418,7 @@ export default function DispatchOrderDetailPage({ params }) {
               open={showPaymentModal}
               onClose={() => setShowPaymentModal(false)}
               entityId={dispatchOrder.supplier._id}
+              hideSupplierSelect={true}
               entityName={dispatchOrder.supplier.name || dispatchOrder.supplier.company}
               onSuccess={() => {
                 // Invalidate queries to refresh data

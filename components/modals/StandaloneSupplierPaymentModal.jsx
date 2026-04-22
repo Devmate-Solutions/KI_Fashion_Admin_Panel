@@ -32,6 +32,7 @@ export default function StandaloneSupplierPaymentModal({
     open,
     onClose,
     entityId: initialEntityId,
+    hideSupplierSelect = false,
     entityName: initialEntityName,
     totalBalance: initialBalance = 0, // Optional fallback
     onSuccess,
@@ -329,7 +330,7 @@ export default function StandaloneSupplierPaymentModal({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Wallet className="h-5 w-5" />
-                        {transactionType === 'credit' ? 'Add Supplier Payment' : 'Add Supplier Charge'}
+                        {transactionType === 'credit' ? `Add Supplier Payment` : 'Add Supplier Charge'}
                     </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
@@ -340,67 +341,71 @@ export default function StandaloneSupplierPaymentModal({
                             <span className="text-sm text-muted-foreground">Loading suppliers and ledger data...</span>
                         </div>
                     )}
+                    {
+                        !hideSupplierSelect && <>
+                            {/* Entity Selector - Text Search Input */}
+                            {!isLoading && showEntitySelector && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="entity-search">Select a Supplier</Label>
+                                    <div className="relative">
+                                        <Input
+                                            id="entity-search"
+                                            ref={searchInputRef}
+                                            type="text"
+                                            placeholder="Search supplier by name or company..."
+                                            value={searchQuery}
+                                            onChange={(e) => {
+                                                const value = e.target.value
+                                                setSearchQuery(value)
+                                                setShowSuggestions(value.trim().length > 0)
+                                            }}
+                                            onFocus={() => {
+                                                if (searchQuery.trim().length > 0) {
+                                                    setShowSuggestions(true)
+                                                }
+                                            }}
+                                            disabled={isSubmitting}
+                                        />
+                                        {showSuggestions && filteredEntities.length > 0 && (
+                                            <div
+                                                ref={dropdownRef}
+                                                className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-auto"
+                                            >
+                                                <div className="p-1">
+                                                    {filteredEntities.map((entity) => {
+                                                        const entityIdStr = String(entity._id || entity.id)
+                                                        const entityName = entity.name || entity.company || ''
+                                                        const entityDisplay = `${entityName}`
+                                                        const isSelected = selectedEntityId === entityIdStr
 
-                    {/* Entity Selector - Text Search Input */}
-                    {!isLoading && showEntitySelector && (
-                        <div className="space-y-2">
-                            <Label htmlFor="entity-search">Select a Supplier</Label>
-                            <div className="relative">
-                                <Input
-                                    id="entity-search"
-                                    ref={searchInputRef}
-                                    type="text"
-                                    placeholder="Search supplier by name or company..."
-                                    value={searchQuery}
-                                    onChange={(e) => {
-                                        const value = e.target.value
-                                        setSearchQuery(value)
-                                        setShowSuggestions(value.trim().length > 0)
-                                    }}
-                                    onFocus={() => {
-                                        if (searchQuery.trim().length > 0) {
-                                            setShowSuggestions(true)
-                                        }
-                                    }}
-                                    disabled={isSubmitting}
-                                />
-                                {showSuggestions && filteredEntities.length > 0 && (
-                                    <div
-                                        ref={dropdownRef}
-                                        className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-auto"
-                                    >
-                                        <div className="p-1">
-                                            {filteredEntities.map((entity) => {
-                                                const entityIdStr = String(entity._id || entity.id)
-                                                const entityName = entity.name || entity.company || ''
-                                                const entityDisplay = `${entityName}`
-                                                const isSelected = selectedEntityId === entityIdStr
+                                                        return (
+                                                            <div
+                                                                key={entityIdStr}
+                                                                onClick={() => handleSupplierSelect(entity)}
+                                                                className={`flex items-center px-3 py-2 text-sm rounded-sm cursor-pointer hover:bg-slate-100 ${isSelected ? 'bg-slate-50 font-medium' : ''
+                                                                    }`}
+                                                            >
+                                                                {entityDisplay}
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {showSuggestions && searchQuery.trim().length > 0 && filteredEntities.length === 0 && (
+                                            <div
+                                                ref={dropdownRef}
+                                                className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg p-3 text-sm text-muted-foreground"
+                                            >
+                                                No suppliers found.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    }
 
-                                                return (
-                                                    <div
-                                                        key={entityIdStr}
-                                                        onClick={() => handleSupplierSelect(entity)}
-                                                        className={`flex items-center px-3 py-2 text-sm rounded-sm cursor-pointer hover:bg-slate-100 ${isSelected ? 'bg-slate-50 font-medium' : ''
-                                                            }`}
-                                                    >
-                                                        {entityDisplay}
-                                                    </div>
-                                                )
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-                                {showSuggestions && searchQuery.trim().length > 0 && filteredEntities.length === 0 && (
-                                    <div
-                                        ref={dropdownRef}
-                                        className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg p-3 text-sm text-muted-foreground"
-                                    >
-                                        No suppliers found.
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
 
                     {/* Entity Info */}
                     {!isLoading && (
