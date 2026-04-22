@@ -33,13 +33,7 @@ export default function PacketLabelPrintModal({ open, onClose, packetId, packet 
 
   const totalItemsPerPacket = Number(data?.totalItemsPerPacket || 1);
   const unitMinPrice = Number(data?.minSellingPrice);
-  const minPacketPriceRaw = Number(data?.minPacketPrice);
-  const minPacketPrice = Number.isFinite(minPacketPriceRaw)
-    ? minPacketPriceRaw
-    : (Number.isFinite(unitMinPrice)
-        ? unitMinPrice * Math.max(1, totalItemsPerPacket)
-        : 0);
-  const price = minPacketPrice > 0 ? minPacketPrice : 0;
+  const price = unitMinPrice > 0 ? unitMinPrice : 0;
 
   const handlePrint = () => {
     if (!data) return;
