@@ -520,10 +520,7 @@ export default function BarcodePrintModal({
                                   )}
                                 </div>
 
-                                {/* Barcode number */}
-                                <div className="font-mono text-[10px] font-bold tracking-wide mb-1">
-                                  {item.data}
-                                </div>
+                             
 
                                 {/* Price */}
                                 {price > 0 && (
