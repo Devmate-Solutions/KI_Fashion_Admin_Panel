@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { AlertTriangle, Check, X, User, Clock, FileText, ExternalLink } from "lucide-react";
+import { AlertTriangle, Check, X, User, Clock, ExternalLink } from "lucide-react";
 import DiffView from "@/components/DiffView";
 import { useEditRequest, useApproveEditRequest, useRejectEditRequest } from "@/lib/hooks/useEditRequests";
 import Link from "next/link";
@@ -112,9 +112,6 @@ export default function RequestReviewPanel({ open, onClose, requestId }) {
                 <Badge variant="outline" className={STATUS_STYLES[request.status]}>
                   {request.status}
                 </Badge>
-                <Badge variant={request.requestType === "delete" ? "destructive" : "secondary"}>
-                  {request.requestType === "edit" ? "Edit Request" : "Delete Request"}
-                </Badge>
                 {request.directEdit && (
                   <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
                     Direct Edit
@@ -132,13 +129,6 @@ export default function RequestReviewPanel({ open, onClose, requestId }) {
                 <Badge variant="outline" className="text-xs">
                   {request.requestedBy?.role}
                 </Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Entity:</span>
-                <span className="font-medium">
-                  {ENTITY_TYPE_LABELS[request.entityType]} {request.entityRef && `#${request.entityRef}`}
-                </span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-muted-foreground" />

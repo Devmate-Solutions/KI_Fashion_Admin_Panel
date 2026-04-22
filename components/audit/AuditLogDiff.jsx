@@ -67,7 +67,14 @@ function formatValue(value) {
   if (typeof value === 'string') {
     // Check if it's a date
     if (value.length > 10 && !isNaN(Date.parse(value)) && (value.includes('T') || value.includes('-'))) {
-        return new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        return new Date(value).toLocaleString('en-GB', { 
+            day: '2-digit', 
+            month: 'short', 
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        }).replace(',', '');
     }
     return value;
   }
@@ -85,7 +92,7 @@ export default function AuditLogDiff({ oldData, newData }) {
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden bg-white shadow-sm transition-all">
+    <div className="border border-slate-100 overflow-hidden bg-white transition-all">
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-slate-50 border-b border-slate-100">
