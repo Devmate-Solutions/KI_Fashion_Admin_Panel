@@ -394,62 +394,7 @@ export default function BarcodePrintModal({
             </div>
           ) : (
             <>
-              {/* Summary bar */}
-              <div className="bg-muted/50 rounded-lg p-3 mb-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">
-                      Supplier:{" "}
-                      <span className="text-muted-foreground">
-                        {_data.supplierName}
-                      </span>
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {_data.barcodes.length} unique barcode
-                      {_data.barcodes.length !== 1 ? "s" : ""} →{" "}
-                      <strong className="text-foreground">
-                        {totalLabels} stickers
-                      </strong>{" "}
-                      across {productGroups.length} product
-                      {productGroups.length !== 1 ? "s" : ""}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      🖨️ Zebra ZD421 • 50mm × 25mm labels
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    {_data.barcodes.filter((b) => !b.isLoose).length > 0 && (
-                      <Badge
-                        variant="outline"
-                        className="bg-blue-50 text-blue-700 border-blue-200 text-[10px]"
-                      >
-                        <Package className="h-3 w-3 mr-1" />
-                        {_data.barcodes.filter((b) => !b.isLoose).length} Packets
-                      </Badge>
-                    )}
-                    {_data.barcodes.filter((b) => b.isLoose).length > 0 && (
-                      <Badge
-                        variant="outline"
-                        className="bg-orange-50 text-orange-700 border-orange-200 text-[10px]"
-                      >
-                        <Tag className="h-3 w-3 mr-1" />
-                        {expandedBarcodes.filter((b) => b.isLoose).length} Loose
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                {autoPrint && !hasPrinted && (
-                  <p className="text-xs text-blue-600 mt-2">
-                    Auto-printing enabled — print dialog will open
-                    automatically...
-                  </p>
-                )}
-                {hasPrinted && (
-                  <p className="text-xs text-green-600 mt-2">
-                    ✓ Print dialog opened
-                  </p>
-                )}
-              </div>
+             
 
               {/* Grouped preview */}
               <div className="space-y-3">
@@ -611,10 +556,7 @@ export default function BarcodePrintModal({
 
         {/* Footer with print actions */}
         <div className="flex-shrink-0 flex justify-between items-center pt-4 border-t">
-          <div className="text-sm text-muted-foreground">
-            {totalLabels > 0 &&
-              `${totalLabels} sticker(s) will be printed on 50×25mm labels`}
-          </div>
+         
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>
               <X className="h-4 w-4 mr-2" />
