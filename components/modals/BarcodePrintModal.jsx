@@ -523,7 +523,9 @@ export default function BarcodePrintModal({
 
                                 {/* Price */}
                                 <div className="text-[10px] font-bold text-green-700">
-                                  {barcodeStr.slice(0, 3)}-{price.toFixed(2).replace(".", "")}
+                                 
+                                  {barcodeStr.slice(0, 3)}-{ priceMap[barcodeStr]}
+                                  {/* {barcodeStr.slice(0, 3)}-{price.toFixed(2).replace(".", "")} */}
                                 </div>
                                
 
