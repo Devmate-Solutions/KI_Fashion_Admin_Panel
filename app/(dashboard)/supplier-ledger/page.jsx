@@ -412,37 +412,37 @@ export default function SupplierLedgerPage() {
         }
       }
     }
-      return map
+    return map
   }, [supplierReceiptsData])
 
-    const supplierReceiptTransactions = useMemo(() => {
-      const receipts = supplierReceiptsData?.receipts || []
+  const supplierReceiptTransactions = useMemo(() => {
+    const receipts = supplierReceiptsData?.receipts || []
 
-      return receipts.map(receipt => {
-        const supplier = receipt.supplierId || {}
-        const supplierName = supplier.name || supplier.company || 'Unknown Supplier'
+    return receipts.map(receipt => {
+      const supplier = receipt.supplierId || {}
+      const supplierName = supplier.name || supplier.company || 'Unknown Supplier'
 
-        return {
-          id: receipt._id || receipt.id || receipt.receiptNumber,
-          receiptNumber: receipt.receiptNumber,
-          date: receipt.date || receipt.createdAt,
-          supplierName,
-          supplierId: supplier._id || supplier.id || receipt.supplierId,
-          totalAmount: receipt.totalAmount || 0,
-          cashAmount: receipt.cashAmount || 0,
-          bankAmount: receipt.bankAmount || 0,
-          methodSummary: receipt.paymentMethodSummary || ((receipt.cashAmount > 0 && receipt.bankAmount > 0) ? 'cash + bank' : receipt.cashAmount > 0 ? 'cash' : 'bank'),
-          status: receipt.status || 'active',
-          createdBy: receipt.createdBy?.name || 'Unknown',
-          ordersAffected: receipt.ordersAffected || 0,
-          advanceAmount: receipt.advanceAmount || 0,
-          balanceBefore: receipt.balanceBefore,
-          balanceAfter: receipt.balanceAfter,
-          notes: receipt.notes || '-',
-          raw: receipt
-        }
-      })
-    }, [supplierReceiptsData])
+      return {
+        id: receipt._id || receipt.id || receipt.receiptNumber,
+        receiptNumber: receipt.receiptNumber,
+        date: receipt.date || receipt.createdAt,
+        supplierName,
+        supplierId: supplier._id || supplier.id || receipt.supplierId,
+        totalAmount: receipt.totalAmount || 0,
+        cashAmount: receipt.cashAmount || 0,
+        bankAmount: receipt.bankAmount || 0,
+        methodSummary: receipt.paymentMethodSummary || ((receipt.cashAmount > 0 && receipt.bankAmount > 0) ? 'cash + bank' : receipt.cashAmount > 0 ? 'cash' : 'bank'),
+        status: receipt.status || 'active',
+        createdBy: receipt.createdBy?.name || 'Unknown',
+        ordersAffected: receipt.ordersAffected || 0,
+        advanceAmount: receipt.advanceAmount || 0,
+        balanceBefore: receipt.balanceBefore,
+        balanceAfter: receipt.balanceAfter,
+        notes: receipt.notes || '-',
+        raw: receipt
+      }
+    })
+  }, [supplierReceiptsData])
 
   const supplierReceiptSummary = useMemo(() => {
     const total = supplierReceiptTransactions.reduce((sum, receipt) => sum + (receipt.totalAmount || 0), 0)
@@ -512,7 +512,7 @@ export default function SupplierLedgerPage() {
         accessor: "balance",
         render: (row) => (
           <span className={`tabular-nums font-semibold ${row.balance >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-            {formatNumber(Math.abs(row.balance || 0))} 
+            {formatNumber(Math.abs(row.balance || 0))}
           </span>
         )
       }
@@ -742,7 +742,7 @@ export default function SupplierLedgerPage() {
           </span>
         )
       },
-     
+
       {
         header: "Receipt",
         accessor: "receipt",
@@ -948,7 +948,7 @@ export default function SupplierLedgerPage() {
           )
         }
       },
-      
+
     )
 
     return columns
@@ -1010,7 +1010,7 @@ export default function SupplierLedgerPage() {
         accessor: "balance",
         render: (row) => (
           <span className={`tabular-nums font-semibold ${row.balance >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-            {formatNumber(Math.abs(row.balance))} 
+            {formatNumber(Math.abs(row.balance))}
           </span>
         )
       }
@@ -1083,9 +1083,9 @@ export default function SupplierLedgerPage() {
       } else if (entry.transactionType === 'purchase') {
         // Purchase entry
         if (entry.referenceModel === 'DispatchOrder') {
-          typeLabel = 'Purchase (Dispatch Order)'
+          typeLabel = 'Dispatch Order'
         } else if (entry.referenceModel === 'Purchase') {
-          typeLabel = 'Purchase (Manual)'
+          typeLabel = 'Local Buying'
         } else {
           typeLabel = 'Purchase'
         }
@@ -1501,9 +1501,9 @@ export default function SupplierLedgerPage() {
     const supplierName = isAll
       ? 'All Suppliers'
       : (() => {
-          const s = dropdownSuppliers.find(s => String(s.id) === ledgerSupplierFilter)
-          return s ? `${s.name}${s.company ? ` (${s.company})` : ''}` : 'Supplier'
-        })()
+        const s = dropdownSuppliers.find(s => String(s.id) === ledgerSupplierFilter)
+        return s ? `${s.name}${s.company ? ` (${s.company})` : ''}` : 'Supplier'
+      })()
 
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
     const pageWidth = doc.internal.pageSize.getWidth()
@@ -1641,7 +1641,7 @@ export default function SupplierLedgerPage() {
       {/* Filters & Search Bar - Unified */}
       <div className="rounded-lg border border-border bg-card p-3 sm:p-4 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
-         
+
 
           {/* Select Supplier */}
           {/* Select Supplier (Combobox) */}
@@ -1775,17 +1775,17 @@ export default function SupplierLedgerPage() {
             </div>
           )}
 
-           {ledgerSupplierFilter && filteredLedgerTransactions.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportLedgerPDF}
-                className="gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Export PDF
-              </Button>
-            )}
+          {ledgerSupplierFilter && filteredLedgerTransactions.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportLedgerPDF}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export PDF
+            </Button>
+          )}
         </div>
       </div>
 
@@ -2110,22 +2110,22 @@ export default function SupplierLedgerPage() {
     <>
 
       {/* Supplier Selector - Enhanced */}
-        <div className="flex max-w-2xl flex-wrap items-center gap-4 mb-2">
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-semibold text-foreground">Select Supplier:</span>
-          </div>
-          <div className="flex-1 min-w-[250px]">
-            {paymentSelector}
-          </div>
+      <div className="flex max-w-2xl flex-wrap items-center gap-4 mb-2">
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-semibold text-foreground">Select Supplier:</span>
         </div>
-      
+        <div className="flex-1 min-w-[250px]">
+          {paymentSelector}
+        </div>
+      </div>
+
 
       {/* Stats Cards - Enhanced */}
       {selectedSupplierId && selectedSupplierId !== 'all' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
           <div className="rounded-lg border border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-emerald-50/30 p-5 ">
-            
+
             <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
               Total Paid
             </div>
@@ -2134,7 +2134,7 @@ export default function SupplierLedgerPage() {
             </div>
           </div>
           <div className="rounded-lg border border-red-200 bg-gradient-to-br from-red-50/50 to-red-50/30 p-5 ">
-            
+
             <div className="text-xs font-medium uppercase tracking-wider mb-1 text-muted-foreground">
               Total Pending
             </div>
@@ -2305,7 +2305,7 @@ export default function SupplierLedgerPage() {
           <div className="relative rounded-lg border border-border/60 bg-gradient-to-br from-background via-card/50 to-background p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
             <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-primary/5 blur-xl group-hover:bg-primary/10 transition-all"></div>
             <div className="relative z-10">
-              
+
               <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-muted-foreground">
                 Bank Payments
               </div>
@@ -2320,7 +2320,7 @@ export default function SupplierLedgerPage() {
           <div className="relative rounded-lg border border-border/60 bg-gradient-to-br from-background via-card/50 to-background p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
             <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-primary/5 blur-xl group-hover:bg-primary/10 transition-all"></div>
             <div className="relative z-10">
-              
+
               <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-muted-foreground">
                 Payments This Month
               </div>
@@ -2335,11 +2335,11 @@ export default function SupplierLedgerPage() {
 
       {/* Main Content Card - Unified Design */}
       <div className="rounded-lg border border-border/60 bg-gradient-to-br from-card via-background to-card shadow-sm overflow-hidden">
-       
+
 
         {/* Filters Section */}
         <div className="px-6 py-5 bg-gradient-to-b from-muted/20 via-muted/10 to-transparent border-b border-border/30">
-         
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             <div className="flex flex-col min-w-0">
               <Label htmlFor="payment-history-supplier" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
@@ -2548,11 +2548,11 @@ export default function SupplierLedgerPage() {
             <div className="text-3xl font-bold tabular-nums text-foreground mb-1.5">{formatNumber(supplierReceiptSummary.bank)}</div>
             <div className="text-xs font-medium text-muted-foreground">Bank-paid receipts</div>
           </div>
-          <div className="relative rounded-lg border border-amber-200/60 bg-gradient-to-br from-amber-50/80 via-amber-50/60 to-white p-6 shadow-sm overflow-hidden">
+          {/* <div className="relative rounded-lg border border-amber-200/60 bg-gradient-to-br from-amber-50/80 via-amber-50/60 to-white p-6 shadow-sm overflow-hidden">
             <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 text-amber-700/80">Advance</div>
             <div className="text-3xl font-bold text-amber-700 tabular-nums mb-1.5">{formatNumber(supplierReceiptSummary.advance)}</div>
             <div className="text-xs font-medium text-amber-700/70">Unapplied supplier credit</div>
-          </div>
+          </div> */}
         </div>
       )}
 
@@ -2722,10 +2722,10 @@ export default function SupplierLedgerPage() {
     <div className="space-y-6">
       {/* Header - Enhanced */}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-      <div className="">
-        <BackButton fallbackPath="/reports/payables" label="Back" />
-      </div>
-       
+        <div className="">
+          <BackButton fallbackPath="/reports/payables" label="Back" />
+        </div>
+
         <div className="flex items-center gap-3">
           {suppliersLoading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">

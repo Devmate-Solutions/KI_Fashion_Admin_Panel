@@ -394,7 +394,7 @@ export default function BarcodePrintModal({
             </div>
           ) : (
             <>
-
+             
 
               {/* Grouped preview */}
               <div className="space-y-3">
@@ -520,14 +520,14 @@ export default function BarcodePrintModal({
                                   )}
                                 </div>
 
+                             
 
                                 {/* Price */}
-                                <div className="text-[10px] font-bold text-green-700">
-                                 
-                                  {barcodeStr.slice(0, 3)}-{ priceMap}
-                                  {/* {barcodeStr.slice(0, 3)}-{price.toFixed(2).replace(".", "")} */}
-                                </div>
-                               
+                                {price > 0 && (
+                                  <div className="text-[10px] font-bold text-green-700">
+                                    {barcodeStr.slice(0, 3)}-{price.toFixed(2).replace(".", "")}
+                                  </div>
+                                )}
 
                                 {/* Labels count */}
                                 {(item.quantity || 1) > 1 && (
@@ -553,7 +553,7 @@ export default function BarcodePrintModal({
 
         {/* Footer with print actions */}
         <div className="flex-shrink-0 flex justify-end items-center pt-4 border-t">
-
+         
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>
               <X className="h-4 w-4 mr-2" />

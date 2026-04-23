@@ -843,61 +843,7 @@ export default function ProductPacketsPage({ params }) {
               </div>
 
               {/* Info Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Type</Label>
-                  <p className="font-medium">
-                    <Badge variant={selectedPacket.isLoose ? "secondary" : "default"} className="text-xs">
-                      {selectedPacket.isLoose ? "Loose Item" : "Packet"}
-                    </Badge>
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">
-                    {selectedPacket.isLoose ? "Items per Unit" : "Items per Packet"}
-                  </Label>
-                  <p className="font-medium">
-                    {selectedPacket.totalItemsPerPacket || 1}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">
-                    Available {selectedPacket.isLoose ? "Units" : "Packets"}
-                  </Label>
-                  <p className="font-medium text-green-600">
-                    {selectedPacket.availablePackets || 0}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Sold</Label>
-                  <p className="font-medium text-blue-600">
-                    {selectedPacket.soldPackets || 0}
-                  </p>
-                </div>
-                {!selectedPacket.isLoose && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground">
-                      Landed Price
-                    </Label>
-                    <p className="font-medium text-muted-foreground">
-                      {currency(
-                        (selectedPacket.landedPricePerPacket || 0) /
-                          (selectedPacket.totalItemsPerPacket || 1)
-                      )}
-                    </p>
-                  </div>
-                )}
-                <div>
-                  <Label className="text-xs text-muted-foreground">
-                    {selectedPacket.isLoose
-                      ? "Price per Unit"
-                      : "Price per Packet"}
-                  </Label>
-                  <p className="font-medium">
-                    {currency(selectedPacket.suggestedSellingPrice || 0)}
-                  </p>
-                </div>
-              </div>
+              
 
               {/* Composition */}
               {selectedPacket.composition &&
@@ -925,25 +871,7 @@ export default function ProductPacketsPage({ params }) {
                   </div>
                 )}
 
-              {/* Timestamps */}
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t">
-                <div>
-                  <Label className="text-xs text-muted-foreground">
-                    Created
-                  </Label>
-                  <p className="text-sm">
-                    {formatDateTime(selectedPacket.createdAt)}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">
-                    Last Updated
-                  </Label>
-                  <p className="text-sm">
-                    {formatDateTime(selectedPacket.updatedAt)}
-                  </p>
-                </div>
-              </div>
+              
             </div>
           )}
         </DialogContent>

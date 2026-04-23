@@ -208,12 +208,7 @@ export default function PacketLabelPrintModal({ open, onClose, packetId, packet 
               </div>
             </div>
             
-            {/* Label info */}
-            <div className="text-center mt-2">
-              <p className="text-[10px] text-muted-foreground">
-                🖨️ Zebra ZD421 • 50mm × 25mm label
-              </p>
-            </div>
+           
           </>
         ) : null}
 

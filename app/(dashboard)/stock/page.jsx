@@ -55,6 +55,7 @@ import ProductImageGallery from "@/components/ui/ProductImageGallery";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import TruncatedBadgeList from "@/components/ui/TruncatedBadgeList";
 import BreakPacketDialog from "@/components/modals/BreakPacketDialog";
+import BarcodeUpdatePriceDialog from "@/components/modals/BarcodeUpdatePriceDialog";
 
 const MOVEMENT_LIMIT = 20;
 
@@ -623,6 +624,7 @@ export default function StockPage() {
   const [reduceDialogOpen, setReduceDialogOpen] = useState(false);
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
   const [minPriceDialogOpen, setMinPriceDialogOpen] = useState(false);
+  const [barcodeUpdateDialogOpen, setBarcodeUpdateDialogOpen] = useState(false);
   const [isSavingMinPrice, setIsSavingMinPrice] = useState(false);
 
   const handleApplyFilters = (event) => {
@@ -1048,15 +1050,27 @@ export default function StockPage() {
             </span>
           </div>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="h-8"
-          onClick={() => setMinPriceDialogOpen(true)}
-        >
-          Update Min Sell Price
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8 gap-2"
+            onClick={() => setBarcodeUpdateDialogOpen(true)}
+          >
+            <Barcode className="h-4 w-4" />
+            Scan Barcode
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8"
+            onClick={() => setMinPriceDialogOpen(true)}
+          >
+            Update Min Sell Price
+          </Button>
+        </div>
         {/* Pagination Controls */}
         {inventoryPagination && (inventoryPagination.totalItems > 0) && (
           <div className="flex items-center gap-4">
@@ -2203,6 +2217,15 @@ export default function StockPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <BarcodeUpdatePriceDialog
+        open={barcodeUpdateDialogOpen}
+        onOpenChange={setBarcodeUpdateDialogOpen}
+        onSuccess={async (productId) => {
+          await queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+          await queryClient.invalidateQueries({ queryKey: inventoryKeys.detail(productId) });
+        }}
+      />
 
       {/* Break Packet Dialog */}
       <BreakPacketDialog
