@@ -11,6 +11,9 @@ import { useDispatchOrders, useDeleteDispatchOrder } from "@/lib/hooks/useDispat
 import { useAuthStore } from "@/store/store"
 import { Eye, Search, Package, Clock, CheckCircle2, AlertCircle, Filter, Truck, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { exportToPDF } from "@/lib/utils/pdfExport"
+import toast from "react-hot-toast"
+import { FileText } from "lucide-react"
 
 const statusStyles = {
   pending: "bg-sky-500/15 text-sky-600 border-sky-200",
@@ -109,6 +112,7 @@ Do you still want to proceed?`;
           )}
         </div>
       ),
+      pdfValue: (row) => row.orderNumber || "—"
     },
     {
       header: "Supplier",
@@ -124,6 +128,7 @@ Do you still want to proceed?`;
           </div>
         )
       },
+      pdfValue: (row) => row.supplier?.name || row.supplier?.company || "—"
     },
     {
       header: "Boxes",
@@ -131,6 +136,7 @@ Do you still want to proceed?`;
       render: (row) => (
         <span className="font-semibold text-foreground tabular-nums">{row.totalBoxes || 0}</span>
       ),
+      pdfValue: (row) => row.totalBoxes || 0
     },
    
     {
@@ -171,6 +177,14 @@ Do you still want to proceed?`;
           </div>
         )
       },
+      pdfValue: (row) => {
+        const totalQuantity = row.totalQuantity || 0
+        let totalReturned = 0
+        if (row.returnedItems && Array.isArray(row.returnedItems)) {
+          totalReturned = row.returnedItems.reduce((sum, returned) => sum + (returned.quantity || 0), 0)
+        }
+        return totalQuantity - totalReturned
+      }
     },
      {
       header: "Logistics",
@@ -179,6 +193,7 @@ Do you still want to proceed?`;
         const logistics = row.logisticsCompany || {}
         return <span className="font-medium text-foreground text-gray-400">{logistics.name || "—"}</span>
       },
+      pdfValue: (row) => row.logisticsCompany?.name || "—"
     },
     {
       header: "Status",
@@ -197,6 +212,7 @@ Do you still want to proceed?`;
           </Badge>
         )
       },
+      pdfValue: (row) => (row.status || "PENDING").replace(/_/g, " ").replace(/-/g, " ").toUpperCase()
     },
     {
       header: "Actions",
@@ -234,6 +250,24 @@ Do you still want to proceed?`;
       ),
     },
   ], [router])
+
+  const handleDownloadPDF = async () => {
+    try {
+      const result = await exportToPDF({
+        title: "Dispatch Orders Report",
+        columns: columns.filter(c => c.header !== "Actions"),
+        data: filteredData,
+        filename: `Dispatch_Orders_Report_${new Date().toLocaleDateString('en-CA')}`
+      })
+      if (result.success) {
+        toast.success("PDF report downloaded!")
+      } else {
+        toast.error("Failed to generate PDF")
+      }
+    } catch (err) {
+      toast.error("PDF generation failed: " + err.message)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -302,6 +336,7 @@ Do you still want to proceed?`;
             enableSearch={false}
             paginate={true}
             pageSize={20}
+            onDownloadPDF={handleDownloadPDF}
             onRowClick={(row) => router.push(`/dispatch-orders/${row._id}`)}
           />
         </div>

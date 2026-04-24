@@ -54,7 +54,7 @@ import {
 import { toast } from "react-hot-toast";
 import ProductImageGallery from "@/components/ui/ProductImageGallery";
 import DataTable from "@/components/data-table";
-import PacketLabelPrintModal from "@/components/modals/PacketLabelPrintModal";
+import { packetStockAPI } from "@/lib/api/endpoints/packetStock";
 
 function currency(n) {
   const num = Number(n || 0);
@@ -90,6 +90,100 @@ const getImageArray = (item) => {
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
+function openBarcodePrintWindow(labelData, compositionText, price) {
+  const printWindow = window.open("", "_blank", "width=450,height=500");
+  if (!printWindow) {
+    throw new Error("Please allow popups for printing");
+  }
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Barcode: ${labelData.barcode || "Label"}</title>
+      <style>
+        @page {
+          size: auto;
+          margin: 0;
+        }
+
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+
+        body {
+          font-family: Arial, sans-serif;
+          width: 100%;
+          background: white;
+        }
+
+        .label {
+          width: 100%;
+          min-height: 25mm;
+          padding: 1mm 2mm;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+        }
+
+        .composition {
+          font-size: 7pt;
+          font-weight: 600;
+          color: #333;
+          text-align: center;
+          width: 100%;
+          margin-bottom: 1mm;
+          line-height: 1.2;
+        }
+
+        .price {
+          font-size: 8pt;
+          font-weight: 800;
+          color: #000;
+          text-align: center;
+          width: 100%;
+          margin-bottom: 1mm;
+        }
+
+        .barcode-img {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          width: 100%;
+          padding: 1mm 0;
+        }
+
+        .barcode-img img {
+          max-width: 100%;
+          height: auto;
+          max-height: 15mm;
+          object-fit: contain;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="label">
+        <div class="composition">${compositionText}</div>
+        ${price > 0 ? `<div class="price">${labelData.barcode?.slice(0, 3)}-${price.toFixed(2).replace(".", "")}</div>` : ""}
+        ${labelData.barcodeImage ? `<div class="barcode-img"><img src="${labelData.barcodeImage}" alt="Barcode" /></div>` : ""}
+      </div>
+    </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+
+  setTimeout(() => {
+    printWindow.print();
+  }, 300);
+}
+
 export default function ProductPacketsPage({ params }) {
   const router = useRouter();
   const { id: productId } = use(params);
@@ -105,7 +199,7 @@ export default function ProductPacketsPage({ params }) {
   // Modal state
   const [selectedPacket, setSelectedPacket] = useState(null);
   const [copiedBarcode, setCopiedBarcode] = useState(null);
-  const [printPacketId, setPrintPacketId] = useState(null);
+  const [printLoadingId, setPrintLoadingId] = useState(null);
 
   // Fetch product/inventory info
   const { data: inventoryData, isLoading: inventoryLoading } =
@@ -201,8 +295,25 @@ export default function ProductPacketsPage({ params }) {
     }
   };
 
-  const handlePrintBarcode = (packet) => {
-    setPrintPacketId(packet._id);
+  const handlePrintBarcode = async (packet) => {
+    try {
+      setPrintLoadingId(packet._id);
+      const response = await packetStockAPI.getBarcodeLabel(packet._id);
+      const labelData = response.data?.data || response.data;
+
+      const compositionText = (labelData?.composition || packet?.composition || [])
+        .map((c) => `${c.color}/${c.size} × ${c.quantity}`)
+        .join(", ") || "—";
+
+      const unitMinPrice = Number(labelData?.minSellingPrice);
+      const price = unitMinPrice > 0 ? unitMinPrice : 0;
+
+      openBarcodePrintWindow(labelData, compositionText, price);
+    } catch (err) {
+      toast.error(err?.message || "Failed to print barcode label");
+    } finally {
+      setPrintLoadingId(null);
+    }
   };
 
   // Columns for DataTable
@@ -314,48 +425,69 @@ export default function ProductPacketsPage({ params }) {
         },
       },
       {
+        header: "Min Selling Price",
+        accessor: "minSellingPrice",
+        render: (row) => {
+          const perItemMin = Number(
+            row.product?.pricing?.minSellingPrice ??
+            row.product?.pricing?.sellingPrice ??
+            row.minSellingPrice
+          );
+
+          return (
+            <div className="text-right tabular-nums text-muted-foreground">
+              {currency(Number.isFinite(perItemMin) ? perItemMin : 0)}
+            </div>
+          );
+        },
+      },
+      {
         header: "Price",
         accessor: "suggestedSellingPrice",
-        render: (row) => (
-          <div className="text-right tabular-nums">
-            {currency(row.landedPricePerPacket || 0)}
-          </div>
-        ),
+        render: (row) => {
+          const perItemMin = Number(
+            row.product?.pricing?.minSellingPrice ??
+            row.product?.pricing?.sellingPrice
+          );
+          const effectivePacketPrice = Number.isFinite(perItemMin)
+            ? perItemMin * (row.totalItemsPerPacket || 1)
+            : (row.suggestedSellingPrice || 0);
+
+          return (
+            <div className="text-right tabular-nums">
+              {currency(effectivePacketPrice)}
+            </div>
+          );
+        },
       },
       {
         header: "Actions",
         accessor: "_id",
         render: (row) => (
           <div className="flex items-center gap-1">
+            
             <Button
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedPacket(row);
-              }}
-              title="View Details"
-            >
-              <Info className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0"
+              disabled={printLoadingId === row._id}
               onClick={(e) => {
                 e.stopPropagation();
                 handlePrintBarcode(row);
               }}
               title="Print Barcode"
             >
-              <Printer className="h-4 w-4" />
+              {printLoadingId === row._id ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Printer className="h-4 w-4" />
+              )}
             </Button>
           </div>
         ),
       },
     ],
-    [copiedBarcode]
+    [copiedBarcode, printLoadingId]
   );
 
   // Loading state
@@ -793,96 +925,6 @@ export default function ProductPacketsPage({ params }) {
         </CardContent>
       </Card>
 
-      {/* Packet/Item Detail Dialog */}
-      <Dialog
-        open={!!selectedPacket}
-        onOpenChange={(open) => !open && setSelectedPacket(null)}
-      >
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Barcode className="h-5 w-5" />
-              {selectedPacket?.isLoose ? "Loose Item Details" : "Packet Details"}
-            </DialogTitle>
-            <DialogDescription>
-              Full information about this {selectedPacket?.isLoose ? "loose item" : "packet"}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedPacket && (
-            <div className="space-y-4">
-              {/* Barcode */}
-              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                <div>
-                  <Label className="text-xs text-muted-foreground">
-                    Barcode
-                  </Label>
-                  <code className="block text-lg font-mono font-bold mt-1">
-                    {selectedPacket.barcode}
-                  </code>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCopyBarcode(selectedPacket.barcode)}
-                  >
-                    {copiedBarcode === selectedPacket.barcode ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePrintBarcode(selectedPacket)}
-                  >
-                    <Printer className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Info Grid */}
-              
-
-              {/* Composition */}
-              {selectedPacket.composition &&
-                selectedPacket.composition.length > 0 && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground">
-                      {selectedPacket.isLoose ? "Color / Size" : "Composition"}
-                    </Label>
-                    <div className="mt-2 p-3 bg-muted/50 rounded-lg">
-                      <div className="flex flex-wrap gap-2">
-                        {selectedPacket.composition.map((c, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center gap-2 px-2 py-1 bg-white rounded border text-sm"
-                          >
-                            <span className="font-medium">{c.color}</span>
-                            <span className="text-muted-foreground">/</span>
-                            <span className="font-medium">{c.size}</span>
-                            <span className="text-muted-foreground">×</span>
-                            <span className="font-bold">{c.quantity}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-              
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Packet Label Print Modal */}
-      <PacketLabelPrintModal
-        open={!!printPacketId}
-        onClose={() => setPrintPacketId(null)}
-        packetId={printPacketId}
-      />
     </div>
   );
 }

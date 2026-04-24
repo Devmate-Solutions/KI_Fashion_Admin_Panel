@@ -7,6 +7,7 @@ import PrintableTable from "@/components/reports/PrintableTable"
 import { useDailyBuyingReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import { exportToPDF } from "@/lib/utils/pdfExport"
 import { getDefaultDateRange } from "@/lib/utils/getDefaultDateRange"
 import toast from "react-hot-toast"
 
@@ -66,6 +67,26 @@ export default function DailyBuyingReportPage() {
     }
   }
 
+  const handleDownloadPDF = async () => {
+    try {
+      const result = await exportToPDF({
+        title: "Daily Buying Invoice Wise Report",
+        columns: columns,
+        data: purchaseData,
+        totalsRow: totalsRow,
+        dateRange: dateRange,
+        filename: `Daily_Buying_Report_${dateRange.from}_${dateRange.to}`
+      })
+      if (result.success) {
+        toast.success("PDF report downloaded!")
+      } else {
+        toast.error("Failed to generate PDF")
+      }
+    } catch (err) {
+      toast.error("PDF generation failed: " + err.message)
+    }
+  }
+
   const columns = [
     {
       header: "ID",
@@ -84,57 +105,86 @@ export default function DailyBuyingReportPage() {
         }
         return <span className="font-mono text-xs">{displayText}</span>
       },
+      pdfValue: (row) => row.orderNumber || row._id?.slice(-8) || "—"
     },
+
     {
       header: "Transaction Type",
       accessor: "transactionType",
       render: () => "Buying Invoice",
+      pdfValue: () => "Buying Invoice"
     },
     {
       header: "Invoice Date",
       accessor: "dispatchDate",
       render: (row) => formatDate(row.dispatchDate || row.createdAt),
+      pdfValue: (row) => formatDate(row.dispatchDate || row.createdAt)
     },
     {
       header: "Name",
       accessor: "supplier",
-      render: (row) => row.supplier?.name || row.supplier?.company || "—",
+      render: (row) => {
+        const supplier = row.supplier
+        if (!supplier) return "—"
+        if (typeof supplier === 'string') return supplier
+        return supplier.name || supplier.company || "—"
+      },
+      pdfValue: (row) => {
+        const supplier = row.supplier
+        if (!supplier) return "—"
+        if (typeof supplier === 'string') return supplier
+        return supplier.name || supplier.company || "—"
+      }
     },
     {
       header: "Total",
       accessor: "supplierPaymentTotal",
       align: "right",
       render: (row) => currency(row.supplierPaymentTotal + row.totalDiscount || 0),
+      pdfValue: (row) => currency(row.supplierPaymentTotal + row.totalDiscount || 0)
     },
     {
       header: "Discount",
       accessor: "totalDiscount",
       align: "right",
       render: (row) => currency(row.totalDiscount || 0),
+      pdfValue: (row) => currency(row.totalDiscount || 0)
     },
     {
       header: "Total After Disc.",
       accessor: "totalAfterDiscount",
       align: "right",
       render: (row) => currency(row.supplierPaymentTotal || 0),
+      pdfValue: (row) => currency(row.supplierPaymentTotal || 0)
     },
     {
       header: "Bank Cash",
       accessor: "bankPayment",
       align: "right",
       render: (row) => currency(row.bankPayment || 0),
+      pdfValue: (row) => currency(row.bankPayment || 0)
     },
     {
       header: "Cash",
       accessor: "cashPayment",
       align: "right",
       render: (row) => currency(row.cashPayment || 0),
+      pdfValue: (row) => currency(row.cashPayment || 0)
     },
     {
       header: "Remaining",
       accessor: "remaining",
       align: "right",
-      render: (row) => currency(row.supplierPaymentTotal - (row.bankPayment + row.cashPayment) || 0),
+      render: (row) => {
+        const total = row.supplierPaymentTotal || 0
+        const paid = (row.bankPayment || 0) + (row.cashPayment || 0)
+        return currency(total - paid)
+      },
+      pdfValue: (row) => {
+        const total = row.supplierPaymentTotal || 0
+        const paid = (row.bankPayment || 0) + (row.cashPayment || 0)
+        return currency(total - paid)
+      }
     },
   ]
 
@@ -178,6 +228,7 @@ export default function DailyBuyingReportPage() {
       onDateChange={setDateRange}
       onRefresh={refetch}
       onExport={handleExport}
+      onDownloadPDF={handleDownloadPDF}
       loading={isLoading}
       error={isError ? error : null}
       summary={summary}

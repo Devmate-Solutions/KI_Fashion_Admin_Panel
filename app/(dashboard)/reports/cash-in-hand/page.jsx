@@ -5,6 +5,7 @@ import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useCashInHandReport } from "@/lib/hooks/useReports"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import { exportToPDF } from "@/lib/utils/pdfExport"
 import { getDefaultDateRange } from "@/lib/utils/getDefaultDateRange"
 import { useAuthStore } from "@/store/store"
 import toast from "react-hot-toast"
@@ -66,6 +67,26 @@ export default function CashInHandReportPage() {
         }
     }
 
+    const handleDownloadPDF = async () => {
+        try {
+            const result = await exportToPDF({
+                title: "Cash in Hand Report",
+                columns: columns,
+                data: transactions,
+                totalsRow: totalsRow,
+                dateRange: dateRange,
+                filename: `Cash_In_Hand_Report_${dateRange.from}_${dateRange.to}`
+            })
+            if (result.success) {
+                toast.success("PDF report downloaded!")
+            } else {
+                toast.error("Failed to generate PDF")
+            }
+        } catch (err) {
+            toast.error("PDF generation failed: " + err.message)
+        }
+    }
+
     const columns = [
 
         {
@@ -74,35 +95,25 @@ export default function CashInHandReportPage() {
             render: (row) => (
                 <span className="">{row.id || "—"}</span>
             ),
+            pdfValue: (row) => row.id || "—"
         },
         {
             header: "Transaction Type",
             accessor: "transactionType",
-            render: (row) => {
-                const styles = {
-                    Sales: "bg-emerald-100 text-emerald-700",
-                    Ledger: "bg-blue-100 text-blue-700",
-                    Expense: "bg-red-100 text-red-700",
-                }
-                const cls = styles[row.transactionType] || "bg-gray-100 text-gray-700"
-                return (
-                    <div>
-
-                        {row.transactionType}
-                    </div>
-
-                )
-            },
+            render: (row) => row.transactionType,
+            pdfValue: (row) => row.transactionType
         },
         {
             header: "Date",
             accessor: "date",
             render: (row) => formatDate(row.date),
+            pdfValue: (row) => formatDate(row.date)
         },
         {
             header: "Name",
             accessor: "name",
             render: (row) => row.name || "—",
+            pdfValue: (row) => row.name || "—"
         },
         // Sales columns
         {
@@ -113,6 +124,7 @@ export default function CashInHandReportPage() {
                 row.transactionType === "Sales"
                     ? <span className="text-emerald-700 font-medium">{currency(row.salesCash)}</span>
                     : DASH,
+            pdfValue: (row) => row.transactionType === "Sales" ? currency(row.salesCash) : "—"
         },
         {
             header: "Sales Bank",
@@ -122,6 +134,7 @@ export default function CashInHandReportPage() {
                 row.transactionType === "Sales"
                     ? <span className="text-emerald-700 font-medium">{currency(row.salesBank)}</span>
                     : DASH,
+            pdfValue: (row) => row.transactionType === "Sales" ? currency(row.salesBank) : "—"
         },
         {
             header: "Sales Remaining",
@@ -133,6 +146,7 @@ export default function CashInHandReportPage() {
                         {currency(row.salesRemainingBalance)}
                     </span>
                     : DASH,
+            pdfValue: (row) => row.transactionType === "Sales" ? currency(row.salesRemainingBalance) : "—"
         },
         // Ledger columns (buyer payments received)
         {
@@ -143,6 +157,7 @@ export default function CashInHandReportPage() {
                 row.transactionType === "Ledger"
                     ? <span className="text-blue-700 font-medium">{currency(row.ledgerCash)}</span>
                     : DASH,
+            pdfValue: (row) => row.transactionType === "Ledger" ? currency(row.ledgerCash) : "—"
         },
         {
             header: "Ledger Bank",
@@ -152,6 +167,7 @@ export default function CashInHandReportPage() {
                 row.transactionType === "Ledger"
                     ? <span className="text-blue-700 font-medium">{currency(row.ledgerBank)}</span>
                     : DASH,
+            pdfValue: (row) => row.transactionType === "Ledger" ? currency(row.ledgerBank) : "—"
         },
         // Expense columns
         {
@@ -162,6 +178,7 @@ export default function CashInHandReportPage() {
                 row.transactionType === "Expense"
                     ? <span className="text-red-700 font-medium">{currency(row.expenseCash)}</span>
                     : DASH,
+            pdfValue: (row) => row.transactionType === "Expense" ? currency(row.expenseCash) : "—"
         },
         {
             header: "Expense Bank",
@@ -171,6 +188,7 @@ export default function CashInHandReportPage() {
                 row.transactionType === "Expense"
                     ? <span className="text-red-700 font-medium">{currency(row.expenseBank)}</span>
                     : DASH,
+            pdfValue: (row) => row.transactionType === "Expense" ? currency(row.expenseBank) : "—"
         },
         // Running cumulative cash-in-hand balance
         {
@@ -185,6 +203,7 @@ export default function CashInHandReportPage() {
                     </span>
                 )
             },
+            pdfValue: (row) => currency(row.totalCashInHand || 0)
         },
     ]
 
@@ -236,6 +255,7 @@ export default function CashInHandReportPage() {
             onDateChange={setDateRange}
             onRefresh={refetch}
             onExport={handleExport}
+            onDownloadPDF={handleDownloadPDF}
             loading={isLoading}
             error={isError ? error : null}
             summary={summaryCards}

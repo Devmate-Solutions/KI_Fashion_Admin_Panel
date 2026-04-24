@@ -7,11 +7,17 @@ import PrintableTable from "@/components/reports/PrintableTable"
 import { useStockInHandReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import { exportToPDF } from "@/lib/utils/pdfExport"
 import toast from "react-hot-toast"
 
 function currency(n) {
   const num = Number(n || 0)
   return `£${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+function toNumber(value) {
+  const num = Number(value)
+  return Number.isFinite(num) ? num : 0
 }
 
 function formatDate(date) {
@@ -45,6 +51,20 @@ export default function StockInHandReportPage() {
       totalBought: stockData.reduce((sum, p) => sum + (p.itemsBought || 0), 0),
       totalSold: stockData.reduce((sum, p) => sum + (p.itemsSold || 0), 0),
       totalValue: stockData.reduce((sum, p) => sum + (p.totalValue || p.value || 0), 0),
+      totalLandedValue: stockData.reduce((sum, p) => {
+        const remaining = toNumber(p.currentStock ?? p.stockInHand)
+        const landedPerItem = toNumber(p.landedPrice ?? p.averageCostPrice ?? p.costPrice ?? p.averageLandedPrice)
+        return sum + (remaining * landedPerItem)
+      }, 0),
+      totalMinSellValue: stockData.reduce((sum, p) => {
+        const remaining = toNumber(p.currentStock ?? p.stockInHand)
+        const minSellPerItem = toNumber(
+          p.minSellPrice ??
+          p.product?.pricing?.minSellingPrice ??
+          p.product?.pricing?.sellingPrice
+        )
+        return sum + (remaining * minSellPerItem)
+      }, 0),
       lowStock: stockData.filter(p => p.needsReorder || (p.currentStock || p.stockInHand || 0) <= (p.reorderLevel || 10)).length,
     }
   }, [stockData])
@@ -67,18 +87,39 @@ export default function StockInHandReportPage() {
     }
   }
 
+  const handleDownloadPDF = async () => {
+    try {
+      const result = await exportToPDF({
+        title: "Stock in Hand Report",
+        columns: columns,
+        data: stockData,
+        totalsRow: totalsRow,
+        dateRange: dateRange,
+        filename: `Stock_In_Hand_Report_${dateRange.to}`
+      })
+      if (result.success) {
+        toast.success("PDF report generated!")
+      } else {
+        toast.error("Failed to generate PDF")
+      }
+    } catch (err) {
+      toast.error("PDF generation failed: " + err.message)
+    }
+  }
+
   const columns = [
     {
       header: "Supplier Name",
       accessor: "supplierName",
       render: (row) => row.supplierName || "—",
+      pdfValue: (row) => row.supplierName || "—"
     },
     {
       header: "Product Code",
       accessor: "productCode",
       render: (row) => {
-        const productCode = row.productCode || row.sku || "—"
-        const productId = row.productId || row._id
+        const productCode = row.productCode || row.sku || row.product?.productCode || row.product?.sku || "—"
+        const productId = row.productId || row._id || row.product?._id
         if (productId && productCode !== "—") {
           return (
             <Link
@@ -91,11 +132,13 @@ export default function StockInHandReportPage() {
         }
         return <span className="font-mono text-xs">{productCode}</span>
       },
+      pdfValue: (row) => row.productCode || row.sku || row.product?.productCode || row.product?.sku || "—"
     },
     {
       header: "Product Description",
       accessor: "productName",
       render: (row) => row.productName || row.name || row.description || "—",
+      pdfValue: (row) => row.productName || row.name || row.description || "—"
     },
     {
       header: "Color",
@@ -108,18 +151,27 @@ export default function StockInHandReportPage() {
         }
         return "—";
       },
+      pdfValue: (row) => {
+        if (row.color) return row.color;
+        if (row.variantComposition && row.variantComposition.length > 0) {
+          return row.variantComposition.map(v => v.color).join(", ");
+        }
+        return "—";
+      }
     },
     {
       header: "Items Bought",
       accessor: "itemsBought",
       align: "right",
       render: (row) => row.itemsBought || 0,
+      pdfValue: (row) => row.itemsBought || 0
     },
     {
       header: "Items Sold",
       accessor: "itemsSold",
       align: "right",
-      render: (row) => row.itemsSold || 0,
+      render: (row) => (row.itemsSold || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      pdfValue: (row) => (row.itemsSold || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     },
     {
       header: "Remaining",
@@ -134,22 +186,41 @@ export default function StockInHandReportPage() {
           </span>
         )
       },
+      pdfValue: (row) => row.currentStock || row.stockInHand || 0
     },
     {
       header: "Min Sell Price",
       accessor: "minSellPrice",
       align: "right",
       render: (row) => {
-        const landedPrice = row.landedPrice || row.averageCostPrice || row.costPrice || 0
-        const minSellPrice = landedPrice * 1.2
+        const minSellPrice = toNumber(
+          row.minSellPrice ??
+          row.product?.pricing?.minSellingPrice ??
+          row.product?.pricing?.sellingPrice
+        )
         return currency(minSellPrice)
       },
+      pdfValue: (row) => {
+        const minSellPrice = toNumber(
+          row.minSellPrice ??
+          row.product?.pricing?.minSellingPrice ??
+          row.product?.pricing?.sellingPrice
+        )
+        return currency(minSellPrice)
+      }
     },
     {
       header: "Landed Price",
       accessor: "landedPrice",
       align: "right",
-      render: (row) => currency(row.landedPrice || row.averageCostPrice || row.costPrice || 0),
+      render: (row) => {
+        const price = row.landedPrice || row.averageCostPrice || row.costPrice || row.averageLandedPrice || 0
+        return currency(price)
+      },
+      pdfValue: (row) => {
+        const price = row.landedPrice || row.averageCostPrice || row.costPrice || row.averageLandedPrice || 0
+        return currency(price)
+      }
     },
   ]
 
@@ -183,8 +254,8 @@ export default function StockInHandReportPage() {
     itemsSold: totals.totalSold,
     currentStock: totals.totalStock,
     totalValue: currency(totals.totalValue),
-    landedPrice: currency(totals.totalValue),
-    minSellPrice: currency(totals.totalValue),
+    landedPrice: currency(totals.totalLandedValue),
+    minSellPrice: "",
   }
 
   return (
@@ -195,6 +266,7 @@ export default function StockInHandReportPage() {
       onDateChange={setDateRange}
       onRefresh={refetch}
       onExport={handleExport}
+      onDownloadPDF={handleDownloadPDF}
       loading={isLoading}
       error={isError ? error : null}
       summary={summary}
@@ -205,7 +277,7 @@ export default function StockInHandReportPage() {
         loading={isLoading}
         showTotals={true}
         totalsRow={totalsRow}
-        totalColumns={[{ title: "Total Stock", value: "minSellPrice" }]}
+        totalColumns={[{ title: "Stock In Hand", value: "landedPrice" }]}
         searchableColumns={["supplierName", "productCode", "productName"]}
       />
     </ReportLayout>

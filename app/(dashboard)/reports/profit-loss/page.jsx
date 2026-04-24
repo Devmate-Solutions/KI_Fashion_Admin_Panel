@@ -5,6 +5,7 @@ import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import { exportToPDF } from "@/lib/utils/pdfExport"
 import { useProfitLossReport } from "@/lib/hooks/useReports"
 import { getDefaultDateRange } from "@/lib/utils/getDefaultDateRange"
 import { useAuthStore } from "@/store/store"
@@ -58,17 +59,39 @@ export default function ProfitLossReportPage() {
     }
   }
 
+  const handleDownloadPDF = async () => {
+    try {
+      const result = await exportToPDF({
+        title: "Profit & Loss Report",
+        columns: columns,
+        data: reportData,
+        totalsRow: totalsRow,
+        dateRange: dateRange,
+        filename: `Profit_Loss_Report_${dateRange.from}_${dateRange.to}`
+      })
+      if (result.success) {
+        toast.success("PDF report generated!")
+      } else {
+        toast.error("Failed to generate PDF")
+      }
+    } catch (err) {
+      toast.error("PDF generation failed: " + err.message)
+    }
+  }
+
   const columns = [
     {
       header: "Sno",
       accessor: "sno",
       align: "center",
       render: (row) => row.sno,
+      pdfValue: (row) => row.sno
     },
     {
       header: "Transaction Date",
       accessor: "transactionDate",
       render: (row) => formatDate(row.transactionDate),
+      pdfValue: (row) => formatDate(row.transactionDate)
     },
     {
       header: "Invoice No.",
@@ -87,17 +110,19 @@ export default function ProfitLossReportPage() {
         }
         return <span className="font-mono text-xs">{invoiceNum}</span>
       },
+      pdfValue: (row) => row.invoiceNumber || "—"
     },
     {
       header: "Customer Name",
       accessor: "customerName",
       render: (row) => row.customerName || "—",
+      pdfValue: (row) => row.customerName || "—"
     },
     {
       header: "Product Code",
       accessor: "productCode",
       render: (row) => {
-        const productCode = row.productCode || "—"
+        const productCode = row.productCode || row.sku || "—"
         const productId = row.productId
         if (productId && productCode !== "—") {
           return (
@@ -111,31 +136,36 @@ export default function ProfitLossReportPage() {
         }
         return <span className="font-mono text-xs">{productCode}</span>
       },
+      pdfValue: (row) => row.productCode || "—"
     },
     {
       header: "Items Sold",
       accessor: "itemsSold",
       align: "right",
       render: (row) => row.itemsSold || 0,
+      pdfValue: (row) => row.itemsSold || 0
     },
     {
       header: "Selling Price",
       accessor: "sellingPrice",
       align: "right",
       render: (row) => currency(row.sellingPrice || 0),
+      pdfValue: (row) => currency(row.sellingPrice || 0)
     },
     {
       header: "Total Sales",
       accessor: "totalSales",
       align: "right",
       render: (row) => currency(row.totalSales || 0),
+      pdfValue: (row) => currency(row.totalSales || 0)
     },
-    
+
     {
       header: "Average Cost",
       accessor: "averageCost",
       align: "right",
       render: (row) => currency(row.averageCost * row.itemsSold || 0),
+      pdfValue: (row) => currency(row.averageCost * row.itemsSold || 0)
     },
     {
       header: "PNL",
@@ -154,6 +184,10 @@ export default function ProfitLossReportPage() {
           </span>
         )
       },
+      pdfValue: (row) => {
+        const pnl = row.pnl || 0
+        return `${pnl >= 0 ? "+" : ""}${currency(pnl)}`
+      }
     },
   ]
 
@@ -195,6 +229,7 @@ export default function ProfitLossReportPage() {
       onDateChange={setDateRange}
       onRefresh={refetch}
       onExport={handleExport}
+      onDownloadPDF={handleDownloadPDF}
       loading={isLoading}
       error={isError ? error : null}
       summary={summaryCards}

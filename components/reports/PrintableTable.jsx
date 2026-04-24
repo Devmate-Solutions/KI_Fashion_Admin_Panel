@@ -168,25 +168,28 @@ export default function PrintableTable({
             </tr>
           </thead>
           <tbody>
-            {Array.isArray(slice) && slice.length > 0 ? (
-              slice.map((row, idx) => (
-                <tr
-                  key={row.id ?? row._id ?? idx}
-                  className={`border-b border-border hover:bg-muted/30 print:hover:bg-transparent${onRowClick ? ' cursor-pointer' : ''}`}
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
-                >
-                  {Array.isArray(columns) &&
-                    columns.map((c) => (
-                      <td
-                        key={c.accessor || c.header}
-                        className={`px-3 py-2.5 ${c.align === "right" ? "text-right tabular-nums" : ""
-                          } ${c.align === "center" ? "text-center" : ""}`}
-                      >
-                        {c.render ? c.render(row) : String(row[c.accessor] ?? "—")}
-                      </td>
-                    ))}
-                </tr>
-              ))
+            {Array.isArray(filtered) && filtered.length > 0 ? (
+              filtered.map((row, idx) => {
+                const isVisibleOnScreen = idx >= start && idx < start + pageSize
+                return (
+                  <tr
+                    key={row.id ?? row._id ?? idx}
+                    className={`border-b border-border hover:bg-muted/30 print:hover:bg-transparent ${!isVisibleOnScreen ? 'print-only-row' : ''}${onRowClick ? ' cursor-pointer' : ''}`}
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  >
+                    {Array.isArray(columns) &&
+                      columns.map((c) => (
+                        <td
+                          key={c.accessor || c.header}
+                          className={`px-3 py-2.5 ${c.align === "right" ? "text-right tabular-nums" : ""
+                            } ${c.align === "center" ? "text-center" : ""}`}
+                        >
+                          {c.render ? c.render(row) : String(row[c.accessor] ?? "—")}
+                        </td>
+                      ))}
+                  </tr>
+                )
+              })
             ) : (
               <tr>
                 <td
@@ -261,12 +264,26 @@ export default function PrintableTable({
       )}
 
       <style jsx>{`
+        @media screen {
+          .print-only-row {
+            display: none !important;
+          }
+        }
         @media print {
           .no-print {
             display: none !important;
           }
           .no-print-style {
             all: unset;
+          }
+          .print-only-row {
+            display: table-row !important;
+          }
+          thead {
+            display: table-header-group;
+          }
+          tr {
+            page-break-inside: avoid;
           }
         }
       `}</style>

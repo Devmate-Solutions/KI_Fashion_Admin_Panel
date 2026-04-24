@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useMemo, useState, useEffect } from "react"
-import { ChevronRight, ChevronDown } from "lucide-react"
+import { ChevronRight, ChevronDown, FileText } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 
 function normalize(v) {
@@ -31,6 +31,7 @@ export default function DataTable({
   expandableRow = false,
   renderExpandedRow,
   expandedRowAsColumns = false,
+  onDownloadPDF = null,
 }) {
   const [query, setQuery] = useState("")
   const [internalPage, setInternalPage] = useState(1)
@@ -130,6 +131,15 @@ export default function DataTable({
               </button>
             </div>
           )}
+          {/* {onDownloadPDF && (
+            <button
+              className="h-9 sm:h-10 rounded-md border border-input bg-red-600 px-3 text-white hover:bg-red-700 active:scale-95 transition-all duration-200 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              onClick={onDownloadPDF}
+              title="Download PDF"
+            >
+              <FileText className="h-4 w-4" />
+            </button>
+          )} */}
           {onAddNew && (
             <button
               className="h-9 sm:h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all duration-200 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring whitespace-nowrap"
@@ -213,89 +223,89 @@ export default function DataTable({
                   const isExpanded = expandableRow && expandedRowId === uniqueKey
                   const totalColSpan = (Array.isArray(columns) ? columns.length : 0) + (expandableRow ? 1 : 0) + ((!hideActions && (onEdit || onDelete)) ? 1 : 0)
                   return (
-                  <React.Fragment key={uniqueKey}>
-                  <tr
-                    className={`hover:bg-muted/20 transition-all duration-150 ease-in-out ${onRowClick || expandableRow ? 'cursor-pointer' : ''} ${isExpanded ? 'bg-muted/10 align-top' : ''}`}
-                    onClick={() => {
-                      if (expandableRow) {
-                        setExpandedRowId(isExpanded ? null : uniqueKey)
-                      } else if (onRowClick) {
-                        onRowClick(row)
-                      }
-                    }}
-                    aria-expanded={expandableRow ? isExpanded : undefined}
-                    data-row-id={row.rowId || row.id || row._id}
-                  >
-                    {expandableRow && (
-                      <td className="px-2 py-2.5 sm:py-3 w-8">
-                        <button
-                          className="p-0.5 rounded hover:bg-muted transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                          onClick={(e) => {
-                            e.stopPropagation()
+                    <React.Fragment key={uniqueKey}>
+                      <tr
+                        className={`hover:bg-muted/20 transition-all duration-150 ease-in-out ${onRowClick || expandableRow ? 'cursor-pointer' : ''} ${isExpanded ? 'bg-muted/10 align-top' : ''}`}
+                        onClick={() => {
+                          if (expandableRow) {
                             setExpandedRowId(isExpanded ? null : uniqueKey)
-                          }}
-                          aria-label={isExpanded ? "Collapse row" : "Expand row"}
-                          tabIndex={0}
-                        >
-                          {/* {isExpanded
+                          } else if (onRowClick) {
+                            onRowClick(row)
+                          }
+                        }}
+                        aria-expanded={expandableRow ? isExpanded : undefined}
+                        data-row-id={row.rowId || row.id || row._id}
+                      >
+                        {expandableRow && (
+                          <td className="px-2 py-2.5 sm:py-3 w-8">
+                            <button
+                              className="p-0.5 rounded hover:bg-muted transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setExpandedRowId(isExpanded ? null : uniqueKey)
+                              }}
+                              aria-label={isExpanded ? "Collapse row" : "Expand row"}
+                              tabIndex={0}
+                            >
+                              {/* {isExpanded
                             ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
                             : <ChevronRight className="h-4 w-4 text-muted-foreground" />
                           } */}
-                        </button>
-                      </td>
-                    )}
-                    {Array.isArray(columns) && columns.map((c) => (
-                      <td key={c.accessor || c.header} className="px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm whitespace-nowrap">
-                        {c.render ? c.render(row, { isExpanded }) : String(row[c.accessor] ?? "")}
-                      </td>
-                    ))}
-                    {!hideActions && (onEdit || onDelete) && (
-                      <td className="px-3 sm:px-4 py-2.5 sm:py-3">
-                        <div className="flex items-center gap-1.5 sm:gap-2">
-                          {onEdit && (
-                            <button
-                              className="text-[10px] sm:text-xs px-2 sm:px-3 py-1.5 border border-border rounded-md hover:bg-muted active:scale-95 transition-all duration-150 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-h-[36px] sm:min-h-[32px]"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onEdit(row)
-                              }}
-                              aria-label={`Edit ${row.name || row.id || 'item'}`}
-                            >
-                              Edit
                             </button>
-                          )}
-                          {onDelete && (
-                            <button
-                              className="text-[10px] sm:text-xs px-2 sm:px-3 py-1.5 border border-border rounded-md text-destructive hover:bg-destructive/10 active:scale-95 transition-all duration-150 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-h-[36px] sm:min-h-[32px]"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onDelete(row)
-                              }}
-                              aria-label={`Delete ${row.name || row.id || 'item'}`}
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                  {isExpanded && renderExpandedRow && (
-                    expandedRowAsColumns ? (
-                      <tr>
-                        {renderExpandedRow(row)}
+                          </td>
+                        )}
+                        {Array.isArray(columns) && columns.map((c) => (
+                          <td key={c.accessor || c.header} className="px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm whitespace-nowrap">
+                            {c.render ? c.render(row, { isExpanded }) : String(row[c.accessor] ?? "")}
+                          </td>
+                        ))}
+                        {!hideActions && (onEdit || onDelete) && (
+                          <td className="px-3 sm:px-4 py-2.5 sm:py-3">
+                            <div className="flex items-center gap-1.5 sm:gap-2">
+                              {onEdit && (
+                                <button
+                                  className="text-[10px] sm:text-xs px-2 sm:px-3 py-1.5 border border-border rounded-md hover:bg-muted active:scale-95 transition-all duration-150 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-h-[36px] sm:min-h-[32px]"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    onEdit(row)
+                                  }}
+                                  aria-label={`Edit ${row.name || row.id || 'item'}`}
+                                >
+                                  Edit
+                                </button>
+                              )}
+                              {onDelete && (
+                                <button
+                                  className="text-[10px] sm:text-xs px-2 sm:px-3 py-1.5 border border-border rounded-md text-destructive hover:bg-destructive/10 active:scale-95 transition-all duration-150 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-h-[36px] sm:min-h-[32px]"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    onDelete(row)
+                                  }}
+                                  aria-label={`Delete ${row.name || row.id || 'item'}`}
+                                >
+                                  Delete
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
                       </tr>
-                    ) : (
-                      <tr>
-                        <td colSpan={totalColSpan} className="p-0 border-t-0">
-                          <div className="px-4 py-3 bg-muted/5 border-l-4 border-primary">
+                      {isExpanded && renderExpandedRow && (
+                        expandedRowAsColumns ? (
+                          <tr>
                             {renderExpandedRow(row)}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  )}
-                  </React.Fragment>
+                          </tr>
+                        ) : (
+                          <tr>
+                            <td colSpan={totalColSpan} className="p-0 border-t-0">
+                              <div className="px-4 py-3 bg-muted/5 border-l-4 border-primary">
+                                {renderExpandedRow(row)}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </React.Fragment>
                   )
                 })}
                 {(!Array.isArray(slice) || slice.length === 0) && (

@@ -7,6 +7,7 @@ import PrintableTable from "@/components/reports/PrintableTable"
 import { useReceivablesReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import { exportToPDF } from "@/lib/utils/pdfExport"
 import { useAuthStore } from "@/store/store"
 import toast from "react-hot-toast"
 
@@ -85,6 +86,26 @@ export default function ReceivablesReportPage() {
     }
   }
 
+  const handleDownloadPDF = async () => {
+    try {
+      const result = await exportToPDF({
+        title: "Receivable Report",
+        columns: columns,
+        data: receivablesData,
+        totalsRow: totalsRow,
+        dateRange: dateRange,
+        filename: `Receivables_Report_${dateRange.to}`
+      })
+      if (result.success) {
+        toast.success("PDF report downloaded!")
+      } else {
+        toast.error("Failed to generate PDF")
+      }
+    } catch (err) {
+      toast.error("PDF generation failed: " + err.message)
+    }
+  }
+
   const columns = [
     {
       header: "Name",
@@ -97,6 +118,21 @@ export default function ReceivablesReportPage() {
           </div>
         </div>
       ),
+      pdfValue: (row) => row.name || "—"
+    },
+    {
+      header: "Total Sales",
+      accessor: "totalSales",
+      align: "right",
+      render: (row) => `£${formatNumber(row.totalSales || 0)}`,
+      pdfValue: (row) => `£${formatNumber(row.totalSales || 0)}`
+    },
+    {
+      header: "Total Received",
+      accessor: "amountReceived",
+      align: "right",
+      render: (row) => `£${formatNumber(row.amountReceived || row.amountGiven || 0)}`,
+      pdfValue: (row) => `£${formatNumber(row.amountReceived || row.amountGiven || 0)}`
     },
     {
       header: "RemainingBalance",
@@ -110,10 +146,21 @@ export default function ReceivablesReportPage() {
           </span>
         )
       },
+      pdfValue: (row) => `£${formatNumber(row.remainingBalance || row.outstanding || row.ledgerBalance || 0)}`
     },
   ]
 
   const summary = [
+    {
+      label: "Total Sales",
+      value: `£${formatNumber(totals.totalSales)}`,
+      color: "text-blue-600",
+    },
+    {
+      label: "Total Received",
+      value: `£${formatNumber(totals.totalReceived)}`,
+      color: "text-green-600",
+    },
     {
       label: "Total Remaining Balance",
       value: `£${formatNumber(totals.outstanding)}`,
@@ -122,7 +169,9 @@ export default function ReceivablesReportPage() {
   ]
 
   const totalsRow = {
-    name: "",
+    name: "TOTAL",
+    totalSales: `£${formatNumber(totals.totalSales)}`,
+    amountReceived: `£${formatNumber(totals.totalReceived)}`,
     remainingBalance: `£${formatNumber(totals.outstanding)}`,
   }
 
@@ -134,6 +183,7 @@ export default function ReceivablesReportPage() {
       onDateChange={setDateRange}
       onRefresh={refetch}
       onExport={handleExport}
+      onDownloadPDF={handleDownloadPDF}
       loading={isLoading}
       error={isError ? error : null}
       summary={summary}

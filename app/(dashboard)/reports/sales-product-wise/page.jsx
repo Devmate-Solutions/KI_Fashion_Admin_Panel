@@ -6,6 +6,7 @@ import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useSalesProductWiseReport } from "@/lib/hooks/useReports"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import { exportToPDF } from "@/lib/utils/pdfExport"
 import { getDefaultDateRange } from "@/lib/utils/getDefaultDateRange"
 import toast from "react-hot-toast"
 
@@ -74,29 +75,54 @@ export default function SalesProductWiseReportPage() {
     }
   }
 
+  const handleDownloadPDF = async () => {
+    try {
+      const result = await exportToPDF({
+        title: "Daily Sales Product Wise Report",
+        columns: columns,
+        data: productData,
+        totalsRow: totalsRow,
+        dateRange: dateRange,
+        filename: `Sales_Product_Wise_Report_${dateRange.from}_${dateRange.to}`
+      })
+      if (result.success) {
+        toast.success("PDF report downloaded!")
+      } else {
+        toast.error("Failed to generate PDF")
+      }
+    } catch (err) {
+      toast.error("PDF generation failed: " + err.message)
+    }
+  }
+
   const columns = [
     {
       header: "Sno",
       accessor: "sno",
       render: (row) => row.sno,
+      pdfValue: (row) => row.sno
     },
     {
       header: "Transaction Date",
       accessor: "transactionDate",
       render: (row) => formatDate(row.transactionDate),
+      pdfValue: (row) => formatDate(row.transactionDate)
     },
     {
       header: "Transaction Type",
       accessor: "transactionType",
       render: () => "Sales",
+      pdfValue: () => "Sales"
     },
     {
       header: "Supplier Name",
       accessor: "supplierName",
+      pdfValue: (row) => row.supplierName || "—"
     },
     {
       header: "Buyer Name",
       accessor: "buyerName",
+      pdfValue: (row) => row.buyerName || "—"
     },
     {
       header: "Product Code",
@@ -116,23 +142,32 @@ export default function SalesProductWiseReportPage() {
         }
         return <span className="font-mono text-xs">{productCode}</span>
       },
+      pdfValue: (row) => row.productCode || row.sku || "—"
+    },
+    {
+      header: "Product Name",
+      accessor: "productName",
+      pdfValue: (row) => row.productName || "—"
     },
     {
       header: "Items Sold",
       accessor: "quantity",
       align: "right",
+      pdfValue: (row) => row.quantity || 0
     },
     {
       header: "CPI",
       accessor: "unitPrice",
       align: "right",
       render: (row) => currency(row.unitPrice || 0),
+      pdfValue: (row) => currency(row.unitPrice || 0)
     },
     {
       header: "Total",
       accessor: "totalPrice",
       align: "right",
       render: (row) => currency(row.totalPrice || (row.quantity * row.unitPrice) || 0),
+      pdfValue: (row) => currency(row.totalPrice || (row.quantity * row.unitPrice) || 0)
     },
   ]
 
@@ -168,6 +203,7 @@ export default function SalesProductWiseReportPage() {
       onDateChange={setDateRange}
       onRefresh={refetch}
       onExport={handleExport}
+      onDownloadPDF={handleDownloadPDF}
       loading={isLoading}
       error={isError ? error : null}
       summary={summary}

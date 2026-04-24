@@ -7,8 +7,9 @@ import ProductImageGallery from "@/components/ui/ProductImageGallery"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useProductHistoryReport } from "@/lib/hooks/useReports"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import { exportToPDF } from "@/lib/utils/pdfExport"
 import toast from "react-hot-toast"
-import { Download, Printer } from "lucide-react"
+import { Download, Printer, FileSpreadsheet, FileDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import MainContentWrapper from "@/components/MainContentWrapper"
@@ -48,18 +49,6 @@ export default function ProductHistoryPage() {
 
   const columns = [
     {
-      header: "Image",
-      accessor: "image",
-      render: () => productId ? (
-        <ProductImageGallery
-          productId={productId}
-          size="sm"
-          maxVisible={1}
-          showCount={false}
-        />
-      ) : null,
-    },
-    {
       header: "ID",
       accessor: "id",
       render: (row) => {
@@ -67,8 +56,8 @@ export default function ProductHistoryPage() {
           row.transactionType === "Buying"
             ? `/dispatch-orders/${row._id}`
             : row.transactionType === "Selling"
-            ? `/selling/${row._id}`
-            : null
+              ? `/selling/${row._id}`
+              : null
         const label = String(row.id).slice(-8)
         if (href) {
           return (
@@ -130,7 +119,6 @@ export default function ProductHistoryPage() {
 
   const totalsRow = {
     id: "",
-    image: "",
     transactionType: "TOTAL",
     partyName: "",
     transactionDate: "",
@@ -140,7 +128,7 @@ export default function ProductHistoryPage() {
     totalAfterDiscount: currency(transactions.reduce((s, r) => s + (r.totalAfterDiscount || 0), 0)),
   }
 
-  const handleExport = () => {
+  const handleExportExcel = () => {
     if (!transactions.length) return toast.error("No data to export")
     exportToExcelWithTotals({
       data: transactions.map((t) => ({
@@ -155,8 +143,35 @@ export default function ProductHistoryPage() {
         Discount: t.discount,
         "Total After Discount": t.totalAfterDiscount,
       })),
-      fileName: "Product_History",
+      fileName: `Product_History_${productId.slice(-8)}`,
       totals: totalsRow,
+    })
+  }
+
+  const handleExportPDF = async () => {
+    if (!transactions.length) return toast.error("No data to export")
+
+    const pdfColumns = columns.map(col => ({
+      header: col.header,
+      accessor: col.accessor,
+      align: col.align || 'left'
+    }))
+
+    await exportToPDF({
+      title: "Product History Report",
+      columns: pdfColumns,
+      data: transactions.map(t => ({
+        ...t,
+        id: String(t.id).slice(-8),
+        transactionDate: t.transactionDate ? new Date(t.transactionDate).toLocaleDateString("en-GB") : "—"
+      })),
+      totalsRow: {
+        ...totalsRow,
+        id: "TOTAL",
+        transactionType: ""
+      },
+      filename: `Product_History_${productId.slice(-8)}`,
+      mode: "open"
     })
   }
 
@@ -183,12 +198,16 @@ export default function ProductHistoryPage() {
           <h1 className="text-2xl font-bold">Product History</h1>
         </div>
         <div className="flex gap-2 print:hidden">
-          <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-1" /> Export
-          </Button>
-          <Button variant="outline" size="sm" onClick={handlePrint}>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportPDF}
+            className="hover:bg-red-50"
+          >
             <Printer className="h-4 w-4 mr-1" /> Print
           </Button>
+
         </div>
       </div>
 

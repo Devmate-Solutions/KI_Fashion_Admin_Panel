@@ -6,6 +6,7 @@ import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useSalesReturnsProductWiseReport } from "@/lib/hooks/useReports"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import { exportToPDF } from "@/lib/utils/pdfExport"
 import { getDefaultDateRange } from "@/lib/utils/getDefaultDateRange"
 import toast from "react-hot-toast"
 
@@ -68,11 +69,13 @@ export default function SalesReturnsProductWiseReportPage() {
       header: "Sno",
       accessor: "sno",
       render: (row) => row.sno,
+      pdfValue: (row) => row.sno
     },
     {
       header: "Return Date",
       accessor: "returnDate",
       render: (row) => formatDate(row.returnDate),
+      pdfValue: (row) => formatDate(row.returnDate)
     },
     {
       header: "Sale #",
@@ -92,10 +95,12 @@ export default function SalesReturnsProductWiseReportPage() {
         }
         return <span className="font-mono text-xs">{displayText}</span>
       },
+      pdfValue: (row) => row.saleNumber || "—"
     },
     {
       header: "Buyer",
       accessor: "buyerName",
+      pdfValue: (row) => row.buyerName || "—"
     },
     {
       header: "Product Code",
@@ -114,21 +119,25 @@ export default function SalesReturnsProductWiseReportPage() {
         }
         return <span className="font-mono text-xs">{productCode}</span>
       },
+      pdfValue: (row) => row.productCode || row.sku || "—"
     },
     {
       header: "Product Name",
       accessor: "productName",
+      pdfValue: (row) => row.productName || "—"
     },
     {
       header: "Returned Qty",
       accessor: "returnedQuantity",
       align: "right",
+      pdfValue: (row) => row.returnedQuantity || 0
     },
     {
       header: "Unit Price",
       accessor: "unitPrice",
       align: "right",
       render: (row) => currency(row.unitPrice || 0),
+      pdfValue: (row) => currency(row.unitPrice || 0)
     },
     {
       header: "Total Value",
@@ -139,6 +148,7 @@ export default function SalesReturnsProductWiseReportPage() {
           {currency((row.returnedQuantity || 0) * (row.unitPrice || 0))}
         </span>
       ),
+      pdfValue: (row) => currency((row.returnedQuantity || 0) * (row.unitPrice || 0))
     },
     {
       header: "Status",
@@ -148,10 +158,12 @@ export default function SalesReturnsProductWiseReportPage() {
           {row.returnStatus}
         </span>
       ),
+      pdfValue: (row) => (row.returnStatus || "—").toUpperCase()
     },
     {
       header: "Reason",
       accessor: "itemReason",
+      pdfValue: (row) => row.itemReason || "—"
     },
   ]
 
@@ -184,6 +196,26 @@ export default function SalesReturnsProductWiseReportPage() {
     totalValue: currency(totals.value),
   }
 
+  const handleDownloadPDF = async () => {
+    try {
+      const result = await exportToPDF({
+        title: "Sales Returns (Product Wise)",
+        columns: columns,
+        data: productData,
+        totalsRow: totalsRow,
+        dateRange: dateRange,
+        filename: `Sales_Returns_Product_Wise_${dateRange.from}_${dateRange.to}`
+      })
+      if (result.success) {
+        toast.success("PDF report downloaded!")
+      } else {
+        toast.error("Failed to generate PDF")
+      }
+    } catch (err) {
+      toast.error("PDF generation failed: " + err.message)
+    }
+  }
+
   const handleExport = async () => {
     try {
       const result = await exportToExcelWithTotals(
@@ -210,6 +242,7 @@ export default function SalesReturnsProductWiseReportPage() {
       onDateChange={setDateRange}
       onRefresh={refetch}
       onExport={handleExport}
+      onDownloadPDF={handleDownloadPDF}
       loading={isLoading}
       error={isError ? error : null}
       summary={summary}

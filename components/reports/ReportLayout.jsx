@@ -6,7 +6,7 @@ import BackButton from "@/components/BackButton"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Printer, RefreshCw, FileDown, AlertCircle } from "lucide-react"
+import { Printer, RefreshCw, FileDown, AlertCircle, FileText } from "lucide-react"
 import BritishDatePicker from "@/components/BritishDatePicker"
 
 export default function ReportLayout({
@@ -20,6 +20,7 @@ export default function ReportLayout({
   children,
   summary = [],
   onExport = null,
+  onDownloadPDF = null,
   showBeginningButton = false,
   hideDateFilter = false,
 }) {
@@ -46,7 +47,7 @@ export default function ReportLayout({
           </div>
             <div className="flex flex-row w-full justify-between gap-4">
               <h3 className="text-md mb-1 md:text-xl font-bold">{title}</h3>
-              <div className="space-x-1">
+              <div className="flex items-center gap-1.5">
                 {/* {onRefresh && (
                   <Button
                     onClick={onRefresh}
@@ -67,18 +68,38 @@ export default function ReportLayout({
                     size="sm"
                     disabled={loading}
                     className="h-9 bg-green-600 hover:bg-green-700 text-white"
+                    title="Export to Excel"
                   >
-                    <FileDown className="h-6 w-6 " />
+                    <FileDown className="h-5 w-5 " />
 
                   </Button>
                 )}
-                <Button
-                  onClick={handlePrint}
-                  size="sm"
-                  className="h-9 bg-blue-600 hover:bg-blue-700"
-                >
-                  <Printer className="h-4 w-4" />
-                </Button>
+
+                {onDownloadPDF && (
+                  <Button
+                    onClick={onDownloadPDF}
+                    variant="outline"
+                    size="sm"
+                    disabled={loading}
+                    className="h-9 bg-red-600 hover:bg-red-700 text-white gap-2 px-3"
+                    title="Print PDF Report"
+                  >
+                    <Printer className="h-4 w-4" />
+                    <span className="hidden sm:inline">Print PDF</span>
+                  </Button>
+                )}
+
+                {!onDownloadPDF && (
+                  <Button
+                    onClick={handlePrint}
+                    size="sm"
+                    variant="outline"
+                    className="h-9 bg-blue-600 hover:bg-blue-700 text-white"
+                    title="Print Report"
+                  >
+                    <Printer className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
           </div>

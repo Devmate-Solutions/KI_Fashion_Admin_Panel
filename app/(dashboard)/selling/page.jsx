@@ -20,6 +20,8 @@ import DeleteRequestDialog from "@/components/modals/DeleteRequestDialog"
 import { useSearchParams } from "next/navigation"
 import BritishDatePicker from "@/components/BritishDatePicker"
 import { Label } from "@/components/ui/label"
+import { exportToPDF } from "@/lib/utils/pdfExport"
+import toast from "react-hot-toast"
 
 // Helper to get image array from various sources
 const getImageArray = (item) => {
@@ -118,6 +120,7 @@ export default function SellingPage() {
             )}
           </div>
         ),
+        pdfValue: (row) => row.date ? new Date(row.date).toLocaleDateString('en-GB') : "—"
       },
       {
         header: "Buyer",
@@ -127,6 +130,7 @@ export default function SellingPage() {
             {row.customerName || row._original?.manualCustomer?.name || "—"}
           </span>
         ),
+        pdfValue: (row) => row.customerName || row._original?.manualCustomer?.name || "—"
       },
       {
         header: "Products",
@@ -184,21 +188,25 @@ export default function SellingPage() {
             )}
           </div>
         ),
+        pdfValue: (row) => (row.items || []).map(item => `${item.product?.name || item.productCode || "—"} (x${item.quantity})`).join(", ")
       },
       {
-        header: "Grand Total",
+        header: "Total",
         accessor: "total",
         render: (row) => <span className="tabular-nums font-medium">{currency(row.total || 0)}</span>,
+        pdfValue: (row) => row.total || 0
       },
       {
-        header: "Paid",
+        header: "Cash Paid",
         accessor: "cash",
         render: (row) => <span className="tabular-nums">{currency((row.cash || 0) + (row.bankCash || 0))}</span>,
+        pdfValue: (row) => (row.cash || 0) + (row.bankCash || 0)
       },
       {
-        header: "Remaining",
+        header: "Balance",
         accessor: "balance",
         render: (row) => <span className="tabular-nums">{currency(row.balance || 0)}</span>,
+        pdfValue: (row) => row.balance || 0
       },
       {
         header: "Status",
@@ -219,10 +227,30 @@ export default function SellingPage() {
             </Badge>
           )
         },
+        pdfValue: (row) => (row.paymentStatus || "pending").toUpperCase()
       },
     ],
     [],
   )
+
+  const handleDownloadPDF = async () => {
+    try {
+      const result = await exportToPDF({
+        title: "Sales Report",
+        columns: sellingColumns,
+        data: filteredSellingRows,
+        dateRange: dateRange,
+        filename: `Sales_Report_${dateRange.from || 'All'}_${dateRange.to || 'All'}`
+      })
+      if (result.success) {
+        toast.success("PDF report generated!")
+      } else {
+        toast.error("Failed to generate PDF")
+      }
+    } catch (err) {
+      toast.error("PDF generation failed: " + err.message)
+    }
+  }
 
   // Handle Add New Sale
   function handleAddNew() {
@@ -269,6 +297,7 @@ export default function SellingPage() {
             {r._id ? String(r._id).slice(-8) : "—"}
           </span>
         ),
+        pdfValue: (r) => r._id ? String(r._id).slice(-8) : "—"
       },
       {
         header: "Sale Number",
@@ -292,6 +321,7 @@ export default function SellingPage() {
             )}
           </div>
         ),
+        pdfValue: (r) => r.sale?.saleNumber || "—"
       },
       {
         header: "Buyer",
@@ -299,6 +329,7 @@ export default function SellingPage() {
         render: (r) => (
           <span>{r.buyer?.name || r.buyer?.company || "—"}</span>
         ),
+        pdfValue: (r) => r.buyer?.name || r.buyer?.company || "—"
       },
       {
         header: "Return Date",
@@ -308,6 +339,7 @@ export default function SellingPage() {
             {r.returnedAt ? new Date(r.returnedAt).toLocaleDateString('en-GB') : "—"}
           </span>
         ),
+        pdfValue: (r) => r.returnedAt ? new Date(r.returnedAt).toLocaleDateString('en-GB') : "—"
       },
       {
         header: "Items",
@@ -324,6 +356,17 @@ export default function SellingPage() {
               : 0} item(s)
           </span>
         ),
+        pdfValue: (r) => {
+          const count = Array.isArray(r.items)
+            ? r.items.reduce((sum, item) => {
+              const saleItem = r.sale?.items?.[item.itemIndex]
+              const isWholePacket = saleItem?.isPacketSale && !item.isPartialReturn
+              const multiplier = isWholePacket ? (saleItem?.totalItemsPerPacket || 1) : 1
+              return sum + ((item.returnedQuantity || 0) * multiplier)
+            }, 0)
+            : 0
+          return `${count} item(s)`
+        }
       },
       {
         header: "Total Value",
@@ -333,6 +376,7 @@ export default function SellingPage() {
             {currency(r.totalReturnValue || 0)}
           </span>
         ),
+        pdfValue: (r) => currency(r.totalReturnValue || 0)
       },
       {
         header: "Status",
@@ -347,6 +391,7 @@ export default function SellingPage() {
             {r.status || 'pending'}
           </Badge>
         ),
+        pdfValue: (r) => (r.status || 'pending').toUpperCase()
       },
       {
         header: "Actions",
@@ -451,6 +496,7 @@ export default function SellingPage() {
                     columns={sellingColumns}
                     data={filteredSellingRows}
                     onAddNew={handleAddNew}
+                    onDownloadPDF={handleDownloadPDF}
                     loading={salesLoading}
                     onEdit={handleEdit}
                     onDelete={handleDelete}

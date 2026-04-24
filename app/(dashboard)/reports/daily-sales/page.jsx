@@ -7,6 +7,7 @@ import PrintableTable from "@/components/reports/PrintableTable"
 import { useDailySalesReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import { exportToPDF } from "@/lib/utils/pdfExport"
 import { getDefaultDateRange } from "@/lib/utils/getDefaultDateRange"
 import { useAuthStore } from "@/store/store"
 import toast from "react-hot-toast"
@@ -70,6 +71,26 @@ export default function DailySalesReportPage() {
     }
   }
 
+  const handleDownloadPDF = async () => {
+    try {
+      const result = await exportToPDF({
+        title: "Daily Sales Report",
+        columns: columns.filter(c => c.header !== "Transaction Type"),
+        data: salesData,
+        totalsRow: totalsRow,
+        dateRange: dateRange,
+        filename: `Daily_Sales_Report_${dateRange.from}_${dateRange.to}`
+      })
+      if (result.success) {
+        toast.success("PDF report generated!")
+      } else {
+        toast.error("Failed to generate PDF")
+      }
+    } catch (err) {
+      toast.error("PDF generation failed: " + err.message)
+    }
+  }
+
   const columns = [
     {
       header: "ID",
@@ -88,57 +109,85 @@ export default function DailySalesReportPage() {
         }
         return <span className="font-mono text-xs">{displayText}</span>
       },
+      pdfValue: (row) => row.saleNumber || "—"
     },
     {
       header: "Transaction Type",
       accessor: "transactionType",
       render: () => "Sale Invoice",
+      pdfValue: () => "Sale Invoice"
     },
     {
       header: "Invoice Date",
       accessor: "saleDate",
       render: (row) => formatDate(row.saleDate),
+      pdfValue: (row) => formatDate(row.saleDate)
     },
     {
       header: "Name",
       accessor: "buyer",
-      render: (row) => row.buyer?.name || row.buyer?.company || "Walk-in",
+      render: (row) => {
+        const buyer = row.buyer
+        if (!buyer) return "Walk-in"
+        if (typeof buyer === 'string') return buyer
+        return buyer.name || buyer.company || "Walk-in"
+      },
+      pdfValue: (row) => {
+        const buyer = row.buyer
+        if (!buyer) return "Walk-in"
+        if (typeof buyer === 'string') return buyer
+        return buyer.name || buyer.company || "Walk-in"
+      }
     },
     {
       header: "Total",
       accessor: "subtotal",
       align: "right",
       render: (row) => currency(row.subtotal || 0),
+      pdfValue: (row) => currency(row.subtotal || 0)
     },
     {
       header: "Discount",
       accessor: "discount",
       align: "right",
       render: (row) => currency(row.discount || 0),
+      pdfValue: (row) => currency(row.discount || 0)
     },
     {
       header: "Total After Disc.",
       accessor: "grandTotal",
       align: "right",
       render: (row) => currency(row.grandTotal || 0),
+      pdfValue: (row) => currency(row.grandTotal || 0)
     },
     {
       header: "Bank Cash",
       accessor: "bankPayment",
       align: "right",
       render: (row) => currency(row.bankPayment || 0),
+      pdfValue: (row) => currency(row.bankPayment || 0)
     },
     {
       header: "Cash",
       accessor: "cashPayment",
       align: "right",
       render: (row) => currency(row.cashPayment || 0),
+      pdfValue: (row) => currency(row.cashPayment || 0)
     },
     {
       header: "Remaining",
       accessor: "remaining",
       align: "right",
-      render: (row) => currency(row.grandTotal - (row.bankPayment + row.cashPayment) || 0),
+      render: (row) => {
+        const total = row.grandTotal || 0
+        const paid = (row.bankPayment || 0) + (row.cashPayment || 0)
+        return currency(total - paid)
+      },
+      pdfValue: (row) => {
+        const total = row.grandTotal || 0
+        const paid = (row.bankPayment || 0) + (row.cashPayment || 0)
+        return currency(total - paid)
+      }
     },
   ]
 
@@ -184,6 +233,7 @@ export default function DailySalesReportPage() {
       hideDateFilter={isEmployee}
       onRefresh={refetch}
       onExport={handleExport}
+      onDownloadPDF={handleDownloadPDF}
       loading={isLoading}
       error={isError ? error : null}
       summary={summary}

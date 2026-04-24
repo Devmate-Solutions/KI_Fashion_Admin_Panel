@@ -7,6 +7,7 @@ import PrintableTable from "@/components/reports/PrintableTable"
 import { usePayablesReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import { exportToPDF } from "@/lib/utils/pdfExport"
 import toast from "react-hot-toast"
 
 function formatNumber(n) {
@@ -75,6 +76,26 @@ export default function PayablesReportPage() {
     }
   }
 
+  const handleDownloadPDF = async () => {
+    try {
+      const result = await exportToPDF({
+        title: "Payable Report",
+        columns: columns,
+        data: payablesData,
+        totalsRow: totalsRow,
+        dateRange: dateRange,
+        filename: `Payables_Report_${dateRange.to}`
+      })
+      if (result.success) {
+        toast.success("PDF report downloaded!")
+      } else {
+        toast.error("Failed to generate PDF")
+      }
+    } catch (err) {
+      toast.error("PDF generation failed: " + err.message)
+    }
+  }
+
   const columns = [
     {
       header: "Name",
@@ -87,6 +108,21 @@ export default function PayablesReportPage() {
           </div>
         </div>
       ),
+      pdfValue: (row) => row.name || row.supplierName || "—"
+    },
+    {
+      header: "Total Purchases",
+      accessor: "totalPurchases",
+      align: "right",
+      render: (row) => formatNumber(row.totalPurchases || row.totalAmount || 0),
+      pdfValue: (row) => formatNumber(row.totalPurchases || row.totalAmount || 0)
+    },
+    {
+      header: "Total Paid",
+      accessor: "totalPaid",
+      align: "right",
+      render: (row) => formatNumber(row.totalPaid || row.amountPaid || 0),
+      pdfValue: (row) => formatNumber(row.totalPaid || row.amountPaid || 0)
     },
     {
       header: "RemainingBalance",
@@ -100,10 +136,21 @@ export default function PayablesReportPage() {
           </span>
         )
       },
+      pdfValue: (row) => formatNumber(row.remainingBalance || row.outstanding || row.balance || 0)
     },
   ]
 
   const summary = [
+    {
+      label: "Total Purchases",
+      value: formatNumber(totals.totalPurchases),
+      color: "text-blue-600",
+    },
+    {
+      label: "Total Paid",
+      value: formatNumber(totals.totalPaid),
+      color: "text-green-600",
+    },
     {
       label: "Total Remaining Balance",
       value: formatNumber(totals.outstanding),
@@ -112,7 +159,9 @@ export default function PayablesReportPage() {
   ]
 
   const totalsRow = {
-    name: "",
+    name: "TOTAL",
+    totalPurchases: formatNumber(totals.totalPurchases),
+    totalPaid: formatNumber(totals.totalPaid),
     remainingBalance: formatNumber(totals.outstanding),
   }
 
@@ -124,6 +173,7 @@ export default function PayablesReportPage() {
       onDateChange={setDateRange}
       onRefresh={refetch}
       onExport={handleExport}
+      onDownloadPDF={handleDownloadPDF}
       loading={isLoading}
       error={isError ? error : null}
       summary={summary}

@@ -73,7 +73,7 @@ export default function ProductSummaryTab() {
       accessor: "productName",
       render: (row) => row.productName || "—",
     },
-   
+
     {
       header: "Items Bought",
       accessor: "itemsBought",
@@ -237,7 +237,7 @@ export default function ProductSummaryTab() {
         <SummaryCard label="Total Products" value={summary.totalProducts || 0} />
         <SummaryCard label="Items Bought" value={(summary.totalItemsBought || 0).toLocaleString()} />
         <SummaryCard label="Items Sold" value={(summary.totalItemsSold || 0).toLocaleString()} />
-        <SummaryCard label="Stock in Hand" value={(summary.totalStockInHand || 0).toLocaleString()} />
+        <SummaryCard label="Items Remaining" value={(summary.totalItemsBought - summary.totalItemsSold || 0).toLocaleString()} />
         <SummaryCard label="Stock Value" value={currency(summary.totalStockValue)} />
         <SummaryCard label="Sales Value" value={currency(summary.totalSalesValue)} />
       </div>

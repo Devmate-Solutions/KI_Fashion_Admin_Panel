@@ -30,6 +30,8 @@ import { useAuthStore } from "@/store/store"
 import { useSearchParams } from "next/navigation"
 import BritishDatePicker from "@/components/BritishDatePicker"
 import { Label } from "@/components/ui/label"
+import { exportToPDF } from "@/lib/utils/pdfExport"
+import toast from "react-hot-toast"
 
 // Helper to get image array from various sources (same pattern as BuyingReturnModal)
 const getImageArray = (item) => {
@@ -237,6 +239,7 @@ export default function BuyingPage() {
             )}
           </div>
         ),
+        pdfValue: (row) => row.purchaseNumber || "—"
       },
       {
         header: "Date",
@@ -246,6 +249,7 @@ export default function BuyingPage() {
             {row.purchaseDate ? new Date(row.purchaseDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "—"}
           </span>
         ),
+        pdfValue: (row) => row.purchaseDate ? new Date(row.purchaseDate).toLocaleDateString('en-GB') : "—"
       },
       {
         header: "Supplier",
@@ -253,6 +257,7 @@ export default function BuyingPage() {
         render: (row) => (
           <span className="font-semibold text-foreground">{row.supplierName || "—"}</span>
         ),
+        pdfValue: (row) => row.supplierName || "—"
       },
       {
         header: "Products",
@@ -286,6 +291,7 @@ export default function BuyingPage() {
             </div>
           )
         },
+        pdfValue: (row) => row.productName || row.productCode || "—"
       },
       {
         header: "Boxes",
@@ -322,6 +328,17 @@ export default function BuyingPage() {
           // Display exactly like Dispatch Orders: show the number (including 0)
           return <span className="tabular-nums text-sm font-semibold text-foreground">{totalBoxes}</span>
         },
+        pdfValue: (row) => {
+          let totalBoxes = row.totalBoxes
+          if (totalBoxes === undefined || totalBoxes === null) totalBoxes = row.raw?.totalBoxes
+          if ((totalBoxes === undefined || totalBoxes === null) && row.dispatchOrder) totalBoxes = row.dispatchOrder.totalBoxes
+          if ((totalBoxes === undefined || totalBoxes === null) && row.raw?.dispatchOrder) totalBoxes = row.raw.dispatchOrder.totalBoxes
+          if (typeof totalBoxes === 'string') {
+            const parsed = parseInt(totalBoxes)
+            totalBoxes = isNaN(parsed) ? 0 : parsed
+          }
+          return totalBoxes ?? 0
+        }
       },
       {
         header: "Qty",
@@ -333,6 +350,7 @@ export default function BuyingPage() {
             <span className="font-semibold text-foreground tabular-nums">{itemQty.toLocaleString()}</span>
           )
         },
+        pdfValue: (row) => (row.quantity || 0).toLocaleString()
       },
       {
         header: "Colors",
@@ -388,6 +406,40 @@ export default function BuyingPage() {
 
           return <TruncatedBadgeList items={colorArray} max={3} colorClass="bg-blue-100 text-blue-800" />
         },
+        pdfValue: (row) => {
+          if (!row.currentItem) return "—"
+          const item = row.currentItem
+          const extractColors = (value) => {
+            const extracted = []
+            if (!value) return extracted
+            if (Array.isArray(value)) {
+              value.forEach(color => {
+                if (color && typeof color === 'string' && color.trim()) extracted.push(color.trim())
+                else if (color && typeof color === 'object' && color.name) extracted.push(color.name.trim())
+              })
+            } else if (typeof value === 'string' && value.trim()) {
+              extracted.push(value.trim())
+            } else if (typeof value === 'object' && value.name) {
+              extracted.push(value.name.trim())
+            }
+            return extracted
+          }
+          const colors = new Set()
+          if (item.primaryColor) extractColors(item.primaryColor).forEach(c => colors.add(c))
+          if (item.primaryColorDisplay) extractColors(item.primaryColorDisplay).forEach(c => colors.add(c))
+          if (item.color) extractColors(item.color).forEach(c => colors.add(c))
+          if (item.packets && Array.isArray(item.packets)) {
+            item.packets.forEach(packet => {
+              if (packet.composition && Array.isArray(packet.composition)) {
+                packet.composition.forEach(comp => {
+                  if (comp.color) extractColors(comp.color).forEach(c => colors.add(c))
+                  if (comp.primaryColor) extractColors(comp.primaryColor).forEach(c => colors.add(c))
+                })
+              }
+            })
+          }
+          return Array.from(colors).filter(Boolean).join(", ") || "—"
+        }
       },
       {
         header: "Sizes",
@@ -428,6 +480,26 @@ export default function BuyingPage() {
 
           return <TruncatedBadgeList items={sizeArray} max={3} colorClass="bg-green-100 text-green-800" />
         },
+        pdfValue: (row) => {
+          const item = row.currentItem
+          if (!item) return "—"
+          const sizes = new Set()
+          if (item.size) {
+            if (Array.isArray(item.size)) item.size.forEach(s => { if (s && s.trim()) sizes.add(s.trim()) })
+            else if (typeof item.size === 'string' && item.size.trim()) sizes.add(item.size.trim())
+          }
+          if (item.sizeArray && Array.isArray(item.sizeArray)) {
+            item.sizeArray.forEach(s => { if (s && s.trim()) sizes.add(s.trim()) })
+          }
+          if (item.packets && item.packets.length > 0) {
+            item.packets.forEach(packet => {
+              if (packet.composition) {
+                packet.composition.forEach(comp => { if (comp.size && comp.size.trim()) sizes.add(comp.size.trim()) })
+              }
+            })
+          }
+          return Array.from(sizes).filter(Boolean).sort().join(", ") || "—"
+        }
       },
 
       // {
@@ -457,6 +529,7 @@ export default function BuyingPage() {
             {row?.landedPrice != null ? row?.landedPrice.toFixed(2) : "—"}
           </span>
         ),
+        pdfValue: (row) => row?.landedPrice != null ? row?.landedPrice.toFixed(2) : "—"
       },
       {
         header: "Actions",
@@ -539,6 +612,25 @@ export default function BuyingPage() {
     ]
   }, [router])
 
+  const handleDownloadPDF = async () => {
+    try {
+      const result = await exportToPDF({
+        title: "Buying Report",
+        columns: buyingColumns.filter(c => c.header !== "Actions"),
+        data: buyingRows,
+        dateRange: dateRange,
+        filename: `Buying_Report_${dateRange.from || 'All'}_${dateRange.to || 'All'}`
+      })
+      if (result.success) {
+        toast.success("PDF report generated!")
+      } else {
+        toast.error("Failed to generate PDF")
+      }
+    } catch (err) {
+      toast.error("PDF generation failed: " + err.message)
+    }
+  }
+
   // Handle Add New Purchase
   function handleAddNew() {
     router.push('buying/new')
@@ -562,6 +654,7 @@ export default function BuyingPage() {
             {r._id ? String(r._id).slice(-8) : "—"}
           </span>
         ),
+        pdfValue: (r) => r._id ? String(r._id).slice(-8) : "—"
       },
       {
         header: "Order #",
@@ -581,6 +674,7 @@ export default function BuyingPage() {
           }
           return <span className="font-mono text-xs">{displayText}</span>
         },
+        pdfValue: (r) => r.dispatchOrder?.orderNumber || r.dispatchOrder?._id?.slice(-8) || "—"
       },
       {
         header: "Buying Date",
@@ -612,6 +706,15 @@ export default function BuyingPage() {
             </span>
           )
         },
+        pdfValue: (r) => {
+          let dateValue = r.dispatchOrder?.purchaseDate || r.dispatchOrder?.createdAt || r.dispatchOrder?.confirmedAt || r.dispatchOrder?.dispatchDate;
+          if (!dateValue && r.items?.[0]?.batchDeductions?.[0]) {
+            const firstBatch = r.items[0].batchDeductions[0];
+            if (firstBatch.createdAt) dateValue = firstBatch.createdAt;
+          }
+          if (!dateValue) dateValue = r.returnedAt;
+          return dateValue ? new Date(dateValue).toLocaleDateString('en-GB') : "—"
+        }
       },
       {
         header: "Return Date",
@@ -621,6 +724,7 @@ export default function BuyingPage() {
             {r.returnedAt ? new Date(r.returnedAt).toLocaleDateString('en-GB') : "—"}
           </span>
         ),
+        pdfValue: (r) => r.returnedAt ? new Date(r.returnedAt).toLocaleDateString('en-GB') : "—"
       },
       {
         header: "Supplier",
@@ -628,6 +732,7 @@ export default function BuyingPage() {
         render: (r) => (
           <span>{r.supplier?.name || r.supplier?.company || "—"}</span>
         ),
+        pdfValue: (r) => r.supplier?.name || r.supplier?.company || "—"
       },
       {
         header: "Amount",
@@ -637,6 +742,7 @@ export default function BuyingPage() {
             {currency(r.totalReturnValue || 0)}
           </span>
         ),
+        pdfValue: (r) => currency(r.totalReturnValue || 0)
       },
     ],
     [router],
@@ -703,6 +809,7 @@ export default function BuyingPage() {
             columns={buyingColumns}
             data={displayRows}
             onAddNew={handleAddNew}
+            onDownloadPDF={handleDownloadPDF}
             loading={purchasesLoading}
             manualPagination={true}
             currentPage={pagination.currentPage || page || 1}

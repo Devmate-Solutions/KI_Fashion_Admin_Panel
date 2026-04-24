@@ -1529,6 +1529,7 @@ import { Badge } from "@/components/ui/badge"
 import toast from "react-hot-toast"
 import Tabs from "@/components/tabs"
 import CustomerPaymentModal from "@/components/modals/CustomerPaymentModal"
+import { exportToPDF } from "@/lib/utils/pdfExport"
 import {
   Dialog,
   DialogContent,
@@ -2008,84 +2009,116 @@ export default function CustomerLedgerPage() {
   // --- Columns ---
 
   const allLedgerColumns = useMemo(() => [
-    { header: "Entry #", accessor: "entryNumber", render: (row) => <span className="font-medium">{row.raw.entryNumber || '-'}</span> },
-    { header: "Date", accessor: "date", render: (row) => formatDateTime(row) },
-    { header: "Customer", accessor: "buyer", render: (row) => <span className="font-medium">{row.buyer}</span> },
-    { header: "Type", accessor: "type", render: (row) => <span>{row.type}</span> },
+    { header: "Entry #", accessor: "entryNumber", render: (row) => <span className="font-medium">{row.raw.entryNumber || '-'}</span>, pdfValue: (row) => row.raw.entryNumber || '-' },
+    { header: "Date", accessor: "date", render: (row) => formatDateTime(row), pdfValue: (row) => formatDateTime(row) },
+    { header: "Customer", accessor: "buyer", render: (row) => <span className="font-medium">{row.buyer}</span>, pdfValue: (row) => row.buyer },
+    { header: "Type", accessor: "type", render: (row) => <span>{row.type}</span>, pdfValue: (row) => row.type },
     {
-      header: "Reference", accessor: "reference", render: (row) => (
+      header: "Reference",
+      accessor: "reference",
+      render: (row) => (
         row.referenceId && row.transactionType !== 'return'
           ? <Link href={`/selling/${row.referenceId}`} className="text-blue-600 hover:underline">{row.reference}</Link>
           : <span>{row.reference}</span>
-      )
+      ),
+      pdfValue: (row) => row.reference || "-"
     },
     {
-      header: "Debit (Sale)", accessor: "debit", render: (row) => (
+      header: "Debit (Sale)",
+      accessor: "debit",
+      render: (row) => (
         <span className={row.debit > 0 ? "text-red-600 font-medium" : "text-muted-foreground"}>{row.debit > 0 ? formatNumber(row.debit) : '-'}</span>
-      )
+      ),
+      pdfValue: (row) => row.debit > 0 ? row.debit : 0
     },
     {
-      header: "Cash Paid", accessor: "cashPaid", render: (row) => (
+      header: "Cash Paid",
+      accessor: "cashPaid",
+      render: (row) => (
         <span className={row.cashPaid > 0 ? "text-green-600 font-medium" : "text-muted-foreground"}>{row.cashPaid > 0 ? formatNumber(row.cashPaid) : '-'}</span>
-      )
+      ),
+      pdfValue: (row) => row.cashPaid > 0 ? row.cashPaid : 0
     },
     {
-      header: "Bank Paid", accessor: "bankPaid", render: (row) => (
+      header: "Bank Paid",
+      accessor: "bankPaid",
+      render: (row) => (
         <span className={row.bankPaid > 0 ? "text-green-600 font-medium" : "text-muted-foreground"}>{row.bankPaid > 0 ? formatNumber(row.bankPaid) : '-'}</span>
-      )
+      ),
+      pdfValue: (row) => row.bankPaid > 0 ? row.bankPaid : 0
     },
     {
-      header: "Return", accessor: "returnAmount", render: (row) => (
+      header: "Return",
+      accessor: "returnAmount",
+      render: (row) => (
         <span className={row.returnAmount > 0 ? "text-orange-600 font-medium" : "text-muted-foreground"}>{row.returnAmount > 0 ? formatNumber(row.returnAmount) : '-'}</span>
-      )
+      ),
+      pdfValue: (row) => row.returnAmount > 0 ? row.returnAmount : 0
     },
-    { header: "Balance", accessor: "balance", render: (row) => <span className="font-bold tabular-nums">{formatNumber(row.balance)}</span> }
+    {
+      header: "Balance",
+      accessor: "balance",
+      render: (row) => <span className="font-bold tabular-nums">{formatNumber(row.balance)}</span>,
+      pdfValue: (row) => row.balance
+    }
   ], []) // no deps — pure formatters, no closures over state
 
   const pendingColumns = useMemo(() => [
-    { header: "Date", accessor: "saleDate", render: (row) => formatDateTime({ date: row.saleDate }) },
+    { header: "Date", accessor: "saleDate", render: (row) => formatDateTime({ date: row.saleDate }), pdfValue: (row) => formatDateTime({ date: row.saleDate }) },
     {
-      header: "Sale #", accessor: "saleNumber", render: (row) => (
+      header: "Sale #",
+      accessor: "saleNumber",
+      render: (row) => (
         <Link href={`/sales/${row._id}`} className="text-blue-600 hover:underline font-medium">{row.saleNumber}</Link>
-      )
+      ),
+      pdfValue: (row) => row.saleNumber
     },
-    { header: "Total", accessor: "grandTotal", render: (row) => <span className="font-medium">{formatNumber(row.grandTotal)}</span> },
+    { header: "Total", accessor: "grandTotal", render: (row) => <span className="font-medium">{formatNumber(row.grandTotal)}</span>, pdfValue: (row) => row.grandTotal },
     {
-      header: "Paid", accessor: "paid", render: (row) => {
+      header: "Paid",
+      accessor: "paid",
+      render: (row) => {
         const paid = (row.cashPayment || 0) + (row.bankPayment || 0)
         return <span className="text-green-600">{formatNumber(paid)}</span>
-      }
+      },
+      pdfValue: (row) => (row.cashPayment || 0) + (row.bankPayment || 0)
     },
     {
-      header: "Remaining", accessor: "remaining", render: (row) => {
+      header: "Remaining",
+      accessor: "remaining",
+      render: (row) => {
         const paid = (row.cashPayment || 0) + (row.bankPayment || 0)
         const remaining = row.grandTotal - paid
         return <span className="text-red-600 font-bold">{formatNumber(remaining)}</span>
-      }
+      },
+      pdfValue: (row) => row.grandTotal - ((row.cashPayment || 0) + (row.bankPayment || 0))
     },
     {
-      header: "Status", accessor: "paymentStatus", render: (row) => (
+      header: "Status",
+      accessor: "paymentStatus",
+      render: (row) => (
         <Badge variant={row.paymentStatus === 'pending' ? 'destructive' : 'warning'}>
           {row.paymentStatus.toUpperCase()}
         </Badge>
-      )
+      ),
+      pdfValue: (row) => row.paymentStatus.toUpperCase()
     }
   ], [])
 
   const paymentHistoryColumns = useMemo(() => {
     const cols = [
-      { header: "Date", accessor: "date", render: (row) => formatDateTime(row) },
-      { header: "Entry #", accessor: "entryNumber", render: (row) => row.entryNumber },
+      { header: "Date", accessor: "date", render: (row) => formatDateTime(row), pdfValue: (row) => formatDateTime(row) },
+      { header: "Entry #", accessor: "entryNumber", render: (row) => row.entryNumber, pdfValue: (row) => row.entryNumber },
     ]
     if (selectedBuyerId === 'all') {
-      cols.push({ header: "Customer", accessor: "buyer", render: (row) => <span className="font-medium">{row.buyer}</span> })
+      cols.push({ header: "Customer", accessor: "buyer", render: (row) => <span className="font-medium">{row.buyer}</span>, pdfValue: (row) => row.buyer })
     }
     cols.push(
-      { header: "Reference", accessor: "reference", render: (row) => row.reference },
-      { header: "Mode", accessor: "paymentMethod", render: (row) => <Badge variant="outline">{row.paymentMethod}</Badge> },
-      { header: "Amount", accessor: "amount", render: (row) => <span className="text-green-600 font-bold">{formatNumber(row.amount)}</span> },
-      { header: "Received By", accessor: "madeBy", render: (row) => row.madeBy },
-      { header: "Notes", accessor: "notes", render: (row) => <span className="text-sm text-muted-foreground">{row.notes}</span> }
+      { header: "Reference", accessor: "reference", render: (row) => row.reference, pdfValue: (row) => row.reference },
+      { header: "Mode", accessor: "paymentMethod", render: (row) => <Badge variant="outline">{row.paymentMethod}</Badge>, pdfValue: (row) => row.paymentMethod.toUpperCase() },
+      { header: "Amount", accessor: "amount", render: (row) => <span className="text-green-600 font-bold">{formatNumber(row.amount)}</span>, pdfValue: (row) => row.amount },
+      { header: "Received By", accessor: "madeBy", render: (row) => row.madeBy, pdfValue: (row) => row.madeBy },
+      { header: "Notes", accessor: "notes", render: (row) => <span className="text-sm text-muted-foreground">{row.notes}</span>, pdfValue: (row) => row.notes }
     )
     return cols
   }, [selectedBuyerId])
@@ -2110,16 +2143,18 @@ export default function CustomerLedgerPage() {
       {
         header: "Receipt #",
         accessor: "paymentNumber",
-        render: (row) => <span className="font-mono font-medium text-blue-600">{row.paymentNumber}</span>
+        render: (row) => <span className="font-mono font-medium text-blue-600">{row.paymentNumber}</span>,
+        pdfValue: (row) => row.paymentNumber
       },
-      { header: "Date", accessor: "date", render: (row) => formatDateTime({ date: row.date }) },
+      { header: "Date", accessor: "date", render: (row) => formatDateTime({ date: row.date }), pdfValue: (row) => formatDateTime({ date: row.date }) },
     ]
 
     if (selectedBuyerId === 'all') {
       baseColumns.push({
         header: "Buyer",
         accessor: "customerName",
-        render: (row) => <span className="font-medium">{row.customerName}</span>
+        render: (row) => <span className="font-medium">{row.customerName}</span>,
+        pdfValue: (row) => row.customerName
       })
     }
 
@@ -2131,7 +2166,8 @@ export default function CustomerLedgerPage() {
           <span className={row.paymentDirection !== 'debit' ? "text-green-600 font-bold" : "text-muted-foreground"}>
             {row.paymentDirection !== 'debit' ? `${formatNumber(row.totalAmount)}` : '-'}
           </span>
-        )
+        ),
+        pdfValue: (row) => row.paymentDirection !== 'debit' ? row.totalAmount : 0
       },
       {
         header: "Balance",
@@ -2141,12 +2177,14 @@ export default function CustomerLedgerPage() {
             {formatNumber(Math.abs(row.balanceAfter))}
             {row.balanceAfter < 0 && <span className="text-xs ml-1"></span>}
           </span>
-        )
+        ),
+        pdfValue: (row) => row.balanceAfter
       },
       {
         header: "Method",
         accessor: "paymentMethod",
-        render: (row) => <Badge variant="outline" className="capitalize">{row.paymentMethod}</Badge>
+        render: (row) => <Badge variant="outline" className="capitalize">{row.paymentMethod}</Badge>,
+        pdfValue: (row) => row.paymentMethod.toUpperCase()
       },
       {
         header: "Actions",
@@ -2204,183 +2242,35 @@ export default function CustomerLedgerPage() {
     return balanceMap
   }, [dropdownBuyers])
 
-  const handlePrintPaymentReceiptsReport = () => {
-    if (!paymentReceiptsTransactions.length) {
-      toast.error('No payment receipts to print')
+  const handleExportLedgerPDF = useCallback(() => {
+    if (!filteredLedgerTransactions.length) {
+      toast.error("No ledger data to export")
       return
     }
+    const customerName = selectedBuyerId === "all" ? "All Customers" : (selectedEntity?.name || "Customer")
+    exportToPDF({
+      title: "Customer Ledger Report",
+      subtitle: `Customer: ${customerName}`,
+      columns: allLedgerColumns,
+      data: filteredLedgerTransactions,
+      filename: `Customer_Ledger_${customerName.replace(/[^a-zA-Z0-9]/g, "_")}_${new Date().toISOString().slice(0, 10)}`
+    })
+  }, [filteredLedgerTransactions, selectedBuyerId, selectedEntity, allLedgerColumns])
 
-    const isAllCustomers = selectedBuyerId === 'all'
-    const activePayments = paymentReceiptsTransactions.filter(p => p.status === 'active')
-    const totalCredits = activePayments.filter(p => p.paymentDirection !== 'debit').reduce((sum, p) => sum + p.totalAmount, 0)
-    const totalDebits = activePayments.filter(p => p.paymentDirection === 'debit').reduce((sum, p) => sum + p.totalAmount, 0)
-    const netTotal = totalCredits - totalDebits
-    const currentBalance = !isAllCustomers && activePayments.length > 0 ? activePayments[0].balanceAfter : 0
-
-    const printWindow = window.open('', '_blank')
-    const reportHTML = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Payment Receipts Report - ${isAllCustomers ? 'All Customers' : (selectedEntity?.name || 'Customer')}</title>
-        <style>
-          @page { size: A4; margin: 15mm; }
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Segoe UI', Arial, sans-serif; width: 100%; margin: 0; padding: 0; color: #333; line-height: 1.4; font-size: 12px; }
-          .header { text-align: center; margin-bottom: 25px; border-bottom: 3px solid #1e40af; padding-bottom: 15px; }
-          .logo { font-size: 32px; font-weight: bold; color: #1e40af; letter-spacing: 2px; }
-          .company-name { font-size: 14px; color: #666; margin-top: 5px; }
-          .report-title { font-size: 24px; font-weight: bold; margin-top: 15px; color: #1e3a8a; }
-          .report-subtitle { font-size: 14px; color: #666; margin-top: 5px; }
-          .info-section { display: flex; justify-content: space-between; margin-bottom: 25px; gap: 20px; }
-          .info-box { background: #f8fafc; padding: 15px 20px; border-radius: 8px; border: 1px solid #e2e8f0; flex: 1; }
-          .info-box h3 { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
-          .info-box p { margin: 4px 0; font-size: 13px; }
-          .info-box .highlight { font-size: 18px; font-weight: bold; color: #1e40af; }
-          .summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }
-          .summary-card { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center; }
-          .summary-card .label { font-size: 11px; color: #64748b; text-transform: uppercase; margin-bottom: 5px; }
-          .summary-card .value { font-size: 20px; font-weight: bold; }
-          .summary-card.green { border-color: #86efac; background: #f0fdf4; }
-          .summary-card.green .value { color: #059669; }
-          .summary-card.red { border-color: #fca5a5; background: #fef2f2; }
-          .summary-card.red .value { color: #dc2626; }
-          .summary-card.amber { border-color: #fcd34d; background: #fffbeb; }
-          .summary-card.amber .value { color: #d97706; }
-          .summary-card.blue { border-color: #93c5fd; background: #eff6ff; }
-          .summary-card.blue .value { color: #1e40af; }
-          table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 11px; }
-          th { background: #1e40af; color: white; padding: 10px 6px; text-align: left; font-weight: 600; text-transform: uppercase; font-size: 9px; letter-spacing: 0.5px; }
-          td { padding: 8px 6px; border-bottom: 1px solid #e2e8f0; }
-          tr:nth-child(even) { background: #f8fafc; }
-          .text-right { text-align: right; }
-          .text-center { text-align: center; }
-          .font-bold { font-weight: bold; }
-          .text-green { color: #059669; }
-          .text-red { color: #dc2626; }
-          .text-muted { color: #94a3b8; }
-          .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 600; text-transform: uppercase; }
-          .badge-credit { background: #dcfce7; color: #166534; }
-          .badge-debit { background: #fee2e2; color: #991b1b; }
-          .badge-active { background: #dbeafe; color: #1e40af; }
-          .badge-reversed { background: #fef3c7; color: #92400e; }
-          .summary-section { margin-top: 30px; padding: 20px; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd; }
-          .summary-title { font-size: 14px; font-weight: bold; color: #0369a1; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px; }
-          .summary-grid { display: grid; grid-template-columns: repeat(${isAllCustomers ? '3' : '4'}, 1fr); gap: 15px; }
-          .summary-item { text-align: center; padding: 10px; background: white; border-radius: 6px; }
-          .summary-item .label { font-size: 10px; color: #64748b; text-transform: uppercase; margin-bottom: 5px; }
-          .summary-item .value { font-size: 18px; font-weight: bold; }
-          .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 11px; }
-          @media print { body { padding: 15px; } .no-print { display: none; } }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="logo">KI FASHION</div>
-          <div class="company-name">Fashion & Textile Solutions</div>
-          <div class="report-title">PAYMENT RECEIPTS REPORT</div>
-          <div class="report-subtitle">${isAllCustomers ? 'All Customers - Summary Report' : 'Statement of Account Transactions'}</div>
-        </div>
-
-        ${isAllCustomers ? `
-        <div class="summary-cards">
-          <div class="summary-card green"><div class="label">Total Credits (Received)</div><div class="value">${formatNumber(totalCredits)}</div></div>
-          <div class="summary-card red"><div class="label">Total Debits (Issued)</div><div class="value">${formatNumber(totalDebits)}</div></div>
-          <div class="summary-card blue"><div class="label">Net Amount</div><div class="value">${formatNumber(Math.abs(netTotal))}</div></div>
-          <div class="summary-card amber"><div class="label">Total Transactions</div><div class="value">${paymentReceiptsTransactions.length}</div></div>
-        </div>
-        ` : `
-        <div class="info-section">
-          <div class="info-box">
-            <h3>Customer Details</h3>
-            <p><strong>${selectedEntity?.name || 'N/A'}</strong></p>
-            ${selectedEntity?.company ? `<p>${selectedEntity.company}</p>` : ''}
-            ${selectedEntity?.email ? `<p>${selectedEntity.email}</p>` : ''}
-            ${selectedEntity?.phone ? `<p>${selectedEntity.phone}</p>` : ''}
-          </div>
-          <div class="info-box">
-            <h3>Report Period</h3>
-            <p>All Transactions</p>
-            <p class="highlight">${paymentReceiptsTransactions.length} Records</p>
-          </div>
-          <div class="info-box">
-            <h3>Current Balance</h3>
-            <p class="highlight ${currentBalance > 0 ? 'text-red' : 'text-green'}">
-              ${formatNumber(Math.abs(currentBalance))}
-              ${currentBalance < 0 ? ' (Credit)' : currentBalance > 0 ? ' (Due)' : ''}
-            </p>
-          </div>
-        </div>
-        `}
-
-        <table>
-          <thead>
-            <tr>
-              <th>Receipt #</th>
-              <th>Date</th>
-              ${isAllCustomers ? '<th>Customer</th>' : ''}
-              <th class="text-center">Type</th>
-              <th class="text-right">Debit</th>
-              <th class="text-right">Credit</th>
-              <th class="text-right">Balance</th>
-              <th class="text-center">Method</th>
-              <th class="text-center">Status</th>
-              <th>By</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${paymentReceiptsTransactions.map(row => `
-              <tr>
-                <td><strong>${row.paymentNumber}</strong></td>
-                <td>${formatDateTime({ date: row.date })}</td>
-                ${isAllCustomers ? `<td>${row.customerName}</td>` : ''}
-                <td class="text-center">
-                  <span class="badge ${row.paymentDirection === 'debit' ? 'badge-debit' : 'badge-credit'}">
-                    ${row.paymentDirection === 'debit' ? 'Debit' : 'Credit'}
-                  </span>
-                </td>
-                <td class="text-right ${row.paymentDirection === 'debit' ? 'text-red font-bold' : 'text-muted'}">
-                  ${row.paymentDirection === 'debit' ? formatNumber(row.totalAmount) : '-'}
-                </td>
-                <td class="text-right ${row.paymentDirection !== 'debit' ? 'text-green font-bold' : 'text-muted'}">
-                  ${row.paymentDirection !== 'debit' ? formatNumber(row.totalAmount) : '-'}
-                </td>
-                <td class="text-right font-bold ${row.balanceAfter > 0 ? 'text-red' : row.balanceAfter < 0 ? 'text-green' : ''}">
-                  ${formatNumber(Math.abs(row.balanceAfter))}
-                </td>
-                <td class="text-center" style="text-transform: capitalize;">${row.paymentMethod}</td>
-                <td class="text-center">
-                  <span class="badge ${row.status === 'active' ? 'badge-active' : 'badge-reversed'}">${row.status}</span>
-                </td>
-                <td>${row.createdBy}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-
-        <div class="summary-section">
-          <div class="summary-title">Summary</div>
-          <div class="summary-grid">
-            <div class="summary-item"><div class="label">Total Credits (Received)</div><div class="value text-green">${formatNumber(totalCredits)}</div></div>
-            <div class="summary-item"><div class="label">Total Debits (Issued)</div><div class="value text-red">${formatNumber(totalDebits)}</div></div>
-            <div class="summary-item"><div class="label">Net Amount</div><div class="value ${netTotal >= 0 ? 'text-green' : 'text-red'}">${formatNumber(Math.abs(netTotal))}</div></div>
-            ${!isAllCustomers ? `<div class="summary-item"><div class="label">Current Balance</div><div class="value ${currentBalance > 0 ? 'text-red' : 'text-green'}">${formatNumber(Math.abs(currentBalance))}</div></div>` : ''}
-          </div>
-        </div>
-
-        <div class="footer">
-          <p>This is a computer-generated report and does not require a signature.</p>
-          <p>Generated on: ${new Date().toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' })}</p>
-          <p>KI Fashion - All Rights Reserved</p>
-        </div>
-      </body>
-      </html>
-    `
-    printWindow.document.write(reportHTML)
-    printWindow.document.close()
-    printWindow.focus()
-    setTimeout(() => { printWindow.print() }, 250)
-  }
+  const handleExportReceiptsPDF = useCallback(() => {
+    if (!paymentReceiptsTransactions.length) {
+      toast.error("No receipts data to export")
+      return
+    }
+    const customerName = selectedBuyerId === "all" ? "All Customers" : (selectedEntity?.name || "Customer")
+    exportToPDF({
+      title: "Customer Payment Receipts",
+      subtitle: `Customer: ${customerName}`,
+      columns: paymentReceiptsColumns.filter(c => c.header !== "Actions"),
+      data: paymentReceiptsTransactions,
+      filename: `Customer_Receipts_${customerName.replace(/[^a-zA-Z0-9]/g, "_")}_${new Date().toISOString().slice(0, 10)}`
+    })
+  }, [paymentReceiptsTransactions, selectedBuyerId, selectedEntity, paymentReceiptsColumns])
 
   // FIX 8: derive balances from the shared data — no useBuyer needed
   const currentBuyerLedgerBalance = useMemo(() => {
@@ -2481,6 +2371,7 @@ export default function CustomerLedgerPage() {
                   columns={allLedgerColumns}
                   data={filteredLedgerTransactions}
                   loading={sharedLedgerLoading}
+                  onDownloadPDF={handleExportLedgerPDF}
                   hideActions
                 />
               </div>
@@ -2523,12 +2414,6 @@ export default function CustomerLedgerPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end">
-                  <Button variant="outline" onClick={handlePrintPaymentReceiptsReport}>
-                    <Printer className="h-4 w-4 mr-2" />
-                    Print Report
-                  </Button>
-                </div>
 
                 {paymentReceiptsError && (
                   <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
@@ -2541,6 +2426,7 @@ export default function CustomerLedgerPage() {
                   columns={paymentReceiptsColumns}
                   data={paymentReceiptsTransactions}
                   loading={paymentReceiptsLoading || isFetching}
+                  onDownloadPDF={handleExportReceiptsPDF}
                   hideActions
                 />
               </div>

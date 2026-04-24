@@ -6,6 +6,7 @@ import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
 import { useProductSummaryReport } from "@/lib/hooks/useReports"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
+import { exportToPDF } from "@/lib/utils/pdfExport"
 import toast from "react-hot-toast"
 
 function currency(n) {
@@ -187,12 +188,12 @@ export default function ProductSummaryReportPage() {
       value: totals.totalSold.toLocaleString(),
       subtext: "units sold",
     },
-    {
-      label: "Stock in Hand",
-      value: totals.totalInHand.toLocaleString(),
-      color: "text-blue-600",
-      subtext: "units remaining",
-    },
+    // {
+    //   label: "Stock in Hand",
+    //   value: totals.totalInHand.toLocaleString(),
+    //   color: "text-blue-600",
+    //   subtext: "units remaining",
+    // },
     {
       label: "Stock Value",
       value: currency(totals.totalValue),
@@ -220,6 +221,26 @@ export default function ProductSummaryReportPage() {
     percentage: "",
   }
 
+  const handleDownloadPDF = async () => {
+    try {
+      const result = await exportToPDF({
+        title: "Product Summary Report",
+        columns: columns,
+        data: productData,
+        totalsRow: totalsRow,
+        dateRange: dateRange,
+        filename: `Product_Summary_Report_${dateRange.to || "all"}`
+      })
+      if (result.success) {
+        toast.success("PDF report downloaded!")
+      } else {
+        toast.error("Failed to generate PDF")
+      }
+    } catch (err) {
+      toast.error("PDF generation failed: " + err.message)
+    }
+  }
+
   return (
     <ReportLayout
       title="Product Summary Report"
@@ -228,6 +249,7 @@ export default function ProductSummaryReportPage() {
       onDateChange={setDateRange}
       onRefresh={refetch}
       onExport={handleExport}
+      onDownloadPDF={handleDownloadPDF}
       loading={isLoading}
       error={isError ? error : null}
       summary={summary}

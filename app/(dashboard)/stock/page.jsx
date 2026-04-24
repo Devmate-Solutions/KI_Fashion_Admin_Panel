@@ -49,6 +49,7 @@ import { useStockSummaryReport } from "@/lib/hooks/useReports";
 import { usePacketStockList } from "@/lib/hooks/usePacketStock";
 import { productsAPI } from "@/lib/api/endpoints/products";
 import { useQueryClient } from "@tanstack/react-query";
+import { exportToPDF } from "@/lib/utils/pdfExport"
 import { toast } from "react-hot-toast";
 import { Boxes, Loader2, MoveRight, RefreshCcw, Package, Barcode, Printer, QrCode, Copy, Check, Scissors, Trash2, ScanLine } from "lucide-react";
 import ProductImageGallery from "@/components/ui/ProductImageGallery";
@@ -107,6 +108,7 @@ const inventoryColumns = [
         />
       );
     },
+    pdfValue: (row) => row.productName || "Product"
   },
   {
     header: "Supplier",
@@ -119,6 +121,7 @@ const inventoryColumns = [
       });
       return <div className="font-medium">{row.supplierName || "—"}</div>;
     },
+    pdfValue: (row) => row.supplierName || "—"
   },
   {
     header: "Product",
@@ -136,6 +139,7 @@ const inventoryColumns = [
         </a>
       </div>
     ),
+    pdfValue: (row) => row.productName || "—"
   },
   {
     header: "SKU",
@@ -151,6 +155,7 @@ const inventoryColumns = [
         {row.sku || "-"}
       </a>
     ),
+    pdfValue: (row) => row.sku || "-"
   },
   {
     header: "Season",
@@ -169,6 +174,11 @@ const inventoryColumns = [
       }
       return <TruncatedBadgeList items={seasons} max={3} colorClass="bg-purple-100 text-purple-800" />;
     },
+    pdfValue: (row) => {
+      const season = row.product?.season;
+      const seasons = Array.isArray(season) ? season : season ? [season] : [];
+      return seasons.join(", ") || "—"
+    }
   },
   {
     header: "Size",
@@ -205,6 +215,29 @@ const inventoryColumns = [
       }
       return <TruncatedBadgeList items={sizes} max={3} colorClass="bg-green-100 text-green-800" />;
     },
+    pdfValue: (row) => {
+      let sizes = [];
+      const productSize = row.product?.size;
+      if (Array.isArray(productSize) && productSize.length > 0) {
+        sizes = productSize;
+      } else if (productSize) {
+        sizes = [productSize];
+      } else if (
+        row.raw?.variantComposition &&
+        Array.isArray(row.raw.variantComposition) &&
+        row.raw.variantComposition.length > 0
+      ) {
+        const sizeSet = new Set();
+        row.raw.variantComposition.forEach((variant) => {
+          if (variant.size) sizeSet.add(variant.size);
+        });
+        sizes = Array.from(sizeSet);
+      } else {
+        const size = row.raw?.size;
+        sizes = Array.isArray(size) ? size : size ? [size] : [];
+      }
+      return sizes.join(", ") || "—"
+    }
   },
   {
     header: "Color",
@@ -244,6 +277,32 @@ const inventoryColumns = [
       }
       return <TruncatedBadgeList items={colors} max={3} colorClass="bg-blue-100 text-blue-800" />;
     },
+    pdfValue: (row) => {
+      let colors = [];
+      const productColor = row.product?.color;
+      if (Array.isArray(productColor) && productColor.length > 0) {
+        colors = productColor;
+      } else if (productColor) {
+        colors = [productColor];
+      } else if (
+        row.raw?.variantComposition &&
+        Array.isArray(row.raw.variantComposition) &&
+        row.raw.variantComposition.length > 0
+      ) {
+        const colorSet = new Set();
+        row.raw.variantComposition.forEach((variant) => {
+          if (variant.color) colorSet.add(variant.color);
+        });
+        colors = Array.from(colorSet);
+      } else {
+        const color =
+          row.raw?.primaryColor ||
+          row.raw?.color ||
+          row.product?.specifications?.color;
+        colors = Array.isArray(color) ? color : color ? [color] : [];
+      }
+      return colors.join(", ") || "—"
+    }
   },
   {
     header: "Available Stock",
@@ -253,6 +312,7 @@ const inventoryColumns = [
         {formatNumber(row.currentStock)}
       </div>
     ),
+    pdfValue: (row) => row.currentStock || 0
   },
   {
     header: "Landed Cost",
@@ -262,6 +322,7 @@ const inventoryColumns = [
         {formatDecimal(row.averageCostPrice)}
       </span>
     ),
+    pdfValue: (row) => row.averageCostPrice || 0
   },
   {
     header: "Min Sell Price",
@@ -271,6 +332,7 @@ const inventoryColumns = [
         {formatDecimal(row.pricing?.minSellingPrice ?? row.pricing?.sellingPrice ?? 0)}
       </span>
     ),
+    pdfValue: (row) => row.pricing?.minSellingPrice ?? row.pricing?.sellingPrice ?? 0
   },
   {
     header: "Value",
@@ -280,6 +342,7 @@ const inventoryColumns = [
         {formatDecimal(row.totalValue)}
       </span>
     ),
+    pdfValue: (row) => row.totalValue || 0
   },
   {
     header: "Date",
@@ -292,6 +355,10 @@ const inventoryColumns = [
         </div>
       );
     },
+    pdfValue: (row) => {
+      const displayDate = row.firstArrivalDate || row.createdAt || row.lastStockUpdate;
+      return displayDate ? new Date(displayDate).toLocaleDateString('en-GB') : "—";
+    }
   },
 ];
 
@@ -740,6 +807,25 @@ export default function StockPage() {
     }
   }
 
+  const handleDownloadPDF = async () => {
+    try {
+      const result = await exportToPDF({
+        title: "Inventory Stock Report",
+        columns: inventoryColumns.filter(c => c.header !== "Image"),
+        data: filteredInventoryItems,
+        dateRange: { from: appliedFilters.startDate, to: appliedFilters.endDate },
+        filename: `Inventory_Report_${new Date().toLocaleDateString('en-CA')}`
+      })
+      if (result.success) {
+        toast.success("PDF report downloaded!")
+      } else {
+        toast.error("Failed to generate PDF")
+      }
+    } catch (err) {
+      toast.error("PDF generation failed: " + err.message)
+    }
+  }
+
   // Packet Stock helper functions
   const handleCopyBarcode = async (barcode) => {
     try {
@@ -1171,6 +1257,7 @@ export default function StockPage() {
         title="Inventory"
         columns={inventoryColumns}
         data={filteredInventoryItems}
+        onDownloadPDF={handleDownloadPDF}
         loading={inventoryLoading}
         enableSearch={false}
         paginate={false}

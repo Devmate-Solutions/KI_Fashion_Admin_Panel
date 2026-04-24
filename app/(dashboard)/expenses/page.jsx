@@ -15,6 +15,8 @@ import {
   useUpdateExpense,
   useDeleteExpense,
 } from "@/lib/hooks/useExpenses"
+import { exportToPDF } from "@/lib/utils/pdfExport"
+import toast from "react-hot-toast"
 import { useCostTypes } from "@/lib/hooks/useCostTypes"
 import { Plus, Trash2, Edit, Filter, RotateCcw, Wallet, Building2, Search, TrendingUp, Package, AlertCircle, CheckCircle2 } from "lucide-react"
 import {
@@ -142,6 +144,7 @@ export default function ExpensesPage() {
         render: (row) => (
           <span className="font-medium">{row.expenseNumber || "—"}</span>
         ),
+        pdfValue: (row) => row.expenseNumber || "—"
       },
       {
         header: "Date",
@@ -151,6 +154,7 @@ export default function ExpensesPage() {
             {row.date ? new Date(row.date).toLocaleDateString('en-GB') : "—"}
           </span>
         ),
+        pdfValue: (row) => row.date ? new Date(row.date).toLocaleDateString('en-GB') : "—"
       },
       {
         header: "Description",
@@ -174,6 +178,7 @@ export default function ExpensesPage() {
         render: (row) => (
           <span className="font-medium">{currency(row.amount || 0)}</span>
         ),
+        pdfValue: (row) => row.amount || 0
       },
       {
         header: "Tax",
@@ -181,6 +186,7 @@ export default function ExpensesPage() {
         render: (row) => (
           <span>{currency(row.taxAmount || 0)}</span>
         ),
+        pdfValue: (row) => row.taxAmount || 0
       },
       {
         header: "Total",
@@ -188,22 +194,34 @@ export default function ExpensesPage() {
         render: (row) => (
           <span className="font-semibold">{currency(row.totalCost || 0)}</span>
         ),
+        pdfValue: (row) => row.totalCost || 0
       },
-      {
-        header: "Payment Method",
-        accessor: "paymentMethod",
-        render: (row) => {
-          const method = row.paymentMethod || 'cash'
-          const labels = {
-            cash: 'Cash',
-            card: 'Card',
-            bank_transfer: 'Bank Transfer',
-            cheque: 'Cheque',
-            online: 'Online'
-          }
-          return <span className="capitalize">{labels[method] || method}</span>
-        },
+    {
+      header: "Payment Method",
+      accessor: "paymentMethod",
+      render: (row) => {
+        const method = row.paymentMethod || 'cash'
+        const labels = {
+          cash: 'Cash',
+          card: 'Card',
+          bank_transfer: 'Bank Transfer',
+          cheque: 'Cheque',
+          online: 'Online'
+        }
+        return <span className="capitalize">{labels[method] || method}</span>
       },
+      pdfValue: (row) => {
+        const method = row.paymentMethod || 'cash'
+        const labels = {
+          cash: 'Cash',
+          card: 'Card',
+          bank_transfer: 'Bank Transfer',
+          cheque: 'Cheque',
+          online: 'Online'
+        }
+        return labels[method] || method
+      }
+    },
       {
         header: "Reference",
         accessor: "dispatchOrderNumber",
@@ -226,6 +244,7 @@ export default function ExpensesPage() {
             <span className="text-muted-foreground">—</span>
           )
         ),
+        pdfValue: (row) => row.dispatchOrderNumber || row.supplierName || "—"
       },
       {
         header: "Status",
@@ -235,6 +254,7 @@ export default function ExpensesPage() {
             {row.status || 'pending'}
           </Badge>
         ),
+        pdfValue: (row) => (row.status || 'pending').toUpperCase()
       },
       {
         header: "Actions",
@@ -264,6 +284,24 @@ export default function ExpensesPage() {
       },
     ]
   }, [])
+
+  const handleDownloadPDF = async () => {
+    try {
+      const result = await exportToPDF({
+        title: "Expenses Report",
+        columns: expenseColumns.filter(c => c.header !== "Actions"),
+        data: expenses,
+        filename: `Expenses_Report_${new Date().toLocaleDateString('en-CA')}`
+      })
+      if (result.success) {
+        toast.success("PDF report downloaded!")
+      } else {
+        toast.error("Failed to generate PDF")
+      }
+    } catch (err) {
+      toast.error("PDF generation failed: " + err.message)
+    }
+  }
 
   // Calculate summary stats
   const totalExpenses = expenses.reduce((sum, e) => sum + (e.totalCost || 0), 0)
@@ -434,6 +472,7 @@ export default function ExpensesPage() {
       <DataTable
         columns={Array.isArray(expenseColumns) ? expenseColumns : []}
         data={expenses}
+        onDownloadPDF={handleDownloadPDF}
         isLoading={isLoading}
         enableSearch={false}
       />

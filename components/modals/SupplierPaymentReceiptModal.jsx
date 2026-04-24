@@ -63,10 +63,37 @@ function buildPrintHtml(receipt) {
         .header h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
         .receipt-no { font-family: monospace; font-size: 16px; font-weight: 600; color: #4b5563; }
         
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; }
         .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; background: #f9fafb; }
         .card h3 { margin: 0 0 8px 0; font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
         .card p { margin: 3px 0; font-size: 14px; }
+
+        .info-table {
+          width: 100%;
+          border-collapse: collapse;
+          table-layout: fixed;
+          margin: 0 0 18px 0;
+          border: 1px solid #d1d5db;
+        }
+        .info-table th,
+        .info-table td {
+          border: 1px solid #d1d5db;
+          padding: 8px 10px;
+          font-size: 12px;
+          vertical-align: middle;
+        }
+        .info-table th {
+          width: 20%;
+          background: #f3f4f6;
+          color: #4b5563;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          font-weight: 700;
+          text-align: left;
+        }
+        .info-table td {
+          color: #111827;
+          font-weight: 600;
+        }
         
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { background: #111827; color: white; padding: 12px 10px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -105,58 +132,49 @@ function buildPrintHtml(receipt) {
           <div class="receipt-no">${receipt.receiptNumber}</div>
         </div>
 
-        <div class="grid">
-          <div class="card">
-            <h3>Supplier Information</h3>
-            <p><strong>${receipt.supplierId?.name || "Unknown Supplier"}</strong></p>
-            ${receipt.supplierId?.company ? `<p>${receipt.supplierId.company}</p>` : ""}
-            ${receipt.supplierId?.supplierId ? `<p style="font-family: monospace; font-size: 12px; margin-top: 5px;">ID: ${receipt.supplierId.supplierId}</p>` : ""}
-          </div>
-          <div class="card">
-            <h3>Payment Details</h3>
-            <p><strong>Date:</strong> ${formatDateTime({ paymentDate: receipt.paymentDate })}</p>
-            <p><strong>Method:</strong> ${(receipt.paymentMethodSummary || "cash").toUpperCase()}</p>
-            <p><strong>Total Amount:</strong> GBP ${formatNumber(receipt.totalAmount)}</p>
-          </div>
-        </div>
-
-        <div class="grid">
-          <div class="card" style="border-left: 4px solid #ef4444;">
-            <h3>Balance Before</h3>
-            <p style="font-size: 18px; font-weight: 700;">${formatNumber(Math.abs(receipt.balanceBefore || 0))}</p>
-          </div>
-          <div class="card" style="border-left: 4px solid #10b981;">
-            <h3>Balance After</h3>
-            <p style="font-size: 18px; font-weight: 700;">${formatNumber(Math.abs(receipt.balanceAfter || 0))}</p>
-          </div>
-        </div>
+        <table class="info-table" aria-label="Receipt summary information">
+          <tbody>
+            <tr>
+              <th>Supplier Name</th>
+              <td>${receipt.supplierId?.name || "Unknown Supplier"}</td>
+              <th>Date</th>
+              <td>${formatDateTime({ paymentDate: receipt.paymentDate })}</td>
+            </tr>
+            <tr>
+              <th>Company</th>
+              <td>${receipt.supplierId?.company || "-"}</td>
+              <th>Method</th>
+              <td>${(receipt.paymentMethodSummary || "cash").toUpperCase()}</td>
+            </tr>
+            <tr>
+              <th>Supplier ID</th>
+              <td>${receipt.supplierId?.supplierId || "-"}</td>
+              <th>Total Amount</th>
+              <td>GBP ${formatNumber(receipt.totalAmount)}</td>
+            </tr>
+            <tr>
+              <th>Total Balance Before</th>
+              <td>${formatNumber(Math.abs(receipt.balanceBefore || 0))}</td>
+              <th>Total Balance After</th>
+              <td>${formatNumber(Math.abs(receipt.balanceAfter || 0))}</td>
+            </tr>
+          </tbody>
+        </table>
 
         <table>
           <thead>
             <tr>
-              <th>Allocation / Reference</th>
+              <th>Order Number</th>
               <th class="right">Amount Applied</th>
-              <th class="right">Previous Balance</th>
-              <th class="right">New Balance</th>
+              <th class="right">Previous Amount</th>
+              <th class="right">Remaining Amount</th>
             </tr>
           </thead>
           <tbody>
             ${distributionRows}
           </tbody>
         </table>
-
-        ${receipt.notes ? `<div class="card" style="margin-top: 25px;"><h3>Notes & Remarks</h3><p>${receipt.notes}</p></div>` : ""}
-
-        <div class="footer">
-          <div>
-            <p>Orders affected: ${receipt.ordersAffected || 0}</p>
-            <p>Advance amount: ${formatNumber(receipt.advanceAmount || 0)}</p>
-          </div>
-          <div style="text-align: right;">
-            <p>Created by: ${receipt.createdBy?.name || "System"}</p>
-            <p>Generated: ${new Date().toLocaleString("en-GB")}</p>
-          </div>
-        </div>
+       
       </div>
     </body>
     </html>
@@ -210,15 +228,15 @@ export default function SupplierPaymentReceiptModal({ open, onOpenChange, receip
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="rounded-lg bg-muted/30 p-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase">Balance Before</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase">Total Balance Before</p>
                 <p className={`text-lg font-bold ${(receipt.balanceBefore || 0) >= 0 ? "text-red-600" : "text-green-600"}`}>
-                  {formatNumber(Math.abs(receipt.balanceBefore || 0))} 
+                  {formatNumber(Math.abs(receipt.balanceBefore || 0))}
                 </p>
               </div>
               <div className="rounded-lg bg-muted/30 p-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase">Balance After</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase">Total Balance After</p>
                 <p className={`text-lg font-bold ${(receipt.balanceAfter || 0) >= 0 ? "text-red-600" : "text-green-600"}`}>
-                  {formatNumber(Math.abs(receipt.balanceAfter || 0))} 
+                  {formatNumber(Math.abs(receipt.balanceAfter || 0))}
                 </p>
               </div>
             </div>
@@ -253,14 +271,7 @@ export default function SupplierPaymentReceiptModal({ open, onOpenChange, receip
                 <p className="text-xs font-semibold text-muted-foreground uppercase">Orders Affected</p>
                 <p className="text-lg font-bold">{receipt.ordersAffected || 0}</p>
               </div>
-              <div className="rounded-lg border p-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase">Advance Amount</p>
-                <p className="text-lg font-bold text-amber-700">{formatNumber(receipt.advanceAmount || 0)}</p>
-              </div>
-              <div className="rounded-lg border p-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase">Created By</p>
-                <p className="text-lg font-bold">{receipt.createdBy?.name || "System"}</p>
-              </div>
+
             </div>
 
             {receipt.notes ? (
