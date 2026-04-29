@@ -970,6 +970,10 @@ export default function DispatchOrderDetailPage({ params }) {
       const res = await dispatchOrdersAPI.editConfirmed(dispatchOrderId, payload);
       const result = res?.data?.data || res?.data || res;
       setConfirmedEditResult(result);
+      await queryClient.invalidateQueries({ queryKey: dispatchOrdersKeys.lists() });
+      await queryClient.invalidateQueries({ queryKey: dispatchOrdersKeys.detail(dispatchOrderId) });
+      await queryClient.invalidateQueries({ queryKey: ['purchases'] });
+
       await queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] });
       await queryClient.invalidateQueries({ queryKey: ['dispatch-order', dispatchOrderId] });
       await queryClient.invalidateQueries({ queryKey: ['purchases'] });
