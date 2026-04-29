@@ -16,7 +16,9 @@ import {
   useReturnDispatchItems,
   useDeleteDispatchOrder,
   useDispatchOrderPacketStocks,
+  dispatchOrdersKeys
 } from "@/lib/hooks/useDispatchOrders";
+
 import { useAuthStore } from "@/store/store";
 import { ledgerAPI } from "@/lib/api/endpoints/ledger";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -892,7 +894,7 @@ export default function DispatchOrderDetailPage({ params }) {
           const origER = dispatchOrder?.exchangeRate;
           const origPct = dispatchOrder?.percentage;
           const origDisc = dispatchOrder?.discount || 0;
-          
+
           let origDate = "";
           if (dispatchOrder.dispatchDate) {
             const d = new Date(dispatchOrder.dispatchDate);
@@ -1268,13 +1270,13 @@ export default function DispatchOrderDetailPage({ params }) {
         setExchangeRate("0");
         setPercentage("0");
         setActiveTab("confirm");
-        
+
         if (data?.status === 'pending') {
           toast.success(data?.message || "Backdated order submitted for approval");
           router.push("/approvals/edit-requests");
           return;
         }
-        
+
         toast.success("Order submitted for approval successfully!");
       },
     });
