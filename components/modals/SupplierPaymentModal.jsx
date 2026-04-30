@@ -302,7 +302,7 @@ export default function SupplierPaymentModal({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Wallet className="h-5 w-5" />
-                        {transactionType === 'credit' ? 'Add Supplier Payment' : 'Add Supplier Charge'}
+                        {transactionType === 'credit' ? 'Add Supplier Payment - y' : 'Add Supplier Charge'}
                     </DialogTitle>
                 </DialogHeader>
                 <div>

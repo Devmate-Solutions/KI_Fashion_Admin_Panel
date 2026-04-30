@@ -22,7 +22,7 @@ import {
 import { useAuthStore } from "@/store/store";
 import { ledgerAPI } from "@/lib/api/endpoints/ledger";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSuppliers } from "@/lib/hooks/useSuppliers";
+import { useAllSuppliers } from "@/lib/hooks/useSuppliers";
 import { useLogisticsCompanies } from "@/lib/hooks/useLogisticsCompanies";
 import {
   Select,
@@ -84,7 +84,7 @@ import ImageLightbox from "@/components/ui/ImageLightbox";
 import PacketCompositionView from "@/components/ui/PacketCompositionView";
 import ArrayInput from "@/components/ui/ArrayInput";
 import PacketConfigurationModal from "@/components/modals/PacketConfigurationModal";
-import StandaloneSupplierPaymentModal from "@/components/modals/StandaloneSupplierPaymentModal";
+import SupplierPaymentModal from "@/components/modals/SupplierPaymentModal";
 import BarcodePrintModal from "@/components/modals/BarcodePrintModal";
 import { useSubmitEditRequest } from "@/lib/hooks/useEditRequests";
 import DeleteRequestDialog from "@/components/modals/DeleteRequestDialog";
@@ -207,7 +207,7 @@ export default function DispatchOrderDetailPage({ params }) {
   const queryClient = useQueryClient();
 
   // Fetch data for dropdowns
-  const { data: suppliers = [] } = useSuppliers();
+  const { data: allSuppliers = [] } = useAllSuppliers();
   const { data: logisticsCompanies = [] } = useLogisticsCompanies();
 
   // Preset return reasons
@@ -972,10 +972,6 @@ export default function DispatchOrderDetailPage({ params }) {
       setConfirmedEditResult(result);
       await queryClient.invalidateQueries({ queryKey: dispatchOrdersKeys.lists() });
       await queryClient.invalidateQueries({ queryKey: dispatchOrdersKeys.detail(dispatchOrderId) });
-      await queryClient.invalidateQueries({ queryKey: ['purchases'] });
-
-      await queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] });
-      await queryClient.invalidateQueries({ queryKey: ['dispatch-order', dispatchOrderId] });
       await queryClient.invalidateQueries({ queryKey: ['purchases'] });
       const supplierId = dispatchOrder?.supplier?._id;
       if (supplierId) {
@@ -3352,12 +3348,12 @@ export default function DispatchOrderDetailPage({ params }) {
                         )}
                     </div>
                   </div>
-                  {canAddPayment && !showPaymentModal && (
+                  {/* {canAddPayment && !showPaymentModal && (
                     <Button size="sm" onClick={() => setShowPaymentModal(true)} className="gap-2">
                       <Plus className="h-4 w-4" />
                       Add Payment
                     </Button>
-                  )}
+                  )} */}
                 </div>
               </CardHeader>
               <CardContent>
@@ -3418,22 +3414,20 @@ export default function DispatchOrderDetailPage({ params }) {
 
 
 
-          {/* Standalone Supplier Payment Modal */}
+          {/* Supplier Payment Modal (shared component) */}
           {isConfirmed && dispatchOrder?.supplier && (
-            <StandaloneSupplierPaymentModal
+            <SupplierPaymentModal
               open={showPaymentModal}
               onClose={() => setShowPaymentModal(false)}
               entityId={dispatchOrder.supplier._id}
-              hideSupplierSelect={true}
               entityName={dispatchOrder.supplier.name || dispatchOrder.supplier.company}
+              entities={allSuppliers}
+              totalBalance={allSuppliers.find(s => s.id === dispatchOrder.supplier._id || s._id === dispatchOrder.supplier._id)?.balance}
               onSuccess={() => {
-                // Invalidate queries to refresh data
-                queryClient.invalidateQueries({ queryKey: ["dispatch-order", dispatchOrderId] });
+                queryClient.invalidateQueries({ queryKey: dispatchOrdersKeys.detail(dispatchOrderId) });
                 queryClient.invalidateQueries({ queryKey: ["dispatch-order-payments", dispatchOrderId] });
-                queryClient.invalidateQueries({ queryKey: ["dispatch-orders"] });
                 queryClient.invalidateQueries({ queryKey: ["unpaid-dispatch-orders"] });
                 queryClient.invalidateQueries({ queryKey: ["pending-balances"] });
-                queryClient.invalidateQueries({ queryKey: ["ledger", "supplier"] });
                 queryClient.invalidateQueries({ queryKey: ["ledger"] });
                 queryClient.invalidateQueries({ queryKey: ["suppliers"] });
               }}
