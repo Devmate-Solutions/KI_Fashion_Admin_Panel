@@ -199,8 +199,20 @@ export default function SellingPage() {
       {
         header: "Cash Paid",
         accessor: "cash",
-        render: (row) => <span className="tabular-nums">{currency((row.cash || 0) + (row.bankCash || 0))}</span>,
-        pdfValue: (row) => (row.cash || 0) + (row.bankCash || 0)
+        render: (row) => <span className="tabular-nums">{currency((row.cash || 0))}</span>,
+        pdfValue: (row) => (row.cash || 0)
+      },
+      {
+        header: "Bank Paid",
+        accessor: "bank",
+        render: (row) => <span className="tabular-nums">{currency((row.bankCash || 0))}</span>,
+        pdfValue: (row) => (row.bankCash || 0)
+      },
+      {
+        header: "Discount",
+        accessor: "discount",
+        render: (row) => <span className="tabular-nums">{currency((row.discount || 0))}</span>,
+        pdfValue: (row) => (row.discount || 0)
       },
       {
         header: "Balance",
@@ -208,27 +220,27 @@ export default function SellingPage() {
         render: (row) => <span className="tabular-nums">{currency(row.balance || 0)}</span>,
         pdfValue: (row) => row.balance || 0
       },
-      {
-        header: "Status",
-        accessor: "paymentStatus",
-        render: (row) => {
-          const statusStyles = {
-            paid: "bg-emerald-500/15 text-emerald-600 border-emerald-200",
-            partial: "bg-amber-500/15 text-amber-600 border-amber-200",
-            pending: "bg-sky-500/15 text-sky-600 border-sky-200",
-            overdue: "bg-rose-500/15 text-rose-600 border-rose-200",
-          }
-          return (
-            <Badge
-              variant="outline"
-              className={statusStyles[row.paymentStatus] || statusStyles.pending}
-            >
-              {row.paymentStatus || "pending"}
-            </Badge>
-          )
-        },
-        pdfValue: (row) => (row.paymentStatus || "pending").toUpperCase()
-      },
+      // {
+      //   header: "Status",
+      //   accessor: "paymentStatus",
+      //   render: (row) => {
+      //     const statusStyles = {
+      //       paid: "bg-emerald-500/15 text-emerald-600 border-emerald-200",
+      //       partial: "bg-amber-500/15 text-amber-600 border-amber-200",
+      //       pending: "bg-sky-500/15 text-sky-600 border-sky-200",
+      //       overdue: "bg-rose-500/15 text-rose-600 border-rose-200",
+      //     }
+      //     return (
+      //       <Badge
+      //         variant="outline"
+      //         className={statusStyles[row.paymentStatus] || statusStyles.pending}
+      //       >
+      //         {row.paymentStatus || "pending"}
+      //       </Badge>
+      //     )
+      //   },
+      //   pdfValue: (row) => (row.paymentStatus || "pending").toUpperCase()
+      // },
     ],
     [],
   )

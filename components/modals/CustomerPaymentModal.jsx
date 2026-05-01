@@ -196,7 +196,7 @@ export default function CustomerPaymentModal({
                 const debitResult = await ledgerAPI.createEntry({
                     type: 'buyer',
                     entityId: entityId,
-                    entityModel:  "Buyer",
+                    entityModel: "Buyer",
                     date: form.date,
                     description: form.notes || `Adjustment credit from ${entityName}`,
                     transactionType: "adjustment",
@@ -499,8 +499,8 @@ export default function CustomerPaymentModal({
                     {/* Total Payment Display */}
                     {totalPayment > 0 && (
                         <div className={`rounded-lg border p-3 ${form.paymentDirection === 'debit'
-                                ? 'bg-red-50 border-red-200'
-                                : (totalPayment > totalBalance && totalBalance > 0 ? 'bg-amber-50 border-amber-200' : 'bg-green-50')
+                            ? 'bg-red-50 border-red-200'
+                            : (totalPayment > totalBalance && totalBalance > 0 ? 'bg-amber-50 border-amber-200' : 'bg-green-50')
                             }`}>
                             <div className="flex items-center justify-between">
                                 <span className="text-sm font-medium">
@@ -530,11 +530,7 @@ export default function CustomerPaymentModal({
                                     </span>
                                 </div>
                             )}
-                            <p className="text-xs text-muted-foreground mt-2">
-                                {form.paymentDirection === 'debit'
-                                    ? '⚠️ This will increase the customer\'s credit balance.'
-                                    : '💡 Payment will be automatically distributed to oldest sales first (FIFO).'}
-                            </p>
+
                         </div>
                     )}
 

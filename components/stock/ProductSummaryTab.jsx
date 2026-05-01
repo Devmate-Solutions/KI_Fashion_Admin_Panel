@@ -172,21 +172,10 @@ export default function ProductSummaryTab() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <h3 className="text-lg font-semibold">Product Summary</h3>
-          <span className="text-sm text-muted-foreground">
-            {startDate && endDate
-              ? `${new Date(startDate).toLocaleDateString("en-GB")} — ${new Date(endDate).toLocaleDateString("en-GB")}`
-              : "All Time"}
-          </span>
+
         </div>
         <div className="flex items-center gap-2 no-print">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFilters((v) => !v)}
-          >
-            <Filter className="mr-1.5 h-3.5 w-3.5" />
-            {showFilters ? "Hide Filters" : "Date Filter"}
-          </Button>
+
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
             Refresh

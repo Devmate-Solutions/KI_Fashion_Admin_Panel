@@ -1529,6 +1529,7 @@ import { Badge } from "@/components/ui/badge"
 import toast from "react-hot-toast"
 import Tabs from "@/components/tabs"
 import CustomerPaymentModal from "@/components/modals/CustomerPaymentModal"
+import BuyerPaymentReceiptModal, { printReceipt } from "@/components/modals/BuyerPaymentReceiptModal"
 import { exportToPDF } from "@/lib/utils/pdfExport"
 import {
   Dialog,
@@ -1574,8 +1575,6 @@ export default function CustomerLedgerPage() {
   const [isReversing, setIsReversing] = useState(false)
 
   // Receipt dialog state
-  const [receiptDialogOpen, setReceiptDialogOpen] = useState(false)
-  const [receiptData, setReceiptData] = useState(null)
   const [isLoadingReceipt, setIsLoadingReceipt] = useState(false)
 
   // Auth and reversal request state
@@ -1882,8 +1881,12 @@ export default function CustomerLedgerPage() {
     setIsLoadingReceipt(true)
     try {
       const response = await paymentAPI.getPaymentReceipt(payment.paymentNumber)
-      setReceiptData(response.data?.data)
-      setReceiptDialogOpen(true)
+      const data = response.data?.data
+      if (data) {
+        printReceipt(data)
+      } else {
+        toast.error('Receipt data is empty')
+      }
     } catch (error) {
       console.error('Error fetching receipt:', error)
       toast.error('Failed to load receipt')
@@ -2499,30 +2502,7 @@ export default function CustomerLedgerPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Payment Receipt</DialogTitle>
-            <DialogDescription>
-              Receipt details for {receiptData?.receiptNumber || '-'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 text-sm">
-            <div><span className="font-medium">Receipt #:</span> {receiptData?.receiptNumber || '-'}</div>
-            <div><span className="font-medium">Customer:</span> {receiptData?.customer?.name || '-'}</div>
-            <div><span className="font-medium">Amount:</span> {receiptData?.payment?.totalAmount != null ? formatNumber(receiptData.payment.totalAmount) : '-'}</div>
-            <div><span className="font-medium">Method:</span> {receiptData?.payment?.paymentMethod || '-'}</div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setReceiptDialogOpen(false)}>Close</Button>
-            <Button o
-              nClick={handlePrintReceipt}>
-              <Printer className="h-4 w-4 mr-2" />
-              Print
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
     </div>
   )
 }

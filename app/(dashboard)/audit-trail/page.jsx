@@ -12,6 +12,15 @@ import { History, Globe, Laptop, Search, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
+function formatDateTime(_date) {
+  const dateTime = _date.date || _date.createdAt;
+  if (!dateTime) return "-";
+  const d = new Date(dateTime);
+  const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const date = d.toLocaleDateString('en-GB');
+  return `${date} ${time}`;
+}
+
 const ACTION_STYLES = {
   CREATE: "bg-green-100 text-green-800 border-green-200",
   UPDATE: "bg-blue-100 text-blue-800 border-blue-200",
@@ -29,14 +38,7 @@ const columns = [
     cell: (row) => (
       <div className="flex flex-col">
         <span className="text-xs font-medium text-slate-700 whitespace-nowrap">
-          {new Date(row.timestamp).toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "short",
-          })} {new Date(row.timestamp).toLocaleTimeString("en-GB", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true
-          }).toUpperCase()}
+          {formatDateTime(row)}
         </span>
       </div>
     ),
@@ -60,16 +62,16 @@ const columns = [
       </Badge>
     ),
   },
-  {
-    header: "Resource",
-    accessor: "resource",
-    cell: (row) => (
-      <div className="flex flex-col">
-        <span className="text-xs font-semibold text-slate-700">{row.resource}</span>
-        {row.resourceId && <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[80px]">ID: {String(row.resourceId).slice(-6)}</span>}
-      </div>
-    ),
-  },
+  // {
+  //   header: "Resource",
+  //   accessor: "resource",
+  //   cell: (row) => (
+  //     <div className="flex flex-col">
+  //       <span className="text-xs font-semibold text-slate-700">{row.resource}</span>
+  //       {row.resourceId && <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[80px]">ID: {String(row.resourceId).slice(-6)}</span>}
+  //     </div>
+  //   ),
+  // },
   {
     header: "Description",
     accessor: "description",
@@ -79,24 +81,24 @@ const columns = [
       </span>
     ),
   },
-  {
-    header: "Audit Metadata",
-    accessor: "ip",
-    cell: (row) => (
-      <div className="flex flex-col text-[10px] text-muted-foreground">
-        <div className="flex items-center gap-1">
-          <Globe className="h-3 w-3" />
-          <span>{row.ip || "0.0.0.0"}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Laptop className="h-3 w-3" />
-          <span className="truncate max-w-[100px]" title={row.userAgent}>
-            {row.userAgent?.split(' ')[0] || "Unknown"}
-          </span>
-        </div>
-      </div>
-    ),
-  },
+  // {
+  //   header: "Audit Metadata",
+  //   accessor: "ip",
+  //   cell: (row) => (
+  //     <div className="flex flex-col text-[10px] text-muted-foreground">
+  //       <div className="flex items-center gap-1">
+  //         <Globe className="h-3 w-3" />
+  //         <span>{row.ip || "0.0.0.0"}</span>
+  //       </div>
+  //       <div className="flex items-center gap-1">
+  //         <Laptop className="h-3 w-3" />
+  //         <span className="truncate max-w-[100px]" title={row.userAgent}>
+  //           {row.userAgent?.split(' ')[0] || "Unknown"}
+  //         </span>
+  //       </div>
+  //     </div>
+  //   ),
+  // },
 ];
 
 export default function AuditTrailPage() {

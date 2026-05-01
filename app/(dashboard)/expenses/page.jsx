@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useEffect } from "react"
+import { useMemo, useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import BackButton from "@/components/BackButton"
@@ -19,6 +19,8 @@ import { exportToPDF } from "@/lib/utils/pdfExport"
 import toast from "react-hot-toast"
 import { useCostTypes } from "@/lib/hooks/useCostTypes"
 import { Plus, Trash2, Edit, Filter, RotateCcw, Wallet, Building2, Search, TrendingUp, Package, AlertCircle, CheckCircle2 } from "lucide-react"
+import BritishDatePicker from "@/components/BritishDatePicker"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -39,15 +41,29 @@ export default function ExpensesPage() {
     costType: 'all',
     status: 'all',
     paymentMethod: 'all',
+    startDate: '',
+    endDate: '',
+    page: 1,
   })
   const [showForm, setShowForm] = useState(false)
   const [editingExpense, setEditingExpense] = useState(null)
 
+  const updateFilters = (nextValues) => {
+    setFilters((prev) => ({
+      ...prev,
+      ...nextValues,
+      page: 1,
+    }))
+  }
+
   const queryParams = useMemo(() => {
-    const params = { ...filters }
-    if (params.costType === 'all') delete params.costType
-    if (params.status === 'all') delete params.status
-    if (params.paymentMethod === 'all') delete params.paymentMethod
+    const params = { page: filters.page }
+    if (filters.search?.trim()) params.search = filters.search.trim()
+    if (filters.costType !== 'all') params.costType = filters.costType
+    if (filters.status !== 'all') params.status = filters.status
+    if (filters.paymentMethod !== 'all') params.paymentMethod = filters.paymentMethod
+    if (filters.startDate) params.startDate = filters.startDate
+    if (filters.endDate) params.endDate = filters.endDate
     return params
   }, [filters])
 
@@ -82,23 +98,36 @@ export default function ExpensesPage() {
     setShowForm(true)
   }
 
-  const handleEdit = (expense) => {
+  const handleEdit = useCallback((expense) => {
     setEditingExpense(expense)
     setShowForm(true)
+  }, [])
+
+  const handleFilterReset = () => {
+    setFilters({
+      search: '',
+      costType: 'all',
+      status: 'all',
+      paymentMethod: 'all',
+      startDate: '',
+      endDate: '',
+      page: 1,
+    })
   }
 
-  const handleDelete = async (expense) => {
+  const handleDelete = useCallback(async (expense) => {
     if (!confirm(`Are you sure you want to delete expense "${expense.expenseNumber}"?`)) {
       return
     }
 
     try {
       await deleteMutation.mutateAsync(expense.id)
+      toast.success("Expense deleted successfully")
     } catch (error) {
       console.error('Delete error:', error)
+      toast.error("Failed to delete expense")
     }
-  }
-
+  }, [deleteMutation])
 
   const handleSave = async (formData) => {
     try {
@@ -107,6 +136,7 @@ export default function ExpensesPage() {
           id: editingExpense.id,
           data: formData
         })
+        toast.success("Expense updated successfully")
         if (response?.status === 202) {
           router.push('/approvals/edit-requests')
           setShowForm(false)
@@ -115,6 +145,7 @@ export default function ExpensesPage() {
         }
       } else {
         const response = await createMutation.mutateAsync(formData)
+        toast.success("Expense created successfully")
         if (response?.status === 202) {
           router.push('/approvals/edit-requests')
           setShowForm(false)
@@ -126,6 +157,7 @@ export default function ExpensesPage() {
       setEditingExpense(null)
     } catch (error) {
       console.error('Save error:', error)
+      toast.error("Failed to save expense")
     }
   }
 
@@ -135,6 +167,14 @@ export default function ExpensesPage() {
       approved: "bg-emerald-500/15 text-emerald-600 border-emerald-200",
       rejected: "bg-red-500/15 text-red-600 border-red-200",
       paid: "bg-blue-500/15 text-blue-600 border-blue-200",
+    }
+
+    const labels = {
+      cash: 'Cash',
+      card: 'Card',
+      bank_transfer: 'Bank Transfer',
+      cheque: 'Cheque',
+      online: 'Online'
     }
 
     return [
@@ -181,14 +221,6 @@ export default function ExpensesPage() {
         pdfValue: (row) => row.amount || 0
       },
       {
-        header: "Tax",
-        accessor: "taxAmount",
-        render: (row) => (
-          <span>{currency(row.taxAmount || 0)}</span>
-        ),
-        pdfValue: (row) => row.taxAmount || 0
-      },
-      {
         header: "Total",
         accessor: "totalCost",
         render: (row) => (
@@ -196,32 +228,18 @@ export default function ExpensesPage() {
         ),
         pdfValue: (row) => row.totalCost || 0
       },
-    {
-      header: "Payment Method",
-      accessor: "paymentMethod",
-      render: (row) => {
-        const method = row.paymentMethod || 'cash'
-        const labels = {
-          cash: 'Cash',
-          card: 'Card',
-          bank_transfer: 'Bank Transfer',
-          cheque: 'Cheque',
-          online: 'Online'
+      {
+        header: "Payment Method",
+        accessor: "paymentMethod",
+        render: (row) => {
+          const method = row.paymentMethod || 'cash'
+          return <span className="capitalize">{labels[method] || method}</span>
+        },
+        pdfValue: (row) => {
+          const method = row.paymentMethod || 'cash'
+          return labels[method] || method
         }
-        return <span className="capitalize">{labels[method] || method}</span>
       },
-      pdfValue: (row) => {
-        const method = row.paymentMethod || 'cash'
-        const labels = {
-          cash: 'Cash',
-          card: 'Card',
-          bank_transfer: 'Bank Transfer',
-          cheque: 'Cheque',
-          online: 'Online'
-        }
-        return labels[method] || method
-      }
-    },
       {
         header: "Reference",
         accessor: "dispatchOrderNumber",
@@ -283,8 +301,7 @@ export default function ExpensesPage() {
         ),
       },
     ]
-  }, [])
-
+  }, [handleEdit, handleDelete])  // <-- add your dependencies here
   const handleDownloadPDF = async () => {
     try {
       const result = await exportToPDF({
@@ -304,11 +321,11 @@ export default function ExpensesPage() {
   }
 
   // Calculate summary stats
-  const totalExpenses = expenses.reduce((sum, e) => sum + (e.totalCost || 0), 0)
-  const cashExpenses = expenses
+  const totalExpenses = expensesData?.summary?.totalAmount ?? expenses.reduce((sum, e) => sum + (e.totalCost || 0), 0)
+  const cashExpenses = expensesData?.summary?.cashAmount ?? expenses
     .filter(e => e.paymentMethod === 'cash')
     .reduce((sum, e) => sum + (e.totalCost || 0), 0)
-  const bankExpenses = expenses
+  const bankExpenses = expensesData?.summary?.bankAmount ?? expenses
     .filter(e => ['card', 'bank_transfer', 'cheque', 'online'].includes(e.paymentMethod))
     .reduce((sum, e) => sum + (e.totalCost || 0), 0)
 
@@ -342,11 +359,7 @@ export default function ExpensesPage() {
 
         {/* Cash Expenses */}
         <div className="rounded-lg border border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-emerald-50/30 p-5 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-              <Wallet className="h-5 w-5 text-emerald-600" />
-            </div>
-          </div>
+
           <div className="text-xs font-medium text-emerald-700/80 uppercase tracking-wider mb-1">
             Cash Expenses
           </div>
@@ -357,11 +370,7 @@ export default function ExpensesPage() {
 
         {/* Bank Expenses */}
         <div className="rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50/50 to-blue-50/30 p-5 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-              <Building2 className="h-5 w-5 text-blue-600" />
-            </div>
-          </div>
+
           <div className="text-xs font-medium text-blue-700/80 uppercase tracking-wider mb-1">
             Bank Expenses
           </div>
@@ -371,110 +380,127 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      {/* Filters & Search Bar - Unified */}
-      <div className="rounded-lg border border-border bg-card p-3 sm:p-4 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
-          {/* Filter Label */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
-            <span className="text-xs sm:text-sm font-semibold text-foreground">Filters:</span>
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-red-700">
+          <AlertCircle className="h-5 w-5" />
+          <p className="text-sm font-medium">Failed to load expenses. Please try again later.</p>
+        </div>
+      )}
+
+      {/* Filters & Search Bar - Compact */}
+      <div className="rounded-lg border border-border bg-card p-2 sm:p-3 shadow-sm">
+        <div className="flex flex-wrap items-end gap-2 sm:gap-3">
+          {/* Date Range Filter */}
+          <div className="flex flex-col gap-1">
+            <Label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">From Date</Label>
+            <BritishDatePicker
+              value={filters.startDate || null}
+              onChange={(date) =>
+                updateFilters({ startDate: date ? date.toLocaleDateString('en-CA') : '' })
+              }
+              className="h-9 w-full sm:w-[140px]"
+              placeholder="From date"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">To Date</Label>
+            <BritishDatePicker
+              value={filters.endDate || null}
+              onChange={(date) =>
+                updateFilters({ endDate: date ? date.toLocaleDateString('en-CA') : '' })
+              }
+              className="h-9 w-full sm:w-[140px]"
+              placeholder="To date"
+            />
           </div>
 
           {/* Cost Type Filter */}
-          <Select
-            value={filters.costType}
-            onValueChange={(value) => setFilters(prev => ({ ...prev, costType: value }))}
-          >
-            <SelectTrigger className="h-10 sm:h-10 w-full sm:w-[180px] border-border">
-              <SelectValue placeholder="All Cost Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Cost Types</SelectItem>
-              {costTypes.map((type) => (
-                <SelectItem key={type.id} value={type.id}>
-                  {type.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Status Filter */}
-          <Select
-            value={filters.status}
-            onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
-          >
-            <SelectTrigger className="h-10 sm:h-10 w-full sm:w-[150px] border-border">
-              <SelectValue placeholder="All Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="paid">Paid</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Payment Method Filter */}
-          <Select
-            value={filters.paymentMethod}
-            onValueChange={(value) => setFilters(prev => ({ ...prev, paymentMethod: value }))}
-          >
-            <SelectTrigger className="h-10 sm:h-10 w-full sm:w-[180px] border-border">
-              <SelectValue placeholder="All Payment Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Payment Types</SelectItem>
-              <SelectItem value="cash">Cash</SelectItem>
-              <SelectItem value="bank_transfer">Bank</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Search Section */}
-          <div className="flex gap-2 sm:ml-auto w-full sm:w-auto">
-            <div className="relative flex-1 sm:flex-initial">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
-                <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search..."
-                value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                className="h-10 w-full sm:w-[200px] pl-9 sm:pl-10 pr-3 rounded-lg border border-input bg-background text-xs sm:text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              />
-            </div>
-            <Button
-              size="sm"
-              className="h-10 px-4 sm:px-6 bg-primary hover:bg-primary/90 text-xs sm:text-sm min-w-[80px] sm:min-w-0"
+          <div className="flex flex-col gap-1">
+            <Label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">Cost Type</Label>
+            <Select
+              value={filters.costType}
+              onValueChange={(value) => setFilters(prev => ({ ...prev, costType: value }))}
             >
-              Search
-            </Button>
+              <SelectTrigger className="h-9 w-full sm:w-[160px] border-border">
+                <SelectValue placeholder="All Cost Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Cost Types</SelectItem>
+                {costTypes?.map((type) => (
+                  <SelectItem key={type.id} value={type.id}>
+                    {type.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          {/* Clear Filters Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 h-10 border-border"
-            onClick={() => setFilters({
-              search: '',
-              costType: 'all',
-              status: 'all',
-              paymentMethod: 'all',
-            })}
-          >
-            <RotateCcw className="h-4 w-4" />
-            Clear
-          </Button>
+          {/* Status Filter */}
+          <div className="flex flex-col gap-1">
+            <Label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">Status</Label>
+            <Select
+              value={filters.status}
+              onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+            >
+              <SelectTrigger className="h-9 w-full sm:w-[130px] border-border">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Payment Method Filter */}
+          <div className="flex flex-col gap-1">
+            <Label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">Payment</Label>
+            <Select
+              value={filters.paymentMethod}
+              onValueChange={(value) => setFilters(prev => ({ ...prev, paymentMethod: value }))}
+            >
+              <SelectTrigger className="h-9 w-full sm:w-[160px] border-border">
+                <SelectValue placeholder="All Payment Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Payment Types</SelectItem>
+                <SelectItem value="cash">Cash</SelectItem>
+                <SelectItem value="bank_transfer">Bank</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-end gap-2 ml-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 w-9 p-0 border-border"
+              onClick={handleFilterReset}
+              title="Clear Filters"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Expenses Table */}
       <DataTable
-        columns={Array.isArray(expenseColumns) ? expenseColumns : []}
+        columns={expenseColumns}
         data={expenses}
         onDownloadPDF={handleDownloadPDF}
         isLoading={isLoading}
-        enableSearch={false}
+        enableSearch={true}
+        onSearch={(val) => setFilters(prev => ({ ...prev, search: val, page: 1 }))}
+        manualPagination={true}
+        currentPage={filters.page || 1}
+        totalPages={expensesData?.pagination?.totalPages || 1}
+        totalItems={expensesData?.pagination?.totalItems || 0}
+        onPageChange={(page) => setFilters(prev => ({ ...prev, page }))}
       />
 
       {/* Form Dialog */}

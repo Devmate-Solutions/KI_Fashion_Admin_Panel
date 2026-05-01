@@ -152,7 +152,7 @@ export default function HomePage() {
     const low = lowStockCount;
     const outOfStock = inventoryItems.filter(p => (p.stockInHand || 0) === 0).length;
     const healthy = total - low - outOfStock;
-    
+
     return {
       healthy: total > 0 ? Math.round((healthy / total) * 100) : 0,
       low: total > 0 ? Math.round((low / total) * 100) : 0,
@@ -196,30 +196,30 @@ export default function HomePage() {
       {/* Headline Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Total Monthly Revenue"
+          label="Total Monthly Sales"
           value={currency(dashboardData?.totalSales?.thisMonth || 0)}
           icon={TrendingUp}
           loading={dashboardLoading}
           color="primary"
-          description="Net sales after returns"
+          description=""
           onClick={() => router.push("/selling")}
         />
         <StatCard
-          label="Warehouse Value"
+          label="Stock Value"
           value={currency(totalStockValue)}
           icon={Package}
           loading={inventoryLoading || inventoryValuationLoading}
           color="purple"
-          description="Total inventory on-hand"
+          description=""
           onClick={() => router.push("/stock")}
         />
         <StatCard
-          label="Total Orders"
+          label="Total Sales"
           value={dashboardData?.totalOrders?.thisMonth?.toString() || "0"}
           icon={ShoppingCart}
           loading={dashboardLoading}
           color="success"
-          description="Total orders this month"
+          description=""
           onClick={() => router.push("/selling")}
         />
         {/* <StatCard
@@ -326,7 +326,7 @@ export default function HomePage() {
                 </CardTitle>
                 <CardDescription>Latest ledger movements across the platform</CardDescription>
               </div>
-              
+
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -334,13 +334,13 @@ export default function HomePage() {
               {recentEntries.map((entry, idx) => {
                 const isSupplier = entry.partyType === "Supplier";
                 const referenceId = entry.referenceId?._id || entry.referenceId;
-                const link = isSupplier 
+                const link = isSupplier
                   ? `/dispatch-orders/${referenceId}`
                   : `/selling/${referenceId}`;
-                
+
                 return (
-                  <div 
-                    key={idx} 
+                  <div
+                    key={idx}
                     className="px-6 py-5 flex items-center justify-between hover:bg-slate-50 transition-all duration-200 cursor-pointer group"
                     onClick={() => referenceId && router.push(link)}
                   >
@@ -373,11 +373,11 @@ export default function HomePage() {
                         {(entry.debit || 0) > 0 ? `-${currency(entry.debit)}` : `+${currency(entry.credit)}`}
                       </p>
                       <p className="text-[10px] text-slate-400 font-medium">
-                        {new Date(entry.date).toLocaleDateString('en-GB', { 
-                          day: '2-digit', 
-                          month: 'short', 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
+                        {new Date(entry.date).toLocaleDateString('en-GB', {
+                          day: '2-digit',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit'
                         })}
                       </p>
                     </div>

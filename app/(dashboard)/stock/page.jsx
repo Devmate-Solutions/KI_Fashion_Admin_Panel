@@ -48,6 +48,7 @@ import {
 import { useStockSummaryReport } from "@/lib/hooks/useReports";
 import { usePacketStockList } from "@/lib/hooks/usePacketStock";
 import { productsAPI } from "@/lib/api/endpoints/products";
+import { packetStockAPI } from "@/lib/api/endpoints/packetStock";
 import { useQueryClient } from "@tanstack/react-query";
 import { exportToPDF } from "@/lib/utils/pdfExport"
 import { toast } from "react-hot-toast";
@@ -78,6 +79,100 @@ function formatDateTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
   return date.toLocaleString("en-GB");
+}
+
+function openBarcodePrintWindow(labelData, compositionText, price) {
+  const printWindow = window.open("", "_blank", "width=450,height=500");
+  if (!printWindow) {
+    throw new Error("Please allow popups for printing");
+  }
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Barcode: ${labelData.barcode || "Label"}</title>
+      <style>
+        @page {
+          size: auto;
+          margin: 0;
+        }
+
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+
+        body {
+          font-family: Arial, sans-serif;
+          width: 100%;
+          background: white;
+        }
+
+        .label {
+          width: 100%;
+          min-height: 25mm;
+          padding: 1mm 2mm;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+        }
+
+        .composition {
+          font-size: 7pt;
+          font-weight: 600;
+          color: #333;
+          text-align: center;
+          width: 100%;
+          margin-bottom: 1mm;
+          line-height: 1.2;
+        }
+
+        .price {
+          font-size: 8pt;
+          font-weight: 800;
+          color: #000;
+          text-align: center;
+          width: 100%;
+          margin-bottom: 1mm;
+        }
+
+        .barcode-img {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          width: 100%;
+          padding: 1mm 0;
+        }
+
+        .barcode-img img {
+          max-width: 100%;
+          height: auto;
+          max-height: 15mm;
+          object-fit: contain;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="label">
+        <div class="composition">${compositionText}</div>
+        ${price > 0 ? `<div class="price">${labelData.barcode?.slice(0, 3)}-${price.toFixed(2).replace(".", "")}</div>` : ""}
+        ${labelData.barcodeImage ? `<div class="barcode-img"><img src="${labelData.barcodeImage}" alt="Barcode" /></div>` : ""}
+      </div>
+    </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+
+  setTimeout(() => {
+    printWindow.print();
+  }, 300);
 }
 
 // Helper to get image array from various sources
@@ -465,6 +560,7 @@ export default function StockPage() {
   const [selectedPacketDetail, setSelectedPacketDetail] = useState(null);
   const [copiedBarcode, setCopiedBarcode] = useState(null);
   const [packetToBreak, setPacketToBreak] = useState(null);
+  const [printLoadingId, setPrintLoadingId] = useState(null);
 
   const inventoryParams = useMemo(() => {
     const params = {
@@ -706,17 +802,8 @@ export default function StockPage() {
     setPage(1);
   };
 
-  const handleApplyMovementFilters = (event) => {
-    event.preventDefault();
-    setMovementFilters(movementFilterForm);
-    setMovementPage(1);
-  };
 
-  const handleResetMovementFilters = () => {
-    setMovementFilterForm(defaultMovementFilters);
-    setMovementFilters(defaultMovementFilters);
-    setMovementPage(1);
-  };
+
 
   async function submitAddStock(values) {
     const quantity = Number(values.quantity);
@@ -838,87 +925,25 @@ export default function StockPage() {
     }
   };
 
-  const handlePrintBarcode = (packet) => {
-    const printWindow = window.open("", "_blank", "width=400,height=300");
-    if (!printWindow) {
-      toast.error("Please allow popups for printing");
-      return;
+  const handlePrintBarcode = async (packet) => {
+    try {
+      setPrintLoadingId(packet._id);
+      const response = await packetStockAPI.getBarcodeLabel(packet._id);
+      const labelData = response.data?.data || response.data;
+
+      const compositionText = (labelData?.composition || packet?.composition || [])
+        .map((c) => `${c.color}/${c.size} × ${c.quantity}`)
+        .join(", ") || "—";
+
+      const unitMinPrice = Number(labelData?.minSellingPrice);
+      const price = unitMinPrice > 0 ? unitMinPrice : 0;
+
+      openBarcodePrintWindow(labelData, compositionText, price);
+    } catch (err) {
+      toast.error(err?.message || "Failed to print barcode label");
+    } finally {
+      setPrintLoadingId(null);
     }
-
-    const compositionText = packet.composition
-      ?.map((c) => `${c.color}/${c.size} × ${c.quantity}`)
-      .join(", ") || "—";
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Barcode: ${packet.barcode}</title>
-          <style>
-            body { 
-              font-family: 'Courier New', monospace; 
-              padding: 20px; 
-              text-align: center;
-              margin: 0;
-            }
-            .label { 
-              border: 2px dashed #ccc; 
-              padding: 20px; 
-              display: inline-block;
-              min-width: 280px;
-            }
-            .barcode { 
-              font-size: 24px; 
-              font-weight: bold; 
-              letter-spacing: 2px;
-              margin-bottom: 10px;
-            }
-            .product { 
-              font-size: 14px; 
-              margin-bottom: 8px;
-              font-weight: bold;
-            }
-            .composition { 
-              font-size: 11px; 
-              color: #666;
-              margin-bottom: 8px;
-            }
-            .type {
-              font-size: 12px;
-              background: ${packet.isLoose ? "#fef3c7" : "#dbeafe"};
-              padding: 2px 8px;
-              border-radius: 4px;
-              display: inline-block;
-              margin-bottom: 8px;
-            }
-            .items {
-              font-size: 12px;
-              color: #333;
-            }
-            @media print {
-              body { margin: 0; padding: 10px; }
-              .label { border: 1px solid #000; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="label">
-            <div class="barcode">${packet.barcode}</div>
-            <div class="product">${packet.product?.name || "Unknown Product"}</div>
-            <div class="type">${packet.isLoose ? "LOOSE ITEM" : "PACKET"}</div>
-            <div class="composition">${compositionText}</div>
-            <div class="items">${packet.totalItemsPerPacket || 1} item(s) per ${packet.isLoose ? "unit" : "packet"}</div>
-          </div>
-          <script>
-            window.onload = function() {
-              window.print();
-              window.onafterprint = function() { window.close(); };
-            };
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
   };
 
   const handleApplyPacketSearch = (e) => {
@@ -979,74 +1004,6 @@ export default function StockPage() {
         </Card>
       </div>
 
-      {/* <div className="rounded-[4px] border border-border bg-card p-4">
-        <form onSubmit={handleApplyFilters} className="grid grid-cols-1 gap-4 md:grid-cols-5">
-          <div className="md:col-span-2 flex flex-col gap-2">
-            <Label htmlFor="inventory-search">Search</Label>
-            <Input
-              id="inventory-search"
-              placeholder="Search name, SKU, brand..."
-              value={filterForm.search}
-              onChange={(event) =>
-                setFilterForm((prev) => ({ ...prev, search: event.target.value }))
-              }
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="inventory-category">Category</Label>
-            <Select
-              value={filterForm.category || "all"}
-              onValueChange={(value) =>
-                setFilterForm((prev) => ({ ...prev, category: value === "all" ? undefined : value }))
-              }
-            >
-              <SelectTrigger id="inventory-category">
-                <SelectValue placeholder="All categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All categories</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center justify-between gap-2 rounded-[4px] border border-dashed border-border px-3 py-2">
-            <div>
-              <div className="text-sm font-medium">Low stock only</div>
-              <p className="text-xs text-muted-foreground">Current stock ≤ reorder level</p>
-            </div>
-            <Switch
-              checked={filterForm.lowStock}
-              onCheckedChange={(value) =>
-                setFilterForm((prev) => ({ ...prev, lowStock: value }))
-              }
-            />
-          </div>
-          <div className="flex items-center justify-between gap-2 rounded-[4px] border border-dashed border-border px-3 py-2">
-            <div>
-              <div className="text-sm font-medium">Needs reorder</div>
-              <p className="text-xs text-muted-foreground">Flagged for purchase planning</p>
-            </div>
-            <Switch
-              checked={filterForm.needsReorder}
-              onCheckedChange={(value) =>
-                setFilterForm((prev) => ({ ...prev, needsReorder: value }))
-              }
-            />
-          </div>
-          <div className="flex items-end gap-2 md:justify-end">
-            <Button type="submit" className="w-full md:w-auto">
-              Apply
-            </Button>
-            <Button type="button" variant="outline" className="w-full md:w-auto" onClick={handleResetFilters}>
-              Reset
-            </Button>
-          </div>
-        </form>
-      </div> */}
 
       {/* Unified Search Filter */}
       <div className="rounded-[4px] border border-border bg-card p-3">
@@ -1071,46 +1028,7 @@ export default function StockPage() {
               className="h-8 text-sm"
             />
           </div>
-          <div className="min-w-[150px]">
-            <Label
-              htmlFor="filter-start-date"
-              className="text-xs text-muted-foreground mb-1 block"
-            >
-              Start Date
-            </Label>
-            <Input
-              id="filter-start-date"
-              type="date"
-              value={filterForm.startDate}
-              onChange={(event) =>
-                setFilterForm((prev) => ({
-                  ...prev,
-                  startDate: event.target.value,
-                }))
-              }
-              className="h-8 text-sm"
-            />
-          </div>
-          <div className="min-w-[150px]">
-            <Label
-              htmlFor="filter-end-date"
-              className="text-xs text-muted-foreground mb-1 block"
-            >
-              End Date
-            </Label>
-            <Input
-              id="filter-end-date"
-              type="date"
-              value={filterForm.endDate}
-              onChange={(event) =>
-                setFilterForm((prev) => ({
-                  ...prev,
-                  endDate: event.target.value,
-                }))
-              }
-              className="h-8 text-sm"
-            />
-          </div>
+
           <div className="flex gap-2">
             <Button type="submit" size="sm" className="h-8">Apply</Button>
             <Button
@@ -1266,305 +1184,7 @@ export default function StockPage() {
     </div>
   );
 
-  const movementsTab = (
-    <div className="space-y-4">
-      <div className="rounded-[4px] border border-border bg-card p-4">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <MoveRight className="h-4 w-4" />
-              Stock movement history
-            </div>
-            {selectedInventory ? (
-              <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
-                <div>
-                  <p className="text-muted-foreground">Current Stock</p>
-                  <p className="text-lg font-semibold tabular-nums">
-                    {formatNumber(selectedInventory.currentStock)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Available</p>
-                  <p className="text-lg font-semibold tabular-nums">
-                    {formatNumber(selectedInventory.availableStock)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Reserved</p>
-                  <p className="text-lg font-semibold tabular-nums">
-                    {formatNumber(selectedInventory.reservedStock)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Last Updated</p>
-                  <p className="text-sm">
-                    {formatDateTime(selectedInventory.lastStockUpdate)}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Select a product to view its stock movements.
-              </p>
-            )}
-          </div>
 
-          {/* Variant Breakdown - Only show if product has variants */}
-          {selectedInventory &&
-            selectedInventory.variantComposition &&
-            selectedInventory.variantComposition.length > 0 && (
-              <div className="w-full mt-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">
-                      Variant Stock Breakdown
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-slate-100 border-b-2 border-slate-300">
-                          <tr>
-                            <th className="px-3 py-2 text-left font-semibold text-slate-700">
-                              Color
-                            </th>
-                            <th className="px-3 py-2 text-left font-semibold text-slate-700">
-                              Size
-                            </th>
-                            <th className="px-3 py-2 text-right font-semibold text-slate-700">
-                              Quantity
-                            </th>
-                            <th className="px-3 py-2 text-right font-semibold text-slate-700">
-                              Reserved
-                            </th>
-                            <th className="px-3 py-2 text-right font-semibold text-slate-700">
-                              Available
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {selectedInventory.variantComposition.map(
-                            (variant, index) => {
-                              const available =
-                                variant.quantity -
-                                (variant.reservedQuantity || 0);
-                              return (
-                                <tr
-                                  key={index}
-                                  className={`border-b border-slate-200 ${index % 2 === 0 ? "bg-white" : "bg-slate-50"
-                                    }`}
-                                >
-                                  <td className="px-3 py-2 font-medium text-slate-700">
-                                    {variant.color}
-                                  </td>
-                                  <td className="px-3 py-2 text-slate-700">
-                                    {variant.size}
-                                  </td>
-                                  <td className="px-3 py-2 text-right font-semibold tabular-nums">
-                                    {formatNumber(variant.quantity)}
-                                  </td>
-                                  <td className="px-3 py-2 text-right tabular-nums text-amber-600">
-                                    {formatNumber(
-                                      variant.reservedQuantity || 0
-                                    )}
-                                  </td>
-                                  <td className="px-3 py-2 text-right tabular-nums font-semibold text-green-600">
-                                    {formatNumber(available)}
-                                  </td>
-                                </tr>
-                              );
-                            }
-                          )}
-                        </tbody>
-                        <tfoot className="bg-slate-200 border-t-2 border-slate-300">
-                          <tr>
-                            <td
-                              colSpan="2"
-                              className="px-3 py-2 font-semibold text-slate-900"
-                            >
-                              Total
-                            </td>
-                            <td className="px-3 py-2 text-right font-bold text-slate-900 tabular-nums">
-                              {formatNumber(
-                                selectedInventory.variantComposition.reduce(
-                                  (sum, v) => sum + v.quantity,
-                                  0
-                                )
-                              )}
-                            </td>
-                            <td className="px-3 py-2 text-right font-bold text-amber-600 tabular-nums">
-                              {formatNumber(
-                                selectedInventory.variantComposition.reduce(
-                                  (sum, v) => sum + (v.reservedQuantity || 0),
-                                  0
-                                )
-                              )}
-                            </td>
-                            <td className="px-3 py-2 text-right font-bold text-green-600 tabular-nums">
-                              {formatNumber(
-                                selectedInventory.variantComposition.reduce(
-                                  (sum, v) =>
-                                    sum +
-                                    (v.quantity - (v.reservedQuantity || 0)),
-                                  0
-                                )
-                              )}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-          <div className="w-full max-w-xs space-y-3">
-            <Label className="text-sm font-medium">Filter movements</Label>
-            <form className="space-y-3" onSubmit={handleApplyMovementFilters}>
-              <Select
-                value={movementFilterForm.type}
-                onValueChange={(value) =>
-                  setMovementFilterForm((prev) => ({ ...prev, type: value }))
-                }
-                disabled={!selectedProductId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All movement types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="in">Stock In</SelectItem>
-                  <SelectItem value="out">Stock Out</SelectItem>
-                  <SelectItem value="adjust">Adjustments</SelectItem>
-                  <SelectItem value="transfer">Transfers</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  type="date"
-                  value={movementFilterForm.startDate}
-                  onChange={(event) =>
-                    setMovementFilterForm((prev) => ({
-                      ...prev,
-                      startDate: event.target.value,
-                    }))
-                  }
-                  disabled={!selectedProductId}
-                />
-                <Input
-                  type="date"
-                  value={movementFilterForm.endDate}
-                  onChange={(event) =>
-                    setMovementFilterForm((prev) => ({
-                      ...prev,
-                      endDate: event.target.value,
-                    }))
-                  }
-                  disabled={!selectedProductId}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  type="submit"
-                  className="flex-1"
-                  disabled={!selectedProductId}
-                >
-                  Apply
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={handleResetMovementFilters}
-                  disabled={!selectedProductId}
-                >
-                  Reset
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-
-      <DataTable
-        title="Stock Movements"
-        columns={movementColumns}
-        data={movementItems}
-        loading={movementLoading}
-        enableSearch={false}
-        paginate={false}
-      />
-
-      {movementPagination?.totalPages > 1 && (
-        <Pagination className="pt-2">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                href="#"
-                onClick={(event) => {
-                  event.preventDefault();
-                  if ((movementPagination?.currentPage || 1) > 1) {
-                    setMovementPage((prev) => Math.max(1, prev - 1));
-                  }
-                }}
-                aria-disabled={(movementPagination?.currentPage || 1) === 1}
-                className={
-                  (movementPagination?.currentPage || 1) === 1
-                    ? "pointer-events-none opacity-50"
-                    : undefined
-                }
-              />
-            </PaginationItem>
-            {Array.from({ length: movementPagination.totalPages }).map(
-              (_, index) => {
-                const pageNumber = index + 1;
-                return (
-                  <PaginationItem key={pageNumber}>
-                    <PaginationLink
-                      href="#"
-                      isActive={
-                        pageNumber === (movementPagination?.currentPage || 1)
-                      }
-                      onClick={(event) => {
-                        event.preventDefault();
-                        setMovementPage(pageNumber);
-                      }}
-                    >
-                      {pageNumber}
-                    </PaginationLink>
-                  </PaginationItem>
-                );
-              }
-            )}
-            <PaginationItem>
-              <PaginationNext
-                href="#"
-                onClick={(event) => {
-                  event.preventDefault();
-                  if (
-                    (movementPagination?.currentPage || 1) <
-                    (movementPagination?.totalPages || 1)
-                  ) {
-                    setMovementPage((prev) => prev + 1);
-                  }
-                }}
-                aria-disabled={
-                  (movementPagination?.currentPage || 1) >=
-                  (movementPagination?.totalPages || 1)
-                }
-                className={
-                  (movementPagination?.currentPage || 1) >=
-                    (movementPagination?.totalPages || 1)
-                    ? "pointer-events-none opacity-50"
-                    : undefined
-                }
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      )}
-    </div>
-  );
 
   // Packet Stock columns
   const packetStockColumns = [
@@ -1681,15 +1301,14 @@ export default function StockPage() {
       ),
     },
     {
-      header: "Unit Price",
+      header: "Min Sell Price",
       accessor: "unitPrice",
       render: (row) => {
-        const price = row.landedPricePerPacket || 0;
-        const items = row.totalItemsPerPacket || 1;
-        const unitPrice = items > 0 ? price / items : 0;
+        const price = row.product?.pricing?.minSellingPrice ?? row.product?.pricing?.sellingPrice
+
         return (
           <div className="text-right tabular-nums text-muted-foreground">
-            {currency(unitPrice)}
+            {currency(price)}
           </div>
         );
       },
@@ -1721,40 +1340,19 @@ export default function StockPage() {
             variant="ghost"
             size="sm"
             className="h-7 w-7 p-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedPacketDetail(row);
-            }}
-            title="View Details"
-          >
-            <QrCode className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0"
+            disabled={printLoadingId === row._id}
             onClick={(e) => {
               e.stopPropagation();
               handlePrintBarcode(row);
             }}
             title="Print Barcode"
           >
-            <Printer className="h-4 w-4" />
+            {printLoadingId === row._id ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Printer className="h-4 w-4" />
+            )}
           </Button>
-          {!row.isLoose && (row.availablePackets - (row.reservedPackets || 0)) > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-              onClick={(e) => {
-                e.stopPropagation();
-                setPacketToBreak(row);
-              }}
-              title="Break Packet"
-            >
-              <Scissors className="h-4 w-4" />
-            </Button>
-          )}
         </div>
       ),
     },
@@ -1895,7 +1493,7 @@ export default function StockPage() {
       <DataTable
         columns={packetStockColumns}
         data={packetStockItems}
-        onRowClick={(row) => setSelectedPacketDetail(row)}
+        // onRowClick={(row) => setSelectedPacketDetail(row)}
         loading={packetStockLoading}
       />
 
@@ -2169,9 +1767,14 @@ export default function StockPage() {
                   <Button
                     variant="outline"
                     size="sm"
+                    disabled={printLoadingId === selectedPacketDetail._id}
                     onClick={() => handlePrintBarcode(selectedPacketDetail)}
                   >
-                    <Printer className="h-4 w-4 mr-1" />
+                    {printLoadingId === selectedPacketDetail._id ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <Printer className="h-4 w-4 mr-1" />
+                    )}
                     Print
                   </Button>
                   {!selectedPacketDetail.isLoose &&
@@ -2321,7 +1924,7 @@ export default function StockPage() {
         packetStock={packetToBreak}
         mode="inventory"
         onSuccess={(result) => {
-           
+
           setPacketToBreak(null);
         }}
       />
