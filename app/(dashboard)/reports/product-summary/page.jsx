@@ -77,11 +77,13 @@ export default function ProductSummaryReportPage() {
     {
       header: "Supplier Name",
       accessor: "supplierName",
+      type: "string",
       render: (row) => row.supplierName || "—",
     },
     {
       header: "Product Code",
       accessor: "productCode",
+      type: "string",
       render: (row) => {
         const code = row.productCode || row.sku || "—"
         const id = row.productId || row._id
@@ -101,6 +103,7 @@ export default function ProductSummaryReportPage() {
     {
       header: "Product Description",
       accessor: "productName",
+      type: "string",
       render: (row) => {
         const name = row.productName || "—"
         const id = row.productId || row._id
@@ -120,6 +123,7 @@ export default function ProductSummaryReportPage() {
     {
       header: "Color",
       accessor: "color",
+      type: "string",
       render: (row) => row.color || "—",
     },
     {

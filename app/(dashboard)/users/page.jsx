@@ -63,7 +63,7 @@ export default function UsersPage() {
     data: supplierDeleteSummary,
     isLoading: supplierDeleteSummaryLoading,
   } = useSupplierDeleteSummary(supplierDeleteTarget?.id, Boolean(supplierDeleteTarget?.id))
-  
+
   // Password reset requests
   const { data: passwordResetRequests = [], isLoading: isLoadingRequests } = usePasswordResetRequests({ status: passwordResetStatusFilter })
   const completeRequestMutation = useCompleteRequest()
@@ -74,7 +74,7 @@ export default function UsersPage() {
   const filteredUsers = useMemo(() => {
     if (activeTab === 0) {
       // Employees tab: admin, manager, employee, accountant
-      return allUsers.filter(user => 
+      return allUsers.filter(user =>
         ['super-admin', 'admin', 'employee', 'accountant'].includes(user.role)
       )
     } else if (activeTab === 1) {
@@ -82,7 +82,7 @@ export default function UsersPage() {
       return allUsers.filter(user => user.role === 'supplier')
     } else if (activeTab === 2) {
       // Distributors tab: role='distributor' or 'buyer'
-      return allUsers.filter(user => 
+      return allUsers.filter(user =>
         user.role === 'distributor' || user.role === 'buyer'
       )
     }
@@ -149,11 +149,10 @@ export default function UsersPage() {
             const source = row.signupSource || 'crm'
             const isAdminCreated = source === 'crm'
             return (
-              <span className={`px-2 py-1 text-xs rounded-full ${
-                isAdminCreated 
-                  ? 'bg-purple-100 text-purple-800' 
+              <span className={`px-2 py-1 text-xs rounded-full ${isAdminCreated
+                  ? 'bg-purple-100 text-purple-800'
                   : 'bg-orange-100 text-orange-800'
-              }`}>
+                }`}>
                 {isAdminCreated ? 'Admin Created' : 'Self Registered'}
               </span>
             )
@@ -223,11 +222,10 @@ export default function UsersPage() {
           header: "Status",
           accessor: "isActive",
           render: (row) => (
-            <span className={`px-2 py-1 text-xs rounded-full ${
-              row.isActive 
-                ? 'bg-green-100 text-green-800' 
+            <span className={`px-2 py-1 text-xs rounded-full ${row.isActive
+                ? 'bg-green-100 text-green-800'
                 : 'bg-red-100 text-red-800'
-            }`}>
+              }`}>
               {row.isActive ? 'Active' : 'Inactive'}
             </span>
           )
@@ -253,7 +251,7 @@ export default function UsersPage() {
     try {
       const response = await createUserMutation.mutateAsync(formData)
       setOpenAddForm(false)
-      
+
       // Store password if returned (for admin to see)
       if (isAdmin) {
         // Response structure: response.data.user or response.data.data.user
@@ -557,85 +555,85 @@ export default function UsersPage() {
         </div>
       )
     },
-    {
-      label: "Password Reset Requests",
-      content: (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div className="flex gap-2">
-              <Button
-                variant={passwordResetStatusFilter === 'pending' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setPasswordResetStatusFilter('pending')}
-              >
-                Pending
-              </Button>
-              <Button
-                variant={passwordResetStatusFilter === 'completed' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setPasswordResetStatusFilter('completed')}
-              >
-                Completed
-              </Button>
-              <Button
-                variant={passwordResetStatusFilter === 'cancelled' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setPasswordResetStatusFilter('cancelled')}
-              >
-                Cancelled
-              </Button>
-              <Button
-                variant={passwordResetStatusFilter === '' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setPasswordResetStatusFilter('')}
-              >
-                All
-              </Button>
-            </div>
-          </div>
-          <DataTable
-            columns={passwordResetRequestColumns}
-            data={passwordResetRequests}
-            loading={isLoadingRequests}
-            additionalActions={(row) => (
-              <div className="flex gap-2">
-                {row.status === 'pending' && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCompleteRequest(row)}
-                      disabled={completeRequestMutation.isPending}
-                    >
-                      <CheckCircle className="w-4 h-4 mr-1" />
-                      Complete
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCancelRequest(row)}
-                      disabled={cancelRequestMutation.isPending}
-                    >
-                      <X className="w-4 h-4 mr-1" />
-                      Cancel
-                    </Button>
-                  </>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDeleteRequest(row)}
-                  disabled={deleteRequestMutation.isPending}
-                >
-                  <Trash2 className="w-4 h-4 mr-1" />
-                  Delete
-                </Button>
-              </div>
-            )}
-          />
-        </div>
-      )
-    }
+    // {
+    //   label: "Password Reset Requests",
+    //   content: (
+    //     <div className="space-y-4">
+    //       <div className="flex justify-between items-center">
+    //         <div className="flex gap-2">
+    //           <Button
+    //             variant={passwordResetStatusFilter === 'pending' ? 'default' : 'outline'}
+    //             size="sm"
+    //             onClick={() => setPasswordResetStatusFilter('pending')}
+    //           >
+    //             Pending
+    //           </Button>
+    //           <Button
+    //             variant={passwordResetStatusFilter === 'completed' ? 'default' : 'outline'}
+    //             size="sm"
+    //             onClick={() => setPasswordResetStatusFilter('completed')}
+    //           >
+    //             Completed
+    //           </Button>
+    //           <Button
+    //             variant={passwordResetStatusFilter === 'cancelled' ? 'default' : 'outline'}
+    //             size="sm"
+    //             onClick={() => setPasswordResetStatusFilter('cancelled')}
+    //           >
+    //             Cancelled
+    //           </Button>
+    //           <Button
+    //             variant={passwordResetStatusFilter === '' ? 'default' : 'outline'}
+    //             size="sm"
+    //             onClick={() => setPasswordResetStatusFilter('')}
+    //           >
+    //             All
+    //           </Button>
+    //         </div>
+    //       </div>
+    //       <DataTable
+    //         columns={passwordResetRequestColumns}
+    //         data={passwordResetRequests}
+    //         loading={isLoadingRequests}
+    //         additionalActions={(row) => (
+    //           <div className="flex gap-2">
+    //             {row.status === 'pending' && (
+    //               <>
+    //                 <Button
+    //                   variant="outline"
+    //                   size="sm"
+    //                   onClick={() => handleCompleteRequest(row)}
+    //                   disabled={completeRequestMutation.isPending}
+    //                 >
+    //                   <CheckCircle className="w-4 h-4 mr-1" />
+    //                   Complete
+    //                 </Button>
+    //                 <Button
+    //                   variant="outline"
+    //                   size="sm"
+    //                   onClick={() => handleCancelRequest(row)}
+    //                   disabled={cancelRequestMutation.isPending}
+    //                 >
+    //                   <X className="w-4 h-4 mr-1" />
+    //                   Cancel
+    //                 </Button>
+    //               </>
+    //             )}
+    //             <Button
+    //               variant="outline"
+    //               size="sm"
+    //               onClick={() => handleDeleteRequest(row)}
+    //               disabled={deleteRequestMutation.isPending}
+    //             >
+    //               <Trash2 className="w-4 h-4 mr-1" />
+    //               Delete
+    //             </Button>
+    //           </div>
+    //         )}
+    //       />
+    //     </div>
+    //   )
+    // }
   ]
 
   // Determine which form to show based on active tab or editing user role
@@ -646,7 +644,7 @@ export default function UsersPage() {
       if (role === 'distributor' || role === 'buyer') return DistributorForm
       return EmployeeForm
     }
-    
+
     // For new users, use form based on active tab
     if (activeTab === 1) return SupplierForm
     if (activeTab === 2) return DistributorForm
@@ -667,9 +665,9 @@ export default function UsersPage() {
         </div>
       </header>
 
-      <Tabs 
-        tabs={tabs} 
-        activeTab={activeTab} 
+      <Tabs
+        tabs={tabs}
+        activeTab={activeTab}
         onTabChange={handleTabChange}
       />
 

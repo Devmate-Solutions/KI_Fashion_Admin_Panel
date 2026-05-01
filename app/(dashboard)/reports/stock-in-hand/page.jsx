@@ -111,12 +111,14 @@ export default function StockInHandReportPage() {
     {
       header: "Supplier Name",
       accessor: "supplierName",
+      type: "string",
       render: (row) => row.supplierName || "—",
       pdfValue: (row) => row.supplierName || "—"
     },
     {
       header: "Product Code",
       accessor: "productCode",
+      type: "string",
       render: (row) => {
         const productCode = row.productCode || row.sku || row.product?.productCode || row.product?.sku || "—"
         const productId = row.productId || row._id || row.product?._id
@@ -137,12 +139,14 @@ export default function StockInHandReportPage() {
     {
       header: "Product Description",
       accessor: "productName",
+      type: "string",
       render: (row) => row.productName || row.name || row.description || "—",
       pdfValue: (row) => row.productName || row.name || row.description || "—"
     },
     {
       header: "Color",
       accessor: "color",
+      type: "string",
       render: (row) => {
         // Try to get color from multiple sources
         if (row.color) return row.color;

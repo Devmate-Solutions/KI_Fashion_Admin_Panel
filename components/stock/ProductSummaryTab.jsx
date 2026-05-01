@@ -42,6 +42,7 @@ export default function ProductSummaryTab() {
     {
       header: "Image",
       accessor: "image",
+      type: "string",
       render: (row) => row.productId ? (
         <ProductImageGallery
           productId={String(row.productId)}
@@ -54,11 +55,13 @@ export default function ProductSummaryTab() {
     {
       header: "Supplier",
       accessor: "supplierName",
+      type: "string",
       render: (row) => row.supplierName || "—",
     },
     {
       header: "Product",
       accessor: "productCode",
+      type: "string",
       render: (row) => (
         <Link
           href={`/stock/product-history?productId=${row.productId}&tab=3`}
@@ -71,6 +74,7 @@ export default function ProductSummaryTab() {
     {
       header: "Product Description",
       accessor: "productName",
+      type: "string",
       render: (row) => row.productName || "—",
     },
 
