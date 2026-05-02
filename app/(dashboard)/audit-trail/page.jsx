@@ -81,24 +81,7 @@ const columns = [
       </span>
     ),
   },
-  // {
-  //   header: "Audit Metadata",
-  //   accessor: "ip",
-  //   cell: (row) => (
-  //     <div className="flex flex-col text-[10px] text-muted-foreground">
-  //       <div className="flex items-center gap-1">
-  //         <Globe className="h-3 w-3" />
-  //         <span>{row.ip || "0.0.0.0"}</span>
-  //       </div>
-  //       <div className="flex items-center gap-1">
-  //         <Laptop className="h-3 w-3" />
-  //         <span className="truncate max-w-[100px]" title={row.userAgent}>
-  //           {row.userAgent?.split(' ')[0] || "Unknown"}
-  //         </span>
-  //       </div>
-  //     </div>
-  //   ),
-  // },
+
 ];
 
 export default function AuditTrailPage() {

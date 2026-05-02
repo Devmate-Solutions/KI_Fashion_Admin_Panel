@@ -150,12 +150,15 @@ export default function BuyingPage() {
       // Search by supplier name
       const supplierMatch = row.supplierName?.toLowerCase().includes(query)
 
+      // Search by Buying ID (purchaseNumber)
+      const purchaseNumberMatch = row.purchaseNumber?.toLowerCase().includes(query)
+
       // Search by product name/code (now at row level)
       const productName = row.productName?.toLowerCase() || ""
       const productCode = row.productCode?.toLowerCase() || ""
       const productMatch = productName.includes(query) || productCode.includes(query)
 
-      return supplierMatch || productMatch
+      return supplierMatch || purchaseNumberMatch || productMatch
     })
   }, [allBuyingRows, searchQuery])
 

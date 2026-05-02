@@ -37,13 +37,13 @@ export default function UniversalPaymentDialog({ open, onClose }) {
     data: supplierEntities = [],
     isFetching: isFetchingSuppliers,
     refetch: refetchSuppliers,
-  } = useAllSuppliers({ limit: 500 })
+  } = useAllSuppliers({ limit: 500 }, { enabled: open })
 
   const {
     data: buyerEntities = [],
     isFetching: isFetchingBuyers,
     refetch: refetchBuyers,
-  } = useBuyers({ limit: 500 })
+  } = useBuyers({ limit: 500 }, { enabled: open })
 
   const entities = useMemo(() => {
     const source = entityType === "supplier" ? supplierEntities : buyerEntities
