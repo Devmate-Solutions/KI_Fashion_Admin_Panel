@@ -849,9 +849,9 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         const costPrice = Number(row.costPrice);
         const quantity = Number(row.quantity);
         // Quantity must be a positive integer (no decimals)
-        const isValidInteger = !isNaN(quantity) && 
-                                quantity > 0 && 
-                                Number.isInteger(quantity);
+        const isValidInteger = !isNaN(quantity) &&
+          quantity > 0 &&
+          Number.isInteger(quantity);
 
         // Colors and sizes are now required for all rows to ensure packet stock can be created
         const hasColors = Array.isArray(row.primaryColor) ? row.primaryColor.length > 0 : (typeof row.primaryColor === 'string' && row.primaryColor.trim());
@@ -877,7 +877,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
     if (invalidRows.length > 0) {
       setError(
-          "Please fill in product name, code, season, cost price, min sell price, quantity, primary color, and size for all rows"
+        "Please fill in product name, code, season, cost price, min sell price, quantity, primary color, and size for all rows"
       );
       return;
     }
@@ -887,7 +887,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
     rows.forEach((row) => {
       const packetConfig = productPackets[row.id];
       const rowLabel = row.productName || row.productCode || `Row ${rows.findIndex(r => r.id === row.id) + 1}`;
-      
+
       if (!packetConfig || !Array.isArray(packetConfig.packets) || packetConfig.packets.length === 0) {
         packetErrors.push(`${rowLabel}: No packet configuration found`);
         return;
@@ -908,7 +908,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       // Validate that all colors/sizes in packets match the row's colors/sizes
       const rowColors = Array.isArray(row.primaryColor) ? row.primaryColor : [row.primaryColor];
       const rowSizes = Array.isArray(row.size) ? row.size : [row.size];
-      
+
       packetConfig.packets.forEach(p => {
         p.composition?.forEach(c => {
           if (!rowColors.includes(c.color)) {
@@ -1121,7 +1121,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           const exRate = parsedExchangeRate;
           const percent = parsedPercentage;
           const quantity = Number(row.quantity);
-          
+
           // Validate quantity is a positive integer (no decimals allowed)
           if (!row.quantity || isNaN(quantity) || quantity <= 0 || !Number.isInteger(quantity)) {
             throw new Error(`Invalid quantity for product: ${row.productName || row.productCode || 'Unknown'}. Quantity must be a positive integer (whole number).`);
@@ -1195,7 +1195,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           // Add packet configuration if configured
           const packetConfig = productPackets[row.id];
           itemPayload.useVariantTracking = true;
-          
+
           // Heal packets to ensure both totalItems and totalItemsPerPacket exist (requirement for manual entry)
           itemPayload.packets = (packetConfig?.packets || []).map(p => ({
             ...p,
@@ -1393,8 +1393,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                   </div>
-                  <BritishDatePicker 
-                    value={new Date(invoiceDate)} 
+                  <BritishDatePicker
+                    value={new Date(invoiceDate)}
                     onChange={(date) => setInvoiceDate(date)}
                     restrictByRole={true}
                     className="h-11 w-full rounded-lg border border-input bg-background pl-10 pr-3 py-2 text-sm font-medium text-foreground outline-none transition-all duration-200 focus:ring-2 focus:ring-ring focus:border-transparent hover:border-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
@@ -1494,8 +1494,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                     onValueChange={setSupplierId}
                     disabled={isLoadingSuppliers}
                   >
-                    <SelectTrigger 
-                      id="supplier" 
+                    <SelectTrigger
+                      id="supplier"
                       size="default"
                       className="flex-1 w-full h-11 rounded-lg border border-input bg-background text-sm font-medium text-foreground data-[size=default]:h-11 hover:border-ring/50 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] transition-all duration-200"
                     >
@@ -2316,13 +2316,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               {/* Discount */}
               <div className="space-y-2">
                 <Label htmlFor="discount" className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Percent className="h-4 w-4 text-muted-foreground" />
-                  % Discount
+                  Discount
                 </Label>
                 <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
-                    <Percent className="h-5 w-5 text-muted-foreground" />
-                  </div>
+
                   <Input
                     id="discount"
                     type="text"
@@ -2420,11 +2417,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               </div>
 
               <div
-                className={`p-6 rounded-lg border-2 relative overflow-hidden ${
-                  totals.remaining > 0
+                className={`p-6 rounded-lg border-2 relative overflow-hidden ${totals.remaining > 0
                     ? "bg-gradient-to-br from-amber-50 via-amber-50/50 to-amber-50/30 border-amber-300"
                     : "bg-gradient-to-br from-emerald-50 via-emerald-50/50 to-emerald-50/30 border-emerald-300"
-                }`}
+                  }`}
               >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full -translate-y-1/2 translate-x-1/2"></div>
                 <div className="relative">
@@ -2435,34 +2431,30 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                       </div>
                     ) : null}
                     <div>
-                      <span className={`text-sm font-semibold block ${
-                        totals.remaining > 0 ? "text-amber-900" : "text-emerald-900"
-                      }`}>
+                      <span className={`text-sm font-semibold block ${totals.remaining > 0 ? "text-amber-900" : "text-emerald-900"
+                        }`}>
                         Remaining Balance
                       </span>
-                      <span className={`text-xs ${
-                        totals.remaining > 0 ? "text-amber-700/80" : "text-emerald-700/80"
-                      }`}>
+                      <span className={`text-xs ${totals.remaining > 0 ? "text-amber-700/80" : "text-emerald-700/80"
+                        }`}>
                         {totals.remaining > 0 ? "Outstanding" : "Paid in full"}
                       </span>
                     </div>
                   </div>
                   <div
-                    className={`text-3xl font-bold tabular-nums mb-3 ${
-                      totals.remaining > 0
+                    className={`text-3xl font-bold tabular-nums mb-3 ${totals.remaining > 0
                         ? "text-amber-700"
                         : "text-emerald-700"
-                    }`}
+                      }`}
                   >
                     {Math.abs(totals.remaining).toFixed(2)}
                   </div>
-                  <p className={`text-sm ${
-                    totals.remaining > 0 
-                      ? "text-amber-700/90" 
+                  <p className={`text-sm ${totals.remaining > 0
+                      ? "text-amber-700/90"
                       : "text-emerald-700/90"
-                  }`}>
-                    {totals.remaining > 0 
-                      ? "Outstanding amount to be paid" 
+                    }`}>
+                    {totals.remaining > 0
+                      ? "Outstanding amount to be paid"
                       : "Credit available for future purchases"}
                   </p>
                 </div>
@@ -2490,7 +2482,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 </div>
               </div>
             </div>
-            
+
             {/* Action Buttons */}
             <div className="flex gap-3">
               <Button

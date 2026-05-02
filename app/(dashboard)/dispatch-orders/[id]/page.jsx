@@ -2110,11 +2110,11 @@ export default function DispatchOrderDetailPage({ params }) {
             <div className="text-sm text-muted-foreground font-medium">
               {isPending && !dispatchOrder?.returnedItems?.length ? (
                 <span>
-                  {remainingItemsSummary.rows} items • {currency(remainingItemsSummary.value)}
+                  {remainingItemsSummary.rows} items • {remainingItemsSummary.value}
                 </span>
               ) : (
                 <span>
-                  {remainingItemsSummary.quantity} units remaining ({remainingItemsSummary.rows} products) • {currency(remainingItemsSummary.value)}
+                  {remainingItemsSummary.quantity} units remaining ({remainingItemsSummary.rows} products) • {remainingItemsSummary.value}
                   {activeItemsWithDetails.some(
                     (item) => item.totalReturned > 0
                   ) && (
