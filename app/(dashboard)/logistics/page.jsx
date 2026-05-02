@@ -6,7 +6,6 @@ import {
   useLogisticsCompanies,
   useCreateLogisticsCompany,
   useUpdateLogisticsCompany,
-  useDeleteLogisticsCompany,
 } from "@/lib/hooks/useLogisticsCompanies"
 import { LogisticsCompanyForm } from "@/components/forms/logistics-company-form"
 import { Button } from "@/components/ui/button"
@@ -21,7 +20,6 @@ export default function LogisticsPage() {
   const { data: companies = [], isLoading, error } = useLogisticsCompanies({ isActive: 'true', limit: 100 })
   const createMutation = useCreateLogisticsCompany()
   const updateMutation = useUpdateLogisticsCompany()
-  const deleteMutation = useDeleteLogisticsCompany()
 
   const columns = useMemo(
     () => [
