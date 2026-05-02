@@ -42,7 +42,7 @@ export default function ImageGallery({
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const fileInputRef = useRef(null);
-  
+
   // Auto-open modal when autoOpen prop is true
   useEffect(() => {
     if (autoOpen && validImages.length > 0 && !isModalOpen) {
@@ -60,20 +60,20 @@ export default function ImageGallery({
   };
 
   const handlePrevious = () => {
-    setSelectedImageIndex((prev) => 
+    setSelectedImageIndex((prev) =>
       prev > 0 ? prev - 1 : validImages.length - 1
     );
   };
 
   const handleNext = () => {
-    setSelectedImageIndex((prev) => 
+    setSelectedImageIndex((prev) =>
       prev < validImages.length - 1 ? prev + 1 : 0
     );
   };
 
   const handleKeyDown = (e) => {
     if (!isModalOpen) return;
-    
+
     if (e.key === "ArrowLeft") {
       handlePrevious();
     } else if (e.key === "ArrowRight") {
@@ -105,81 +105,81 @@ export default function ImageGallery({
         <div className="space-y-2">
           {/* Thumbnail Grid */}
           {validImages.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-2">
-            {validImages.map((image, index) => (
-              <div
-                key={image.id || index}
-                className="relative group cursor-pointer"
-                onClick={() => handleImageClick(index)}
-              >
-                <div className="h-12 w-12 overflow-hidden rounded border border-border bg-muted flex items-center justify-center hover:border-primary transition-colors">
-                  <img
-                    src={image.url}
-                    alt={`Image ${index + 1}`}
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                      const parent = e.target.parentElement;
-                      if (parent && !parent.querySelector(".error-indicator")) {
-                        const errorDiv = document.createElement("div");
-                        errorDiv.className = "error-indicator text-[8px] text-destructive p-1 text-center";
-                        errorDiv.textContent = "Error";
-                        parent.appendChild(errorDiv);
-                      }
-                    }}
-                  />
+            <div className="flex flex-wrap gap-1 mb-2">
+              {validImages.map((image, index) => (
+                <div
+                  key={image.id || index}
+                  className="relative group cursor-pointer"
+                  onClick={() => handleImageClick(index)}
+                >
+                  <div className="h-12 w-12 overflow-hidden rounded border border-border bg-muted flex items-center justify-center hover:border-primary transition-colors">
+                    <img
+                      src={image.url}
+                      alt={`Image ${index + 1}`}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        const parent = e.target.parentElement;
+                        if (parent && !parent.querySelector(".error-indicator")) {
+                          const errorDiv = document.createElement("div");
+                          errorDiv.className = "error-indicator text-[8px] text-destructive p-1 text-center";
+                          errorDiv.textContent = "Error";
+                          parent.appendChild(errorDiv);
+                        }
+                      }}
+                    />
+                  </div>
+                  {/* Remove button on hover */}
+                  {onRemove && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemove(image.id || index);
+                      }}
+                      className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      title="Remove image"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
                 </div>
-                {/* Remove button on hover */}
-                {onRemove && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRemove(image.id || index);
-                    }}
-                    className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                    title="Remove image"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2">
-          {validImages.length > 0 && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => handleImageClick(0)}
-              className="text-xs"
-            >
-              View All ({validImages.length})
-            </Button>
-          )}
-          {showAddButton && onAdd && validImages.length < maxImages && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onAdd}
-              className="text-xs"
-            >
-              <Plus className="h-3 w-3 mr-1" />
-              {validImages.length > 0 ? "Add More" : "Add Images"}
-            </Button>
-          )}
-          {validImages.length >= maxImages && (
-            <span className="text-xs text-muted-foreground">
-              Maximum {maxImages} images reached
-            </span>
-          )}
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2">
+            {validImages.length > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => handleImageClick(0)}
+                className="text-xs"
+              >
+                View All ({validImages.length})
+              </Button>
+            )}
+            {showAddButton && onAdd && validImages.length < maxImages && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onAdd}
+                className="text-xs"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                {validImages.length > 0 ? "Add More" : "Add Images"}
+              </Button>
+            )}
+            {validImages.length >= maxImages && (
+              <span className="text-xs text-muted-foreground">
+                Maximum {maxImages} images reached
+              </span>
+            )}
+          </div>
         </div>
-      </div>
       )}
 
       {/* Lightbox Modal */}
@@ -220,9 +220,8 @@ export default function ImageGallery({
                 <img
                   src={selectedImage.url}
                   alt={`Image ${selectedImageIndex + 1} of ${validImages.length}`}
-                  className={`max-w-full max-h-[60vh] object-contain ${
-                    isFullscreen ? "cursor-zoom-out" : "cursor-zoom-in"
-                  }`}
+                  className={`max-w-full max-h-[60vh] object-contain ${isFullscreen ? "cursor-zoom-out" : "cursor-zoom-in"
+                    }`}
                   onClick={() => setIsFullscreen(!isFullscreen)}
                   onError={(e) => {
                     e.target.style.display = "none";
@@ -289,11 +288,10 @@ export default function ImageGallery({
                   {validImages.map((image, index) => (
                     <div
                       key={image.id || index}
-                      className={`flex-shrink-0 cursor-pointer rounded border-2 transition-all ${
-                        index === selectedImageIndex
+                      className={`flex-shrink-0 cursor-pointer rounded border-2 transition-all ${index === selectedImageIndex
                           ? "border-primary ring-2 ring-primary/20"
                           : "border-border hover:border-primary/50"
-                      }`}
+                        }`}
                       onClick={() => setSelectedImageIndex(index)}
                     >
                       <img

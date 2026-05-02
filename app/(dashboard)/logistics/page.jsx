@@ -25,8 +25,8 @@ export default function LogisticsPage() {
 
   const columns = useMemo(
     () => [
-      { 
-        header: "Company Name", 
+      {
+        header: "Company Name",
         accessor: "name",
         render: (row) => (
           <div>
@@ -116,12 +116,6 @@ export default function LogisticsPage() {
     })
   }
 
-  const handleDelete = async (item) => {
-    if (window.confirm(`Are you sure you want to delete "${item.name}"?`)) {
-      deleteMutation.mutate(item._id || item.id)
-    }
-  }
-
   return (
     <div className="p-6">
       <div className="mb-3">
@@ -148,7 +142,6 @@ export default function LogisticsPage() {
         data={companies}
         loading={isLoading}
         onEdit={handleEdit}
-        onDelete={handleDelete}
       />
 
       <LogisticsCompanyForm

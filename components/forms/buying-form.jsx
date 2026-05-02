@@ -2418,8 +2418,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
               <div
                 className={`p-6 rounded-lg border-2 relative overflow-hidden ${totals.remaining > 0
-                    ? "bg-gradient-to-br from-amber-50 via-amber-50/50 to-amber-50/30 border-amber-300"
-                    : "bg-gradient-to-br from-emerald-50 via-emerald-50/50 to-emerald-50/30 border-emerald-300"
+                  ? "bg-gradient-to-br from-amber-50 via-amber-50/50 to-amber-50/30 border-amber-300"
+                  : "bg-gradient-to-br from-emerald-50 via-emerald-50/50 to-emerald-50/30 border-emerald-300"
                   }`}
               >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full -translate-y-1/2 translate-x-1/2"></div>
@@ -2443,15 +2443,15 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   </div>
                   <div
                     className={`text-3xl font-bold tabular-nums mb-3 ${totals.remaining > 0
-                        ? "text-amber-700"
-                        : "text-emerald-700"
+                      ? "text-amber-700"
+                      : "text-emerald-700"
                       }`}
                   >
                     {Math.abs(totals.remaining).toFixed(2)}
                   </div>
                   <p className={`text-sm ${totals.remaining > 0
-                      ? "text-amber-700/90"
-                      : "text-emerald-700/90"
+                    ? "text-amber-700/90"
+                    : "text-emerald-700/90"
                     }`}>
                     {totals.remaining > 0
                       ? "Outstanding amount to be paid"
