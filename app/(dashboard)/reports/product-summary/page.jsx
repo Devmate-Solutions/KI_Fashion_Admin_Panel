@@ -78,7 +78,7 @@ export default function ProductSummaryReportPage() {
       header: "Supplier Name",
       accessor: "supplierName",
       type: "string",
-      render: (row) => row.supplierName || "—",
+      render: (row) => row.supplierCompany || row.supplierName || "—",
     },
     {
       header: "Product Code",

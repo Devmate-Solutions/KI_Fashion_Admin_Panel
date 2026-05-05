@@ -136,7 +136,7 @@ function buildPrintHtml(receipt) {
           <tbody>
             <tr>
               <th>Supplier Name</th>
-              <td>${receipt.supplierId?.name || "Unknown Supplier"}</td>
+              <td>${receipt.supplierId?.company || receipt.supplierId?.name || "Unknown Supplier"}</td>
               <th>Date</th>
               <td>${formatDateTime({ paymentDate: receipt.paymentDate })}</td>
             </tr>

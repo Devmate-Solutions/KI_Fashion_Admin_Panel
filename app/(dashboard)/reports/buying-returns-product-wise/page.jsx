@@ -98,7 +98,8 @@ export default function BuyingReturnsProductWiseReportPage() {
     {
       header: "Supplier",
       accessor: "supplierName",
-      pdfValue: (row) => row.supplierName || "—"
+      render: (row) => row.supplierCompany || row.supplierName || "—",
+      pdfValue: (row) => row.supplierCompany || row.supplierName || "—"
     },
     {
       header: "Product Code",

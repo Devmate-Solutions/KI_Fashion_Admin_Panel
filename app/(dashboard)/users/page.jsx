@@ -49,7 +49,7 @@ export default function UsersPage() {
   const isAdmin = user?.role === 'super-admin'
 
   // Fetch all users - we'll filter client-side for now
-  const { data: allUsers = [], isLoading } = useUsers()
+  const { data: allUsers = [], isLoading } = useUsers({ limit: 500 })
   const updateUserMutation = useUpdateUser()
   const deactivateUserMutation = useDeactivateUser()
   const deleteUserMutation = useDeleteUser()
@@ -160,6 +160,14 @@ export default function UsersPage() {
         },
       ]
 
+      if (activeTab === 1 || activeTab === 2) {
+        columns.splice(2, 0, {
+          header: "Company",
+          accessor: "company",
+          render: (row) => row.company || row._original?.supplier?.company || row._original?.buyer?.company || 'N/A'
+        })
+      }
+
       // Add password column only for admin
       if (isAdmin) {
         columns.push({
@@ -239,7 +247,7 @@ export default function UsersPage() {
 
       return columns
     },
-    [isAdmin, visiblePasswords, userPasswords, regeneratePasswordMutation.isPending]
+    [activeTab, isAdmin, visiblePasswords, userPasswords, regeneratePasswordMutation.isPending]
   )
 
   const handleEditUser = (user) => {
@@ -330,12 +338,18 @@ export default function UsersPage() {
 
   const handleDeleteSupplierUser = (userRow) => {
     if (!isAdmin) return
-    const supplierId = userRow._original?.supplier
+    const supplier = userRow._original?.supplier
+    const supplierId = typeof supplier === 'string'
+      ? supplier
+      : (supplier?._id || supplier?.id)
     if (!supplierId) {
       toast.error('This supplier user is not linked to a supplier entity.')
       return
     }
-    setSupplierDeleteTarget({ id: String(supplierId), name: userRow.name })
+    setSupplierDeleteTarget({
+      id: String(supplierId),
+      name: supplier?.name || userRow.name
+    })
   }
 
   const handleConfirmSupplierDelete = async () => {

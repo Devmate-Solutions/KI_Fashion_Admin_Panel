@@ -56,7 +56,27 @@ export default function ProductSummaryTab() {
       header: "Supplier",
       accessor: "supplierName",
       type: "string",
-      render: (row) => row.supplierName || "—",
+      render: (row) => {
+        const companyName = row.supplierCompany;
+        const contactName = row.supplierName;
+
+        if ((!companyName || companyName === "—") && (!contactName || contactName === "—")) {
+          return <div className="text-muted-foreground">—</div>;
+        }
+
+        return (
+          <div className="flex flex-col">
+            <span className="font-medium text-foreground">
+              {companyName !== "—" ? companyName : contactName}
+            </span>
+            {companyName && contactName && companyName !== contactName && companyName !== "—" && contactName !== "—" && (
+              <span className="text-[11px] text-muted-foreground leading-tight">
+                {contactName}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       header: "Product",

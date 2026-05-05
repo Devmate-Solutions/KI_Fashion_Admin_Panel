@@ -109,11 +109,38 @@ export default function StockInHandReportPage() {
 
   const columns = [
     {
-      header: "Supplier Name",
+      header: "Supplier",
       accessor: "supplierName",
       type: "string",
-      render: (row) => row.supplierName || "—",
-      pdfValue: (row) => row.supplierName || "—"
+      render: (row) => {
+        const companyName = row.supplierCompany;
+        const contactName = row.supplierName;
+
+        if ((!companyName || companyName === "—") && (!contactName || contactName === "—")) {
+          return <div className="text-muted-foreground">—</div>;
+        }
+
+        return (
+          <div className="flex flex-col">
+            <span className="font-medium text-foreground">
+              {companyName !== "—" ? companyName : contactName}
+            </span>
+            {companyName && contactName && companyName !== contactName && companyName !== "—" && contactName !== "—" && (
+              <span className="text-[11px] text-muted-foreground leading-tight">
+                {contactName}
+              </span>
+            )}
+          </div>
+        );
+      },
+      pdfValue: (row) => {
+        const companyName = row.supplierCompany;
+        const contactName = row.supplierName;
+        if (companyName && contactName && companyName !== contactName && companyName !== "—" && contactName !== "—") {
+          return `${companyName} (${contactName})`;
+        }
+        return companyName !== "—" ? companyName : contactName;
+      }
     },
     {
       header: "Product Code",

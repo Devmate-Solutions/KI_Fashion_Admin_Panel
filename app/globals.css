@@ -10,7 +10,8 @@
   --card: #ffffff;
   --card-foreground: #212529;
 
-  --primary: #2563eb; /* vibrant blue */
+  --primary: #2563eb;
+  /* vibrant blue */
   --primary-foreground: #ffffff;
 
   --popover: #ffffff;
@@ -25,7 +26,8 @@
   --accent: #e9ecef;
   --accent-foreground: #212529;
 
-  --destructive: #d64545; /* soft red */
+  --destructive: #d64545;
+  /* soft red */
   --destructive-foreground: #ffffff;
 
   --border: #dee2e6;
@@ -41,7 +43,8 @@
   --sidebar-border: #e9ecef;
   --sidebar-ring: var(--primary);
 
-  --radius: 6px; /* minimal radius */
+  --radius: 6px;
+  /* minimal radius */
 }
 
 .dark {
@@ -124,10 +127,12 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   html {
     height: 100%;
     overflow: hidden;
   }
+
   body {
     @apply bg-background text-foreground;
     height: 100%;
@@ -140,102 +145,110 @@
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
-  
+
   /* Improved focus states for accessibility */
   *:focus-visible {
     @apply outline-2 outline-offset-2 outline-ring;
     transition: outline-offset 0.15s ease-in-out;
   }
-  
+
   /* Better touch targets on mobile */
   @media (max-width: 768px) {
-    button, a, [role="button"] {
+
+    button,
+    a,
+    [role="button"] {
       min-height: 44px;
       min-width: 44px;
     }
   }
-  
+
   /* Smooth transitions for interactive elements */
-  button, a, [role="button"], input, select, textarea {
+  button,
+  a,
+  [role="button"],
+  input,
+  select,
+  textarea {
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  
+
   /* Smooth page transitions */
   main {
     animation: fadeIn 0.3s ease-in-out;
   }
-  
+
   @keyframes fadeIn {
     from {
       opacity: 0;
       transform: translateY(8px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
     }
   }
-  
+
   /* Smooth hover effects - no transform to prevent overflow */
   [data-hover-lift] {
     transition: box-shadow 0.2s ease-in-out;
   }
-  
+
   [data-hover-lift]:hover {
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
   }
-  
+
   /* Smooth scale on click */
   [data-click-scale] {
     transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  
+
   [data-click-scale]:active {
     transform: scale(0.98);
   }
-  
+
   /* Glass morphism effect */
   [data-glass] {
     background: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
-  
+
   /* Smooth table row hover */
   tbody tr {
     transition: background-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
   }
-  
+
   tbody tr:hover {
     box-shadow: inset 2px 0 0 0 var(--primary);
   }
-  
+
   /* Smooth card hover - minimal shadow only, no transform */
   [data-card] {
     transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  
+
   [data-card]:hover {
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   }
-  
+
   /* Loading shimmer effect */
   @keyframes shimmer {
     0% {
       background-position: -1000px 0;
     }
+
     100% {
       background-position: 1000px 0;
     }
   }
-  
+
   [data-loading] {
-    background: linear-gradient(
-      90deg,
-      rgba(241, 245, 249, 0.4) 0%,
-      rgba(241, 245, 249, 0.8) 50%,
-      rgba(241, 245, 249, 0.4) 100%
-    );
+    background: linear-gradient(90deg,
+        rgba(241, 245, 249, 0.4) 0%,
+        rgba(241, 245, 249, 0.8) 50%,
+        rgba(241, 245, 249, 0.4) 100%);
     background-size: 1000px 100%;
     animation: shimmer 2s infinite;
   }

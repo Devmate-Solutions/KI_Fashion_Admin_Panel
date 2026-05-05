@@ -3220,7 +3220,7 @@ function mapLedgerEntry(entry) {
     id: entry._id || entry.id,
     date: entry.date || entry.createdAt,
     createdAt: entry.createdAt,
-    supplier: supplier.name || supplier.company || "Unknown Supplier",
+    supplier: supplier.company || supplier.name || "Unknown Supplier",
     supplierId: supplier._id || supplier.id,
     type: typeLabel,
     transactionType: entry.transactionType || entry.type,
@@ -3623,7 +3623,7 @@ export default function SupplierLedgerPage() {
       return {
         id: entry._id || entry.id,
         date: entry.date || entry.createdAt,
-        supplierName: supplier.name || supplier.company || "Unknown Supplier",
+        supplierName: supplier.company || supplier.name || "Unknown Supplier",
         supplierId: supplier._id || supplier.id,
         reference,
         paymentMethod: entry.paymentMethod || "cash",
@@ -3674,7 +3674,7 @@ export default function SupplierLedgerPage() {
         id: receipt._id || receipt.id || receipt.receiptNumber,
         receiptNumber: receipt.receiptNumber,
         date: receipt.date || receipt.createdAt,
-        supplierName: supplier.name || supplier.company || "Unknown Supplier",
+        supplierName: supplier.company || supplier.name || "Unknown Supplier",
         supplierId: supplier._id || supplier.id || receipt.supplierId,
         totalAmount: receipt.totalAmount || 0,
         cashAmount: receipt.cashAmount || 0,
@@ -3736,38 +3736,7 @@ export default function SupplierLedgerPage() {
     setActiveTab(1)
   }, [])
 
-  // ─── Column definitions ─────────────────────────────────────────────────────
 
-  const supplierLedgerColumns = useMemo(
-    () => [
-      {
-        header: "Supplier No",
-        accessor: "id",
-        render: (row) => String(row.id).slice(-6),
-      },
-      {
-        header: "Supplier Name",
-        accessor: "name",
-        render: (row) => (
-          <div>
-            <div className="font-medium">{row.name}</div>
-            {row.company && <div className="text-sm text-muted-foreground">{row.company}</div>}
-          </div>
-        ),
-      },
-      {
-        header: "Balance",
-        accessor: "balance",
-        render: (row) => (
-          <span className={`tabular-nums font-semibold ${row.balance >= 0 ? "text-red-600" : "text-green-600"}`}>
-            {formatNumber(Math.abs(row.balance || 0))}
-          </span>
-        ),
-        pdfValue: (row) => Math.abs(row.balance || 0)
-      },
-    ],
-    []
-  )
 
   // FIX 11: paymentHistoryColumns depends on receiptByLedgerEntryId and isLoadingSupplierReceipt.
   //         Wrapped handlePrintSupplierReceipt in useCallback above so this memo
@@ -3849,7 +3818,7 @@ export default function SupplierLedgerPage() {
     return columns
   }, [receiptByLedgerEntryId, isLoadingSupplierReceipt, handlePrintSupplierReceipt])
 
-  const supplierReceiptColumns = useMemo(() => {
+  const supplierReceiptColumns = useMemo(() => {1
     return [
       {
         header: "Receipt #",
@@ -3864,7 +3833,9 @@ export default function SupplierLedgerPage() {
       {
         header: "Supplier",
         accessor: "supplierName",
-        render: (row) => <span className="font-medium">{row.supplierName}</span>,
+        render: (row) => (
+          <span className="font-medium">{row.supplierCompany || row.supplierName || "-"}</span>
+        ),
       },
       {
         header: "Amount",
@@ -4125,9 +4096,11 @@ export default function SupplierLedgerPage() {
         render: (row) => formatDateTime(row),
       },
       {
-        header: "Supplier Name",
+        header: "Supplier",
         accessor: "supplierName",
-        render: (row) => <span className="font-medium">{row.supplierName || "-"}</span>,
+        render: (row) => (
+          <span className="font-medium">{row.supplierCompany || row.supplierName || "-"}</span>
+        ),
       },
       {
         header: "Product/Order Details",

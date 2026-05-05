@@ -14,7 +14,7 @@ import {
 
 /**
  * Logistics Company Form Component
- * Simple form with: name (required), phone (optional), email (optional), notes (optional)
+ * Simple form with: name, phone, email, notes, box rate (all required)
  */
 export function LogisticsCompanyForm({ open, onClose, onSubmit, loading = false, initialData = null, isEdit = false }) {
   const phoneInputRef = useRef(null)
@@ -73,13 +73,27 @@ export function LogisticsCompanyForm({ open, onClose, onSubmit, loading = false,
     if (!formData.name?.trim()) {
       newErrors.name = 'Name is required'
     }
+
+    if (!formData.phoneAreaCode?.trim()) {
+      newErrors.phoneAreaCode = 'Area code is required'
+    }
+
+    if (!formData.phone?.trim()) {
+      newErrors.phone = 'Phone is required'
+    }
     
     if (!formData.boxRate || parseFloat(formData.boxRate) < 0) {
       newErrors.boxRate = 'Box rate is required and must be 0 or greater'
     }
     
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    if (!formData.email?.trim()) {
+      newErrors.email = 'Email is required'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format'
+    }
+
+    if (!formData.notes?.trim()) {
+      newErrors.notes = 'Notes are required'
     }
 
     setErrors(newErrors)
@@ -97,23 +111,15 @@ export function LogisticsCompanyForm({ open, onClose, onSubmit, loading = false,
     const payload = {
       name: formData.name.trim(),
       contactInfo: {
-        phone: formData.phone?.trim() || undefined,
-        phoneAreaCode: formData.phoneAreaCode?.trim() || undefined,
-        email: formData.email?.trim() || undefined,
+        phone: formData.phone.trim(),
+        phoneAreaCode: formData.phoneAreaCode.trim(),
+        email: formData.email.trim(),
       },
       rates: {
         boxRate: parseFloat(formData.boxRate) || 0,
       },
-      notes: formData.notes?.trim() || undefined,
+      notes: formData.notes.trim(),
     }
-
-    // Remove undefined values
-    if (!payload.contactInfo.phone) {
-      delete payload.contactInfo.phone
-      delete payload.contactInfo.phoneAreaCode
-    }
-    if (!payload.contactInfo.email) delete payload.contactInfo.email
-    if (!payload.notes) delete payload.notes
 
     onSubmit(payload)
   }
@@ -142,13 +148,13 @@ export function LogisticsCompanyForm({ open, onClose, onSubmit, loading = false,
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
+            <Label htmlFor="phone">Phone <span className="text-red-500">*</span></Label>
             <div className="flex gap-2">
               <Input
                 id="phoneAreaCode"
                 value={formData.phoneAreaCode}
                 onChange={(e) => handleChange('phoneAreaCode', e.target.value)}
-                className="w-24"
+                className={`w-24 ${errors.phoneAreaCode ? 'border-red-500' : ''}`}
                 maxLength={5}
               />
               <Input
@@ -157,13 +163,16 @@ export function LogisticsCompanyForm({ open, onClose, onSubmit, loading = false,
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => handleChange('phone', e.target.value)}
-                className="flex-1"
+                className={`flex-1 ${errors.phone ? 'border-red-500' : ''}`}
               />
             </div>
+            {(errors.phoneAreaCode || errors.phone) && (
+              <p className="text-sm text-red-500">{errors.phoneAreaCode || errors.phone}</p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
             <Input
               id="email"
               type="email"
@@ -203,13 +212,16 @@ export function LogisticsCompanyForm({ open, onClose, onSubmit, loading = false,
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
+            <Label htmlFor="notes">Notes <span className="text-red-500">*</span></Label>
             <textarea
               id="notes"
               value={formData.notes}
               onChange={(e) => handleChange('notes', e.target.value)}
-              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className={`flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${errors.notes ? 'border-red-500' : ''}`}
             />
+            {errors.notes && (
+              <p className="text-sm text-red-500">{errors.notes}</p>
+            )}
           </div>
 
           <DialogFooter>

@@ -80,7 +80,7 @@ export default function BuyingReturnsReportPage() {
     {
       header: "Supplier",
       accessor: "supplier",
-      render: (row) => row.supplier?.name || row.supplier?.company || "—",
+      render: (row) => row.supplier?.company || row.supplier?.name || "—",
     },
     {
       header: "Items",

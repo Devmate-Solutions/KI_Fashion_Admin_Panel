@@ -188,15 +188,12 @@ export default function LogisticsLedgerPage() {
         readableReference = entry.reference || entry.referenceNumber
       }
 
-      // Extract supplier name from reference (DispatchOrder)
-      let supplierName = '-'
+      // Extract supplier info from reference (DispatchOrder)
+      let supplierCompany = '-'
+      let supplierContact = '-'
       if (entry.referenceId && typeof entry.referenceId === 'object' && entry.referenceId !== null) {
-        if (entry.referenceId.supplierName) {
-          supplierName = entry.referenceId.supplierName
-          if (entry.referenceId.supplierCompany) {
-            supplierName += ` (${entry.referenceId.supplierCompany})`
-          }
-        }
+        supplierCompany = entry.referenceId.supplierCompany || '-'
+        supplierContact = entry.referenceId.supplierName || '-'
       }
 
       return {
@@ -204,7 +201,9 @@ export default function LogisticsLedgerPage() {
         date: entry.date || entry.createdAt,
         company: company.name || 'Unknown Company',
         companyId: company._id || company.id,
-        supplierName,
+        supplierName: supplierCompany || supplierContact || '-',
+        supplierCompany,
+        supplierContact,
         type: typeLabel,
         transactionType: entry.transactionType || entry.type,
         description: entry.description || entry.notes || '-',
@@ -362,7 +361,12 @@ export default function LogisticsLedgerPage() {
         header: "Supplier",
         accessor: "supplierName",
         render: (row) => (
-          <span className="text-sm">{row.supplierName || '-'}</span>
+          <div className="text-sm">
+            <span className="font-semibold">{row.supplierCompany || row.supplierName || '-'}</span>
+            {row.supplierContact && row.supplierContact !== '-' && (
+              <span className="text-muted-foreground"> ({row.supplierContact})</span>
+            )}
+          </div>
         )
       },
       {

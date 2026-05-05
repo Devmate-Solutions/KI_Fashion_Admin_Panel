@@ -457,48 +457,6 @@ const inventoryColumns = [
   },
 ];
 
-const movementColumns = [
-  {
-    header: "Date",
-    accessor: "date",
-    render: (row) => formatDateTime(row.date),
-  },
-  {
-    header: "Type",
-    accessor: "type",
-    render: (row) => (
-      <Badge
-        variant={
-          row.type === "in"
-            ? "secondary"
-            : row.type === "adjust"
-              ? "outline"
-              : "destructive"
-        }
-      >
-        {row.type?.toUpperCase() || "-"}
-      </Badge>
-    ),
-  },
-  {
-    header: "Quantity",
-    accessor: "quantity",
-    render: (row) => (
-      <span className="tabular-nums">{formatNumber(row.quantity)}</span>
-    ),
-  },
-  { header: "Reference", accessor: "reference" },
-  {
-    header: "User",
-    accessor: "userName",
-    render: (row) => row.userName || "-",
-  },
-  {
-    header: "Notes",
-    accessor: "notes",
-    render: (row) => row.notes || "-",
-  },
-];
 
 function currency(n) {
   const num = Number(n || 0);
@@ -543,9 +501,7 @@ export default function StockPage() {
     () => ({ type: undefined, startDate: "", endDate: "" }),
     []
   );
-  const [movementFilterForm, setMovementFilterForm] = useState(
-    defaultMovementFilters
-  );
+
   const [movementFilters, setMovementFilters] = useState(
     defaultMovementFilters
   );
@@ -1238,7 +1194,27 @@ export default function StockPage() {
     {
       header: "Supplier",
       accessor: "supplier.name",
-      render: (row) => row.supplier?.name || row.supplier?.company || "—",
+      render: (row) => {
+        const companyName = row.supplier?.companyName || row.supplier?.company;
+        const contactName = row.supplier?.name;
+
+        if (!companyName && !contactName) {
+          return <div className="text-muted-foreground">—</div>;
+        }
+
+        return (
+          <div className="flex flex-col">
+            <span className="font-medium text-foreground">
+              {companyName || contactName}
+            </span>
+            {companyName && contactName && companyName !== contactName && (
+              <span className="text-[11px] text-muted-foreground leading-tight">
+                {contactName}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       header: "Composition",

@@ -117,7 +117,8 @@ export default function SalesProductWiseReportPage() {
     {
       header: "Supplier Name",
       accessor: "supplierName",
-      pdfValue: (row) => row.supplierName || "—"
+      render: (row) => row.supplierCompany || row.supplierName || "—",
+      pdfValue: (row) => row.supplierCompany || row.supplierName || "—"
     },
     {
       header: "Buyer Name",

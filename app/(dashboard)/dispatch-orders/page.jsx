@@ -54,12 +54,12 @@ export default function DispatchOrdersPage() {
 
   const handleDelete = async (order) => {
     const isConfirmed = order.status === 'confirmed' || order.status === 'delivered' || order.status === 'picked_up' || order.status === 'in_transit';
-    
+
     // Check for payments (some fields might be null, so use optional chaining)
     const hasPayments = (order.paymentDetails?.cashPayment > 0) || (order.paymentDetails?.bankPayment > 0);
 
     let message = `Are you sure you want to delete dispatch order ${order.orderNumber}?`;
-    
+
     if (isConfirmed) {
       message = `WARNING: This is a ${order.status.toUpperCase()} order. 
       
@@ -103,10 +103,10 @@ Do you still want to proceed?`;
           <span className="font-semibold text-foreground">{row.orderNumber || "—"}</span>
           {row.dispatchDate && (
             <span className="text-xs text-muted-foreground font-medium">
-              {new Date(row.dispatchDate).toLocaleDateString('en-GB', { 
-                day: '2-digit', 
-                month: 'short', 
-                year: 'numeric' 
+              {new Date(row.dispatchDate).toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
               })}
             </span>
           )}
@@ -115,20 +115,37 @@ Do you still want to proceed?`;
       pdfValue: (row) => row.orderNumber || "—"
     },
     {
-      header: "Supplier",
+      header: "Company",
       accessor: "supplierName",
       render: (row) => {
-        const supplier = row.supplier || {}
+        const companyName = row.supplier?.company || row.supplier?.companyName;
+        const contactName = row.supplier?.name;
+
+        if (!companyName && !contactName) {
+          return <div className="text-muted-foreground">—</div>;
+        }
+
         return (
-          <div className="flex flex-col gap-0.5">
-            <span className="font-semibold text-foreground">{supplier.name || supplier.company || "—"}</span>
-            {supplier.company && supplier.name && (
-              <span className="text-xs text-muted-foreground font-medium">{supplier.company}</span>
+          <div className="flex flex-col">
+            <span className="font-medium text-foreground">
+              {companyName || contactName}
+            </span>
+            {companyName && contactName && companyName !== contactName && (
+              <span className="text-[11px] text-muted-foreground leading-tight">
+                {contactName}
+              </span>
             )}
           </div>
-        )
+        );
       },
-      pdfValue: (row) => row.supplier?.name || row.supplier?.company || "—"
+      pdfValue: (row) => {
+        const companyName = row.supplier?.company || row.supplier?.companyName;
+        const contactName = row.supplier?.name;
+        if (companyName && contactName && companyName !== contactName) {
+          return `${companyName} (${contactName})`;
+        }
+        return companyName || contactName || "—";
+      }
     },
     {
       header: "Boxes",
@@ -138,7 +155,7 @@ Do you still want to proceed?`;
       ),
       pdfValue: (row) => row.totalBoxes || 0
     },
-   
+
     {
       header: "Quantity",
       accessor: "totalQuantity",
@@ -186,7 +203,7 @@ Do you still want to proceed?`;
         return totalQuantity - totalReturned
       }
     },
-     {
+    {
       header: "Logistics",
       accessor: "logisticsCompany",
       render: (row) => {
@@ -202,7 +219,7 @@ Do you still want to proceed?`;
         const status = row.status || "pending"
         const statusLabel = status.replace(/_/g, " ").replace(/-/g, " ").toUpperCase()
         return (
-          <Badge 
+          <Badge
             className={cn(
               "font-semibold px-2.5 py-1 rounded-md border",
               statusStyles[status] || statusStyles.pending
@@ -275,7 +292,7 @@ Do you still want to proceed?`;
       <div className="mb-3">
         <BackButton fallbackPath="/home" label="Back" />
       </div>
-      
+
 
       {/* Data Table with Filters */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">

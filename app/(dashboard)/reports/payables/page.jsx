@@ -102,13 +102,13 @@ export default function PayablesReportPage() {
       accessor: "name",
       render: (row) => (
         <div>
-          <div className="font-medium">{row.name || row.supplierName || "—"}</div>
+          <div className="font-medium">{row.company || row.name || row.supplierName || "—"}</div>
           <div className="text-xs text-muted-foreground">
             {[row.email, row.phone].filter(Boolean).join(" | ") || "—"}
           </div>
         </div>
       ),
-      pdfValue: (row) => row.name || row.supplierName || "—"
+      pdfValue: (row) => row.company || row.name || row.supplierName || "—"
     },
     {
       header: "Total Purchases",

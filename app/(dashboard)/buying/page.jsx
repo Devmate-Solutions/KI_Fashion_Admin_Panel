@@ -147,8 +147,11 @@ export default function BuyingPage() {
     const query = searchQuery.trim().toLowerCase()
 
     return allBuyingRows.filter((row) => {
-      // Search by supplier name
-      const supplierMatch = row.supplierName?.toLowerCase().includes(query)
+      // Search by supplier company or name
+      const supplierCompany = row.supplier?.company || row.supplierCompany
+      const supplierName = row.supplier?.name || row.supplierName
+      const supplierMatch = supplierCompany?.toLowerCase().includes(query)
+        || supplierName?.toLowerCase().includes(query)
 
       // Search by Buying ID (purchaseNumber)
       const purchaseNumberMatch = row.purchaseNumber?.toLowerCase().includes(query)
@@ -257,10 +260,23 @@ export default function BuyingPage() {
       {
         header: "Supplier",
         accessor: "supplierName",
-        render: (row) => (
-          <span className="font-semibold text-foreground">{row.supplierName || "—"}</span>
-        ),
-        pdfValue: (row) => row.supplierName || "—"
+        render: (row) => {
+          const company = row.supplier?.company || row.supplierCompany
+          const name = row.supplier?.name || row.supplierName
+          if (!company && !name) {
+            return <span className="font-semibold text-foreground">—</span>
+          }
+          if (!company) {
+            return <span className="font-semibold text-foreground">{name}</span>
+          }
+          return (
+            <div className="flex flex-col">
+              <span className="font-semibold text-foreground">{company}</span>
+              {name && <span className="text-xs text-muted-foreground">{name}</span>}
+            </div>
+          )
+        },
+        pdfValue: (row) => row.supplier?.company || row.supplierCompany || row.supplier?.name || row.supplierName || "—"
       },
       {
         header: "Products",
