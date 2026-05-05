@@ -3300,7 +3300,7 @@ export default function DispatchOrderDetailPage({ params }) {
                   </Button>
                 )}
                 {/* Super-admin/admin: Confirm Order button (for both pending and pending-approval) */}
-                {(isSuperAdmin || isAdmin) && (dispatchOrder?.status === 'pending' || dispatchOrder?.status === 'pending-approval') && (
+                {(isSuperAdmin || isAdmin) && (dispatchOrder?.status === 'pending' ) && (
                   <Button
                     onClick={() => {
 
