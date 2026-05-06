@@ -8,6 +8,7 @@ import { EmployeeForm } from "../../../components/forms/employee-form"
 import { SupplierForm } from "../../../components/forms/supplier-form"
 import { DistributorForm } from "../../../components/forms/distributor-form"
 import { useUsers, useUpdateUser, useDeactivateUser, useDeleteUser, useCreateUser, useRegisterUser, useRegeneratePassword } from "../../../lib/hooks/useUsers"
+import { useBuyers } from "../../../lib/hooks/useBuyers"
 import { usePasswordResetRequests, useCompleteRequest, useCancelRequest, useDeleteRequest } from "../../../lib/hooks/usePasswordResetRequests"
 import { useAuthStore } from "@/store/store"
 import {
@@ -50,6 +51,7 @@ export default function UsersPage() {
 
   // Fetch all users - we'll filter client-side for now
   const { data: allUsers = [], isLoading } = useUsers({ limit: 500 })
+  const { data: buyerRecords = [], isLoading: buyersLoading } = useBuyers({ limit: 500 })
   const updateUserMutation = useUpdateUser()
   const deactivateUserMutation = useDeactivateUser()
   const deleteUserMutation = useDeleteUser()
@@ -249,6 +251,38 @@ export default function UsersPage() {
     },
     [activeTab, isAdmin, visiblePasswords, userPasswords, regeneratePasswordMutation.isPending]
   )
+
+  const buyerRecordColumns = useMemo(() => [
+    { header: "Name", accessor: "name" },
+    { header: "Company", accessor: "company", render: (row) => row.company || '-' },
+    {
+      header: "Phone",
+      accessor: "phone",
+      render: (row) => {
+        const areaCode = row.phoneAreaCode ? `${row.phoneAreaCode}-` : ''
+        return areaCode + (row.phone || '-')
+      }
+    },
+    { header: "Email", accessor: "email", render: (row) => row.email || '-' },
+    { header: "Type", accessor: "customerType", render: (row) => row.customerType || 'retail' },
+    {
+      header: "Status",
+      accessor: "isActive",
+      render: (row) => (
+        <span className={`px-2 py-1 text-xs rounded-full ${row.isActive !== false
+          ? 'bg-green-100 text-green-800'
+          : 'bg-red-100 text-red-800'
+          }`}>
+          {row.isActive !== false ? 'Active' : 'Inactive'}
+        </span>
+      )
+    },
+    {
+      header: "Created",
+      accessor: "createdAt",
+      render: (row) => row.createdAt ? new Date(row.createdAt).toLocaleDateString('en-GB') : 'N/A'
+    },
+  ], [])
 
   const handleEditUser = (user) => {
     setEditingUser(user._original || user)
@@ -542,30 +576,42 @@ export default function UsersPage() {
     {
       label: "Buyers",
       content: (
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="flex justify-end">
             <Button onClick={() => setOpenAddForm(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Create Buyer
             </Button>
           </div>
-          <DataTable
-            columns={userColumns}
-            data={filteredUsers}
-            loading={isLoading}
-            onEdit={handleEditUser}
-            onDelete={handleDeleteUser}
-            additionalActions={(row) => (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleDeactivateUser(row)}
-                disabled={!row.isActive}
-              >
-                Deactivate
-              </Button>
-            )}
-          />
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-foreground">Buyer Accounts</h3>
+            <DataTable
+              columns={userColumns}
+              data={filteredUsers}
+              loading={isLoading}
+              onEdit={handleEditUser}
+              onDelete={handleDeleteUser}
+              additionalActions={(row) => (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDeactivateUser(row)}
+                  disabled={!row.isActive}
+                >
+                  Deactivate
+                </Button>
+              )}
+            />
+          </div>
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-foreground">Buyer Records</h3>
+            <DataTable
+              columns={buyerRecordColumns}
+              data={buyerRecords}
+              loading={buyersLoading}
+              hideActions
+            />
+          </div>
         </div>
       )
     },

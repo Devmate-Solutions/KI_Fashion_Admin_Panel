@@ -93,7 +93,10 @@ export default function SetupPage() {
      
     try {
        
-      const result = await createBuyerMutation.mutateAsync(formData);
+      const result = await createBuyerMutation.mutateAsync({
+        ...formData,
+        createUserAccount: true,
+      });
        
       setOpenAddBuyerForm(false);
     } catch (error) {
