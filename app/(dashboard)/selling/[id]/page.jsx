@@ -320,9 +320,9 @@ export default function SaleDetailPage({ params }) {
 
   const handlePrintReceipt = () => {
     const printed = printSaleThermalReceipt(sale);
-    if (!printed) {
-      toast.error("Receipt popup blocked. Please allow popups and try again.");
-    }
+    // if (!printed) {
+    //   toast.error("Receipt popup blocked. Please allow popups and try again.");
+    // }
   };
 
   if (isLoading) {

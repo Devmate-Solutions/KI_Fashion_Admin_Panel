@@ -12,9 +12,9 @@ export default function NewSellingPage() {
 
   const handleSave = useCallback((saleData) => {
     const printed = printSaleThermalReceipt(saleData)
-    if (!printed) {
-      toast.error("Receipt popup blocked. Please allow popups and try printing from sale details.")
-    }
+    // if (!printed) {
+    //   toast.error("Receipt popup blocked. Please allow popups and try printing from sale details.")
+    // }
 
     // Success! Show notification and navigate back
     toast.success(`Sale created successfully! ID: ${saleData.id || saleData._id || 'N/A'}`, {

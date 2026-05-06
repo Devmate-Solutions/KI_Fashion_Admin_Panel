@@ -369,7 +369,7 @@ export default function ExpensesPage() {
         </div>
 
         {/* Bank Expenses */}
-        <div className="rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50/50 to-blue-50/30 p-5 shadow-sm hover:shadow-md transition-shadow">
+        {/* <div className="rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50/50 to-blue-50/30 p-5 shadow-sm hover:shadow-md transition-shadow"> */}
 
           <div className="text-xs font-medium text-blue-700/80 uppercase tracking-wider mb-1">
             Bank Expenses
