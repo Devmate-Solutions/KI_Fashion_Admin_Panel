@@ -327,6 +327,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         address: {
           street: newSupplierAddress.trim(),
         },
+        createUserAccount: true,
       });
 
       const newSupplier = response.data?.data || response.data;
