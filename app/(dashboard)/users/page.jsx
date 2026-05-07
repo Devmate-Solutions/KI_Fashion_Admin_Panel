@@ -8,7 +8,7 @@ import { EmployeeForm } from "../../../components/forms/employee-form"
 import { SupplierForm } from "../../../components/forms/supplier-form"
 import { DistributorForm } from "../../../components/forms/distributor-form"
 import { useUsers, useUpdateUser, useDeactivateUser, useDeleteUser, useCreateUser, useRegisterUser, useRegeneratePassword } from "../../../lib/hooks/useUsers"
-import { useBuyers } from "../../../lib/hooks/useBuyers"
+import { useBuyers, useUpdateBuyer, useDeleteBuyer } from "../../../lib/hooks/useBuyers"
 import { usePasswordResetRequests, useCompleteRequest, useCancelRequest, useDeleteRequest } from "../../../lib/hooks/usePasswordResetRequests"
 import { useAuthStore } from "@/store/store"
 import {
@@ -60,6 +60,8 @@ export default function UsersPage() {
   const regeneratePasswordMutation = useRegeneratePassword()
   const hardDeleteSupplierMutation = useHardDeleteSupplier()
   const updateSupplierMutation = useUpdateSupplier()
+  const updateBuyerMutation = useUpdateBuyer()
+  const deleteBuyerMutation = useDeleteBuyer()
   const [supplierDeleteTarget, setSupplierDeleteTarget] = useState(null)
   const {
     data: supplierDeleteSummary,
@@ -285,8 +287,9 @@ export default function UsersPage() {
     },
   ], [])
 
-  const handleEditUser = (user) => {
-    setEditingUser(user._original || user)
+  const handleEditUser = (user, type = 'user') => {
+    const data = user._original || user
+    setEditingUser({ ...data, _type: type })
     setOpenEditForm(true)
   }
 
@@ -339,15 +342,22 @@ export default function UsersPage() {
 
   const handleUpdateUser = async (formData) => {
     try {
-      await updateUserMutation.mutateAsync({
-        id: editingUser._id || editingUser.id,
-        data: formData
-      })
+      if (editingUser._type === 'buyer-record') {
+        await updateBuyerMutation.mutateAsync({
+          id: editingUser._id || editingUser.id,
+          data: formData
+        })
+      } else {
+        await updateUserMutation.mutateAsync({
+          id: editingUser._id || editingUser.id,
+          data: formData
+        })
+      }
 
       setOpenEditForm(false)
       setEditingUser(null)
     } catch (error) {
-      console.error('Error updating user:', error)
+      console.error('Error updating user/buyer:', error)
     }
   }
 
@@ -361,12 +371,17 @@ export default function UsersPage() {
     }
   }
 
-  const handleDeleteUser = async (user) => {
-    if (window.confirm(`Are you sure you want to delete user "${user.name}"? This action cannot be undone.`)) {
+  const handleDeleteUser = async (user, type = 'user') => {
+    const name = user.name || user.company || 'this user'
+    if (window.confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) {
       try {
-        await deleteUserMutation.mutateAsync(user.id)
+        if (type === 'buyer-record') {
+          await deleteBuyerMutation.mutateAsync(user.id)
+        } else {
+          await deleteUserMutation.mutateAsync(user.id)
+        }
       } catch (error) {
-        console.error('Error deleting user:', error)
+        console.error('Error deleting user/buyer:', error)
       }
     }
   }
@@ -610,7 +625,8 @@ export default function UsersPage() {
               columns={buyerRecordColumns}
               data={buyerRecords}
               loading={buyersLoading}
-              hideActions
+              onEdit={(row) => handleEditUser(row, 'buyer-record')}
+              onDelete={(row) => handleDeleteUser(row, 'buyer-record')}
             />
           </div>
         </div>
@@ -700,6 +716,7 @@ export default function UsersPage() {
   // Determine which form to show based on active tab or editing user role
   const getFormComponent = () => {
     if (editingUser) {
+      if (editingUser._type === 'buyer-record') return DistributorForm
       const role = editingUser.role || editingUser._original?.role
       if (role === 'supplier') return SupplierForm
       if (role === 'distributor' || role === 'buyer') return DistributorForm

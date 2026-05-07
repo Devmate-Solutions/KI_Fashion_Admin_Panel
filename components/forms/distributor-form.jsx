@@ -26,16 +26,23 @@ export function DistributorForm({ open, onClose, onSubmit, initialData = null, l
   useEffect(() => {
     if (open) {
       if (initialData) {
+        // Handle both raw User objects (with nested buyer profile) and raw Buyer records
+        const company = initialData.company || initialData.buyer?.company || initialData.distributorProfile?.company || ''
+        const taxNumber = initialData.taxNumber || initialData.buyer?.taxNumber || initialData.distributorProfile?.taxNumber || ''
+        const address = typeof initialData.address === 'string' 
+          ? initialData.address 
+          : (initialData.address?.street || initialData.buyer?.address?.street || '')
+
         setFormData({
           name: initialData.name || '',
           email: initialData.email || '',
           password: '',
           confirmPassword: '',
-          phone: initialData.phone || '',
-          phoneAreaCode: initialData.phoneAreaCode || '',
-          address: initialData.address || '',
-          company: '',
-          taxNumber: '',
+          phone: initialData.phone || initialData.buyer?.phone || '',
+          phoneAreaCode: initialData.phoneAreaCode || initialData.buyer?.phoneAreaCode || '',
+          address: address,
+          company: company,
+          taxNumber: taxNumber,
         })
       } else {
         setFormData({
@@ -130,6 +137,11 @@ export function DistributorForm({ open, onClose, onSubmit, initialData = null, l
         if (!submitData.password) {
           delete submitData.password
         }
+        
+        // If it's a buyer record (not a user account), structure the address correctly for the Buyer model
+        if (initialData._type === 'buyer-record' && typeof formData.address === 'string' && formData.address) {
+          submitData.address = { street: formData.address, country: 'Pakistan' }
+        }
       }
 
       onSubmit(submitData)
@@ -191,7 +203,6 @@ export function DistributorForm({ open, onClose, onSubmit, initialData = null, l
               onChange={(e) => handleChange('company', e.target.value)}
               className={`h-11 ${errors.company ? 'border-red-500 focus-visible:ring-red-500/20' : ''}`}
               placeholder="Enter company name"
-              disabled={!!initialData}
             />
             {errors.company && <p className="text-red-500 text-xs mt-1">{errors.company}</p>}
           </div>
