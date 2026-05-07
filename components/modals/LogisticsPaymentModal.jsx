@@ -278,7 +278,7 @@ export default function LogisticsPaymentModal({
           toast.success('Backdated payment request submitted for approval.')
           handleClose()
           const router = window.nextRouter || { push: (url) => window.location.href = url }
-          router.push('/approvals/edit-requests')
+          router.push('/my-requests')
           return
         }
 
@@ -299,7 +299,7 @@ export default function LogisticsPaymentModal({
           toast.success('Backdated adjustment request submitted for approval.')
           handleClose()
           const router = window.nextRouter || { push: (url) => window.location.href = url }
-          router.push('/approvals/edit-requests')
+          router.push('/my-requests')
           return
         }
 

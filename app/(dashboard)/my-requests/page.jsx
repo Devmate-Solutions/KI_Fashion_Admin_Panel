@@ -31,8 +31,14 @@ const STATUS_STYLES = {
 const ENTITY_LABELS = {
   "dispatch-order": "Dispatch Order",
   sale: "Sale",
+  buying: "Purchase",
   payment: "Payment",
   "supplier-payment": "Supplier Payment",
+  "customer-payment": "Customer Payment",
+  "logistics-payment": "Logistics Payment",
+  "sale-return": "Sale Return",
+  "buying-return": "Purchase Return",
+  expense: "Expense",
 };
 
 export default function MyRequestsPage() {

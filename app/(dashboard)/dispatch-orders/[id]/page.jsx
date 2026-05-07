@@ -1273,7 +1273,7 @@ export default function DispatchOrderDetailPage({ params }) {
 
         if (data?.status === 'pending') {
           toast.success(data?.message || "Backdated order submitted for approval");
-          router.push("/approvals/edit-requests");
+          router.push("/my-requests");
           return;
         }
 
@@ -1425,7 +1425,7 @@ export default function DispatchOrderDetailPage({ params }) {
 
         if (data?.status === 'pending') {
           toast.success(data?.message || "Backdated confirmation submitted for approval");
-          router.push("/approvals/edit-requests");
+          router.push("/my-requests");
           return;
         }
 

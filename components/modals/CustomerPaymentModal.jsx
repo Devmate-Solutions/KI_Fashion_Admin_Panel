@@ -253,7 +253,7 @@ export default function CustomerPaymentModal({
                 toast.success('Backdated payment request submitted for approval.')
                 handleClose()
                 const router = window.nextRouter || { push: (url) => window.location.href = url }
-                router.push('/approvals/edit-requests')
+                router.push('/my-requests')
                 return
             }
 

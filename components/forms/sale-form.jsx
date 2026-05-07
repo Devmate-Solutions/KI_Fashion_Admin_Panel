@@ -852,7 +852,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
 
       if (response.status === 202) {
         toast.success('Backdated sale request submitted for super-admin approval.')
-        router.push('/approvals/edit-requests')
+        router.push('/my-requests')
         return
       }
 

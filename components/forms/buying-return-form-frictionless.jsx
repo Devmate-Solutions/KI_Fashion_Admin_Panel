@@ -518,7 +518,7 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
 
           if (response?.status === 202) {
             toast.success('Backdated packet return request submitted for approval.')
-            router.push('/approvals/edit-requests')
+            router.push('/my-requests')
             if (onSave) onSave()
             return
           }
@@ -562,7 +562,7 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
 
           if (response?.status === 202) {
             toast.success('Backdated product return request submitted for approval.')
-            router.push('/approvals/edit-requests')
+            router.push('/my-requests')
             if (onSave) onSave()
             return
           }

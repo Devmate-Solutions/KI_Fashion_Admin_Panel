@@ -1285,7 +1285,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
       if (response.status === 202) {
         toast.success('Backdated purchase request submitted for super-admin approval.');
-        router.push('/approvals/edit-requests');
+        router.push('/my-requests');
         return;
       }
 
