@@ -112,8 +112,8 @@ export default function CashInHandReportPage() {
         {
             header: "Name",
             accessor: "name",
-            render: (row) => row.name || "—",
-            pdfValue: (row) => row.name || "—"
+            render: (row) => row.company || row.name || "—",
+            pdfValue: (row) => row.company || row.name || "—"
         },
         // Sales columns
         {

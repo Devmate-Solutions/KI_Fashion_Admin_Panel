@@ -112,13 +112,13 @@ export default function ReceivablesReportPage() {
       accessor: "name",
       render: (row) => (
         <div>
-          <div className="font-medium">{row.name || "—"}</div>
-          <div className="text-xs text-muted-foreground">
-            {[row.email, row.phone].filter(Boolean).join(" | ") || "—"}
+          <div className="font-medium">{row.company || row.name || "—"}</div>
+          <div className="text-[10px] text-muted-foreground">
+            {row.company && row.name && row.company !== row.name ? `(${row.name})` : [row.email, row.phone].filter(Boolean).join(" | ") || "—"}
           </div>
         </div>
       ),
-      pdfValue: (row) => row.name || "—"
+      pdfValue: (row) => row.company || row.name || "—"
     },
     {
       header: "Total Sales",

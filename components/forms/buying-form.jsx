@@ -1508,7 +1508,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                     <SelectContent>
                       {suppliers.map((s) => (
                         <SelectItem key={s.id} value={String(s.id)}>
-                          {s.name}
+                          {s.company}
                         </SelectItem>
                       ))}
                     </SelectContent>

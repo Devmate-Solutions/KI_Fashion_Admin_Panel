@@ -50,7 +50,8 @@ export default function UniversalPaymentDialog({ open, onClose }) {
     return source.map((entity) => ({
       ...entity,
       id: entity.id,
-      name: entity.name || entity.company || "Unknown",
+      name: entity.company || entity.name || "Unknown",
+      individualName: entity.name || "",
       company: entity.company || "",
       // Prefer canonical ledger-computed balance.
       balance: Number(entity.balance ?? entity.currentBalance ?? 0),
@@ -318,8 +319,14 @@ export default function UniversalPaymentDialog({ open, onClose }) {
                   >
                     {selectedEntity ? (
                       <div className="flex flex-col items-start overflow-hidden">
-                        <span className="font-bold truncate w-full">{selectedEntity.name}</span>
-                        {selectedEntity.company && <span className="text-[10px] text-slate-500 uppercase">{selectedEntity.company}</span>}
+                        <span className="font-bold truncate w-full">
+                          {selectedEntity.company || selectedEntity.individualName || "Unknown"}
+                        </span>
+                        {selectedEntity.company && selectedEntity.individualName && (
+                          <span className="text-[10px] text-slate-500 uppercase">
+                            ({selectedEntity.individualName})
+                          </span>
+                        )}
                       </div>
                     ) : (
                       `Select ${entityType === 'supplier' ? 'supplier' : 'buyer'}...`
@@ -348,8 +355,14 @@ export default function UniversalPaymentDialog({ open, onClose }) {
                             className="flex items-center justify-between p-3 cursor-pointer"
                           >
                             <div className="flex flex-col">
-                              <span className="font-bold">{entity.name}</span>
-                              <span className="text-xs text-slate-500">{entity.company}</span>
+                              <span className="font-bold">
+                                {entity.company || entity.individualName || "Unknown"}
+                              </span>
+                              {entity.company && entity.individualName && (
+                                <span className="text-xs text-slate-500">
+                                  ({entity.individualName})
+                                </span>
+                              )}
                             </div>
                             <div className="text-right">
                               <span className={cn(

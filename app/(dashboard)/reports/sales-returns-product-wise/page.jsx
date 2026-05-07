@@ -46,7 +46,7 @@ export default function SalesReturnsProductWiseReportPage() {
             returnDate: ret.returnedAt || ret.createdAt,
             saleNumber: ret.sale?.saleNumber || "—",
             saleId: ret.sale?._id,
-            buyerName: ret.buyer?.name || ret.buyer?.company || "—",
+            buyerName: ret.buyer?.company || ret.buyer?.name || "—",
             returnStatus: ret.status || "—",
             productCode: item.product?.productCode || item.product?.sku || "—",
             productName: item.product?.name || "—",

@@ -125,12 +125,31 @@ export default function SellingPage() {
       {
         header: "Buyer",
         accessor: "customerName",
-        render: (row) => (
-          <span className="font-medium">
-            {row.customerName || row._original?.manualCustomer?.name || "—"}
-          </span>
-        ),
-        pdfValue: (row) => row.customerName || row._original?.manualCustomer?.name || "—"
+        render: (row) => {
+          const company = row.companyName;
+          const name = row.customerName;
+          const hasCompany = company && company !== "—" && company !== name;
+
+          if (!hasCompany) {
+            return <span className="font-medium">{name || "—"}</span>;
+          }
+
+          return (
+            <div className="flex flex-col">
+              <span className="font-medium">
+                {company}
+              </span>
+              <span className="text-[11px] text-muted-foreground leading-tight">
+                {name || "—"}
+              </span>
+            </div>
+          );
+        },
+        pdfValue: (row) => {
+          const company = row.companyName;
+          const name = row.customerName;
+          return company && company !== "—" ? `${company} (${name})` : name || "—";
+        }
       },
       {
         header: "Products",

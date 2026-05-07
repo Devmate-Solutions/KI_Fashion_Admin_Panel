@@ -316,7 +316,7 @@ export default function DispatchOrderDetailPage({ params }) {
           productCode: item.productCode || "",
           quantity: item.quantity || 0,
           costPrice: item.costPrice || 0,
-          minSellingPrice: item.minSellingPrice ?? item.product?.pricing?.minSellingPrice ?? item.product?.pricing?.sellingPrice ?? 0,
+          minSellingPrice: item.minSellingPrice || item.product?.pricing?.minSellingPrice || item.product?.pricing?.sellingPrice || "",
           primaryColor: Array.isArray(item.primaryColor)
             ? item.primaryColor
             : item.primaryColor
@@ -820,7 +820,7 @@ export default function DispatchOrderDetailPage({ params }) {
         dispatchDate: initialDispatchDate,
         items: (data.items || []).map(item => ({
           costPrice: String(item.currentCostPrice ?? ''),
-          minSellingPrice: String(item.currentMinSellingPrice ?? ''),
+          minSellingPrice: item.currentMinSellingPrice ? String(item.currentMinSellingPrice) : '',
           quantity: String(item.orderedQuantity ?? ''),
           soldQty: item.soldQuantity ?? 0,
           productName: item.productName || '',
@@ -1429,7 +1429,8 @@ export default function DispatchOrderDetailPage({ params }) {
           return;
         }
 
-        router.push("/dispatch-orders");
+        setIsPostConfirmPrint(true);
+        setShowBarcodePrintModal(true);
       },
     });
   }, [
@@ -3965,6 +3966,9 @@ export default function DispatchOrderDetailPage({ params }) {
         open={showBarcodePrintModal}
         onClose={() => {
           setShowBarcodePrintModal(false);
+          if (isPostConfirmPrint) {
+            router.push("/dispatch-orders");
+          }
           setIsPostConfirmPrint(false);
         }}
         dispatchOrderId={dispatchOrderId}

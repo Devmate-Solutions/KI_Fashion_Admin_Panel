@@ -39,8 +39,8 @@ export default function SalesProductWiseReportPage() {
             ...item,
             sno: flatData.length + 1,
             transactionDate: sale.saleDate,
-            buyerName: sale.buyer?.name || sale.buyer?.company || "Walk-in",
-            supplierName: item.product?.supplier?.name || item.product?.supplier?.company || "—",
+            buyerName: sale.buyer?.company || sale.buyer?.name || "Walk-in",
+            supplierName: item.product?.supplier?.company || item.product?.supplier?.name || "—",
             productCode: item.product?.productCode || item.product?.sku || "—",
             productName: item.product?.name || "—",
           })

@@ -130,6 +130,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
   // Manual customer fields
   const [manualCustomer, setManualCustomer] = useState({
     name: "",
+    company: "",
     phone: "",
     phoneAreaCode: "",
     email: "",
@@ -409,7 +410,8 @@ export default function SaleForm({ onSave, initialData, saleId }) {
         phone: newBuyerPhone.trim(),
         phoneAreaCode: newBuyerPhoneAreaCode.trim() || undefined,
         company: newBuyerCompany.trim() || undefined,
-        email: newBuyerEmail.trim() || undefined
+        email: newBuyerEmail.trim() || undefined,
+        createUserAccount: true
       }
       const response = await buyersAPI.create(payload)
       const newBuyer = response.data?.data || response.data
@@ -1044,12 +1046,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                   {buyerId && !isManualCustomer ? (
                     <div className="flex items-center justify-between h-11 px-3 border border-input rounded-lg bg-muted/30">
                       <span className="font-medium text-base truncate">
-                        {buyers.find(b => String(b.id) === String(buyerId))?.name || 'Selected Buyer'}
-                        {buyers.find(b => String(b.id) === String(buyerId))?.company && (
-                          <span className="text-muted-foreground ml-1">
-                            ({buyers.find(b => String(b.id) === String(buyerId))?.company})
-                          </span>
-                        )}
+                        {buyers.find(b => String(b.id) === String(buyerId))?.company || 'Selected Buyer'}
                       </span>
                       <Button
                         type="button"
@@ -1124,12 +1121,12 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                                   className="w-full px-3 py-2 text-left hover:bg-accent transition-colors flex flex-col"
                                 >
                                   <span className="font-medium text-sm">
-                                    {b.name || 'Unknown'}
-                                    {b.company && <span className="text-muted-foreground font-normal ml-1">({b.company})</span>}
+                                    {b.company || 'Unknown'}
+                                    {/* {b.company && <span className="text-muted-foreground font-normal ml-1">({b.company})</span>} */}
                                   </span>
                                   {(b.phone || b.email) && (
                                     <span className="text-xs text-muted-foreground">
-                                      {b.phone}{b.phone && b.email && ' • '}{b.email}
+                                      {b.name}
                                     </span>
                                   )}
                                 </button>
@@ -1181,6 +1178,18 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                       value={manualCustomer.name}
                       onChange={(e) => setManualCustomer({ ...manualCustomer, name: e.target.value })}
                       placeholder="Enter customer name"
+                      className="h-11 text-base font-medium"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="manual-company" className="text-sm font-semibold text-foreground">
+                      Company Name
+                    </Label>
+                    <Input
+                      id="manual-company"
+                      value={manualCustomer.company}
+                      onChange={(e) => setManualCustomer({ ...manualCustomer, company: e.target.value })}
+                      placeholder="Enter company name (optional)"
                       className="h-11 text-base font-medium"
                     />
                   </div>
@@ -1641,7 +1650,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                 £{totals.subtotal.toFixed(2)}
               </span>
             </div>
-            
+
             {addShippingCost && (
               <div className="flex justify-between items-center p-3 bg-orange-50 dark:bg-orange-950/20 rounded-md border border-orange-100 dark:border-orange-900/30">
                 <span className="text-sm font-medium text-orange-800 dark:text-orange-300">Logistics Payable</span>

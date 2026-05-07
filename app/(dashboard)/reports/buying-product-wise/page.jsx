@@ -44,7 +44,7 @@ export default function BuyingProductWiseReportPage() {
             ...item,
             sno: flatData.length + 1,
             transactionDate: purchase.dispatchDate || purchase.createdAt,
-            supplierName: purchase.supplier?.name || purchase.supplier?.company || "—",
+            supplierName: purchase.supplier?.company || purchase.supplier?.name || "—",
             tc: purchase.orderNumber || "—",
           })
         })

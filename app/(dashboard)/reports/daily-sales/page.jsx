@@ -130,13 +130,13 @@ export default function DailySalesReportPage() {
         const buyer = row.buyer
         if (!buyer) return "Walk-in"
         if (typeof buyer === 'string') return buyer
-        return buyer.name || buyer.company || "Walk-in"
+        return buyer.company || buyer.name || "Walk-in"
       },
       pdfValue: (row) => {
         const buyer = row.buyer
         if (!buyer) return "Walk-in"
         if (typeof buyer === 'string') return buyer
-        return buyer.name || buyer.company || "Walk-in"
+        return buyer.company || buyer.name || "Walk-in"
       }
     },
     {

@@ -91,7 +91,7 @@ export default function ManualSupplierDebtModal({
     }, [showSuggestions])
 
     const selectedEntity = entities.find(e => (e._id || e.id) === selectedEntityId || String(e.id) === selectedEntityId)
-    const entityName = selectedEntity?.name || selectedEntity?.company || initialEntityName || ''
+    const entityName = selectedEntity?.company && selectedEntity?.name ? `${selectedEntity.company} (${selectedEntity.name})` : (selectedEntity?.company || selectedEntity?.name || initialEntityName || '')
     const entityId = selectedEntityId || initialEntityId
 
     const handleClose = () => {
@@ -190,7 +190,7 @@ export default function ManualSupplierDebtModal({
                                         <div className="p-1">
                                             {filteredEntities.map((entity) => {
                                                 const entityIdStr = String(entity._id || entity.id)
-                                                const entityDisplay = entity.name || entity.company || ''
+                                                const entityDisplay = entity.company && entity.name ? `${entity.company} (${entity.name})` : (entity.company || entity.name || '')
                                                 const isSelected = selectedEntityId === entityIdStr
 
                                                 return (
@@ -200,7 +200,16 @@ export default function ManualSupplierDebtModal({
                                                         className={`flex items-center px-3 py-2 text-sm rounded-sm cursor-pointer hover:bg-slate-100 ${isSelected ? 'bg-slate-50 font-medium' : ''
                                                             }`}
                                                     >
-                                                        {entityDisplay}
+                                                        {entity.company && entity.name ? (
+                                                            <div className="flex items-center gap-1.5 overflow-hidden">
+                                                                <span className="font-bold truncate">{entity.company}</span>
+                                                                <span className="text-muted-foreground truncate font-normal">({entity.name})</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className={isSelected ? 'font-bold' : ''}>
+                                                                {entity.company || entity.name || ''}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 )
                                             })}
@@ -215,7 +224,14 @@ export default function ManualSupplierDebtModal({
                     <div className="rounded-lg border bg-muted/30 p-4">
                         <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground uppercase tracking-wider">Supplier</Label>
-                            <p className="font-semibold text-base">{entityName || 'Not selected'}</p>
+                            {selectedEntity?.company && selectedEntity?.name ? (
+                                <div className="flex flex-col">
+                                    <span className="font-bold text-lg text-primary">{selectedEntity.company}</span>
+                                    <span className="text-sm text-muted-foreground">({selectedEntity.name})</span>
+                                </div>
+                            ) : (
+                                <p className="font-bold text-lg">{entityName || 'Not selected'}</p>
+                            )}
                         </div>
                     </div>
 

@@ -3818,7 +3818,8 @@ export default function SupplierLedgerPage() {
     return columns
   }, [receiptByLedgerEntryId, isLoadingSupplierReceipt, handlePrintSupplierReceipt])
 
-  const supplierReceiptColumns = useMemo(() => {1
+  const supplierReceiptColumns = useMemo(() => {
+    1
     return [
       {
         header: "Receipt #",
@@ -4465,14 +4466,14 @@ export default function SupplierLedgerPage() {
                           className={cn("mr-2 h-4 w-4", ledgerSupplierFilter === String(supplier.id) ? "opacity-100" : "opacity-0")}
                         />
                         <div className="flex flex-col">
-                          <span className="font-medium">{supplier.name}</span>
+                          <span className="font-medium">{supplier.company}</span>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            {supplier.supplierId ? (
+                            {/* {supplier.supplierId ? (
                               <span className="font-mono bg-muted px-1 rounded">{supplier.supplierId}</span>
                             ) : supplier.legacyId ? (
                               <span className="font-mono bg-muted px-1 rounded">{supplier.legacyId}</span>
-                            ) : null}
-                            {supplier.company && <span>{supplier.company}</span>}
+                            ) : null} */}
+                            {supplier.name && <span>{supplier.name}</span>}
                           </div>
                         </div>
                       </CommandItem>
@@ -4845,14 +4846,10 @@ export default function SupplierLedgerPage() {
                               )}
                             />
                             <div className="flex flex-col">
-                              <span className="font-medium">{supplier.name}</span>
+                              <span className="font-medium">{supplier.company}</span>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                {supplier.supplierId ? (
-                                  <span className="font-mono bg-muted px-1 rounded">{supplier.supplierId}</span>
-                                ) : supplier.legacyId ? (
-                                  <span className="font-mono bg-muted px-1 rounded">{supplier.legacyId}</span>
-                                ) : null}
-                                {supplier.company && <span>{supplier.company}</span>}
+
+                                {supplier.company && <span>{supplier.name}</span>}
                               </div>
                             </div>
                           </CommandItem>
@@ -5040,14 +5037,10 @@ export default function SupplierLedgerPage() {
                               className={cn("mr-2 h-4 w-4", receiptSupplierId === String(supplier.id) ? "opacity-100" : "opacity-0")}
                             />
                             <div className="flex flex-col">
-                              <span className="font-medium">{supplier.name}</span>
+                              <span className="font-medium">{supplier.company}</span>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                {supplier.supplierId ? (
-                                  <span className="font-mono bg-muted px-1 rounded">{supplier.supplierId}</span>
-                                ) : supplier.legacyId ? (
-                                  <span className="font-mono bg-muted px-1 rounded">{supplier.legacyId}</span>
-                                ) : null}
-                                {supplier.company && <span>{supplier.company}</span>}
+
+                                {supplier.name && <span>{supplier.name}</span>}
                               </div>
                             </div>
                           </CommandItem>

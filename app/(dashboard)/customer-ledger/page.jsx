@@ -1743,7 +1743,9 @@ export default function CustomerLedgerPage() {
         id: entry._id || entry.id,
         date: entry.date || entry.createdAt,
         createdAt: entry.createdAt,
-        buyer: buyer.name || buyer.company || 'Unknown Customer',
+        buyer: buyer.company || buyer.name || 'Unknown Customer',
+        customerName: buyer.name || '',
+        companyName: buyer.company || '',
         type: typeLabel,
         transactionType: entry.transactionType,
         description: entry.description || entry.notes || '-',
@@ -1804,7 +1806,9 @@ export default function CustomerLedgerPage() {
         id: entry._id || entry.id,
         date: entry.date || entry.createdAt,
         createdAt: entry.createdAt,
-        buyer: buyer.name || buyer.company || 'Unknown Customer',
+        buyer: buyer.company || buyer.name || 'Unknown Customer',
+        customerName: buyer.name || '',
+        companyName: buyer.company || '',
         reference,
         paymentMethod: entry.paymentMethod || 'cash',
         amount: entry.credit || 0,
@@ -1837,7 +1841,9 @@ export default function CustomerLedgerPage() {
       createdBy: payment.createdBy?.name || 'Unknown',
       description: payment.description || '-',
       reversalInfo: payment.reversalInfo,
-      customerName: payment.customerId?.name || payment.customerId?.company || 'Unknown',
+      customerName: payment.customerId?.company || payment.customerId?.name || 'Unknown',
+      individualName: payment.customerId?.name || '',
+      companyName: payment.customerId?.company || '',
       customerId: payment.customerId?._id || payment.customerId,
       raw: payment
     }))
@@ -2014,8 +2020,20 @@ export default function CustomerLedgerPage() {
   const allLedgerColumns = useMemo(() => [
     { header: "Entry #", accessor: "entryNumber", render: (row) => <span className="font-medium">{row.raw.entryNumber || '-'}</span>, pdfValue: (row) => row.raw.entryNumber || '-' },
     { header: "Date", accessor: "date", render: (row) => formatDateTime(row), pdfValue: (row) => formatDateTime(row) },
-    { header: "Customer", accessor: "buyer", render: (row) => <span className="font-medium">{row.buyer}</span>, pdfValue: (row) => row.buyer },
-    { header: "Type", accessor: "type", render: (row) => <span>{row.type}</span>, pdfValue: (row) => row.type },
+    {
+      header: "Customer",
+      accessor: "buyer",
+      render: (row) => (
+        <div className="flex flex-col">
+          <span className="font-medium">{row.buyer}</span>
+          {row.companyName && row.customerName && row.companyName !== row.customerName && (
+            <span className="text-[10px] text-muted-foreground leading-tight">({row.customerName})</span>
+          )}
+        </div>
+      ),
+      pdfValue: (row) => row.buyer
+    },
+    // { header: "Type", accessor: "type", render: (row) => <span>{row.type}</span>, pdfValue: (row) => row.type },
     {
       header: "Reference",
       accessor: "reference",
@@ -2114,7 +2132,19 @@ export default function CustomerLedgerPage() {
       { header: "Entry #", accessor: "entryNumber", render: (row) => row.entryNumber, pdfValue: (row) => row.entryNumber },
     ]
     if (selectedBuyerId === 'all') {
-      cols.push({ header: "Customer", accessor: "buyer", render: (row) => <span className="font-medium">{row.buyer}</span>, pdfValue: (row) => row.buyer })
+      cols.push({
+        header: "Customer",
+        accessor: "buyer",
+        render: (row) => (
+          <div className="flex flex-col">
+            <span className="font-medium">{row.buyer}</span>
+            {row.companyName && row.customerName && row.companyName !== row.customerName && (
+              <span className="text-[10px] text-muted-foreground leading-tight">({row.customerName})</span>
+            )}
+          </div>
+        ),
+        pdfValue: (row) => row.buyer
+      })
     }
     cols.push(
       { header: "Reference", accessor: "reference", render: (row) => row.reference, pdfValue: (row) => row.reference },
@@ -2156,7 +2186,14 @@ export default function CustomerLedgerPage() {
       baseColumns.push({
         header: "Buyer",
         accessor: "customerName",
-        render: (row) => <span className="font-medium">{row.customerName}</span>,
+        render: (row) => (
+          <div className="flex flex-col">
+            <span className="font-medium">{row.customerName}</span>
+            {row.companyName && row.individualName && row.companyName !== row.individualName && (
+              <span className="text-[10px] text-muted-foreground leading-tight">({row.individualName})</span>
+            )}
+          </div>
+        ),
         pdfValue: (row) => row.customerName
       })
     }

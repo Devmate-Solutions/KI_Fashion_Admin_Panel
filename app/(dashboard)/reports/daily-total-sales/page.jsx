@@ -167,7 +167,7 @@ export default function DailySalesReportPage() {
 
   return (
     <ReportLayout
-      title="Daily Sales Invoice Wise Report"
+      title="Daily Sales Invoice Wise Report o"
       description="All sales transactions for the selected date range"
       dateRange={dateRange}
       onDateChange={setDateRange}

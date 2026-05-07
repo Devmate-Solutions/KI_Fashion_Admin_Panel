@@ -302,7 +302,7 @@ export default function SupplierPaymentModal({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Wallet className="h-5 w-5" />
-                        {transactionType === 'credit' ? 'Add Supplier Payment - y' : 'Add Supplier Charge'}
+                        {transactionType === 'credit' ? 'Add Supplier Payment' : 'Add Supplier Charge'}
                     </DialogTitle>
                 </DialogHeader>
                 <div>
@@ -373,7 +373,7 @@ export default function SupplierPaymentModal({
                                         <div className="p-1">
                                             {filteredEntities.map((entity) => {
                                                 const entityIdStr = String(entity._id || entity.id)
-                                                const entityName = entity.name || entity.company || ''
+                                                const entityName = entity.company && entity.name ? entity.company + " (" + entity.name + ")" : entity.company
                                                 const entityDisplay = `${entityName}`
                                                 const isSelected = selectedEntityId === entityIdStr
 

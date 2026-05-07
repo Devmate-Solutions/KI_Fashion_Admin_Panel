@@ -122,7 +122,7 @@ export default function CustomerPaymentModal({
 
     // Get entity details based on selection
     const selectedEntity = entities.find(e => (e._id || e.id) === selectedEntityId || String(e.id) === selectedEntityId)
-    const entityName = selectedEntity?.name || selectedEntity?.company || initialEntityName || ''
+    const entityName = selectedEntity?.company || initialEntityName || ''
     const entityId = selectedEntityId || initialEntityId
 
     // Calculate totalBalance with priority:
@@ -368,9 +368,9 @@ export default function CustomerPaymentModal({
                                         <div className="p-1">
                                             {filteredEntities.map((entity) => {
                                                 const entityIdStr = String(entity._id || entity.id)
-                                                const name = entity.name || entity.company || ''
-                                                const company = entity.company && entity.name ? ` (${entity.company})` : ''
-                                                const entityDisplay = `${name}${company}`
+                                                const company = entity.company || ''
+                                                // const company = entity.company && entity.name ? ` (${entity.company})` : ''
+                                                const entityDisplay = `${company}`
                                                 const isSelected = selectedEntityId === entityIdStr
 
                                                 return (

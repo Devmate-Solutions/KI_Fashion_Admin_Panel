@@ -90,7 +90,7 @@ export default function PacketStockSelectionModal({ open, onClose, onSelect }) {
         const totalItems = packetStock.totalItemsPerPacket || 1
         const suggestedPricePerItem = Number(packetStock.suggestedSellingPrice || 0) / totalItems
 
-        const compositionText = packetStock.composition?.map(c => 
+        const compositionText = packetStock.composition?.map(c =>
             `${c.size || '?'}/${c.color || '?'}×${c.quantity || 0}`
         ).join(', ') || ''
 
@@ -134,6 +134,9 @@ export default function PacketStockSelectionModal({ open, onClose, onSelect }) {
                         <Package className="h-5 w-5" />
                         Browse Available Stock (Packets & Loose Items)
                     </DialogTitle>
+                    {/* <DialogDescription>
+                        <p>This stock is reserved and cannot be sold in normal selling entries</p>
+                    </DialogDescription> */}
                 </DialogHeader>
 
                 <div className="px-6 pt-3 pb-3 border-b space-y-3 shrink-0">
@@ -221,8 +224,8 @@ export default function PacketStockSelectionModal({ open, onClose, onSelect }) {
                                                     <span className="font-medium text-sm truncate">
                                                         {ps.product?.name || 'Unknown Product'}
                                                     </span>
-                                                    <Badge 
-                                                        variant="outline" 
+                                                    <Badge
+                                                        variant="outline"
                                                         className={`text-[10px] flex-shrink-0 ${ps.isLoose ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}
                                                     >
                                                         {ps.isLoose ? 'LOOSE' : 'PACKET'}
@@ -243,8 +246,8 @@ export default function PacketStockSelectionModal({ open, onClose, onSelect }) {
                                                         <span className="ml-1 text-emerald-600">({totalItems} items/pkt)</span>
                                                     </div>
                                                 )}
-                                                {ps.supplier?.name && (
-                                                    <div className="text-xs text-muted-foreground mt-0.5">Supplier: {ps.supplier.name}</div>
+                                                {ps.supplier?.company && (
+                                                    <div className="text-xs text-muted-foreground mt-0.5">Supplier: {ps.supplier.company}</div>
                                                 )}
                                             </div>
 

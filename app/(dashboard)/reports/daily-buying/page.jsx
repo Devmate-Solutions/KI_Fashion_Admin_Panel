@@ -127,13 +127,13 @@ export default function DailyBuyingReportPage() {
         const supplier = row.supplier
         if (!supplier) return "—"
         if (typeof supplier === 'string') return supplier
-        return supplier.name || supplier.company || "—"
+        return supplier.company || supplier.name || "—"
       },
       pdfValue: (row) => {
         const supplier = row.supplier
         if (!supplier) return "—"
         if (typeof supplier === 'string') return supplier
-        return supplier.name || supplier.company || "—"
+        return supplier.company || supplier.name || "—"
       }
     },
     {

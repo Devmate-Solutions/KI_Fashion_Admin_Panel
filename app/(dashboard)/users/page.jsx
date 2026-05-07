@@ -152,8 +152,8 @@ export default function UsersPage() {
             const isAdminCreated = source === 'crm'
             return (
               <span className={`px-2 py-1 text-xs rounded-full ${isAdminCreated
-                  ? 'bg-purple-100 text-purple-800'
-                  : 'bg-orange-100 text-orange-800'
+                ? 'bg-purple-100 text-purple-800'
+                : 'bg-orange-100 text-orange-800'
                 }`}>
                 {isAdminCreated ? 'Admin Created' : 'Self Registered'}
               </span>
@@ -233,8 +233,8 @@ export default function UsersPage() {
           accessor: "isActive",
           render: (row) => (
             <span className={`px-2 py-1 text-xs rounded-full ${row.isActive
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
+              ? 'bg-green-100 text-green-800'
+              : 'bg-red-100 text-red-800'
               }`}>
               {row.isActive ? 'Active' : 'Inactive'}
             </span>
@@ -255,14 +255,15 @@ export default function UsersPage() {
   const buyerRecordColumns = useMemo(() => [
     { header: "Name", accessor: "name" },
     { header: "Company", accessor: "company", render: (row) => row.company || '-' },
+
     {
       header: "Phone",
       accessor: "phone",
       render: (row) => {
-        const areaCode = row.phoneAreaCode ? `${row.phoneAreaCode}-` : ''
-        return areaCode + (row.phone || '-')
+        return (row.phoneAreaCode || '') + "-" + (row.phone || '-')
       }
     },
+
     { header: "Email", accessor: "email", render: (row) => row.email || '-' },
     { header: "Type", accessor: "customerType", render: (row) => row.customerType || 'retail' },
     {
@@ -583,7 +584,7 @@ export default function UsersPage() {
               Create Buyer
             </Button>
           </div>
-          <div className="space-y-3">
+          {/* <div className="space-y-3">
             <h3 className="text-sm font-semibold text-foreground">Buyer Accounts</h3>
             <DataTable
               columns={userColumns}
@@ -602,9 +603,9 @@ export default function UsersPage() {
                 </Button>
               )}
             />
-          </div>
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Buyer Records</h3>
+          </div> */}
+          <div className="">
+            {/* <h3 className="text-sm font-semibold text-foreground">Buyer Records</h3> */}
             <DataTable
               columns={buyerRecordColumns}
               data={buyerRecords}

@@ -115,8 +115,8 @@ export default function ProfitLossReportPage() {
     {
       header: "Customer Name",
       accessor: "customerName",
-      render: (row) => row.customerName || "—",
-      pdfValue: (row) => row.customerName || "—"
+      render: (row) => row.customerCompany || row.customerName || "—",
+      pdfValue: (row) => row.customerCompany || row.customerName || "—"
     },
     {
       header: "Product Code",
