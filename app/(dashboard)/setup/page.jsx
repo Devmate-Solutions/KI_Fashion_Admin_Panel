@@ -139,10 +139,11 @@ export default function SetupPage() {
 
   // Handle supplier CRUD operations
   const handleAddSupplier = async (formData) => {
-     
     try {
-      const result = await createSupplierMutation.mutateAsync(formData);
-       
+      const result = await createSupplierMutation.mutateAsync({
+        ...formData,
+        createUserAccount: true,
+      });
       setOpenAddSupplierForm(false);
     } catch (error) {
       console.error('Error creating supplier:', error);

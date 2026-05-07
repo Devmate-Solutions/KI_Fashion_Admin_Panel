@@ -122,7 +122,11 @@ export default function SupplierPaymentModal({
 
     // Get entity details based on selection (already using entities from parent)
     const selectedEntity = entities.find(e => (e._id || e.id) === selectedEntityId || String(e.id) === selectedEntityId)
-    const entityName = selectedEntity?.name || selectedEntity?.company || initialEntityName || ''
+    const entityName = selectedEntity 
+        ? (selectedEntity.company && selectedEntity.name 
+            ? `${selectedEntity.company} (${selectedEntity.name})` 
+            : (selectedEntity.company || selectedEntity.name || ''))
+        : (initialEntityName || '')
     const entityId = selectedEntityId || initialEntityId
 
     // Calculate totalBalance with priority:

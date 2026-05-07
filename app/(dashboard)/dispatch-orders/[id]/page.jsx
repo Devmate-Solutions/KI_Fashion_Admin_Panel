@@ -1614,7 +1614,7 @@ export default function DispatchOrderDetailPage({ params }) {
                   Dispatch Order: {dispatchOrder.orderNumber}
                 </h1>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {dispatchOrder.supplier?.name || dispatchOrder.supplier?.company || "Supplier"} • {dispatchOrder.dispatchDate ? new Date(dispatchOrder.dispatchDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "—"}
+                  {dispatchOrder.supplier?.company || dispatchOrder.supplier?.name || "Supplier"}{dispatchOrder.supplier?.company && dispatchOrder.supplier?.name && ` (${dispatchOrder.supplier.name})`} • {dispatchOrder.dispatchDate ? new Date(dispatchOrder.dispatchDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "—"}
                 </p>
               </div>
             </div>
@@ -1711,8 +1711,11 @@ export default function DispatchOrderDetailPage({ params }) {
             <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5 border-b sm:border-b-0 sm:border-r border-border pb-4 sm:pb-0 sm:pr-6">
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Supplier</p>
               <p className="text-xl font-bold text-foreground truncate">
-                {dispatchOrder.supplier?.name || dispatchOrder.supplier?.company || "—"}
+                {dispatchOrder.supplier?.company || dispatchOrder.supplier?.name || "—"}
               </p>
+              {dispatchOrder.supplier?.company && dispatchOrder.supplier?.name && (
+                <p className="text-xs text-muted-foreground mt-0.5">({dispatchOrder.supplier.name})</p>
+              )}
               {(dispatchOrder.supplier?.phone || dispatchOrder.supplier?.email) && (
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {dispatchOrder.supplier?.phone
@@ -3421,7 +3424,7 @@ export default function DispatchOrderDetailPage({ params }) {
               open={showPaymentModal}
               onClose={() => setShowPaymentModal(false)}
               entityId={dispatchOrder.supplier._id}
-              entityName={dispatchOrder.supplier.name || dispatchOrder.supplier.company}
+              entityName={dispatchOrder.supplier.company && dispatchOrder.supplier.name ? `${dispatchOrder.supplier.company} (${dispatchOrder.supplier.name})` : (dispatchOrder.supplier.company || dispatchOrder.supplier.name)}
               entities={allSuppliers}
               totalBalance={allSuppliers.find(s => s.id === dispatchOrder.supplier._id || s._id === dispatchOrder.supplier._id)?.balance}
               onSuccess={() => {
