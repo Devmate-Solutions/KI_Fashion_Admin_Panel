@@ -210,6 +210,8 @@ export default function LogisticsLedgerPage() {
         debit: entry.debit || 0,
         credit: entry.credit || 0,
         balance: entry.balance || 0, // Original stored balance (for reference)
+        boxes: entry.boxes ?? null,
+        boxRateSnapshot: entry.boxRateSnapshot ?? null,
         reference: readableReference,
         referenceId: (entry.referenceId && typeof entry.referenceId === 'object' && entry.referenceId._id)
           ? entry.referenceId._id.toString()
@@ -399,14 +401,17 @@ export default function LogisticsLedgerPage() {
         accessor: "boxes",
         render: (row) => {
           const ref = row.raw?.referenceId;
-          const totalBoxes = ref?.totalBoxes || (Array.isArray(ref?.boxes) ? ref.boxes.length : null);
+          const totalBoxes = row.raw?.boxes ?? ref?.totalBoxes ?? (Array.isArray(ref?.boxes) ? ref.boxes.length : null);
           return <span>{totalBoxes || '-'}</span>
         }
       },
       {
         header: "Box Rate",
         accessor: "boxRate",
-        render: (row) => <span>{row.boxRate ? currency(row.boxRate) : '-'}</span>
+        render: (row) => {
+          const boxRate = row.raw?.boxRateSnapshot ?? row.boxRate;
+          return <span>{boxRate ? currency(boxRate) : '-'}</span>
+        }
       },
       {
         header: "Debit (Charges)",
