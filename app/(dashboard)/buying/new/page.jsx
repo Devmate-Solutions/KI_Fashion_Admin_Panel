@@ -1,23 +1,36 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useCallback } from "react"
+import { useCallback, useState } from "react"
 import toast from "react-hot-toast"
 import BuyingForm from "@/components/forms/buying-form"
 import BackButton from "@/components/BackButton"
 import { Package } from "lucide-react"
+import BarcodePrintModal from "@/components/modals/BarcodePrintModal"
 
 export default function NewBuyingPage() {
   const router = useRouter()
+  const [showBarcodePrintModal, setShowBarcodePrintModal] = useState(false)
+  const [isPostCreatePrint, setIsPostCreatePrint] = useState(false)
+  const [dispatchOrderId, setDispatchOrderId] = useState(null)
 
   const handleSave = useCallback((purchaseData) => {
+    const createdId = purchaseData?._id || purchaseData?.id || null
+
     // Success! Show notification and navigate back
-    toast.success(`Purchase created successfully! ID: ${purchaseData.id || 'N/A'}`, {
+    toast.success(`Purchase created successfully! ID: ${createdId || "N/A"}`, {
       duration: 4000,
       position: 'top-right',
     })
 
-    // Navigate back to buying list after short delay
+    if (createdId) {
+      setDispatchOrderId(String(createdId))
+      setIsPostCreatePrint(true)
+      setShowBarcodePrintModal(true)
+      return
+    }
+
+    // Navigate back to buying list after short delay (fallback)
     setTimeout(() => {
       router.push("/buying")
     }, 500)
@@ -42,6 +55,18 @@ export default function NewBuyingPage() {
       </header>
 
       <BuyingForm onSave={handleSave} />
+
+      <BarcodePrintModal
+        open={showBarcodePrintModal}
+        onClose={() => {
+          setShowBarcodePrintModal(false)
+          setIsPostCreatePrint(false)
+          setDispatchOrderId(null)
+          router.push("/buying")
+        }}
+        dispatchOrderId={dispatchOrderId}
+        autoPrint={isPostCreatePrint}
+      />
     </div>
   )
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { toast } from "sonner"
+import { toast } from "react-hot-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -27,6 +27,7 @@ import ProductSelectionModal from "@/components/modals/ProductSelectionModal"
 import BritishDatePicker from "@/components/BritishDatePicker"
 import PacketStockSelectionModal from "@/components/modals/PacketStockSelectionModal"
 import BreakPacketDialog from "@/components/modals/BreakPacketDialog"
+import LooseStockBarcodeModal from "@/components/modals/LooseStockBarcodeModal"
 import { useBreakPacket } from "@/lib/hooks/usePacketStock"
 import { useAuthStore } from "@/store/store"
 import { useSubmitEditRequest } from "@/lib/hooks/useEditRequests"
@@ -85,6 +86,14 @@ const getRowTotalPrice = (row) => {
   return unitPrice * quantity
 }
 
+const VAT_RATE = 20
+
+const roundCurrency = (value) => {
+  const normalized = Number(value)
+  if (!Number.isFinite(normalized)) return 0
+  return Math.round((normalized + Number.EPSILON) * 100) / 100
+}
+
 // A multi-section selling form: buyer/metadata, products cart, and payment summary.
 // Enhanced with keyboard shortcuts and better UX
 // Integrated with backend APIs for buyers and sales
@@ -120,6 +129,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
   const [newBuyerEmail, setNewBuyerEmail] = useState("")
   const [newBuyerPhone, setNewBuyerPhone] = useState("")
   const [newBuyerPhoneAreaCode, setNewBuyerPhoneAreaCode] = useState("")
+  const [newBuyerAddress, setNewBuyerAddress] = useState("")
   const [isCreatingBuyer, setIsCreatingBuyer] = useState(false)
   const newBuyerPhoneInputRef = useRef(null)
   const manualCustomerPhoneInputRef = useRef(null)
@@ -171,11 +181,15 @@ export default function SaleForm({ onSave, initialData, saleId }) {
   // Packet breaking during sale
   const [packetToBreak, setPacketToBreak] = useState(null)
   const breakPacketMutation = useBreakPacket()
+  const [looseStockBarcodes, setLooseStockBarcodes] = useState([])
+  const [looseStockSourcePacket, setLooseStockSourcePacket] = useState(null)
+  const [showLooseStockBarcodeModal, setShowLooseStockBarcodeModal] = useState(false)
 
   // Payment section
   const [discount, setDiscount] = useState(null)
   const [cash, setCash] = useState(null)
   const [bank, setBank] = useState(null)
+  const [applyVat, setApplyVat] = useState(false)
   const [addShippingCost, setAddShippingCost] = useState(false)
   const [buyerShippingCharge, setBuyerShippingCharge] = useState(0)
   const [shippingBoxes, setShippingBoxes] = useState(0)
@@ -197,6 +211,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
     if (initialData.totalDiscount != null) setDiscount(initialData.totalDiscount)
     if (initialData.cashPayment != null) setCash(initialData.cashPayment)
     if (initialData.bankPayment != null) setBank(initialData.bankPayment)
+    setApplyVat(Number(initialData.vatRate || 0) > 0 || Number(initialData.totalVAT || 0) > 0)
     const hasShipping = Boolean(initialData.addShippingCost) || Number(initialData.buyerShippingCharge || initialData.shippingCost || 0) > 0
     setAddShippingCost(hasShipping)
     setBuyerShippingCharge(Number(initialData.buyerShippingCharge ?? initialData.shippingCost ?? 0))
@@ -411,6 +426,9 @@ export default function SaleForm({ onSave, initialData, saleId }) {
         phoneAreaCode: newBuyerPhoneAreaCode.trim() || undefined,
         company: newBuyerCompany.trim() || undefined,
         email: newBuyerEmail.trim() || undefined,
+        address: newBuyerAddress.trim()
+          ? { street: newBuyerAddress.trim() }
+          : undefined,
         createUserAccount: true
       }
       const response = await buyersAPI.create(payload)
@@ -433,10 +451,17 @@ export default function SaleForm({ onSave, initialData, saleId }) {
         setNewBuyerEmail("")
         setNewBuyerPhone("")
         setNewBuyerPhoneAreaCode("")
+        setNewBuyerAddress("")
         setShowAddBuyer(false)
       }
     } catch (err) {
       console.error('Error creating buyer:', err)
+      if (err.response?.status === 409) {
+        const message = err.response?.data?.message || 'A buyer with this name/company already exists.'
+        toast(message, { icon: '⚠️' })
+        setError(message)
+        return
+      }
       const errorMessage = err.response?.data?.message ||
         err.response?.data?.error ||
         err.message ||
@@ -516,6 +541,8 @@ export default function SaleForm({ onSave, initialData, saleId }) {
     // Validate barcode format
     if (!trimmedBarcode.startsWith('PKT-') && !trimmedBarcode.startsWith('LSE-')) {
       setBarcodeError('Invalid barcode format. Expected PKT-XXXXXXXX or LSE-XXXXXXXX')
+      setBarcodeInput('')
+      barcodeInputRef.current?.focus()
       return
     }
 
@@ -529,12 +556,15 @@ export default function SaleForm({ onSave, initialData, saleId }) {
 
       if (newQty > existingRow.availablePackets) {
         setBarcodeError(`Cannot add more. Max available: ${existingRow.availablePackets} packets`)
+        setBarcodeInput('')
+        barcodeInputRef.current?.focus()
         return
       }
 
       // Update quantity of existing row
       updateRow(existingRow.id, 'quantity', newQty)
       setBarcodeInput('') // Clear input
+      barcodeInputRef.current?.focus()
       return
     }
 
@@ -547,11 +577,15 @@ export default function SaleForm({ onSave, initialData, saleId }) {
 
       if (!packetData) {
         setBarcodeError('Packet not found')
+        setBarcodeInput('')
+        barcodeInputRef.current?.focus()
         return
       }
 
       if (packetData.availablePackets <= 0) {
         setBarcodeError(`No stock available for ${packetData.product?.name || 'this packet'}`)
+        setBarcodeInput('')
+        barcodeInputRef.current?.focus()
         return
       }
 
@@ -584,11 +618,14 @@ export default function SaleForm({ onSave, initialData, saleId }) {
 
       setRows((r) => [...r, newRow])
       setBarcodeInput('') // Clear input after successful scan
+      barcodeInputRef.current?.focus()
 
     } catch (err) {
       console.error('Barcode lookup error:', err)
       const errorMessage = err.response?.data?.message || err.message || 'Failed to lookup barcode'
       setBarcodeError(errorMessage)
+      setBarcodeInput('')
+      barcodeInputRef.current?.focus()
     } finally {
       setIsLookingUpBarcode(false)
     }
@@ -620,12 +657,17 @@ export default function SaleForm({ onSave, initialData, saleId }) {
   const totals = useMemo(() => {
     // subtotal is just the sum of items
     const subtotal = rows.reduce((sum, row) => sum + Number(row.totalPrice || 0), 0)
-    // grandTotal includes shipping (logistics payable) and subtracts discount
-    const grandTotal = Math.max(0, subtotal + computedLogisticsPayable - Number(discount || 0))
+    const discountValue = Number(discount || 0)
+    const discountedSubtotal = Math.max(0, subtotal - discountValue)
+    const totalVAT = applyVat
+      ? roundCurrency(discountedSubtotal * (VAT_RATE / 100))
+      : 0
+    // grandTotal includes shipping (logistics payable) and subtracts discount, VAT only on goods
+    const grandTotal = roundCurrency(Math.max(0, discountedSubtotal + totalVAT + computedLogisticsPayable))
     const paid = Number(cash || 0) + Number(bank || 0)
-    const remaining = grandTotal - paid
-    return { subtotal, grandTotal, paid, remaining }
-  }, [rows, computedLogisticsPayable, discount, cash, bank])
+    const remaining = roundCurrency(grandTotal - paid)
+    return { subtotal, totalVAT, grandTotal, paid, remaining }
+  }, [rows, computedLogisticsPayable, discount, cash, bank, applyVat])
 
   // Keyboard shortcuts
   function handlePaymentKeyDown(e, field) {
@@ -809,12 +851,19 @@ export default function SaleForm({ onSave, initialData, saleId }) {
 
       // Calculate subtotal and grandTotal
       const subtotal = itemsWithProducts.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0)
-      const grandTotal = Math.max(0, subtotal + (addShippingCost ? computedLogisticsPayable : 0) - Number(discount || 0))
+      const discountValue = Number(discount || 0)
+      const discountedSubtotal = Math.max(0, subtotal - discountValue)
+      const totalVAT = applyVat
+        ? roundCurrency(discountedSubtotal * (VAT_RATE / 100))
+        : 0
+      const grandTotal = Math.max(0, discountedSubtotal + totalVAT + (addShippingCost ? computedLogisticsPayable : 0))
 
       const payload = {
         saleDate: saleDate,
         items: itemsWithProducts,
         totalDiscount: Number(discount || 0),
+        vatRate: applyVat ? VAT_RATE : 0,
+        totalVAT: totalVAT,
         addShippingCost: addShippingCost,
         buyerShippingCharge: addShippingCost ? computedLogisticsPayable : 0,
         shippingCost: addShippingCost ? computedLogisticsPayable : 0,
@@ -889,6 +938,10 @@ export default function SaleForm({ onSave, initialData, saleId }) {
           requestedChanges.buyer = { from: initialData.buyer?.name || initialData.buyer, to: pendingPayload.buyer }
         if (pendingPayload.totalDiscount !== (initialData.totalDiscount || 0))
           requestedChanges.totalDiscount = { from: initialData.totalDiscount || 0, to: pendingPayload.totalDiscount }
+        if (Number(pendingPayload.vatRate || 0) !== Number(initialData.vatRate || 0))
+          requestedChanges.vatRate = { from: Number(initialData.vatRate || 0), to: Number(pendingPayload.vatRate || 0) }
+        if (Number(pendingPayload.totalVAT || 0) !== Number(initialData.totalVAT || 0))
+          requestedChanges.totalVAT = { from: Number(initialData.totalVAT || 0), to: Number(pendingPayload.totalVAT || 0) }
         if (Boolean(pendingPayload.addShippingCost) !== Boolean(initialData.addShippingCost))
           requestedChanges.addShippingCost = { from: Boolean(initialData.addShippingCost), to: Boolean(pendingPayload.addShippingCost) }
         if (Number(pendingPayload.buyerShippingCharge || 0) !== Number(initialData.buyerShippingCharge ?? initialData.shippingCost ?? 0))
@@ -939,6 +992,8 @@ export default function SaleForm({ onSave, initialData, saleId }) {
       setShowEditRequestPanel(false)
       setEditRequestReason("")
       setPendingPayload(null)
+      toast.success('Edit request submitted for super-admin approval.')
+      router.push('/my-requests')
     } catch {
       // error toast handled by mutation hook
     } finally {
@@ -1669,6 +1724,15 @@ export default function SaleForm({ onSave, initialData, saleId }) {
               </div>
             )}
 
+            {applyVat && (
+              <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-950/20 rounded-md border border-blue-100 dark:border-blue-900/30">
+                <span className="text-sm font-medium text-blue-800 dark:text-blue-300">VAT (20%)</span>
+                <span className="text-base font-semibold tabular-nums text-blue-700 dark:text-blue-400">
+                  + £{totals.totalVAT.toFixed(2)}
+                </span>
+              </div>
+            )}
+
             <div className="flex justify-between items-center p-3 bg-primary/5 dark:bg-primary/10 rounded-md border-2 border-primary/20">
               <span className="text-sm font-bold text-primary">Grand Total</span>
               <span className="text-xl font-bold tabular-nums text-primary">
@@ -1747,6 +1811,24 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                   </div>
                 </div>
               )}
+            </div>
+
+            <div className="rounded-md border border-border p-3 space-y-2">
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="apply-vat"
+                  checked={applyVat}
+                  onChange={(e) => setApplyVat(e.target.checked)}
+                  className="h-5 w-5 rounded border-border text-primary focus:ring-primary mt-0.5 flex-shrink-0"
+                />
+                <Label htmlFor="apply-vat" className="text-sm font-semibold cursor-pointer">
+                  Apply VAT (20%)
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground pl-7">
+                VAT applies to goods after discount. Shipping is excluded.
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -2000,6 +2082,16 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                 />
               </div>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-buyer-address">Address</Label>
+              <Input
+                id="new-buyer-address"
+                value={newBuyerAddress}
+                onChange={(e) => setNewBuyerAddress(e.target.value)}
+                placeholder="Enter address"
+                disabled={isCreatingBuyer}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -2011,6 +2103,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                 setNewBuyerEmail("")
                 setNewBuyerPhone("")
                 setNewBuyerPhoneAreaCode("")
+                setNewBuyerAddress("")
               }}
               disabled={isCreatingBuyer}
             >
@@ -2060,6 +2153,14 @@ export default function SaleForm({ onSave, initialData, saleId }) {
         onOpenChange={(open) => !open && setPacketToBreak(null)}
         packet={packetToBreak}
         onSuccess={(result) => {
+          const sourcePacketBarcode = packetToBreak?.barcode || null
+          const resolvedLooseStockBarcodes = Array.isArray(result?.looseStocks)
+            ? result.looseStocks.map((stock) => stock?.barcode).filter(Boolean)
+            : []
+          const fallbackBarcode = result?.looseStock?.barcode
+          if (fallbackBarcode && !resolvedLooseStockBarcodes.includes(fallbackBarcode)) {
+            resolvedLooseStockBarcodes.push(fallbackBarcode)
+          }
           // After breaking, add the sold items to cart as individual item sales
           if (result?.itemsSold && result.itemsSold.length > 0 && packetToBreak) {
             // Calculate total items sold
@@ -2080,16 +2181,35 @@ export default function SaleForm({ onSave, initialData, saleId }) {
               isPacketSale: false, // Individual items, not packet
               fromBrokenPacket: true,
               originalPacketBarcode: packetToBreak.barcode,
-              looseStockBarcode: result.looseStockBarcode,
+              looseStockBarcode: resolvedLooseStockBarcodes[0] || null,
               itemsSoldBreakdown: result.itemsSold, // Keep breakdown for reference
               supplierName: packetToBreak.supplier?.name || ''
             }
 
             setRows((r) => [...r, brokenRow])
           }
+
+          if (resolvedLooseStockBarcodes.length > 0) {
+            setLooseStockBarcodes(resolvedLooseStockBarcodes)
+            setLooseStockSourcePacket(sourcePacketBarcode)
+            setShowLooseStockBarcodeModal(true)
+          }
           setPacketToBreak(null)
         }}
         mode="sale"
+      />
+
+      <LooseStockBarcodeModal
+        open={showLooseStockBarcodeModal}
+        onOpenChange={(open) => {
+          setShowLooseStockBarcodeModal(open)
+          if (!open) {
+            setLooseStockBarcodes([])
+            setLooseStockSourcePacket(null)
+          }
+        }}
+        barcodes={looseStockBarcodes}
+        sourcePacketBarcode={looseStockSourcePacket}
       />
     </div >
   )

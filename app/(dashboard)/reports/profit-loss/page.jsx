@@ -81,48 +81,41 @@ export default function ProfitLossReportPage() {
 
   const columns = [
     {
-      header: "Sno",
+      header: "SN",
       accessor: "sno",
       align: "center",
       render: (row) => row.sno,
       pdfValue: (row) => row.sno
     },
     {
-      header: "Transaction Date",
-      accessor: "transactionDate",
-      render: (row) => formatDate(row.transactionDate),
-      pdfValue: (row) => formatDate(row.transactionDate)
+      header: "Date",
+      accessor: "date",
+      render: (row) => formatDate(row.date),
+      pdfValue: (row) => formatDate(row.date)
     },
     {
       header: "Invoice No.",
       accessor: "invoiceNumber",
-      render: (row) => {
-        const invoiceNum = row.invoiceNumber || "—"
-        if (row.saleId && invoiceNum !== "—") {
-          return (
-            <Link
-              href={`/selling/${row.saleId}`}
-              className="font-mono text-xs text-blue-600 hover:text-blue-800 hover:underline"
-            >
-              {invoiceNum}
-            </Link>
-          )
-        }
-        return <span className="font-mono text-xs">{invoiceNum}</span>
-      },
-      pdfValue: (row) => row.invoiceNumber || "—"
+      render: (row) => (
+        <Link
+          href={`/selling?saleId=${row.saleId}`}
+          className="text-blue-600 hover:underline font-medium"
+        >
+          {row.invoiceNumber || "N/A"}
+        </Link>
+      ),
+      pdfValue: (row) => row.invoiceNumber || "N/A",
     },
     {
-      header: "Customer Name",
+      header: "Customer",
       accessor: "customerName",
-      render: (row) => row.customerCompany || row.customerName || "—",
-      pdfValue: (row) => row.customerCompany || row.customerName || "—"
+      pdfValue: (row) => row.customerName || "Walk-in"
     },
     {
       header: "Product Code",
       accessor: "productCode",
       render: (row) => {
-        const productCode = row.productCode || row.sku || "—"
+        const productCode = row.productCode || "—"
         const productId = row.productId
         if (productId && productCode !== "—") {
           return (
@@ -139,10 +132,14 @@ export default function ProfitLossReportPage() {
       pdfValue: (row) => row.productCode || "—"
     },
     {
-      header: "Items Sold",
+      header: "Product Name",
+      accessor: "productName",
+      pdfValue: (row) => row.productName || "—"
+    },
+    {
+      header: "Qty",
       accessor: "itemsSold",
       align: "right",
-      render: (row) => row.itemsSold || 0,
       pdfValue: (row) => row.itemsSold || 0
     },
     {
@@ -153,19 +150,11 @@ export default function ProfitLossReportPage() {
       pdfValue: (row) => currency(row.sellingPrice || 0)
     },
     {
-      header: "Total Sales",
-      accessor: "totalSales",
-      align: "right",
-      render: (row) => currency(row.totalSales || 0),
-      pdfValue: (row) => currency(row.totalSales || 0)
-    },
-
-    {
-      header: "Average Cost",
+      header: "Cost Price",
       accessor: "averageCost",
       align: "right",
-      render: (row) => currency(row.averageCost * row.itemsSold || 0),
-      pdfValue: (row) => currency(row.averageCost * row.itemsSold || 0)
+      render: (row) => currency(row.averageCost || 0),
+      pdfValue: (row) => currency(row.averageCost || 0)
     },
     {
       header: "PNL",
@@ -242,7 +231,6 @@ export default function ProfitLossReportPage() {
         showTotals={true}
         totalsRow={totalsRow}
         totalColumns={[{ title: "Total", value: "pnl" }]}
-
       />
     </ReportLayout>
   )
