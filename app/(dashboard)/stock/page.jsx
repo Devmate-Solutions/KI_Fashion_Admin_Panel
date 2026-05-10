@@ -512,7 +512,7 @@ export default function StockPage() {
   const [packetSearch, setPacketSearch] = useState("");
   const [packetAppliedSearch, setPacketAppliedSearch] = useState("");
   const [packetStockFilter, setPacketStockFilter] = useState("all"); // 'all', 'inStock', 'outOfStock'
-  const [packetTypeFilter, setPacketTypeFilter] = useState("all"); // 'all', 'packet', 'loose'
+  const [packetTypeFilter, setPacketTypeFilter] = useState("packet"); // 'all', 'packet', 'loose'
   const [selectedPacketDetail, setSelectedPacketDetail] = useState(null);
   const [copiedBarcode, setCopiedBarcode] = useState(null);
   const [packetToBreak, setPacketToBreak] = useState(null);
@@ -721,11 +721,8 @@ export default function StockPage() {
     } else if (packetStockFilter === "outOfStock") {
       params.hasStock = "false";
     }
-    if (packetTypeFilter === "packet") {
-      params.isLoose = "false";
-    } else if (packetTypeFilter === "loose") {
-      params.isLoose = "true";
-    }
+    // Always show packets (exclude loose items) in the Packet Stock tab
+    params.isLoose = "false";
     return params;
   }, [packetPage, packetPageLimit, packetAppliedSearch, packetStockFilter, packetTypeFilter]);
 
@@ -738,6 +735,39 @@ export default function StockPage() {
   const packetStockItems = packetStockData?.data ?? [];
   const packetStockPagination = packetStockData?.pagination;
   const adjustStockMutation = useAdjustStock();
+
+  // Loose Stock tab state & fetching (separate from Packet Stock)
+  const [loosePage, setLoosePage] = useState(1);
+  const [loosePageLimit, setLoosePageLimit] = useState(20);
+  const [looseSearch, setLooseSearch] = useState("");
+  const [looseAppliedSearch, setLooseAppliedSearch] = useState("");
+  const [looseStockFilter, setLooseStockFilter] = useState("all"); // 'all', 'inStock', 'outOfStock'
+
+  const looseStockParams = useMemo(() => {
+    const params = {
+      page: loosePage,
+      limit: loosePageLimit,
+      isLoose: "true",
+    };
+    if (looseAppliedSearch?.trim()) {
+      params.search = looseAppliedSearch.trim();
+    }
+    if (looseStockFilter === "inStock") {
+      params.hasStock = "true";
+    } else if (looseStockFilter === "outOfStock") {
+      params.hasStock = "false";
+    }
+    return params;
+  }, [loosePage, loosePageLimit, looseAppliedSearch, looseStockFilter]);
+
+  const {
+    data: looseStockData,
+    isLoading: looseStockLoading,
+    isFetching: looseStockFetching,
+  } = usePacketStockList(looseStockParams);
+
+  const looseStockItems = looseStockData?.data ?? [];
+  const looseStockPagination = looseStockData?.pagination;
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [reduceDialogOpen, setReduceDialogOpen] = useState(false);
@@ -1360,23 +1390,60 @@ export default function StockPage() {
     return { totalPackets, totalItems, totalValue, lowStockCount };
   }, [packetStockItems]);
 
-  const packetStockTab = (
+  // Loose Stock summary
+  const looseStockSummary = useMemo(() => {
+    const items = looseStockItems || [];
+    let totalLoose = 0;
+    let totalItems = 0;
+    let totalValue = 0;
+    let lowStockCount = 0;
+
+    items.forEach((p) => {
+      const available = (p.availablePackets || 0) - (p.reservedPackets || 0);
+      const perItemMin = Number(
+        p.product?.pricing?.minSellingPrice ?? p.product?.pricing?.sellingPrice
+      );
+      const effectivePrice = Number.isFinite(perItemMin) ? perItemMin : (p.suggestedSellingPrice || 0);
+
+      totalLoose += available;
+      totalItems += available * (p.totalItemsPerPacket || 1);
+      totalValue += available * effectivePrice;
+      if (available > 0 && available <= 5) lowStockCount++;
+    });
+
+    return { totalLoose, totalItems, totalValue, lowStockCount };
+  }, [looseStockItems]);
+
+  const handleApplyLooseSearch = (e) => {
+    e.preventDefault();
+    setLooseAppliedSearch(looseSearch);
+    setLoosePage(1);
+  };
+
+  const handleResetLooseFilters = () => {
+    setLooseSearch("");
+    setLooseAppliedSearch("");
+    setLooseStockFilter("all");
+    setLoosePage(1);
+  };
+
+  const looseStockTab = (
     <div className="space-y-4">
-      {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="pb-2">
+          {/* <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Packets
+              Total Loose
             </CardTitle>
-          </CardHeader>
+          </CardHeader> */}
           <CardContent>
+            Total Loose
             <div className="text-2xl font-bold tabular-nums">
-              {formatNumber(packetStockSummary.totalPackets)}
+              {formatNumber(looseStockSummary.totalLoose)}
             </div>
           </CardContent>
         </Card>
-        <Card>
+        {/* <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Total Items
@@ -1384,29 +1451,88 @@ export default function StockPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold tabular-nums">
-              {formatNumber(packetStockSummary.totalItems)}
+              {formatNumber(looseStockSummary.totalItems)}
+            </div>
+          </CardContent>
+        </Card> */}
+        <Card>
+          {/* <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Value
+            </CardTitle>
+          </CardHeader> */}
+          <CardContent>
+            Total Value
+            <div className="text-2xl font-bold tabular-nums">
+              {currency(looseStockSummary.totalValue)}
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
+          {/* <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Low Stock
+            </CardTitle>
+          </CardHeader> */}
+          <CardContent>
+            Low Stock
+            <div className="text-2xl font-bold tabular-nums text-amber-600">
+              {looseStockSummary.lowStockCount}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+     
+      <DataTable
+        columns={packetStockColumns}
+        data={looseStockItems}
+        loading={looseStockLoading}
+      />
+
+    
+    </div>
+  );
+
+  const packetStockTab = (
+    <div className="space-y-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          {/* <CardHeader className="pb-1">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Packets
+            </CardTitle>
+          </CardHeader> */}
+          <CardContent>
+            Total Packets
+            <div className="text-2xl font-bold tabular-nums">
+              {formatNumber(packetStockSummary.totalPackets)}
+            </div>
+          </CardContent>
+        </Card>
+       
+        <Card>
+          {/* <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Total Value
             </CardTitle>
-          </CardHeader>
+          </CardHeader> */}
           <CardContent>
+            Total Value
             <div className="text-2xl font-bold tabular-nums">
               {currency(packetStockSummary.totalValue)}
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
+          {/* <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Low Stock
             </CardTitle>
-          </CardHeader>
+          </CardHeader> */}
           <CardContent>
+            Low Stock
             <div className="text-2xl font-bold tabular-nums text-amber-600">
               {packetStockSummary.lowStockCount}
             </div>
@@ -1414,56 +1540,7 @@ export default function StockPage() {
         </Card>
       </div>
 
-      {/* Filters */}
-      <form onSubmit={handleApplyPacketSearch} className="flex flex-wrap items-end gap-3">
-        <div className="flex-1 min-w-[200px]">
-          <Label className="text-xs">Search</Label>
-          <Input
-            placeholder="Search barcode, product..."
-            value={packetSearch}
-            onChange={(e) => setPacketSearch(e.target.value)}
-            className="h-9"
-          />
-        </div>
-        <div className="w-[140px]">
-          <Label className="text-xs">Stock</Label>
-          <Select value={packetStockFilter} onValueChange={setPacketStockFilter}>
-            <SelectTrigger className="h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="inStock">In Stock</SelectItem>
-              <SelectItem value="outOfStock">Out of Stock</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="w-[140px]">
-          <Label className="text-xs">Type</Label>
-          <Select value={packetTypeFilter} onValueChange={setPacketTypeFilter}>
-            <SelectTrigger className="h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="packet">Packets Only</SelectItem>
-              <SelectItem value="loose">Loose Only</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <Button type="submit" size="sm" className="h-9">
-          Apply
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-9"
-          onClick={handleResetPacketFilters}
-        >
-          Reset
-        </Button>
-      </form>
+   
 
       {/* Data Table */}
       <DataTable
@@ -1517,6 +1594,7 @@ export default function StockPage() {
   const tabs = [
     { label: "Inventory", content: inventoryTab },
     { label: "Packet Stock", content: packetStockTab },
+    { label: "Loose Stock", content: looseStockTab },
     { label: "Stock Count", content: <StockCountTab /> },
     { label: "Product Summary", content: <ProductSummaryTab /> },
   ];

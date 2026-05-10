@@ -1529,7 +1529,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                           inputMode="decimal"
                           step="0.01"
                           min="0"
-                          value={row.unitPrice}
+                          // value={row.unitPrice}
                           onChange={(e) => {
                             const value = e.target.value;
                             const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
@@ -1551,7 +1551,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                         inputMode="decimal"
                         step="0.01"
                         min="0"
-                        value={row.unitPrice}
+                        // value={row.unitPrice}
                         onChange={(e) => {
                           const value = e.target.value;
                           // Allow only numbers and one decimal point
@@ -1595,7 +1595,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                           className="h-8 text-sm text-right tabular-nums w-20"
                         />
                         <span className="text-xs text-muted-foreground">
-                          {row.availablePackets} availablev
+                          {row.availablePackets} available
                         </span>
                       </div>
                     ) : (

@@ -12,8 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { AlertTriangle, Check, X, User, Clock, ExternalLink } from "lucide-react";
+import { AlertTriangle, Check, X, User, Clock, ExternalLink, FilePlus } from "lucide-react";
 import DiffView from "@/components/DiffView";
+import PayloadView from "@/components/PayloadView";
 import { useEditRequest, useApproveEditRequest, useRejectEditRequest } from "@/lib/hooks/useEditRequests";
 import Link from "next/link";
 
@@ -143,15 +144,17 @@ export default function RequestReviewPanel({ open, onClose, requestId }) {
                   })}
                 </span>
               </div>
-              <div>
-                <Link
-                  href={`${ENTITY_ROUTES[request.entityType] || "/"}/${request.entityId}`}
-                  className="text-blue-600 hover:underline text-sm flex items-center gap-1"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  View Original Record
-                </Link>
-              </div>
+              {request.entityId && (
+                <div>
+                  <Link
+                    href={`${ENTITY_ROUTES[request.entityType] || "/"}/${request.entityId}`}
+                    className="text-blue-600 hover:underline text-sm flex items-center gap-1 w-fit"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    View {request.requestType === 'create' ? 'Created' : 'Original'} Record
+                  </Link>
+                </div>
+              )}
             </div>
 
             {/* Reason */}
@@ -165,6 +168,18 @@ export default function RequestReviewPanel({ open, onClose, requestId }) {
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Proposed Changes</Label>
                 <DiffView requestedChanges={request.requestedChanges} />
+              </div>
+            )}
+
+            {request.requestType === "create" && request.rawPayload && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                   <Label className="text-sm font-medium">New Record Data</Label>
+                   <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 text-[10px] h-5">
+                      <FilePlus className="h-3 w-3 mr-1" /> Backdated Creation
+                   </Badge>
+                </div>
+                <PayloadView payload={request.rawPayload} entityType={request.entityType} />
               </div>
             )}
 

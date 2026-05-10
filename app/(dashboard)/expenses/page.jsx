@@ -136,15 +136,15 @@ export default function ExpensesPage() {
           id: editingExpense.id,
           data: formData
         })
-          if (response?.status === 202) {
-            toast.success("Edit request submitted for approval")
-            router.push('/my-requests')
-            setShowForm(false)
-            setEditingExpense(null)
-            return
-          }
-          toast.success("Expense updated successfully")
-        } else {
+        if (response?.status === 202) {
+          toast.success("Edit request submitted for approval")
+          router.push('/my-requests')
+          setShowForm(false)
+          setEditingExpense(null)
+          return
+        }
+        toast.success("Expense updated successfully")
+      } else {
         const response = await createMutation.mutateAsync(formData)
         if (response?.status === 202) {
           toast.success("Expense submitted for approval")

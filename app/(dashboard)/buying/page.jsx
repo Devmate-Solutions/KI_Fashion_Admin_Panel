@@ -542,13 +542,31 @@ export default function BuyingPage() {
 
       {
         header: "Landed Price",
-        accessor: "landedPrice",
-        render: (row) => (
-          <span className="tabular-nums font-semibold text-sm text-foreground">
-            {row?.landedPrice != null ? row?.landedPrice.toFixed(2) : "—"}
-          </span>
-        ),
-        pdfValue: (row) => row?.landedPrice != null ? row?.landedPrice.toFixed(2) : "—"
+        render: (row) => {
+          let landedPrice = row?.landedPrice;
+
+          // Frontend fallback if backend somehow misses it or for legacy data
+          if ((landedPrice == null || landedPrice === 0) && row?.currentItem?.costPrice) {
+            const exRate = row?.exchangeRate || 1;
+            const pct = row?.percentage || 0;
+            landedPrice = (row.currentItem.costPrice / exRate) * (1 + (pct / 100));
+          }
+
+          return (
+            <span className="tabular-nums font-semibold text-sm text-foreground">
+              {landedPrice != null && landedPrice !== 0 ? landedPrice.toFixed(2) : "—"}
+            </span>
+          )
+        },
+        pdfValue: (row) => {
+          let landedPrice = row?.landedPrice;
+          if ((landedPrice == null || landedPrice === 0) && row?.currentItem?.costPrice) {
+            const exRate = row?.exchangeRate || 1;
+            const pct = row?.percentage || 0;
+            landedPrice = (row.currentItem.costPrice / exRate) * (1 + (pct / 100));
+          }
+          return landedPrice != null && landedPrice !== 0 ? landedPrice.toFixed(2) : "—"
+        }
       },
       {
         header: "Actions",
