@@ -275,7 +275,7 @@ export default function LogisticsPaymentModal({
         }
 
         if (isPendingApproval) {
-          toast.success('Backdated payment request submitted for approval.')
+          toast.success('Backdated payment request submitted for approval of super admin.')
           handleClose()
           const router = window.nextRouter || { push: (url) => window.location.href = url }
           router.push('/my-requests')
@@ -296,7 +296,7 @@ export default function LogisticsPaymentModal({
         })
         
         if (debitResponse.status === 202) {
-          toast.success('Backdated adjustment request submitted for approval.')
+          toast.success('Backdated adjustment request submitted for approval of super admin.')
           handleClose()
           const router = window.nextRouter || { push: (url) => window.location.href = url }
           router.push('/my-requests')
@@ -318,9 +318,8 @@ export default function LogisticsPaymentModal({
       queryClient.invalidateQueries({ queryKey: ['ledger'] })
       queryClient.invalidateQueries({ queryKey: ['logistics-companies'] })
 
-      // Don't close immediately - let user see the debug info
-      // handleClose()
-      // onSuccess?.()
+      handleClose()
+      onSuccess?.()
     } catch (error) {
       console.error('Error creating transaction:', error)
       setApiResponses(prev => [...prev, {

@@ -97,7 +97,7 @@ export default function EditRequestDialog({
           )}
 
           {/* Reason field */}
-          <div>
+          {/* <div>
             <Label htmlFor="edit-reason" className="text-sm font-medium">
               Reason for Change <span className="text-red-500">*</span>
             </Label>
@@ -109,7 +109,7 @@ export default function EditRequestDialog({
               className="mt-1.5"
               rows={3}
             />
-          </div>
+          </div> */}
         </div>
 
         <DialogFooter>

@@ -235,7 +235,7 @@ export default function EditConfirmedOrderModal({
           reason: reason.trim(),
         });
 
-        setSaveResult({ message: "Edit request submitted for approval." });
+        setSaveResult({ message: "Edit request submitted for approval of super admin." });
         if (onSuccess) onSuccess(null);
         return;
       }

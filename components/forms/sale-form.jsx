@@ -900,7 +900,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
       }
 
       if (response.status === 202) {
-        toast.success('Backdated sale request submitted for super-admin approval.')
+        toast.success('Backdated sale request submitted for approval of super admin.')
         router.push('/my-requests')
         return
       }
@@ -992,7 +992,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
       setShowEditRequestPanel(false)
       setEditRequestReason("")
       setPendingPayload(null)
-      toast.success('Edit request submitted for super-admin approval.')
+      // submitEditRequestMutation already toasts on success
       router.push('/my-requests')
     } catch {
       // error toast handled by mutation hook

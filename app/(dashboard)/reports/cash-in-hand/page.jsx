@@ -112,8 +112,9 @@ export default function CashInHandReportPage() {
         {
             header: "Name",
             accessor: "name",
-            render: (row) => row.company || row.name || "—",
-            pdfValue: (row) => row.company || row.name || "—"
+            render: (row) => row.transactionType === "Expense" ? row.costType || row.name || "—" : row.company || row.name || "—",
+            pdfValue: (row) => row.transactionType === "Expense" ? row.costType || row.name || "—" : row.company || row.name || "—",
+            excelValue: (row) => row.transactionType === "Expense" ? row.costType || row.name || "—" : row.company || row.name || "—"
         },
         // Sales columns
         {

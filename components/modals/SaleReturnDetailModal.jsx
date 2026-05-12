@@ -32,9 +32,6 @@ export default function SaleReturnDetailModal({ open, onClose, returnId, returnD
   const { data: returnDoc, isLoading } = useSaleReturn(returnId)
   const approveMutation = useApproveSaleReturn()
   const rejectMutation = useRejectSaleReturn()
-  const [rejectionNotes, setRejectionNotes] = useState("")
-  const [showRejectForm, setShowRejectForm] = useState(false)
-  
   // Use provided data or fetched data
   const returnInfo = returnData || returnDoc
 
@@ -50,15 +47,10 @@ export default function SaleReturnDetailModal({ open, onClose, returnId, returnD
   }
 
   const handleReject = async () => {
-    if (!returnId || !rejectionNotes.trim()) {
-      alert('Please provide rejection notes')
-      return
-    }
+    if (!returnId) return
     try {
-      await rejectMutation.mutateAsync({ id: returnId, rejectionNotes })
+      await rejectMutation.mutateAsync({ id: returnId, rejectionNotes: "Rejected by super admin" })
       if (onAction) onAction()
-      setShowRejectForm(false)
-      setRejectionNotes("")
       onClose()
     } catch (error) {
       console.error('Error rejecting return:', error)
@@ -261,45 +253,14 @@ export default function SaleReturnDetailModal({ open, onClose, returnId, returnD
               </div>
             </div>
           )}
-
-          {/* Rejection Form */}
-          {showRejectForm && (
-            <div className="p-4 border rounded-lg bg-muted/30 space-y-3">
-              <Label htmlFor="rejection-notes">Rejection Notes *</Label>
-              <Textarea
-                id="rejection-notes"
-                placeholder="Enter reason for rejection..."
-                value={rejectionNotes}
-                onChange={(e) => setRejectionNotes(e.target.value)}
-                rows={3}
-              />
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowRejectForm(false)
-                    setRejectionNotes("")
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleReject}
-                  disabled={!rejectionNotes.trim() || rejectMutation.isPending}
-                >
-                  {rejectMutation.isPending ? "Rejecting..." : "Confirm Rejection"}
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex gap-2">
           {canApprove && (
             <Button
               onClick={handleApprove}
-              disabled={approveMutation.isPending}
+              disabled={approveMutation.isPending || rejectMutation.isPending}
+              className="bg-green-600 hover:bg-green-700"
             >
               {approveMutation.isPending ? (
                 <>
@@ -311,20 +272,22 @@ export default function SaleReturnDetailModal({ open, onClose, returnId, returnD
               )}
             </Button>
           )}
-          {canReject && !showRejectForm && (
+          {canReject && (
             <Button
               variant="destructive"
-              onClick={() => setShowRejectForm(true)}
+              onClick={handleReject}
+              disabled={approveMutation.isPending || rejectMutation.isPending}
             >
-              Reject Return
+              {rejectMutation.isPending ? "Rejecting..." : "Reject Return"}
             </Button>
           )}
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={approveMutation.isPending || rejectMutation.isPending}>
             Close
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
   )
 }
 

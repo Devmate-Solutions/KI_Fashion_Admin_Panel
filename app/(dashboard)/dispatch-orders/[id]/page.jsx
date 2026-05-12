@@ -959,7 +959,7 @@ export default function DispatchOrderDetailPage({ params }) {
           reason: editRequestReason.trim(),
         });
 
-        toast.success("Edit request submitted for approval");
+        // submitEditRequestMutation already toasts on success
         setIsEditingConfirmed(false);
         setConfirmedEditForm({ exchangeRate: '', percentage: '', discount: '', items: [] });
         setConfirmedEditImpact(null);
@@ -1272,12 +1272,12 @@ export default function DispatchOrderDetailPage({ params }) {
         setActiveTab("confirm");
 
         if (data?.status === 'pending') {
-          toast.success(data?.message || "Backdated order submitted for approval");
+          // mutation hook handles the toast message
           router.push("/my-requests");
           return;
         }
 
-        toast.success("Order submitted for approval successfully!");
+        // mutation hook handles the toast message
       },
     });
   }, [
@@ -1424,7 +1424,7 @@ export default function DispatchOrderDetailPage({ params }) {
         setActiveTab("confirm");
 
         if (data?.status === 'pending') {
-          toast.success(data?.message || "Backdated confirmation submitted for approval");
+          // mutation hook handles the toast message
           router.push("/my-requests");
           return;
         }

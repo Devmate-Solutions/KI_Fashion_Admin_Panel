@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useEffect } from "react"
 import { ChevronRight, ChevronDown, FileText } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { cn } from "@/lib/utils"
 
 function normalize(v) {
   return String(v ?? "").toLowerCase()
@@ -32,6 +33,7 @@ export default function DataTable({
   renderExpandedRow,
   expandedRowAsColumns = false,
   onDownloadPDF = null,
+  rowClassName,
 }) {
   const [query, setQuery] = useState("")
   const [internalPage, setInternalPage] = useState(1)
@@ -217,7 +219,7 @@ export default function DataTable({
                   {!hideActions && (onEdit || onDelete) && <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-left font-semibold text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider w-24 sm:w-32 whitespace-nowrap">Actions</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+<tbody className="divide-y divide-border">
                 {Array.isArray(slice) && slice.map((row, idx) => {
                   const uniqueKey = row.rowId || row.id || row._id || `row-${idx}-${row.purchaseNumber || row.orderNumber || ''}`
                   const isExpanded = expandableRow && expandedRowId === uniqueKey
@@ -225,7 +227,12 @@ export default function DataTable({
                   return (
                     <React.Fragment key={uniqueKey}>
                       <tr
-                        className={`hover:bg-muted/20 transition-all duration-150 ease-in-out ${onRowClick || expandableRow ? 'cursor-pointer' : ''} ${isExpanded ? 'bg-muted/10 align-top' : ''}`}
+                        className={cn(
+                          "hover:bg-muted/20 transition-all duration-150 ease-in-out",
+                          onRowClick || expandableRow ? 'cursor-pointer' : '',
+                          isExpanded ? 'bg-muted/10 align-top' : '',
+                          typeof rowClassName === "function" ? rowClassName(row) : rowClassName
+                        )}
                         onClick={() => {
                           if (expandableRow) {
                             setExpandedRowId(isExpanded ? null : uniqueKey)

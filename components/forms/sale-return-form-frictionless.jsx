@@ -354,7 +354,7 @@ export default function SaleReturnFormFrictionless({ onSave }) {
         const response = await saleReturnsAPI.create(payload)
 
         if (response?.status === 202) {
-          toast.success('Backdated sale return request submitted for approval.')
+          toast.success('Backdated sale return request submitted for approval of super admin.')
           router.push('/my-requests')
           if (onSave) onSave()
           return

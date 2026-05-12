@@ -10,8 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, CreditCard, Banknote, Wallet, Printer, ArrowDownCircle, ArrowUpCircle } from "lucide-react"
 import { paymentAPI } from "@/lib/api/endpoints/payments"
 import { ledgerAPI } from "@/lib/api/endpoints/ledger"
-
 import { useQueryClient } from "@tanstack/react-query"
+import { ledgerKeys } from "@/lib/hooks/useLedger"
 import toast from "react-hot-toast"
 import BritishDatePicker from "@/components/BritishDatePicker"
 import { useAuthStore } from "@/store/store"
@@ -250,7 +250,7 @@ export default function CustomerPaymentModal({
             }
 
             if (isPendingApproval) {
-                toast.success('Backdated payment request submitted for approval.')
+                toast.success('Backdated payment request submitted for approval of super admin.')
                 handleClose()
                 const router = window.nextRouter || { push: (url) => window.location.href = url }
                 router.push('/my-requests')
@@ -265,9 +265,8 @@ export default function CustomerPaymentModal({
             toast.success(successMessage)
 
             // Invalidate queries to refresh data
-            queryClient.invalidateQueries({ queryKey: ['ledger'] })
+            queryClient.invalidateQueries({ queryKey: ledgerKeys.all })
             queryClient.invalidateQueries({ queryKey: ['buyers'] })
-            queryClient.invalidateQueries({ queryKey: ['buyer'] })
             queryClient.invalidateQueries({ queryKey: ['sales'] })
             queryClient.invalidateQueries({ queryKey: ['unpaid-sales'] })
             queryClient.invalidateQueries({ queryKey: ['payments'] })

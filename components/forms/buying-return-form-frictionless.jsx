@@ -517,7 +517,7 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
           const response = await returnsAPI.createPacketReturn(payload)
 
           if (response?.status === 202) {
-            toast.success('Backdated packet return request submitted for approval.')
+            toast.success('Backdated packet return request submitted for approval of super admin.')
             router.push('/my-requests')
             if (onSave) onSave()
             return
@@ -561,7 +561,7 @@ export default function BuyingReturnFormFrictionless({ onSave }) {
           const response = await returnsAPI.createProductReturn(payload)
 
           if (response?.status === 202) {
-            toast.success('Backdated product return request submitted for approval.')
+            toast.success('Backdated product return request submitted for approval of super admin.')
             router.push('/my-requests')
             if (onSave) onSave()
             return

@@ -51,14 +51,12 @@ export default function RequestReviewPanel({ open, onClose, requestId }) {
   const approveMutation = useApproveEditRequest();
   const rejectMutation = useRejectEditRequest();
 
-  const [reviewNote, setReviewNote] = useState("");
-  const [showRejectForm, setShowRejectForm] = useState(false);
+
 
   // Reset form state whenever the dialog closes so stale note/sub-panel don't persist
   useEffect(() => {
     if (!open) {
-      setReviewNote("");
-      setShowRejectForm(false);
+      // Any cleanup if needed
     }
   }, [open]);
 
@@ -66,9 +64,8 @@ export default function RequestReviewPanel({ open, onClose, requestId }) {
     try {
       await approveMutation.mutateAsync({
         id: requestId,
-        data: { reviewNote: reviewNote.trim() || undefined, forceApprove },
+        data: { forceApprove },
       });
-      setReviewNote("");
       onClose();
     } catch {
       // Error handled by mutation hook
@@ -76,14 +73,11 @@ export default function RequestReviewPanel({ open, onClose, requestId }) {
   };
 
   const handleReject = async () => {
-    if (!reviewNote.trim()) return;
     try {
       await rejectMutation.mutateAsync({
         id: requestId,
-        data: { reviewNote: reviewNote.trim() },
+        data: { reviewNote: "Rejected by super admin" },
       });
-      setReviewNote("");
-      setShowRejectForm(false);
       onClose();
     } catch {
       // Error handled by mutation hook
@@ -241,70 +235,28 @@ export default function RequestReviewPanel({ open, onClose, requestId }) {
 
             {/* Action area (only for pending requests) */}
             {isPending && (
-              <>
-                <div>
-                  <Label htmlFor="review-note" className="text-sm font-medium">
-                    Reviewer Note {showRejectForm && <span className="text-red-500">*</span>}
-                  </Label>
-                  <Textarea
-                    id="review-note"
-                    placeholder={
-                      showRejectForm
-                        ? "Explain why this request is being rejected..."
-                        : "Optional note (required for rejection)..."
-                    }
-                    value={reviewNote}
-                    onChange={(e) => setReviewNote(e.target.value)}
-                    className="mt-1.5"
-                    rows={2}
-                  />
-                </div>
-
                 <DialogFooter className="flex gap-2">
-                  {showRejectForm ? (
-                    <>
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowRejectForm(false)}
-                        disabled={isProcessing}
-                      >
-                        Back
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        onClick={handleReject}
-                        disabled={!reviewNote.trim() || isProcessing}
-                      >
-                        <X className="h-4 w-4 mr-1" />
-                        {rejectMutation.isPending ? "Rejecting..." : "Confirm Rejection"}
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button variant="outline" onClick={onClose} disabled={isProcessing}>
-                        Close
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="border-red-300 text-red-600 hover:bg-red-50"
-                        onClick={() => setShowRejectForm(true)}
-                        disabled={isProcessing}
-                      >
-                        <X className="h-4 w-4 mr-1" />
-                        Reject
-                      </Button>
-                      <Button
-                        className="bg-green-600 hover:bg-green-700"
-                        onClick={() => handleApprove(false)}
-                        disabled={isProcessing}
-                      >
-                        <Check className="h-4 w-4 mr-1" />
-                        {approveMutation.isPending ? "Approving..." : "Approve"}
-                      </Button>
-                    </>
-                  )}
+                  <Button variant="outline" onClick={onClose} disabled={isProcessing}>
+                    Close
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-red-300 text-red-600 hover:bg-red-50"
+                    onClick={handleReject}
+                    disabled={isProcessing}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    {rejectMutation.isPending ? "Rejecting..." : "Reject"}
+                  </Button>
+                  <Button
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={() => handleApprove(false)}
+                    disabled={isProcessing}
+                  >
+                    <Check className="h-4 w-4 mr-1" />
+                    {approveMutation.isPending ? "Approving..." : "Approve"}
+                  </Button>
                 </DialogFooter>
-              </>
             )}
 
             {/* Conflict resolution UI */}

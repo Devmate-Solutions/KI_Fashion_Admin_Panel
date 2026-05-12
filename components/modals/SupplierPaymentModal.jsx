@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Loader2, CreditCard, Banknote, Wallet } from "lucide-react"
 import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { useQueryClient } from "@tanstack/react-query"
+import { ledgerKeys } from "@/lib/hooks/useLedger"
 import toast from "react-hot-toast"
 import BritishDatePicker from "@/components/BritishDatePicker"
 import { useAuthStore } from "@/store/store"
@@ -233,7 +234,7 @@ export default function SupplierPaymentModal({
                 }
 
                 if (isPendingApproval) {
-                    toast.success('Backdated payment request submitted for approval.')
+                    toast.success('Backdated payment request submitted for approval of super admin.')
                     handleClose()
                     const router = window.nextRouter || { push: (url) => window.location.href = url }
                     router.push('/my-requests')
@@ -247,8 +248,7 @@ export default function SupplierPaymentModal({
                 )
 
                 queryClient.invalidateQueries({ queryKey: ['pending-balances'] })
-                queryClient.invalidateQueries({ queryKey: ['ledger', 'supplier'] })
-                queryClient.invalidateQueries({ queryKey: ['ledger'] })
+                queryClient.invalidateQueries({ queryKey: ledgerKeys.all })
                 queryClient.invalidateQueries({ queryKey: ['suppliers'] })
                 queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] })
                 queryClient.invalidateQueries({ queryKey: ['supplier-payment-receipts'] })
@@ -268,7 +268,7 @@ export default function SupplierPaymentModal({
                 })
 
                 if (response.status === 202) {
-                    toast.success('Backdated adjustment request submitted for approval.')
+                    toast.success('Backdated adjustment request submitted for approval of super admin.')
                     handleClose()
                     const router = window.nextRouter || { push: (url) => window.location.href = url }
                     router.push('/my-requests')
@@ -279,8 +279,7 @@ export default function SupplierPaymentModal({
 
                 // Invalidate queries to refresh data
                 queryClient.invalidateQueries({ queryKey: ['pending-balances'] })
-                queryClient.invalidateQueries({ queryKey: ['ledger', 'supplier'] })
-                queryClient.invalidateQueries({ queryKey: ['ledger'] })
+                queryClient.invalidateQueries({ queryKey: ledgerKeys.all })
                 queryClient.invalidateQueries({ queryKey: ['suppliers'] })
                 queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] })
                 queryClient.invalidateQueries({ queryKey: ['supplier-payment-receipts'] })

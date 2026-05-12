@@ -174,7 +174,8 @@ const ROUTE_PERMISSIONS = {
   '/users': {},
   '/reports': { roles: ['super-admin', 'admin', 'employee'] },
   '/settings': { roles: ['super-admin'] },
-  '/logistics': { roles: ['super-admin'] },                                  // Any authenticated user can access logistics
+  '/logistics-ledger': { roles: ['super-admin', 'admin'] },
+  '/logistics': { roles: ['super-admin', 'admin'] },                                  // Any authenticated user can access logistics
   '/dispatch-orders': { roles: ['super-admin', 'admin'] }, // Admin and manager can access dispatch orders
   '/campaigns': { roles: ['super-admin', 'admin'] },
   '/product-types': { roles: ['super-admin'] },            // Admin only

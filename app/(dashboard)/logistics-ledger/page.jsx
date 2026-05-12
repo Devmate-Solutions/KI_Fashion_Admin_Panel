@@ -11,15 +11,16 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import DataTable from "../../../components/data-table"
-import { useLogisticsLedger, useAllLogisticsLedgers } from "@/lib/hooks/useLedger"
+import { useLogisticsLedger, useAllLogisticsLedgers, useLogisticsPaymentReceipts } from "@/lib/hooks/useLedger"
 import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { balancesAPI } from "@/lib/api/endpoints/balances"
 import { logisticsCompaniesAPI } from "@/lib/api/endpoints/logisticsCompanies"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { Loader2, Plus, FileText, Truck, Building2, Clock, Users, Filter, Calendar, RotateCcw } from "lucide-react"
+import { Loader2, Plus, FileText, Truck, Building2, Clock, Users, Filter, Calendar, RotateCcw, Box, Eye } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import toast from "react-hot-toast"
 import LogisticsPaymentModal from "@/components/modals/LogisticsPaymentModal"
+import LogisticsPaymentReceiptModal from "@/components/modals/LogisticsPaymentReceiptModal"
 
 function formatNumber(n) {
   const num = Number(n || 0)
@@ -58,6 +59,13 @@ export default function LogisticsLedgerPage() {
   const [paymentHistoryDateFrom, setPaymentHistoryDateFrom] = useState("")
   const [paymentHistoryDateTo, setPaymentHistoryDateTo] = useState("")
   const [paymentHistoryMethodFilter, setPaymentHistoryMethodFilter] = useState("all")
+
+  // Filters for Tab 4 (Payment Receipts)
+  const [paymentReceiptCompany, setPaymentReceiptCompany] = useState("") // Default to empty - require company selection
+  const [paymentReceiptDateFrom, setPaymentReceiptDateFrom] = useState("")
+  const [paymentReceiptDateTo, setPaymentReceiptDateTo] = useState("")
+  const [selectedReceipt, setSelectedReceipt] = useState(null)
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false)
 
   const queryClient = useQueryClient()
 
@@ -125,6 +133,28 @@ export default function LogisticsLedgerPage() {
   }, [paymentHistoryCompany])
 
   const { data: paymentHistoryData, isLoading: paymentHistoryLoading } = useAllLogisticsLedgers(paymentHistoryParams || {})
+
+  // Fetch payment receipts for Tab 4 (only when a company is selected)
+  const paymentReceiptParams = useMemo(() => {
+    if (!paymentReceiptCompany || paymentReceiptCompany === 'all') {
+      return null // Don't fetch if no company selected
+    }
+    const params = { limit: 100 };
+    if (paymentReceiptDateFrom) params.dateFrom = paymentReceiptDateFrom;
+    if (paymentReceiptDateTo) params.dateTo = paymentReceiptDateTo;
+    return params;
+  }, [paymentReceiptCompany, paymentReceiptDateFrom, paymentReceiptDateTo])
+
+  const { data: paymentReceiptsData, isLoading: paymentReceiptsLoading } = useLogisticsPaymentReceipts(
+    paymentReceiptCompany && paymentReceiptParams ? paymentReceiptCompany : '',
+    paymentReceiptParams || {},
+    { enabled: !!paymentReceiptCompany && paymentReceiptCompany !== 'all' }
+  )
+
+  const paymentReceipts = useMemo(() => {
+    if (!paymentReceiptsData?.receipts) return []
+    return paymentReceiptsData.receipts
+  }, [paymentReceiptsData])
 
   // Transform all ledger entries for Tab 1 display with client-side running balance
   const allLedgerTransactions = useMemo(() => {
@@ -1367,6 +1397,206 @@ export default function LogisticsLedgerPage() {
     </div>
   )
 
+  // TAB 4: Payment Receipts Content
+  const paymentReceiptsTabContent = (
+    <div className="space-y-6">
+      {/* Main Content Card */}
+      <div className="rounded-lg border border-border/60 bg-gradient-to-br from-card via-background to-card shadow-sm overflow-hidden">
+        {/* Header Section */}
+        <div className="relative bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50 px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-primary/10 backdrop-blur-sm flex items-center justify-center ring-1 ring-primary/20 shadow-sm">
+                <FileText className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-xl text-foreground tracking-tight">Payment Receipts</h2>
+                <p className="text-sm text-muted-foreground mt-1">View detailed payment receipt records</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters Section */}
+        <div className="px-6 py-5 bg-gradient-to-b from-muted/20 via-muted/10 to-transparent border-b border-border/30">
+          <div className="flex items-center gap-2.5 mb-5">
+            <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <span className="text-sm font-semibold text-foreground">Filter Options</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex flex-col min-w-0">
+              <Label htmlFor="receipt-company" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
+                <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="whitespace-nowrap">Select Company</span>
+              </Label>
+              <Select
+                value={paymentReceiptCompany}
+                onValueChange={(value) => {
+                  setPaymentReceiptCompany(value)
+                }}
+                disabled={allCompaniesLoading}
+              >
+                <SelectTrigger id="receipt-company" className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg">
+                  <SelectValue placeholder="Select a company..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {allCompanies.map((company) => (
+                    <SelectItem key={company._id || company.id} value={company._id || company.id}>
+                      {company.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col min-w-0">
+              <Label htmlFor="receipt-date-from" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
+                <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="whitespace-nowrap">Date From</span>
+              </Label>
+              <Input
+                id="receipt-date-from"
+                type="date"
+                value={paymentReceiptDateFrom}
+                onChange={(e) => setPaymentReceiptDateFrom(e.target.value)}
+                className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg"
+              />
+            </div>
+
+            <div className="flex flex-col min-w-0">
+              <Label htmlFor="receipt-date-to" className="text-sm font-semibold text-foreground flex items-center gap-2 h-5 mb-2.5">
+                <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="whitespace-nowrap">Date To</span>
+              </Label>
+              <Input
+                id="receipt-date-to"
+                type="date"
+                value={paymentReceiptDateTo}
+                onChange={(e) => setPaymentReceiptDateTo(e.target.value)}
+                className="h-[44px] w-full border-border/60 bg-background/80 backdrop-blur-sm hover:bg-background transition-all rounded-lg"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Payment Receipts Table */}
+        <div className="px-6 py-6 bg-background">
+          {!paymentReceiptCompany || paymentReceiptCompany === 'all' ? (
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl"></div>
+                <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-muted/90 via-muted/70 to-muted/50 backdrop-blur-sm ring-2 ring-border/60 shadow-lg">
+                  <Building2 className="w-12 h-12 text-muted-foreground" />
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2.5">No company selected</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-md leading-relaxed">
+                Select a company from the dropdown above to view their payment receipt records
+              </p>
+            </div>
+          ) : paymentReceiptsLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
+                <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background backdrop-blur-sm ring-2 ring-primary/20 shadow-lg">
+                  <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2.5">Loading payment receipts</h3>
+              <p className="text-sm text-muted-foreground">Please wait while we fetch the records...</p>
+            </div>
+          ) : paymentReceipts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-muted/30 rounded-full blur-3xl"></div>
+                <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-muted/90 via-muted/70 to-muted/50 backdrop-blur-sm ring-2 ring-border/60 shadow-lg">
+                  <FileText className="w-12 h-12 text-muted-foreground" />
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2.5">No payment receipts found</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-md mb-5 leading-relaxed">
+                {paymentReceiptDateFrom || paymentReceiptDateTo
+                  ? 'Try adjusting your date filters to see more results'
+                  : 'No receipt records found for this company'}
+              </p>
+              {(paymentReceiptDateFrom || paymentReceiptDateTo) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 h-10 px-5 shadow-sm hover:shadow-md transition-all rounded-lg"
+                  onClick={() => {
+                    setPaymentReceiptDateFrom('')
+                    setPaymentReceiptDateTo('')
+                  }}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-border/60">
+              <table className="w-full">
+                <thead className="bg-slate-50 border-b border-border/60">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-700">Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-700">Receipt #</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-700">Amount</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-700">Method</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-700">Boxes</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-700">Orders</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-700">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {paymentReceipts.map((receipt) => (
+                    <tr key={receipt._id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-3 text-sm">
+                        {receipt.paymentDate ? new Date(receipt.paymentDate).toLocaleDateString('en-GB') : "-"}
+                      </td>
+                      <td className="px-4 py-3 font-mono font-semibold text-blue-600">{receipt.receiptNumber}</td>
+                      <td className="px-4 py-3 text-right tabular-nums font-semibold text-green-600">
+                        £{formatNumber(receipt.totalAmount)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className={receipt.paymentMethod === 'cash' ? 'border-green-500 text-green-700' : 'border-blue-500 text-blue-700'}>
+                          {receipt.paymentMethod === 'cash' ? 'Cash' : 'Bank'}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        <div className="flex items-center justify-end gap-1">
+                          <Box className="h-4 w-4 text-muted-foreground" />
+                          {receipt.totalBoxes || 0}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums">{receipt.ordersAffected || 0}</td>
+                      <td className="px-4 py-3 text-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-2 h-8"
+                          onClick={() => {
+                            setSelectedReceipt(receipt)
+                            setReceiptModalOpen(true)
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                          <span className="hidden sm:inline">View</span>
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
   const tabs = [
     {
       label: "Ledger",
@@ -1379,6 +1609,10 @@ export default function LogisticsLedgerPage() {
     {
       label: "Payment History",
       content: paymentHistoryTabContent,
+    },
+    {
+      label: "Payment Receipts",
+      content: paymentReceiptsTabContent,
     },
   ]
 
@@ -1443,6 +1677,13 @@ export default function LogisticsLedgerPage() {
           queryClient.invalidateQueries({ queryKey: ['pending-balances-logistics'] })
           queryClient.invalidateQueries({ queryKey: ['ledger', 'logistics'] })
         }}
+      />
+
+      {/* Logistics Payment Receipt Modal */}
+      <LogisticsPaymentReceiptModal
+        open={receiptModalOpen}
+        onOpenChange={setReceiptModalOpen}
+        receipt={selectedReceipt}
       />
     </div>
   )

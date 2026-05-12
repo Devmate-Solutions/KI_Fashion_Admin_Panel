@@ -5169,7 +5169,8 @@ export default function SupplierLedgerPage() {
         entities={dropdownSuppliers}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ["pending-balances"] })
-          queryClient.invalidateQueries({ queryKey: ["ledger", "supplier"] })
+          queryClient.invalidateQueries({ queryKey: ["ledger"] })
+          queryClient.invalidateQueries({ queryKey: ["suppliers"] })
           queryClient.invalidateQueries({ queryKey: ["supplier-payment-receipts"] })
         }}
       />
@@ -5188,7 +5189,6 @@ export default function SupplierLedgerPage() {
         }
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ["pending-balances"] })
-          queryClient.invalidateQueries({ queryKey: ["ledger", "supplier"] })
           queryClient.invalidateQueries({ queryKey: ["ledger"] })
           queryClient.invalidateQueries({ queryKey: ["suppliers"] })
         }}

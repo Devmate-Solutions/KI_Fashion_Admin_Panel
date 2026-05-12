@@ -355,6 +355,7 @@ Do you still want to proceed?`;
             pageSize={20}
             onDownloadPDF={handleDownloadPDF}
             onRowClick={(row) => router.push(`/dispatch-orders/${row._id}`)}
+            rowClassName={(row) => row.status === 'confirmed' ? 'bg-emerald-500/5' : ''}
           />
         </div>
       </div>
