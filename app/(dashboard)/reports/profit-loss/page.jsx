@@ -230,7 +230,7 @@ export default function ProfitLossReportPage() {
         loading={isLoading}
         showTotals={true}
         totalsRow={totalsRow}
-        totalColumns={[{ title: "Total", value: "pnl" }]}
+        totalColumns={[{ title: "Net Profit/Loss", value: "pnl" }]}
       />
     </ReportLayout>
   )

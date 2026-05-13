@@ -239,7 +239,7 @@ export default function DailyBuyingReportPage() {
         loading={isLoading}
         showTotals={true}
         totalsRow={totalsRow}
-        totalColumns={[{ title: "Total", value: "remaining" }]}
+        totalColumns={[{ title: "Total Remaining", value: "remaining" }]}
 
       />
     </ReportLayout>

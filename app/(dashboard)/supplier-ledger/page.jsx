@@ -4583,12 +4583,8 @@ export default function SupplierLedgerPage() {
                       }`}
                   >
                     {(calculatedTotalBalance || 0) > 0
-                      ? ledgerSupplierFilter === "all"
-                        ? "Total owed to all suppliers"
-                        : "Amount owed to supplier"
-                      : ledgerSupplierFilter === "all"
-                        ? "Total credit with all suppliers"
-                        : "Credit with supplier"}
+                      ? "Total payable to suppliers"
+                      : "Total receive to suppliers"}
                   </div>
                 </div>
               </div>

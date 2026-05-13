@@ -215,7 +215,7 @@ export default function SalesProductWiseReportPage() {
         loading={isLoading}
         showTotals={true}
         totalsRow={totalsRow}
-        totalColumns={[{ title: "Total", value: "totalPrice" }]}
+        totalColumns={[{ title: "Total Sales Value", value: "totalPrice" }]}
 
       />
     </ReportLayout>

@@ -10,6 +10,10 @@ import RequestReviewPanel from "@/components/modals/RequestReviewPanel";
 import BackButton from "@/components/BackButton";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { Search, Filter, User } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import BritishDatePicker from "@/components/BritishDatePicker";
 
 const STATUS_TABS = ["Pending", "Approved", "Rejected", "All"];
 
@@ -24,6 +28,9 @@ const ENTITY_LABELS = {
   sale: "Sale",
   payment: "Payment",
   "supplier-payment": "Supplier Payment",
+  expense: "Expense",
+  return: "Return",
+  "sale-return": "Sale Return",
 };
 
 const columns = [
@@ -56,8 +63,8 @@ const columns = [
     accessor: "requestedByName",
     cell: (row) => (
       <div className="text-sm">
-        <p>{row.requestedBy?.name || "Unknown"}</p>
-        <p className="text-xs text-muted-foreground">{row.requestedBy?.role}</p>
+        <p className="font-medium">{row.requestedByName || "Unknown"}</p>
+        {row.requestedBy?.role && <p className="text-[10px] text-muted-foreground uppercase">{row.requestedBy.role}</p>}
       </div>
     ),
   },
@@ -101,6 +108,11 @@ export default function ApprovalQueuePage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [selectedRequestId, setSelectedRequestId] = useState(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [requestedByFilter, setRequestedByFilter] = useState("");
+  const [requestedByRole, setRequestedByRole] = useState("");
+  const [entityFilter, setEntityFilter] = useState("");
 
   // Guard: super-admin only
   useEffect(() => {
@@ -116,6 +128,11 @@ export default function ApprovalQueuePage() {
     limit: 15,
     status: statusFilter,
     search: search || undefined,
+    startDate: startDate || undefined,
+    endDate: endDate || undefined,
+    requestedBy: requestedByFilter || undefined,
+    requestedByRole: requestedByRole || undefined,
+    entityType: entityFilter || undefined,
   });
 
   const requests = data?.requests || [];
@@ -135,7 +152,52 @@ export default function ApprovalQueuePage() {
         </div>
       </div>
 
-      <Tabs tabs={STATUS_TABS} activeTab={activeTab} onTabChange={handleTabChange} />
+      {/* <Tabs tabs={STATUS_TABS} activeTab={activeTab} onTabChange={handleTabChange} /> */}
+
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        {/* <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input placeholder="Search requests..." className="pl-9 h-10" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div> */}
+        <div className="relative">
+          <BritishDatePicker
+            value={startDate || null}
+            onChange={(date) => setStartDate(date ? date.toLocaleDateString("en-CA") : "")}
+            placeholder="Start date"
+            className="w-full h-10 pl-9 pr-4 rounded-md border border-input bg-background text-sm"
+          />
+        </div>
+        <div className="relative">
+          <BritishDatePicker
+            value={endDate || null}
+            onChange={(date) => setEndDate(date ? date.toLocaleDateString("en-CA") : "")}
+            placeholder="End date"
+            className="w-full h-10 pl-9 pr-4 rounded-md border border-input bg-background text-sm"
+          />
+        </div>
+        <div className="relative">
+          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input placeholder="Requested by (name/email)" className="pl-9 h-10" value={requestedByFilter} onChange={(e) => setRequestedByFilter(e.target.value)} />
+        </div>
+        <div className="relative">
+          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <select className="w-full h-10 pl-9 pr-4 rounded-md border border-input bg-background text-sm" value={requestedByRole} onChange={(e) => setRequestedByRole(e.target.value)}>
+            <option value="">All Roles</option>
+            <option value="super-admin">Super Admin</option>
+            <option value="admin">Admin</option>
+            <option value="employee">Employee</option>
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* <select className="w-full h-10 pl-3 pr-4 rounded-md border border-input bg-background text-sm" value={entityFilter} onChange={(e) => setEntityFilter(e.target.value)}>
+            <option value="">All Entities</option>
+            {Object.keys(ENTITY_LABELS).map(k => <option key={k} value={k}>{ENTITY_LABELS[k]}</option>)}
+          </select> */}
+          <Button className="h-10" variant="secondary" onClick={() => {
+            setSearch(""); setStartDate(""); setEndDate(""); setRequestedByFilter(""); setRequestedByRole(""); setEntityFilter(""); setPage(1);
+          }}>Reset</Button>
+        </div>
+      </div>
 
       <DataTable
         columns={columns}

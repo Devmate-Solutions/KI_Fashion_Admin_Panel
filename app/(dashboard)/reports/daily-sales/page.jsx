@@ -22,6 +22,25 @@ function formatDate(date) {
   return new Date(date).toLocaleDateString("en-GB")
 }
 
+function resolveSaleVat(row) {
+  const vat = Number(row?.vat || 0)
+  if (vat > 0) return vat
+
+  const totalVAT = Number(row?.totalVAT || 0)
+  if (totalVAT > 0) return totalVAT
+
+  const totalTax = Number(row?.totalTax || 0)
+  if (totalTax > 0) return totalTax
+
+  const subtotal = Number(row?.subtotal || 0)
+  const discount = Number(row?.discount || row?.totalDiscount || 0)
+  const grandTotal = Number(row?.grandTotal || 0)
+  const shipping = Number(row?.shippingCost || row?.buyerShippingCharge || 0)
+  const fallbackVat = grandTotal - (subtotal - discount) - shipping
+
+  return fallbackVat > 0 ? fallbackVat : 0
+}
+
 export default function DailySalesReportPage() {
   const user = useAuthStore((s) => s.user)
   const isEmployee = user?.role === "employee"
@@ -50,6 +69,7 @@ export default function DailySalesReportPage() {
       grandTotal: salesData.reduce((sum, s) => sum + (s.grandTotal || 0), 0),
       bankPayment: salesData.reduce((sum, s) => sum + (s.bankPayment || 0), 0),
       cashPayment: salesData.reduce((sum, s) => sum + (s.cashPayment || 0), 0),
+      vat: salesData.reduce((sum, s) => sum + resolveSaleVat(s), 0),
     }
   }, [salesData])
 
@@ -154,7 +174,14 @@ export default function DailySalesReportPage() {
       pdfValue: (row) => currency(row.discount || 0)
     },
     {
-      header: "Total After Disc.",
+      header: "VAT",
+      accessor: "vat",
+      align: "right",
+      render: (row) => currency(resolveSaleVat(row)),
+      pdfValue: (row) => currency(resolveSaleVat(row))
+    },
+    {
+      header: "Grand Total",
       accessor: "grandTotal",
       align: "right",
       render: (row) => currency(row.grandTotal || 0),
@@ -218,6 +245,7 @@ export default function DailySalesReportPage() {
     saleNumber: "TOTAL",
     subtotal: currency(totals.subtotal),
     discount: currency(totals.discount),
+    vat: currency(totals.vat),
     grandTotal: currency(totals.grandTotal),
     bankPayment: currency(totals.bankPayment),
     cashPayment: currency(totals.cashPayment),
@@ -245,7 +273,7 @@ export default function DailySalesReportPage() {
         showTotals={true}
         totalsRow={totalsRow}
         searchableColumns={[columns[0].accessor]}
-        totalColumns={[{ title: "Total", value: "remaining" }]}
+        totalColumns={[{ title: "Total Remaining", value: "remaining" }]}
       />
     </ReportLayout>
   )

@@ -224,7 +224,7 @@ export default function BuyingProductWiseReportPage() {
         showTotals={true}
         totalsRow={totalsRow}
         grandTotalSection={totalsRow}
-        totalColumns={[{ title: "Total", value: "totalPrice" }]}
+        totalColumns={[{ title: "Total Buying Value", value: "totalPrice" }]}
 
       />
     </ReportLayout>

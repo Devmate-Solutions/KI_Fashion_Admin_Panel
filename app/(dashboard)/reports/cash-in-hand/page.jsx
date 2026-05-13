@@ -20,6 +20,27 @@ function formatDate(date) {
     return new Date(date).toLocaleDateString("en-GB")
 }
 
+function resolveTransactionVat(row) {
+    const directVat = Number(row?.vat || 0)
+    if (directVat > 0) return directVat
+
+    if (row?.transactionType !== "Sales") return 0
+
+    const totalVat = Number(row?.saleTotalVAT || 0)
+    if (totalVat > 0) return totalVat
+
+    const totalTax = Number(row?.saleTotalTax || 0)
+    if (totalTax > 0) return totalTax
+
+    const subtotal = Number(row?.saleSubtotal || 0)
+    const discount = Number(row?.saleDiscount || 0)
+    const grandTotal = Number(row?.saleGrandTotal || 0)
+    const shipping = Number(row?.saleShippingCost || 0)
+    const fallbackVat = grandTotal - (subtotal - discount) - shipping
+
+    return fallbackVat > 0 ? fallbackVat : 0
+}
+
 // Dash placeholder for columns that don't apply to a transaction type
 const DASH = <span className="text-muted-foreground">—</span>
 
@@ -100,8 +121,9 @@ export default function CashInHandReportPage() {
         {
             header: "Transaction Type",
             accessor: "transactionType",
-            render: (row) => row.transactionType,
-            pdfValue: (row) => row.transactionType
+            render: (row) => row.transactionType === "Expense" ? (row.transactionTypeLabel || row.costType || "Expense") : row.transactionType,
+            pdfValue: (row) => row.transactionType === "Expense" ? (row.transactionTypeLabel || row.costType || "Expense") : row.transactionType,
+            excelValue: (row) => row.transactionType === "Expense" ? (row.transactionTypeLabel || row.costType || "Expense") : row.transactionType
         },
         {
             header: "Date",
@@ -148,6 +170,17 @@ export default function CashInHandReportPage() {
                     </span>
                     : DASH,
             pdfValue: (row) => row.transactionType === "Sales" ? currency(row.salesRemainingBalance) : "—"
+        },
+        // VAT column (sales VAT collected or expense VAT paid)
+        {
+            header: "VAT",
+            accessor: "vat",
+            align: "right",
+            render: (row) =>
+                (row.transactionType === "Sales" || row.transactionType === "Expense")
+                    ? <span className="font-medium">{currency(resolveTransactionVat(row))}</span>
+                    : DASH,
+            pdfValue: (row) => (row.transactionType === "Sales" || row.transactionType === "Expense") ? currency(resolveTransactionVat(row)) : "—"
         },
         // Ledger columns (buyer payments received)
         {
@@ -218,6 +251,7 @@ export default function CashInHandReportPage() {
         ledgerBank: currency(summary.totalLedgerBank || 0),
         expenseCash: currency(summary.totalExpenseCash || 0),
         expenseBank: currency(summary.totalExpenseBank || 0),
+        vat: currency(transactions.reduce((s, t) => s + resolveTransactionVat(t), 0)),
         totalCashInHand: currency(netCashInHand),
     }
 
@@ -262,6 +296,7 @@ export default function CashInHandReportPage() {
             summary={summaryCards}
             hideDateFilter={isEmployee}
         >
+            {/* {JSON.stringify(transactions)} */}
             <PrintableTable
                 columns={columns}
                 data={transactions}
@@ -273,10 +308,9 @@ export default function CashInHandReportPage() {
                 totalColumns={[
                     { title: "Total Cash in Hand", value: "totalCashInHand" },
                 ]}
-                searchableColumns={["id", "name", "transactionType"]}
+                searchableColumns={["id", "name", "transactionType", "transactionTypeLabel"]}
                 pageSize={100}
             />
-
         </ReportLayout>
     )
 }

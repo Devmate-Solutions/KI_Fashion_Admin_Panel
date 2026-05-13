@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import BackButton from "@/components/BackButton";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { History, Globe, Laptop, Search, Filter } from "lucide-react";
+import { History, Globe, Laptop, Search, Filter, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import BritishDatePicker from "@/components/BritishDatePicker";
 
 function formatDateTime(_date) {
   const dateTime = _date.date || _date.createdAt;
@@ -91,6 +92,10 @@ export default function AuditTrailPage() {
   const [search, setSearch] = useState("");
   const [resourceFilter, setResourceFilter] = useState("");
   const [actionFilter, setActionFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [userFilter, setUserFilter] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("");
 
   // Guard: super-admin only
   useEffect(() => {
@@ -105,6 +110,10 @@ export default function AuditTrailPage() {
     search: search || undefined,
     resource: resourceFilter || undefined,
     action: actionFilter || undefined,
+    startDate: startDate || undefined,
+    endDate: endDate || undefined,
+    userEmail: userFilter || undefined,
+    userRole: userRoleFilter || undefined,
   });
 
   const logs = data?.logs || [];
@@ -129,7 +138,7 @@ export default function AuditTrailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
         <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input 
@@ -137,6 +146,22 @@ export default function AuditTrailPage() {
                 className="pl-9 h-10" 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+            />
+        </div>
+        <div className="relative">
+            <BritishDatePicker
+              value={startDate || null}
+              onChange={(date) => setStartDate(date ? date.toLocaleDateString("en-CA") : "")}
+              placeholder="Start date"
+              className="w-full h-10 pl-9 pr-4 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+        </div>
+        <div className="relative">
+            <BritishDatePicker
+              value={endDate || null}
+              onChange={(date) => setEndDate(date ? date.toLocaleDateString("en-CA") : "")}
+              placeholder="End date"
+              className="w-full h-10 pl-9 pr-4 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
         </div>
         <div className="relative">
@@ -162,32 +187,44 @@ export default function AuditTrailPage() {
             </select>
         </div>
         <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <select 
-                className="w-full h-10 pl-9 pr-4 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                value={actionFilter}
-                onChange={(e) => setActionFilter(e.target.value)}
-            >
-                <option value="">All Actions</option>
-                <option value="CREATE">Create</option>
-                <option value="UPDATE">Update</option>
-                <option value="DELETE">Delete</option>
-                <option value="STATUS_CHANGE">Status Change</option>
-                <option value="LOGIN">Login</option>
-                <option value="UPDATE_BALANCE">Balance Change</option>
-            </select>
+          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Submitted by (email or name)"
+            className="pl-9 h-10"
+            value={userFilter}
+            onChange={(e) => setUserFilter(e.target.value)}
+          />
+        </div>
+        <div className="relative">
+          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <select
+            className="w-full h-10 pl-9 pr-4 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            value={userRoleFilter}
+            onChange={(e) => setUserRoleFilter(e.target.value)}
+          >
+            <option value="">All Roles</option>
+            <option value="super-admin">Super Admin</option>
+            <option value="admin">Admin</option>
+            <option value="staff">Staff</option>
+            <option value="supplier">Supplier</option>
+            <option value="buyer">Buyer</option>
+          </select>
         </div>
         <Button 
-            variant="secondary" 
-            className="h-10 bg-slate-900 text-white hover:bg-slate-800"
-            onClick={() => {
-                setSearch("");
-                setResourceFilter("");
-                setActionFilter("");
-                setPage(1);
-            }}
+          variant="secondary" 
+          className="h-10 bg-slate-900 text-white hover:bg-slate-800"
+          onClick={() => {
+            setSearch("");
+            setResourceFilter("");
+            setActionFilter("");
+            setStartDate("");
+            setEndDate("");
+            setUserFilter("");
+            setUserRoleFilter("");
+            setPage(1);
+          }}
         >
-            Reset Filters
+          Reset Filters
         </Button>
       </div>
 

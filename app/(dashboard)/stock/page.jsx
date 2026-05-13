@@ -1443,24 +1443,9 @@ export default function StockPage() {
             </div>
           </CardContent>
         </Card>
-        {/* <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Items
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold tabular-nums">
-              {formatNumber(looseStockSummary.totalItems)}
-            </div>
-          </CardContent>
-        </Card> */}
+        
         <Card>
-          {/* <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Value
-            </CardTitle>
-          </CardHeader> */}
+        
           <CardContent>
             Total Value
             <div className="text-2xl font-bold tabular-nums">
@@ -1469,11 +1454,7 @@ export default function StockPage() {
           </CardContent>
         </Card>
         <Card>
-          {/* <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Low Stock
-            </CardTitle>
-          </CardHeader> */}
+         
           <CardContent>
             Low Stock
             <div className="text-2xl font-bold tabular-nums text-amber-600">

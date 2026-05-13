@@ -184,7 +184,7 @@ export default function DailySalesReportPage() {
         showTotals={true}
         totalsRow={totalsRow}
         searchableColumns={[columns[0].accessor]}
-        totalColumns={[{ title: "Total", value: "remaining" }]}
+        totalColumns={[{ title: "Total Remaining", value: "remaining" }]}
       />
     </ReportLayout>
   )

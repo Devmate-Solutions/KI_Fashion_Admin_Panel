@@ -185,7 +185,7 @@ export default function PayablesReportPage() {
         loading={isLoading}
         showTotals={true}
         totalsRow={totalsRow}
-        totalColumns={[{ title: "Total", value: "remainingBalance" }]}
+        totalColumns={[{ title: "Total Payable", value: "remainingBalance" }]}
         onRowClick={(row) => router.push(`/supplier-ledger?supplierId=${row._id}`)}
       />
     </ReportLayout>

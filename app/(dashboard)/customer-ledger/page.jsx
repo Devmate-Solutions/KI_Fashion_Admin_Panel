@@ -1646,8 +1646,8 @@ export default function CustomerLedgerPage() {
       const sales = response?.data?.data || response?.data || []
       return sales.filter(s => s.paymentStatus === 'pending' || s.paymentStatus === 'partial')
     },
-    // FIX 2: only fetch when user is actually on the tab that needs this data
-    enabled: !!selectedBuyerId && selectedBuyerId !== 'all' && activeTab === 2,
+    // This tab slice no longer renders the pending-payments view, so keep this query idle.
+    enabled: false,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
   })
@@ -1680,8 +1680,8 @@ export default function CustomerLedgerPage() {
         throw error
       }
     },
-    // FIX 2: only fetch when Payment Receipts tab (index 1) is active
-    enabled: !!selectedBuyerId && activeTab === 1,
+    // FIX 2: only fetch when Payment Receipts tab (index 2) is active
+    enabled: !!selectedBuyerId && activeTab === 2,
     retry: 1,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
@@ -2390,7 +2390,7 @@ export default function CustomerLedgerPage() {
                     }`}>
                     <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${displayBalance >= 0 ? 'text-emerald-700/80' : 'text-red-700/80'
                       }`}>
-                      {selectedBuyerId === "all" ? "Total Buyer Balance" : "Current Buyer Balance"}
+                      {displayBalance >= 0 ? "Total Receivable from Buyer" : "Total Payable to Buyer"}
                     </div>
                     {/* FIX 8: removed buyerDetailsLoading — no longer a separate fetch */}
                     <div className={`mt-1 text-2xl font-bold tabular-nums ${displayBalance >= 0 ? 'text-emerald-700' : 'text-red-700'
@@ -2412,6 +2412,69 @@ export default function CustomerLedgerPage() {
                   data={filteredLedgerTransactions}
                   loading={sharedLedgerLoading}
                   onDownloadPDF={handleExportLedgerPDF}
+                  hideActions
+                />
+              </div>
+            )
+          },
+          {
+            label: "Payment History",
+            content: (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Buyer</Label>
+                    <Combobox
+                      options={comboboxOptions}
+                      value={selectedBuyerId}
+                      onValueChange={(value) => setSelectedBuyerId(value || "all")}
+                      placeholder="Select buyer"
+                      searchPlaceholder="Search buyer..."
+                      emptyMessage="No buyer found"
+                      loading={buyersLoading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="history-from">Date From</Label>
+                    <Input
+                      id="history-from"
+                      type="date"
+                      value={paymentHistoryDateFrom}
+                      onChange={(e) => setPaymentHistoryDateFrom(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="history-to">Date To</Label>
+                    <Input
+                      id="history-to"
+                      type="date"
+                      value={paymentHistoryDateTo}
+                      onChange={(e) => setPaymentHistoryDateTo(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="space-y-2 md:col-span-1">
+                    <Label htmlFor="history-method">Payment Method</Label>
+                    <Select value={paymentHistoryMethodFilter} onValueChange={setPaymentHistoryMethodFilter}>
+                      <SelectTrigger id="history-method">
+                        <SelectValue placeholder="All methods" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Methods</SelectItem>
+                        <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="bank">Bank</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <DataTable
+                  title="Payment History"
+                  columns={paymentHistoryColumns}
+                  data={paymentHistoryTransactions}
+                  loading={sharedLedgerLoading}
                   hideActions
                 />
               </div>

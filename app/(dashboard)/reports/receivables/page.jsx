@@ -196,7 +196,7 @@ export default function ReceivablesReportPage() {
         loading={isLoading}
         showTotals={true}
         totalsRow={totalsRow}
-        totalColumns={[{ title: "Total", value: "remainingBalance" }]}
+        totalColumns={[{ title: "Total Receivable", value: "remainingBalance" }]}
         onRowClick={(row) => router.push(`/customer-ledger?buyerId=${row._id}`)}
       />
     </ReportLayout>
