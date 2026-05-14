@@ -54,7 +54,7 @@ const items = [
   { href: "/logistics", label: "Logistics", icon: Truck },
   { href: "/logistics-ledger", label: "Logistics Ledger", icon: Truck },
   { type: "separator", label: "Settings" },
-  // { href: "/setup", label: "System Setup", icon: Settings },
+  { href: "/setup", label: "System Setup", icon: Settings, superAdminOnly: true },
   // { href: "/product-types", label: "Product Types", icon: Package },
   { href: "/users", label: "User Management", icon: UserCog },
   // { href: "/delivery-personnel", label: "Delivery Staff", icon: Truck },
@@ -79,7 +79,7 @@ const reportLinks = [
   // { href: "/reports/sales-returns", label: "Sales Returns (Invoice Wise)" },
   { href: "/reports/sales-returns-product-wise", label: "Sales Returns (Product Wise)" },
   { href: "/reports/buying-returns-product-wise", label: "Buying Returns (Product Wise)" },
-  { href: "/reports/month-end", label: "Month-end Detailed Report" },
+  { href: "/reports/month-end", label: "Month-end Report" },
 ];
 
 export default function Sidebar() {

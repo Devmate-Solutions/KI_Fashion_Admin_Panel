@@ -4,7 +4,8 @@ import { useState, useMemo } from "react"
 import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
 import PrintableTable from "@/components/reports/PrintableTable"
-import { useMonthEndDetailedReport } from "@/lib/hooks/useReports"
+import { useMonthEndDetailedReport, useSettings } from "@/lib/hooks/useReports"
+import { useSettings as useSystemSettings } from "@/lib/hooks/useSettings"
 import { exportMonthEndToExcel } from "@/lib/utils/exportToExcel"
 import { exportToPDF } from "@/lib/utils/pdfExport"
 import { getDefaultDateRange } from "@/lib/utils/getDefaultDateRange"
@@ -27,6 +28,9 @@ export default function MonthEndReportPage() {
         startDate: dateRange.from,
         endDate: dateRange.to,
     })
+
+    const { data: settings } = useSystemSettings()
+    const commissionRate = settings?.reports?.commissionRate ?? 2.5
 
     const data = useMemo(() => reportData || [], [reportData])
 
@@ -53,7 +57,7 @@ export default function MonthEndReportPage() {
                 netProfit,
                 netProfitPercent: totalSell > 0 ? (netProfit / totalSell) : 0,
                 cAmount: totalSell - sellInLossValue,
-                commission: 0, // Placeholder as analyzed
+                commissionRate,
                 totalReturn: 0 // Placeholder
             }
 
@@ -77,7 +81,7 @@ export default function MonthEndReportPage() {
     const handleDownloadPDF = async () => {
         try {
             const result = await exportToPDF({
-                title: "Month-end Detailed Report",
+                title: "Month-end Report",
                 columns: columns,
                 data: data,
                 totalsRow: totalsRow,
@@ -103,7 +107,7 @@ export default function MonthEndReportPage() {
             pdfValue: (row) => formatDate(row.date)
         },
         {
-            header: "SellingID",
+            header: "Selling Id",
             accessor: "sellingId",
             render: (row) => (
                 <Link href={`/selling/${row.saleId}`} className="text-blue-600 hover:underline font-mono text-[11px]">
@@ -243,7 +247,7 @@ export default function MonthEndReportPage() {
 
     return (
         <ReportLayout
-            title="Month-end Detailed Report"
+            title="Month-end Report"
             description="Detailed line-item analysis of sales with profitability and supplier information"
             dateRange={dateRange}
             onDateChange={setDateRange}
