@@ -296,7 +296,6 @@ export default function CashInHandReportPage() {
             summary={summaryCards}
             hideDateFilter={isEmployee}
         >
-            {/* {JSON.stringify(transactions)} */}
             <PrintableTable
                 columns={columns}
                 data={transactions}

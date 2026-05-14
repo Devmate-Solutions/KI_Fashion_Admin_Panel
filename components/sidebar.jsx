@@ -79,6 +79,7 @@ const reportLinks = [
   // { href: "/reports/sales-returns", label: "Sales Returns (Invoice Wise)" },
   { href: "/reports/sales-returns-product-wise", label: "Sales Returns (Product Wise)" },
   { href: "/reports/buying-returns-product-wise", label: "Buying Returns (Product Wise)" },
+  { href: "/reports/month-end", label: "Month-end Detailed Report" },
 ];
 
 export default function Sidebar() {
