@@ -112,7 +112,7 @@ export default function AuditLogDetailPage() {
               <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Transactional Diff</h2>
             </div>
             <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
-              <AuditLogDiff oldData={log.changes?.old} newData={log.changes?.new} />
+              <AuditLogDiff oldData={log.changes?.old} newData={log.changes?.new} resource={log.resource} />
             </div>
           </section>
         </div>

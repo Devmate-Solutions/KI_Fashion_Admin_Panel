@@ -170,9 +170,9 @@ const ROUTE_PERMISSIONS = {
   '/products': { permissions: ['products'] },
   '/inventory': { permissions: ['inventory'] },
   '/purchases': { permissions: ['purchases'] },
-  '/expenses': { roles: ['super-admin', 'admin', 'employee'] },
-  '/users': {},
-  '/reports': { roles: ['super-admin', 'admin', 'employee'] },
+  '/expenses': { roles: ['super-admin', 'admin', 'manager', 'employee', 'accountant'] },
+  '/users': { roles: ['super-admin', 'admin'] },
+  '/reports': { roles: ['super-admin', 'admin', 'manager', 'employee'] },
   '/settings': { roles: ['super-admin'] },
   '/logistics-ledger': { roles: ['super-admin', 'admin'] },
   '/logistics': { roles: ['super-admin', 'admin'] },                                  // Any authenticated user can access logistics
@@ -181,15 +181,31 @@ const ROUTE_PERMISSIONS = {
   '/product-types': { roles: ['super-admin'] },            // Admin only
   '/cost-types': {},               // Admin only
   '/delivery-personnel': { roles: ['super-admin'] },       // Admin only
-  '/home': { roles: ['super-admin', 'admin'] },                                       // Any authenticated user
-  '/buying': { roles: ['super-admin', 'admin', 'employee'] },
-  '/selling': { roles: ['super-admin', 'admin', 'employee'] },
-  '/stock': { roles: ['super-admin', 'admin', 'employee'] },
+  '/home': { roles: ['super-admin', 'admin', 'accountant'] },
+  '/buying': { roles: ['super-admin', 'admin', 'manager', 'employee'] },
+  '/selling': { roles: ['super-admin', 'admin', 'manager', 'employee'] },
+  '/stock': { roles: ['super-admin', 'admin', 'manager', 'employee'] },
   '/customer-ledger': {},                            // Any authenticated user
   '/supplier-ledger': {},                            // Any authenticated user
   '/daily-report-form': {},                          // Any authenticated user
   '/setup': { roles: ['super-admin'] },                    // Admin only
 };
+
+/**
+ * Helper to determine the fallback accessible route for a given user role
+ */
+function getFallbackRoute(role) {
+  if (role === 'super-admin' || role === 'admin') {
+    return '/dispatch-orders';
+  }
+  if (role === 'manager' || role === 'employee') {
+    return '/buying';
+  }
+  if (role === 'accountant') {
+    return '/home';
+  }
+  return '/dashboard';
+}
 
 /**
  * Main Middleware Function
@@ -241,10 +257,10 @@ export function middleware(request) {
     return response;
   }
 
-  // If authenticated user tries to access auth pages, redirect to dispatch-orders (or /buying for employee)
+  // If authenticated user tries to access auth pages, redirect to their fallback dashboard
   if (isAuthRoute) {
     const decoded = decodeToken(token);
-    const redirectTo = decoded?.role === 'employee' ? '/buying' : '/dispatch-orders';
+    const redirectTo = getFallbackRoute(decoded?.role);
     return NextResponse.redirect(new URL(redirectTo, request.url));
   }
 
@@ -269,7 +285,12 @@ export function middleware(request) {
       const hasRequiredRole = hasRole(token, routeConfig.roles);
 
       if (!hasRequiredRole) {
-        return NextResponse.redirect(new URL('/buying', request.url));
+        const fallback = getFallbackRoute(decoded?.role);
+        // Prevent infinite loop if the fallback is the same as current pathname
+        if (pathname === fallback) {
+          return NextResponse.redirect(new URL('/login', request.url));
+        }
+        return NextResponse.redirect(new URL(fallback, request.url));
       }
     }
 
@@ -280,7 +301,12 @@ export function middleware(request) {
       );
 
       if (!hasRequiredPermission) {
-        return NextResponse.redirect(new URL('/buying', request.url));
+        const fallback = getFallbackRoute(decoded?.role);
+        // Prevent infinite loop if the fallback is the same as current pathname
+        if (pathname === fallback) {
+          return NextResponse.redirect(new URL('/login', request.url));
+        }
+        return NextResponse.redirect(new URL(fallback, request.url));
       }
     }
   }

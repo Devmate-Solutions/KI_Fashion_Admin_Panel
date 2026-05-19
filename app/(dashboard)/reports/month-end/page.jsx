@@ -188,12 +188,12 @@ export default function MonthEndReportPage() {
         //     render: (row) => row.buyingId || "—",
         //     pdfValue: (row) => row.buyingId || "—"
         // },
-        // {
-        //     header: "Supplier",
-        //     accessor: "supplier",
-        //     render: (row) => row.supplier || "—",
-        //     pdfValue: (row) => row.supplier || "—"
-        // },
+        {
+            header: "Supplier",
+            accessor: "supplier",
+            render: (row) => row.supplier || "—",
+            pdfValue: (row) => row.supplier || "—"
+        },
         {
             header: "Remarks",
             accessor: "remarks",

@@ -33,6 +33,10 @@ import { useAuthStore } from "@/store/store"
 import { useSubmitEditRequest } from "@/lib/hooks/useEditRequests"
 import { FilePen } from "lucide-react"
 
+const normalizeNameForCompare = (name) => {
+  return (name || "").replace(/\s+/g, "").toLowerCase();
+};
+
 // Helper to get image array from various sources
 const getImageArray = (row) => {
   if (row.photo) {
@@ -765,7 +769,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                   const nameResponse = await productsAPI.search(row.productName)
                   const productsList = nameResponse.data?.data || nameResponse.data || []
                   const product = productsList.find(p =>
-                    p.name?.toLowerCase() === row.productName.trim().toLowerCase()
+                    normalizeNameForCompare(p.name) === normalizeNameForCompare(row.productName)
                   ) || productsList[0]
                   if (product) {
                     productId = product._id || product.id
@@ -776,7 +780,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
               const nameResponse = await productsAPI.search(row.productName)
               const productsList = nameResponse.data?.data || nameResponse.data || []
               const product = productsList.find(p =>
-                p.name?.toLowerCase() === row.productName.trim().toLowerCase()
+                normalizeNameForCompare(p.name) === normalizeNameForCompare(row.productName)
               ) || productsList[0]
               if (product) {
                 productId = product._id || product.id
@@ -1416,7 +1420,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                                 const productsList = response.data?.data || response.data || []
 
                                 let product = productsList.find(p =>
-                                  p.name?.toLowerCase() === name.trim().toLowerCase()
+                                  normalizeNameForCompare(p.name) === normalizeNameForCompare(name)
                                 ) || productsList[0]
 
                                 if (product) {

@@ -358,10 +358,11 @@ export default function BuyingReturnFormImproved({ onSave }) {
   // Filter products based on search
   const filteredProducts = searchQuery.length > 0
     ? availableProducts.filter(product => {
-      const query = searchQuery.toLowerCase()
+      const query = searchQuery.replace(/\s+/g, "").toLowerCase()
+      const rawQuery = searchQuery.toLowerCase()
       return (
-        product.name.toLowerCase().includes(query) ||
-        (product.productCode || product.sku || "").toLowerCase().includes(query)
+        (product.name || "").replace(/\s+/g, "").toLowerCase().includes(query) ||
+        (product.productCode || product.sku || "").toLowerCase().includes(rawQuery)
       )
     })
     : []

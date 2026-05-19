@@ -23,10 +23,11 @@ export default function ProductSelectionModal({ open, onClose, products = [], on
     const filteredProducts = useMemo(() => {
         if (!searchTerm.trim()) return products
 
-        const search = searchTerm.toLowerCase()
+        const search = searchTerm.replace(/\s+/g, "").toLowerCase()
         return products.filter(product => {
             // Search in product name
-            const nameMatch = product.name?.toLowerCase().includes(search)
+            const normalizedName = (product.name || "").replace(/\s+/g, "").toLowerCase()
+            const nameMatch = normalizedName.includes(search)
             
             // Search in product code
             const codeMatch = product.productCode?.toLowerCase().includes(search) || 

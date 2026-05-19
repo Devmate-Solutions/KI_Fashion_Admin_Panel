@@ -47,6 +47,10 @@ import PacketConfigurationModal from "@/components/modals/PacketConfigurationMod
 import BritishDatePicker from "@/components/BritishDatePicker";
 import "react-datepicker/dist/react-datepicker.css";
 
+const normalizeNameForCompare = (name) => {
+  return (name || "").replace(/\s+/g, "").toLowerCase();
+};
+
 // Helper to get image array from various sources
 const getImageArray = (row) => {
   if (row.photo) {
@@ -378,7 +382,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       costPrice: 0,
       primaryColor: [],
       size: [],
-      quantity: 1,
+      quantity: "",
       minSellingPrice: "",
       photo: null,
     };
@@ -979,8 +983,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   productsList.find(
                     (p) =>
                       matchesSupplier(p, supplierId) &&
-                      p.name?.toLowerCase() ===
-                      row.productName.trim().toLowerCase()
+                      normalizeNameForCompare(p.name) ===
+                      normalizeNameForCompare(row.productName)
                   ) || productsList.find((p) => matchesSupplier(p, supplierId));
                 if (product && matchesSupplier(product, supplierId)) {
                   productId = product._id || product.id;
@@ -1433,7 +1437,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                     setExchangeRate(sanitized);
                   }}
                   className="h-11 w-full text-base font-medium"
-                  placeholder="1.00"
+                  placeholder=""
                 />
                 <p className="text-xs text-muted-foreground mt-1.5 flex items-start gap-1.5 min-h-[42px]">
                   <svg className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1471,7 +1475,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                     setPercentage(sanitized);
                   }}
                   className="h-11 w-full text-base font-medium"
-                  placeholder="0.00"
+                  placeholder=""
                 />
                 <p className="text-xs text-muted-foreground mt-1.5 flex items-start gap-1.5 min-h-[42px]">
                   <svg className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">

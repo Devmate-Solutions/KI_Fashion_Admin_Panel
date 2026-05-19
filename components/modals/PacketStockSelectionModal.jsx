@@ -62,18 +62,19 @@ export default function PacketStockSelectionModal({ open, onClose, onSelect }) {
         let result = packetStocks
 
         if (searchTerm.trim()) {
-            const search = searchTerm.toLowerCase()
+            const search = searchTerm.replace(/\s+/g, "").toLowerCase()
+            const rawSearch = searchTerm.toLowerCase()
             result = packetStocks.filter(ps => {
-                const productName = ps.product?.name?.toLowerCase() || ''
+                const productName = (ps.product?.name || "").replace(/\s+/g, "").toLowerCase()
                 const productCode = ps.product?.productCode?.toLowerCase() || ps.product?.sku?.toLowerCase() || ''
                 const barcode = ps.barcode?.toLowerCase() || ''
                 const supplierName = ps.supplier?.name?.toLowerCase() || ps.supplier?.company?.toLowerCase() || ''
 
                 return (
                     productName.includes(search) ||
-                    productCode.includes(search) ||
-                    barcode.includes(search) ||
-                    supplierName.includes(search)
+                    productCode.includes(rawSearch) ||
+                    barcode.includes(rawSearch) ||
+                    supplierName.includes(rawSearch)
                 )
             })
         }

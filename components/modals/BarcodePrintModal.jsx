@@ -321,6 +321,9 @@ export default function BarcodePrintModal({
 
   // Auto-print when data loads (only if autoPrint is enabled — post-confirmation)
   useEffect(() => {
+    let printTimer;
+    let closeTimer;
+    
     if (
       autoPrint &&
       open &&
@@ -328,14 +331,22 @@ export default function BarcodePrintModal({
       !hasPrinted &&
       !isLoading
     ) {
-      const timer = setTimeout(() => {
+      printTimer = setTimeout(() => {
         handlePrint();
         toast.success(`Printing ${totalLabels} barcode labels...`);
+        
+        // Automatically close the modal and redirect after print is initiated
+        closeTimer = setTimeout(() => {
+          onClose();
+        }, 1000);
       }, 800);
-
-      return () => clearTimeout(timer);
     }
-  }, [autoPrint, open, _data, hasPrinted, isLoading, handlePrint, totalLabels]);
+
+    return () => {
+      clearTimeout(printTimer);
+      clearTimeout(closeTimer);
+    };
+  }, [autoPrint, open, _data, hasPrinted, isLoading, handlePrint, totalLabels, onClose]);
 
   // Reset state when modal closes
   useEffect(() => {

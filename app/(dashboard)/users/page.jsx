@@ -79,7 +79,7 @@ export default function UsersPage() {
     if (activeTab === 0) {
       // Employees tab: admin, manager, employee, accountant
       return allUsers.filter(user =>
-        ['super-admin', 'admin', 'employee', 'accountant'].includes(user.role)
+        ['super-admin', 'admin', 'manager', 'employee', 'accountant'].includes(user.role)
       )
     } else if (activeTab === 1) {
       // Suppliers tab: role='supplier'

@@ -82,6 +82,70 @@ const reportLinks = [
   { href: "/reports/month-end", label: "Month-end Report" },
 ];
 
+const ROUTE_PERMISSIONS = {
+  '/dashboard': {},
+  '/buyers': { permissions: ['buyers'] },
+  '/sales': { permissions: ['sales'] },
+  '/products': { permissions: ['products'] },
+  '/inventory': { permissions: ['inventory'] },
+  '/purchases': { permissions: ['purchases'] },
+  '/expenses': { roles: ['super-admin', 'admin', 'manager', 'employee', 'accountant'] },
+  '/users': { roles: ['super-admin', 'admin'] },
+  '/reports': { roles: ['super-admin', 'admin', 'manager', 'employee'] },
+  '/settings': { roles: ['super-admin'] },
+  '/logistics-ledger': { roles: ['super-admin', 'admin'] },
+  '/logistics': { roles: ['super-admin', 'admin'] },
+  '/dispatch-orders': { roles: ['super-admin', 'admin'] },
+  '/campaigns': { roles: ['super-admin', 'admin'] },
+  '/product-types': { roles: ['super-admin'] },
+  '/cost-types': {},
+  '/delivery-personnel': { roles: ['super-admin'] },
+  '/home': { roles: ['super-admin', 'admin', 'accountant'] },
+  '/buying': { roles: ['super-admin', 'admin', 'manager', 'employee'] },
+  '/selling': { roles: ['super-admin', 'admin', 'manager', 'employee'] },
+  '/stock': { roles: ['super-admin', 'admin', 'manager', 'employee'] },
+  '/customer-ledger': {},
+  '/supplier-ledger': {},
+  '/daily-report-form': {},
+  '/setup': { roles: ['super-admin'] },
+};
+
+/**
+ * Check if the user has access to a specific route based on role/permissions
+ */
+const canAccessPath = (href, user) => {
+  if (!href) return true;
+  if (!user) return false;
+
+  // Super-admins have universal access
+  if (user.role === 'super-admin') return true;
+
+  // Find the matching configuration (longest match first for specificity)
+  const match = Object.entries(ROUTE_PERMISSIONS)
+    .sort((a, b) => b[0].length - a[0].length)
+    .find(([route]) => href.startsWith(route));
+
+  if (!match) return true; // Default to visible if route is not configured
+
+  const [, config] = match;
+
+  // Check role requirements
+  if (config.roles && !config.roles.includes(user.role)) {
+    return false;
+  }
+
+  // Check permission requirements
+  if (config.permissions) {
+    if (!user.permissions) return false;
+    const hasRequiredPermission = config.permissions.some(p =>
+      user.permissions.includes(p)
+    );
+    if (!hasRequiredPermission) return false;
+  }
+
+  return true;
+};
+
 export default function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
@@ -92,16 +156,15 @@ export default function Sidebar() {
   const isEmployee = user?.role === "employee";
   const { data: pendingCount } = usePendingRequestCount();
 
-  // Filter items based on role
-  const visibleItems = items.filter((it, index, array) => {
-    // Hide superAdminOnly items
+  // Filter items based on dynamic access path check and superAdminOnly property
+  const visibleItems = items.filter((it) => {
+    // Hide superAdminOnly items for non-super-admins
     if (it.superAdminOnly && !isSuperAdmin) return false;
 
-    // Specific restrictions for employee
-    if (isEmployee) {
-      const allowedEmployeeHrefs = ["/buying", "/selling", "/stock", "/expenses", "/reports"];
-      if (it.href && !allowedEmployeeHrefs.includes(it.href)) return false;
-    }
+    // Separate handling for custom report menu item type
+    const pathToCheck = it.type === "reports" ? "/reports" : it.href;
+
+    if (!canAccessPath(pathToCheck, user)) return false;
 
     return true;
   }).filter((it, index, array) => {
@@ -117,7 +180,7 @@ export default function Sidebar() {
     return true;
   });
 
-  // Filter report links for employee
+  // Filter report links for employee or by dynamic access control
   const filteredReportLinks = isEmployee
     ? reportLinks.filter(rl => [
       "/reports/receivables",
@@ -125,7 +188,7 @@ export default function Sidebar() {
       "/reports/profit-loss",
       "/reports/cash-in-hand"
     ].includes(rl.href))
-    : reportLinks;
+    : reportLinks.filter(rl => canAccessPath(rl.href, user));
 
   useEffect(() => {
     const saved =
