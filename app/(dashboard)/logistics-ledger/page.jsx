@@ -792,20 +792,20 @@ export default function LogisticsLedgerPage() {
     <div className="space-y-6">
       <div className="rounded-lg border border-border/60 bg-gradient-to-br from-card via-background to-card shadow-sm overflow-hidden">
         {/* Header Section */}
-        <div className="relative bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50 px-6 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-primary/10 backdrop-blur-sm flex items-center justify-center ring-1 ring-primary/20 shadow-sm">
-                <FileText className="h-6 w-6 text-primary" />
+        <div className="relative bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50 px-4 sm:px-6 py-4 sm:py-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 rounded-xl bg-primary/10 backdrop-blur-sm flex items-center justify-center ring-1 ring-primary/20 shadow-sm">
+                <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
               </div>
               <div>
-                <h2 className="font-semibold text-xl text-foreground tracking-tight">Complete Ledger History</h2>
-                <p className="text-sm text-muted-foreground mt-1">Select a company to view their complete accounting record</p>
+                <h2 className="font-semibold text-lg sm:text-xl text-foreground tracking-tight">Complete Ledger History</h2>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Select a company to view their complete accounting record</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="w-[250px]">
-                <Label htmlFor="ledger-company-filter" className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
+            <div className="flex flex-row items-end gap-3 sm:gap-4">
+              <div className="flex-1 sm:w-[250px] sm:flex-none">
+                <Label htmlFor="ledger-company-filter" className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
                   <Users className="h-3.5 w-3.5 text-muted-foreground" />
                   Select Company
                 </Label>
@@ -819,7 +819,7 @@ export default function LogisticsLedgerPage() {
                   }}
                   disabled={allCompaniesLoading}
                 >
-                  <SelectTrigger id="ledger-company-filter" className="h-11 border-border/60 bg-background/50 backdrop-blur-sm hover:bg-background transition-colors">
+                  <SelectTrigger id="ledger-company-filter" className="h-10 sm:h-11 border-border/60 bg-background/50 backdrop-blur-sm hover:bg-background transition-colors">
                     <SelectValue placeholder="Select a company..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -832,8 +832,8 @@ export default function LogisticsLedgerPage() {
                 </Select>
               </div>
               {ledgerCompanyFilter && ledgerCompanyFilter !== 'all' && (
-                <div className="w-[200px]">
-                  <Label htmlFor="ledger-type-filter" className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
+                <div className="flex-1 sm:w-[200px] sm:flex-none">
+                  <Label htmlFor="ledger-type-filter" className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
                     <Filter className="h-3.5 w-3.5 text-muted-foreground" />
                     Filter By
                   </Label>
@@ -841,7 +841,7 @@ export default function LogisticsLedgerPage() {
                     value={ledgerTypeFilter}
                     onValueChange={setLedgerTypeFilter}
                   >
-                    <SelectTrigger id="ledger-type-filter" className="h-11 border-border/60 bg-background/50 backdrop-blur-sm hover:bg-background transition-colors">
+                    <SelectTrigger id="ledger-type-filter" className="h-10 sm:h-11 border-border/60 bg-background/50 backdrop-blur-sm hover:bg-background transition-colors">
                       <SelectValue placeholder="All Transactions" />
                     </SelectTrigger>
                     <SelectContent>
@@ -859,7 +859,7 @@ export default function LogisticsLedgerPage() {
         </div>
 
         {/* Content Section */}
-        <div className="p-6">
+        <div className="p-3 sm:p-6">
           {!ledgerCompanyFilter || ledgerCompanyFilter === 'all' ? (
             <div className="flex flex-col items-center justify-center py-20 px-4">
               <div className="relative mb-6">
@@ -1640,12 +1640,12 @@ export default function LogisticsLedgerPage() {
           {allCompaniesLoading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Loading companies...
+              <span className="hidden sm:inline">Loading companies...</span>
             </div>
           )}
           <Button
             onClick={() => setUniversalPaymentOpen(true)}
-            className="gap-2 h-10 px-5 shadow-sm hover:shadow-md transition-all bg-primary hover:bg-primary/90"
+            className="gap-2 h-10 px-5 shadow-sm hover:shadow-md transition-all bg-primary hover:bg-primary/90 w-full sm:w-auto"
           >
             <Plus className="h-4 w-4" />
             Add Payment

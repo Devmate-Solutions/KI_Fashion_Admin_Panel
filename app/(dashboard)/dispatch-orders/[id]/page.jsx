@@ -1600,106 +1600,117 @@ export default function DispatchOrderDetailPage({ params }) {
 
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-      {/* Enhanced Header */}
-      <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Header */}
+      <div className="bg-card border border-border rounded-xl p-4 sm:p-6 shadow-sm">
+
+        {/* ── MOBILE layout (hidden on sm+) ── */}
+        <div className="flex flex-col gap-3 sm:hidden">
+          {/* Back + Status */}
+          <div className="flex items-center justify-between">
+            <BackButton fallbackPath="/dispatch-orders" label="Back" />
+            <Badge className={cn("px-3 py-1.5 text-xs font-bold rounded-lg border", statusStyles[dispatchOrder.status] || statusStyles.pending)}>
+              {dispatchOrder.status?.replace(/_/g, " ").replace(/-/g, " ").toUpperCase()}
+            </Badge>
+          </div>
+          {/* Icon + Title + Subtitle */}
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 shrink-0 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Package className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Dispatch Order</p>
+              <h1 className="text-xl font-black tracking-tight text-foreground leading-tight">{dispatchOrder.orderNumber}</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {dispatchOrder.supplier?.company || dispatchOrder.supplier?.name || "Supplier"}
+                {dispatchOrder.supplier?.company && dispatchOrder.supplier?.name && <span className="text-muted-foreground/70"> ({dispatchOrder.supplier.name})</span>}
+                {" · "}
+                {dispatchOrder.dispatchDate ? new Date(dispatchOrder.dispatchDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "—"}
+              </p>
+            </div>
+          </div>
+          {/* Action buttons — single row, scrollable if needed */}
+          <div className="flex items-center gap-2 pt-2 border-t border-border overflow-x-auto scrollbar-none">
+            {dispatchOrder.status === 'confirmed' && (
+              <Button variant="outline" size="sm" onClick={() => { setIsPostConfirmPrint(false); setShowBarcodePrintModal(true); }} className="h-8 gap-1.5 text-xs shrink-0">
+                <Printer className="h-3.5 w-3.5" />Print Barcodes
+              </Button>
+            )}
+            {isEligibleForEdit && !isEditingConfirmed && (
+              <Button variant="outline" size="sm" onClick={handleEnterEditMode} disabled={confirmedEditLoading} className="h-8 gap-1.5 text-xs text-violet-600 border-violet-200 hover:bg-violet-50 shrink-0">
+                {confirmedEditLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FilePen className="h-3.5 w-3.5" />}Edit
+              </Button>
+            )}
+            {isEditingConfirmed && (
+              <Button variant="outline" size="sm" onClick={handleCancelEdit} className="h-8 gap-1.5 text-xs text-muted-foreground shrink-0">
+                <X className="h-3.5 w-3.5" />Cancel Edit
+              </Button>
+            )}
+            {isEligibleForEdit && !isEditingConfirmed && !isSuperAdmin && (
+              <Button variant="outline" size="sm" onClick={() => setShowDeleteRequestDialog(true)} className="h-8 gap-1.5 text-xs text-red-500 border-red-200 hover:bg-red-50 shrink-0">
+                <Trash2 className="h-3.5 w-3.5" />Request Delete
+              </Button>
+            )}
+            {isSuperAdmin && (
+              <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(true)} className="h-8 gap-1.5 text-xs text-red-500 border-red-200 hover:bg-red-50 shrink-0">
+                <Trash2 className="h-3.5 w-3.5" />Delete
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* ── DESKTOP layout (hidden on mobile) ── */}
+        <div className="hidden sm:flex sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <BackButton fallbackPath="/dispatch-orders" label="Back" />
             <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
                 <Package className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                <h1 className="text-2xl font-black tracking-tight text-foreground">
                   Dispatch Order: {dispatchOrder.orderNumber}
                 </h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {dispatchOrder.supplier?.company || dispatchOrder.supplier?.name || "Supplier"}{dispatchOrder.supplier?.company && dispatchOrder.supplier?.name && ` (${dispatchOrder.supplier.name})`} • {dispatchOrder.dispatchDate ? new Date(dispatchOrder.dispatchDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "—"}
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {dispatchOrder.supplier?.company || dispatchOrder.supplier?.name || "Supplier"}
+                  {dispatchOrder.supplier?.company && dispatchOrder.supplier?.name && <span> ({dispatchOrder.supplier.name})</span>}
+                  {" · "}
+                  {dispatchOrder.dispatchDate ? new Date(dispatchOrder.dispatchDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "—"}
                 </p>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             {dispatchOrder.status === 'confirmed' && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setIsPostConfirmPrint(false);
-                  setShowBarcodePrintModal(true);
-                }}
-                className="hover:bg-primary/10 transition-colors"
-              >
-                <Printer className="h-4 w-4 mr-2" />
-                Print Barcodes
+              <Button variant="outline" size="sm" onClick={() => { setIsPostConfirmPrint(false); setShowBarcodePrintModal(true); }} className="gap-2">
+                <Printer className="h-4 w-4" />Print Barcodes
               </Button>
             )}
             {isEligibleForEdit && !isEditingConfirmed && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleEnterEditMode}
-                disabled={confirmedEditLoading}
-                className="gap-2 text-violet-600 border-violet-200 hover:bg-violet-50 hover:text-violet-700 transition-colors"
-                title={isSuperAdmin ? "Edit confirmed order financial fields (super-admin)" : "Request edit of confirmed order financial fields"}
-              >
-                {confirmedEditLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <FilePen className="h-4 w-4" />
-                )}
-                Edit
+              <Button variant="outline" size="sm" onClick={handleEnterEditMode} disabled={confirmedEditLoading} className="gap-2 text-violet-600 border-violet-200 hover:bg-violet-50 hover:text-violet-700">
+                {confirmedEditLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePen className="h-4 w-4" />}Edit
               </Button>
             )}
             {isEditingConfirmed && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancelEdit}
-                className="gap-2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X className="h-4 w-4" />
-                Cancel Edit
+              <Button variant="outline" size="sm" onClick={handleCancelEdit} className="gap-2 text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />Cancel Edit
               </Button>
             )}
-
             {isEligibleForEdit && !isEditingConfirmed && !isSuperAdmin && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowDeleteRequestDialog(true)}
-                className="gap-2 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 transition-colors"
-                title="Request deletion of this confirmed order"
-              >
-                <Trash2 className="h-4 w-4" />
-                Request Delete
+              <Button variant="outline" size="sm" onClick={() => setShowDeleteRequestDialog(true)} className="gap-2 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600">
+                <Trash2 className="h-4 w-4" />Request Delete
               </Button>
             )}
-
             {isSuperAdmin && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowDeleteDialog(true)}
-                className="gap-2 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 transition-colors"
-                title="Request deletion of this confirmed order"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete
+              <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(true)} className="gap-2 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600">
+                <Trash2 className="h-4 w-4" />Delete
               </Button>
             )}
-
-
-            <Badge
-              className={cn(
-                "px-4 py-2 text-sm font-semibold rounded-md border",
-                statusStyles[dispatchOrder.status] || statusStyles.pending
-              )}
-            >
+            <Badge className={cn("px-4 py-2 text-sm font-semibold rounded-md border", statusStyles[dispatchOrder.status] || statusStyles.pending)}>
               {dispatchOrder.status?.replace(/_/g, " ").replace(/-/g, " ").toUpperCase()}
             </Badge>
           </div>
         </div>
+
       </div>
 
       {/* Order Info */}
@@ -1709,12 +1720,12 @@ export default function DispatchOrderDetailPage({ params }) {
 
             {/* ── PRIMARY: Supplier ── */}
             <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5 border-b sm:border-b-0 sm:border-r border-border pb-4 sm:pb-0 sm:pr-6">
-              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Supplier</p>
-              <p className="text-xl font-bold text-foreground truncate">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Supplier</p>
+              <p className="text-lg font-black text-foreground leading-tight">
                 {dispatchOrder.supplier?.company || dispatchOrder.supplier?.name || "—"}
               </p>
               {dispatchOrder.supplier?.company && dispatchOrder.supplier?.name && (
-                <p className="text-xs text-muted-foreground mt-0.5">({dispatchOrder.supplier.name})</p>
+                <p className="text-xs text-muted-foreground">({dispatchOrder.supplier.name})</p>
               )}
               {(dispatchOrder.supplier?.phone || dispatchOrder.supplier?.email) && (
                 <p className="text-xs text-muted-foreground mt-0.5">
@@ -1787,20 +1798,20 @@ export default function DispatchOrderDetailPage({ params }) {
                 </div>
                 {/* Payments (if available) */}
                 {dispatchOrder.computedPaymentDetails && (
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider w-12">Cash</span>
-                      <span className="text-sm font-semibold text-foreground tabular-nums">
+                  <>
+                    <div className="bg-emerald-500/8 border border-emerald-500/20 rounded-lg px-3 py-2 min-w-[80px]">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider leading-none mb-1">Cash</p>
+                      <p className="text-sm font-bold text-foreground tabular-nums leading-none">
                         {(dispatchOrder.computedPaymentDetails.cashPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
+                      </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider w-12">Bank</span>
-                      <span className="text-sm font-semibold text-foreground tabular-nums">
+                    <div className="bg-blue-500/8 border border-blue-500/20 rounded-lg px-3 py-2 min-w-[80px]">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider leading-none mb-1">Bank</p>
+                      <p className="text-sm font-bold text-foreground tabular-nums leading-none">
                         {(dispatchOrder.computedPaymentDetails.bankPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
+                      </p>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
             ) : (
@@ -1892,10 +1903,10 @@ export default function DispatchOrderDetailPage({ params }) {
             )}
 
             {/* ── SECONDARY META (compact, muted) ── */}
-            <div className="flex flex-col gap-2 justify-center shrink-0">
+            <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-col sm:gap-2 sm:justify-center sm:shrink-0">
               {/* Logistics Company */}
-              <div className="flex items-start gap-2">
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-16 pt-0.5 shrink-0">Logistics</span>
+              <div className="flex flex-col gap-0.5 sm:flex-row sm:items-start sm:gap-2">
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider sm:w-16 sm:pt-0.5 sm:shrink-0">Logistics</span>
                 {isPending && editingField === "logisticsCompany" ? (
                   <div className="flex gap-1 items-center">
                     <Select
@@ -1918,7 +1929,7 @@ export default function DispatchOrderDetailPage({ params }) {
                   </div>
                 ) : (
                   <span
-                    className={cn("text-xs font-medium text-foreground max-w-[180px] truncate", isPending && "cursor-pointer hover:text-primary transition-colors")}
+                    className={cn("text-xs font-semibold text-foreground max-w-[180px] truncate", isPending && "cursor-pointer hover:text-primary transition-colors")}
                     onDoubleClick={() => isPending && setEditingField("logisticsCompany")}
                     title={isPending ? "Double-click to edit" : (logisticsCompanies.find((c) => c.id === editedLogisticsCompany)?.name || dispatchOrder.logisticsCompany?.name || "—")}
                   >
@@ -1926,8 +1937,8 @@ export default function DispatchOrderDetailPage({ params }) {
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-16 shrink-0">Date</span>
+              <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider sm:w-16 sm:shrink-0">Date</span>
                 {isEditingConfirmed ? (
                   <div className="flex gap-1 items-center">
                     <BritishDatePicker
@@ -1965,7 +1976,7 @@ export default function DispatchOrderDetailPage({ params }) {
                   </div>
                 ) : (
                   <span
-                    className={cn("text-xs font-medium text-foreground tabular-nums", isPending && "cursor-pointer hover:text-primary transition-colors")}
+                    className={cn("text-xs font-semibold text-foreground tabular-nums", isPending && "cursor-pointer hover:text-primary transition-colors")}
                     onDoubleClick={() => isPending && setEditingField("dispatchDate")}
                     title={isPending ? "Double-click to edit" : ""}
                   >
@@ -1989,8 +2000,8 @@ export default function DispatchOrderDetailPage({ params }) {
               {/* For confirmed: also show discount + boxes compactly */}
               {isConfirmed && (
                 <>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-16 shrink-0">Discount</span>
+                  <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider sm:w-16 sm:shrink-0">Discount</span>
                     {isEditingConfirmed ? (
                       <Input
                         type="number"
@@ -2001,14 +2012,14 @@ export default function DispatchOrderDetailPage({ params }) {
                         className="h-6 w-24 text-xs border-violet-400 focus:border-violet-500 p-1"
                       />
                     ) : (
-                      <span className="text-xs font-medium text-foreground tabular-nums">
+                      <span className="text-xs font-semibold text-foreground tabular-nums">
                         {(dispatchOrder.totalDiscount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-16 shrink-0">Boxes</span>
-                    <span className="text-xs font-medium text-foreground tabular-nums">{dispatchOrder.totalBoxes || 0}</span>
+                  <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider sm:w-16 sm:shrink-0">Boxes</span>
+                    <span className="text-xs font-semibold text-foreground tabular-nums">{dispatchOrder.totalBoxes || 0}</span>
                   </div>
                 </>
               )}

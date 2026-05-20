@@ -115,11 +115,11 @@ export default function ProductImageGallery({
       lg: "h-32 w-32",
     };
     return (
-      <div className={cn(sizeClasses[size], "flex items-center justify-center rounded border border-border bg-muted")}>
+      <div className={cn(sizeClasses[size], "flex items-center justify-center rounded border border-border bg-muted overflow-hidden")}>
         {isLoadingGallery ? (
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : (
-          <span className="text-xs text-muted-foreground">No Image</span>
+          <span className="text-[10px] text-muted-foreground text-center leading-tight whitespace-normal break-words w-full">No<br />Image</span>
         )}
       </div>
     );

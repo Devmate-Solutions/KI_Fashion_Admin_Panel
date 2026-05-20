@@ -151,6 +151,12 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [open, setOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    window.addEventListener("open-sidebar", handler);
+    return () => window.removeEventListener("open-sidebar", handler);
+  }, []);
   const user = useAuthStore((s) => s.user);
   const isSuperAdmin = user?.role === "super-admin";
   const isEmployee = user?.role === "employee";
@@ -228,8 +234,8 @@ export default function Sidebar() {
           }`}
         aria-label="Main navigation"
       >
-        <div className="flex items-center justify-between px-6 py-6 border-b border-slate-50">
-          {/* <Imagse src="/ki-logo.png" alt="KI Fashion" width={120} height={32} className="h-8 w-auto object-contain" priority /> */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-50">
+          <Image src="/ki-logo.png" alt="KI Fashion" width={100} height={28} className="h-7 w-auto object-contain" priority />
           <button
             type="button"
             onClick={() => setOpen(false)}

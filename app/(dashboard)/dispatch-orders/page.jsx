@@ -206,6 +206,7 @@ Do you still want to proceed?`;
     {
       header: "Logistics",
       accessor: "logisticsCompany",
+      className: "hidden md:table-cell",
       render: (row) => {
         const logistics = row.logisticsCompany || {}
         return <span className="font-medium text-foreground text-gray-400">{logistics.name || "—"}</span>
@@ -234,6 +235,7 @@ Do you still want to proceed?`;
     {
       header: "Actions",
       accessor: "actions",
+      className: "hidden md:table-cell",
       render: (row) => (
         <div className="flex gap-2">
           <Button

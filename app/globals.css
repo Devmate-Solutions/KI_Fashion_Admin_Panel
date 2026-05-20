@@ -123,6 +123,17 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -155,9 +166,9 @@
   /* Better touch targets on mobile */
   @media (max-width: 768px) {
 
-    button,
+    button:not([role="tab"]),
     a,
-    [role="button"] {
+    [role="button"]:not([role="tab"]) {
       min-height: 44px;
       min-width: 44px;
     }

@@ -153,7 +153,7 @@ export default function DataTable({
         </div>
       </div>
 
-      <div className="overflow-x-auto -mx-4 sm:mx-0">
+      <div className="overflow-x-auto">
         {loading && (!Array.isArray(data) || data.length === 0) ? (
           <div className="p-4 space-y-4">
             <div className="flex items-center space-x-4">
@@ -193,10 +193,10 @@ export default function DataTable({
               <thead className="bg-muted/30 sticky top-0 ">
                 <tr className="border-b border-border">
                   {expandableRow && (
-                    <th className="px-2 py-2.5 sm:py-3 w-8"></th>
+                    <th className="hidden sm:table-cell px-2 py-2.5 sm:py-3 w-8"></th>
                   )}
                   {Array.isArray(columns) && columns.map((c) => (
-                    <th key={c.accessor || c.header} className="px-3 sm:px-4 py-2.5 sm:py-3 text-left font-semibold text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                    <th key={c.accessor || c.header} className={cn("px-3 sm:px-4 py-2.5 sm:py-3 text-left font-semibold text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap", c.className)}>
                       {disableSorting ? (
                         <span className="flex items-center gap-1">{c.header}</span>
                       ) : (
@@ -228,7 +228,7 @@ export default function DataTable({
                     <React.Fragment key={uniqueKey}>
                       <tr
                         className={cn(
-                          "hover:bg-muted/20 transition-all duration-150 ease-in-out",
+                          "hover:bg-muted/20 transition-all duration-150 ease-in-out align-middle",
                           onRowClick || expandableRow ? 'cursor-pointer' : '',
                           isExpanded ? 'bg-muted/10 align-top' : '',
                           typeof rowClassName === "function" ? rowClassName(row) : rowClassName
@@ -244,7 +244,7 @@ export default function DataTable({
                         data-row-id={row.rowId || row.id || row._id}
                       >
                         {expandableRow && (
-                          <td className="px-2 py-2.5 sm:py-3 w-8">
+                          <td className="hidden sm:table-cell px-2 py-2.5 sm:py-3 w-8 align-middle">
                             <button
                               className="p-0.5 rounded hover:bg-muted transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                               onClick={(e) => {
@@ -262,12 +262,12 @@ export default function DataTable({
                           </td>
                         )}
                         {Array.isArray(columns) && columns.map((c) => (
-                          <td key={c.accessor || c.header} className="px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm whitespace-nowrap">
+                          <td key={c.accessor || c.header} className={cn("px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm whitespace-nowrap align-middle", c.className)}>
                             {c.render ? c.render(row, { isExpanded }) : (c.cell ? c.cell(row) : String(row[c.accessor] ?? ""))}
                           </td>
                         ))}
                         {!hideActions && (onEdit || onDelete) && (
-                          <td className="px-3 sm:px-4 py-2.5 sm:py-3">
+                          <td className="px-3 sm:px-4 py-2.5 sm:py-3 align-middle">
                             <div className="flex items-center gap-1.5 sm:gap-2">
                               {onEdit && (
                                 <button

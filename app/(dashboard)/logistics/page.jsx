@@ -119,12 +119,12 @@ export default function LogisticsPage() {
       <div className="mb-3">
         <BackButton fallbackPath="/home" label="Back" />
       </div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Logistics Companies</h1>
           <p className="text-sm text-gray-500">Manage logistics companies for dispatch orders</p>
         </div>
-        <Button onClick={() => setOpenAddForm(true)}>
+        <Button onClick={() => setOpenAddForm(true)} className="w-full sm:w-auto">
           Add Logistics Company
         </Button>
       </div>

@@ -813,8 +813,8 @@ export default function BuyingPage() {
       </div>
 
       <div className="space-y-4">
-        <div className="flex flex-wrap items-end gap-3 mb-4">
-          <div className="flex flex-col gap-1">
+        <div className="flex flex-row items-end gap-3 mb-4">
+          <div className="flex flex-col gap-1 flex-1 min-w-0">
             <Label className="text-xs">From Date</Label>
             <BritishDatePicker
               value={dateRange.from || null}
@@ -824,7 +824,7 @@ export default function BuyingPage() {
               }}
             />
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 flex-1 min-w-0">
             <Label className="text-xs">To Date</Label>
             <BritishDatePicker
               value={dateRange.to || null}

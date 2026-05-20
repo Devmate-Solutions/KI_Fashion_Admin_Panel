@@ -239,6 +239,7 @@ const inventoryColumns = [
   {
     header: "SKU",
     accessor: "sku",
+    className: "hidden md:table-cell",
     render: (row) => (
       <a
         href={`/stock/${row.productId || row.product?._id}/packets`}
@@ -255,6 +256,7 @@ const inventoryColumns = [
   {
     header: "Season",
     accessor: "season",
+    className: "hidden md:table-cell",
     render: (row, { isExpanded } = {}) => {
       const season = row.product?.season;
       const seasons = Array.isArray(season) ? season : season ? [season] : [];
@@ -278,6 +280,7 @@ const inventoryColumns = [
   {
     header: "Size",
     accessor: "size",
+    className: "hidden md:table-cell",
     render: (row, { isExpanded } = {}) => {
       let sizes = [];
       const productSize = row.product?.size;
@@ -337,6 +340,7 @@ const inventoryColumns = [
   {
     header: "Color",
     accessor: "color",
+    className: "hidden md:table-cell",
     render: (row, { isExpanded } = {}) => {
       let colors = [];
       const productColor = row.product?.color;
@@ -412,6 +416,7 @@ const inventoryColumns = [
   {
     header: "Landed Cost",
     accessor: "averageCostPrice",
+    className: "hidden md:table-cell",
     render: (row) => (
       <span className="tabular-nums">
         {formatDecimal(row.averageCostPrice)}
@@ -422,6 +427,7 @@ const inventoryColumns = [
   {
     header: "Min Sell Price",
     accessor: "minSellingPrice",
+    className: "hidden md:table-cell",
     render: (row) => (
       <span className="tabular-nums font-medium">
         {formatDecimal(row.pricing?.minSellingPrice ?? row.pricing?.sellingPrice ?? 0)}
@@ -442,6 +448,7 @@ const inventoryColumns = [
   {
     header: "Date",
     accessor: "firstArrivalDate",
+    className: "hidden md:table-cell",
     render: (row) => {
       const displayDate = row.firstArrivalDate || row.createdAt || row.lastStockUpdate;
       return (
@@ -1030,7 +1037,7 @@ export default function StockPage() {
         </form>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <Boxes className="h-5 w-5 text-muted-foreground" />
           <div className="text-sm text-muted-foreground">
@@ -1040,7 +1047,7 @@ export default function StockPage() {
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
             size="sm"
@@ -1063,7 +1070,7 @@ export default function StockPage() {
         </div>
         {/* Pagination Controls */}
         {inventoryPagination && (inventoryPagination.totalItems > 0) && (
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 overflow-x-auto scrollbar-none pb-1">
             {/* Page Size Selector */}
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Show</span>
@@ -1203,6 +1210,7 @@ export default function StockPage() {
     {
       header: "Type",
       accessor: "isLoose",
+      className: "hidden md:table-cell",
       render: (row) => (
         <Badge variant={row.isLoose ? "secondary" : "default"}>
           {row.isLoose ? "Loose" : "Packet"}
@@ -1224,6 +1232,7 @@ export default function StockPage() {
     {
       header: "Supplier",
       accessor: "supplier.name",
+      className: "hidden md:table-cell",
       render: (row) => {
         const companyName = row.supplier?.companyName || row.supplier?.company;
         const contactName = row.supplier?.name;
@@ -1249,6 +1258,7 @@ export default function StockPage() {
     {
       header: "Composition",
       accessor: "composition",
+      className: "hidden md:table-cell",
       render: (row) => {
         const comp = row.composition || [];
         if (comp.length === 0) return "—";
@@ -1274,6 +1284,7 @@ export default function StockPage() {
     {
       header: "Items/Pkt",
       accessor: "totalItemsPerPacket",
+      className: "hidden md:table-cell",
       render: (row) => (
         <div className="text-center tabular-nums">
           {row.totalItemsPerPacket || 1}
@@ -1300,6 +1311,7 @@ export default function StockPage() {
     {
       header: "Sold",
       accessor: "soldPackets",
+      className: "hidden md:table-cell",
       render: (row) => (
         <div className="text-right tabular-nums text-muted-foreground">
           {row.soldPackets || 0}
@@ -1309,6 +1321,7 @@ export default function StockPage() {
     {
       header: "Min Sell Price",
       accessor: "unitPrice",
+      className: "hidden md:table-cell",
       render: (row) => {
         const price = row.product?.pricing?.minSellingPrice ?? row.product?.pricing?.sellingPrice
 
@@ -1322,6 +1335,7 @@ export default function StockPage() {
     {
       header: "Price/Pkt",
       accessor: "suggestedSellingPrice",
+      className: "hidden md:table-cell",
       render: (row) => {
         const perItemMin = Number(
           row.product?.pricing?.minSellingPrice ?? row.product?.pricing?.sellingPrice
