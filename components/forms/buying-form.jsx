@@ -165,9 +165,9 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
   const [imageGalleryState, setImageGalleryState] = useState(null); // { rowId: string, images: [] } | null
 
   // Payment section
-  const [discount, setDiscount] = useState(0);
-  const [cash, setCash] = useState(0);
-  const [bank, setBank] = useState(0);
+  const [discount, setDiscount] = useState();
+  const [cash, setCash] = useState();
+  const [bank, setBank] = useState();
 
   // Refs for keyboard navigation
   const cashInputRef = useRef(null);

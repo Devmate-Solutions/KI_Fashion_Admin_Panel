@@ -65,6 +65,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import TruncatedBadgeList from "@/components/ui/TruncatedBadgeList";
 import BreakPacketDialog from "@/components/modals/BreakPacketDialog";
 import BarcodeUpdatePriceDialog from "@/components/modals/BarcodeUpdatePriceDialog";
+import BritishDatePicker from "@/components/BritishDatePicker";
 
 const MOVEMENT_LIMIT = 20;
 
@@ -86,6 +87,25 @@ function formatDateTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
   return date.toLocaleString("en-GB");
+}
+
+function formatDateToISO(date) {
+  if (!date) return "";
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return "";
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatToBritishDate(dateStr) {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
 }
 
 function openBarcodePrintWindow(labelData, compositionText, price) {
@@ -1339,7 +1359,7 @@ export default function StockPage() {
             )}
             {(appliedFilters.startDate || appliedFilters.endDate) && (
               <Badge variant="secondary" className="h-5 text-[10px] gap-1 pl-2 pr-1 bg-muted border border-border">
-                Date: {appliedFilters.startDate || "Start"} to {appliedFilters.endDate || "End"}
+                Date: {formatToBritishDate(appliedFilters.startDate) || "Start"} to {formatToBritishDate(appliedFilters.endDate) || "End"}
                 <button
                   type="button"
                   className="h-3 w-3 rounded-full hover:bg-muted-foreground/20 flex items-center justify-center font-bold text-muted-foreground"
@@ -1553,22 +1573,22 @@ export default function StockPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <Label htmlFor="filter-start-date" className="text-[11px] text-muted-foreground font-medium">Start Date</Label>
-                  <Input
+                  <BritishDatePicker
                     id="filter-start-date"
-                    type="date"
                     value={filterForm.startDate}
-                    onChange={(e) => setFilterForm(prev => ({ ...prev, startDate: e.target.value }))}
-                    className="h-8 text-xs px-2.5"
+                    onChange={(date) => setFilterForm(prev => ({ ...prev, startDate: formatDateToISO(date) }))}
+                    className="h-8 text-xs px-2.5 w-full rounded-md border border-input bg-background font-medium text-foreground outline-none focus:ring-2 focus:ring-ring focus:border-transparent hover:border-ring/50"
+                    wrapperClassName="w-full"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
                   <Label htmlFor="filter-end-date" className="text-[11px] text-muted-foreground font-medium">End Date</Label>
-                  <Input
+                  <BritishDatePicker
                     id="filter-end-date"
-                    type="date"
                     value={filterForm.endDate}
-                    onChange={(e) => setFilterForm(prev => ({ ...prev, endDate: e.target.value }))}
-                    className="h-8 text-xs px-2.5"
+                    onChange={(date) => setFilterForm(prev => ({ ...prev, endDate: formatDateToISO(date) }))}
+                    className="h-8 text-xs px-2.5 w-full rounded-md border border-input bg-background font-medium text-foreground outline-none focus:ring-2 focus:ring-ring focus:border-transparent hover:border-ring/50"
+                    wrapperClassName="w-full"
                   />
                 </div>
               </div>
