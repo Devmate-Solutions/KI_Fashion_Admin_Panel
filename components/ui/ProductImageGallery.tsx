@@ -12,7 +12,7 @@ interface ProductImageGalleryProps {
   productId?: string; // Used to fetch full gallery on demand
   totalImages?: number; // Total image count from API (when primaryOnly is used)
   alt?: string;
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   maxVisible?: number;
   showCount?: boolean;
   onImageClick?: (index: number) => void;
@@ -110,6 +110,7 @@ export default function ProductImageGallery({
   if (displayImages.length === 0) {
     // No images and nothing loading - show placeholder or loading spinner
     const sizeClasses = {
+      xs: "h-8 w-8",
       sm: "h-12 w-12",
       md: "h-16 w-16",
       lg: "h-32 w-32",
@@ -128,6 +129,7 @@ export default function ProductImageGallery({
   if (displayImages.length === 1) {
     // Single image - show it with optional count badge (may have more images to load)
     const sizeClasses = {
+      xs: "h-8 w-8",
       sm: "h-12 w-12",
       md: "h-16 w-16",
       lg: "h-32 w-32",
@@ -181,6 +183,11 @@ export default function ProductImageGallery({
   const remainingCount = displayImages.length - maxVisible;
 
   const sizeClasses = {
+    xs: {
+      container: "gap-0.5",
+      thumbnail: "h-8 w-8",
+      badge: "text-[7px] px-1 py-0.5",
+    },
     sm: {
       container: "gap-1",
       thumbnail: "h-12 w-12",

@@ -79,7 +79,7 @@ const reportLinks = [
   // { href: "/reports/sales-returns", label: "Sales Returns (Invoice Wise)" },
   { href: "/reports/sales-returns-product-wise", label: "Sales Returns (Product Wise)" },
   { href: "/reports/buying-returns-product-wise", label: "Buying Returns (Product Wise)" },
-  { href: "/reports/month-end", label: "Month-end Report" },
+  { href: "/reports/month-end", label: "Month-End Report" },
 ];
 
 const ROUTE_PERMISSIONS = {

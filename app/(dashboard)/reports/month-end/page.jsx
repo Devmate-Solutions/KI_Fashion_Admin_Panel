@@ -81,7 +81,7 @@ export default function MonthEndReportPage() {
     const handleDownloadPDF = async () => {
         try {
             const result = await exportToPDF({
-                title: "Month-end Report",
+                title: "Month-End Report",
                 columns: columns,
                 data: data,
                 totalsRow: totalsRow,
@@ -247,7 +247,7 @@ export default function MonthEndReportPage() {
 
     return (
         <ReportLayout
-            title="Month-end Report"
+            title="Month-End Report"
             description="Detailed line-item analysis of sales with profitability and supplier information"
             dateRange={dateRange}
             onDateChange={setDateRange}

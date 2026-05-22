@@ -36,6 +36,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
   useInventoryList,
   useInventoryItem,
   useInventoryMovements,
@@ -197,7 +204,7 @@ const inventoryColumns = [
         <ProductImageGallery
           images={getImageArray(row)}
           alt={row.productName || "Product"}
-          size="sm"
+          size="xs"
           maxVisible={1}
           showCount={true}
         />
@@ -491,11 +498,25 @@ export default function StockPage() {
   const [movementPage, setMovementPage] = useState(1);
   const [selectedProductId, setSelectedProductId] = useState("");
 
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
   const defaultFilterState = useMemo(
     () => ({
       search: "",
+      searchSupplier: "",
+      searchProduct: "",
+      searchSku: "",
+      season: "",
+      size: "",
+      color: "",
       lowStock: false,
       needsReorder: false,
+      minStock: "",
+      maxStock: "",
+      minCost: "",
+      maxCost: "",
+      minPrice: "",
+      maxPrice: "",
       startDate: "",
       endDate: "",
     }),
@@ -503,6 +524,27 @@ export default function StockPage() {
   );
   const [filterForm, setFilterForm] = useState(defaultFilterState);
   const [appliedFilters, setAppliedFilters] = useState(defaultFilterState);
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (appliedFilters.searchSupplier) count++;
+    if (appliedFilters.searchProduct) count++;
+    if (appliedFilters.searchSku) count++;
+    if (appliedFilters.season) count++;
+    if (appliedFilters.size) count++;
+    if (appliedFilters.color) count++;
+    if (appliedFilters.lowStock) count++;
+    if (appliedFilters.needsReorder) count++;
+    if (appliedFilters.minStock) count++;
+    if (appliedFilters.maxStock) count++;
+    if (appliedFilters.minCost) count++;
+    if (appliedFilters.maxCost) count++;
+    if (appliedFilters.minPrice) count++;
+    if (appliedFilters.maxPrice) count++;
+    if (appliedFilters.startDate) count++;
+    if (appliedFilters.endDate) count++;
+    return count;
+  }, [appliedFilters]);
 
   const defaultMovementFilters = useMemo(
     () => ({ type: undefined, startDate: "", endDate: "" }),
@@ -534,19 +576,51 @@ export default function StockPage() {
     if (appliedFilters.search?.trim()) {
       params.search = appliedFilters.search.trim();
     }
-
+    if (appliedFilters.searchSupplier?.trim()) {
+      params.searchSupplier = appliedFilters.searchSupplier.trim();
+    }
+    if (appliedFilters.searchProduct?.trim()) {
+      params.searchProduct = appliedFilters.searchProduct.trim();
+    }
+    if (appliedFilters.searchSku?.trim()) {
+      params.searchSku = appliedFilters.searchSku.trim();
+    }
+    if (appliedFilters.season && appliedFilters.season !== "all") {
+      params.season = appliedFilters.season;
+    }
+    if (appliedFilters.size?.trim()) {
+      params.size = appliedFilters.size.trim();
+    }
+    if (appliedFilters.color?.trim()) {
+      params.color = appliedFilters.color.trim();
+    }
     if (appliedFilters.lowStock) {
       params.lowStock = true;
     }
-
     if (appliedFilters.needsReorder) {
       params.needsReorder = true;
     }
-
+    if (appliedFilters.minStock?.trim()) {
+      params.minStock = appliedFilters.minStock.trim();
+    }
+    if (appliedFilters.maxStock?.trim()) {
+      params.maxStock = appliedFilters.maxStock.trim();
+    }
+    if (appliedFilters.minCost?.trim()) {
+      params.minCost = appliedFilters.minCost.trim();
+    }
+    if (appliedFilters.maxCost?.trim()) {
+      params.maxCost = appliedFilters.maxCost.trim();
+    }
+    if (appliedFilters.minPrice?.trim()) {
+      params.minPrice = appliedFilters.minPrice.trim();
+    }
+    if (appliedFilters.maxPrice?.trim()) {
+      params.maxPrice = appliedFilters.maxPrice.trim();
+    }
     if (appliedFilters.startDate) {
       params.startDate = appliedFilters.startDate;
     }
-
     if (appliedFilters.endDate) {
       params.endDate = appliedFilters.endDate;
     }
@@ -564,38 +638,9 @@ export default function StockPage() {
 
   const inventoryItems = inventoryData?.items ?? [];
 
-  // Apply client-side date filtering so the UI always respects the selected date range
-  const filteredInventoryItems = useMemo(() => {
-    if (!appliedFilters.startDate && !appliedFilters.endDate) {
-      return inventoryItems;
-    }
-
-    const start = appliedFilters.startDate
-      ? new Date(`${appliedFilters.startDate}T00:00:00`)
-      : null;
-    const end = appliedFilters.endDate
-      ? new Date(`${appliedFilters.endDate}T23:59:59.999`)
-      : null;
-
-    return inventoryItems.filter((item) => {
-      // Prefer explicit lastStockUpdate, but fall back to raw timestamps if needed
-      const dateSource =
-        item.lastStockUpdate ||
-        item.raw?.lastStockUpdate ||
-        item.raw?.updatedAt ||
-        item.raw?.createdAt;
-
-      if (!dateSource) return false;
-
-      const itemDate = new Date(dateSource);
-      if (Number.isNaN(itemDate.getTime())) return false;
-
-      if (start && itemDate < start) return false;
-      if (end && itemDate > end) return false;
-
-      return true;
-    });
-  }, [inventoryItems, appliedFilters.startDate, appliedFilters.endDate]);
+  // Since date and column filtering are handled fully on the backend aggregation pipeline,
+  // we map inventoryItems directly to filteredInventoryItems. This ensures total count pagination values align.
+  const filteredInventoryItems = inventoryItems;
 
   // Calculate summary statistics based on filtered items
   const totalStockValue = filteredInventoryItems.reduce(
@@ -954,218 +999,641 @@ export default function StockPage() {
   };
 
   const inventoryTab = (
-    <div className="space-y-4">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-        <Card>
-
-          <CardContent className="flex space-x-1 px-3 pt-0">
-            <div>Stock Value:</div>
-            <div className="text-lg font-bold">
-              {globalStockValue.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-
-          <CardContent className="flex space-x-1 px-3 pt-0">
-            <div>Total Items:</div>
-            <div className="text-lg font-bold">
-              {formatNumber(globalTotalStockItems)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex space-x-1 px-3 pt-0">
-            <div>Total Products:</div>
-            <div className="text-lg font-bold">{globalTotalProducts}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex space-x-1 px-3 pt-0">
-            <div>Low Stock Items:</div>
-            <div className="text-lg font-bold text-amber-600">
-              {globalLowStockCount}
-            </div>
-          </CardContent>
-        </Card>
+    <div className="space-y-3">
+      {/* Summary Statistics Ribbon */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-[4px] border border-border bg-card/60 backdrop-blur-sm px-3 py-1.5 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1">
+          <span>Stock Value:</span>
+          <span className="font-semibold text-foreground">
+            £{globalStockValue.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </span>
+        </div>
+        <div className="h-3 w-px bg-border hidden sm:block" />
+        <div className="flex items-center gap-1">
+          <span>Total Items:</span>
+          <span className="font-semibold text-foreground">{formatNumber(globalTotalStockItems)}</span>
+        </div>
+        <div className="h-3 w-px bg-border hidden sm:block" />
+        <div className="flex items-center gap-1">
+          <span>Total Products:</span>
+          <span className="font-semibold text-foreground">{globalTotalProducts}</span>
+        </div>
+        <div className="h-3 w-px bg-border hidden sm:block" />
+        <div className="flex items-center gap-1">
+          <span>Low Stock Items:</span>
+          <span className="font-semibold text-amber-600">{globalLowStockCount}</span>
+        </div>
       </div>
 
+      {/* Integrated Controls & Filter Card */}
+      <div className="rounded-[4px] border border-border bg-card p-2 space-y-2">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between text-xs">
+          {/* Left side: Search & Apply */}
+          <form onSubmit={handleApplyFilters} className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+            <div className="flex-1 min-w-[150px]">
+              <Input
+                id="filter-search"
+                placeholder="Search SKU, product, supplier..."
+                value={filterForm.search}
+                onChange={(event) =>
+                  setFilterForm((prev) => ({
+                    ...prev,
+                    search: event.target.value,
+                  }))
+                }
+                className="h-8 text-xs"
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Button type="submit" size="sm" className="h-8 text-xs px-2.5">Apply</Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs px-2.5"
+                onClick={handleResetFilters}
+              >
+                Reset
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={`h-8 text-xs px-2.5 transition-all duration-200 ${
+                  activeFiltersCount > 0
+                    ? "border-primary text-primary bg-primary/5 hover:bg-primary/10 hover:text-primary font-semibold"
+                    : ""
+                }`}
+                onClick={() => setIsFilterOpen(true)}
+              >
+                Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}
+              </Button>
+            </div>
+          </form>
 
-      {/* Unified Search Filter */}
-      <div className="rounded-[4px] border border-border bg-card p-3">
-        <form onSubmit={handleApplyFilters} className="flex flex-wrap items-end gap-2">
-          <div className="flex-1 min-w-[250px]">
-            <Label
-              htmlFor="filter-search"
-              className="text-xs text-muted-foreground mb-1 block"
-            >
-              Search
-            </Label>
-            <Input
-              id="filter-search"
-              placeholder="SKU, product, supplier..."
-              value={filterForm.search}
-              onChange={(event) =>
-                setFilterForm((prev) => ({
-                  ...prev,
-                  search: event.target.value,
-                }))
-              }
-              className="h-8 text-sm"
-            />
+          {/* Right side: Actions & Pagination */}
+          <div className="flex flex-wrap items-center gap-2 md:justify-end">
+            {/* Quick Actions */}
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 text-[11px] px-2 gap-1"
+                onClick={() => setBarcodeUpdateDialogOpen(true)}
+              >
+                <Barcode className="h-3.5 w-3.5" />
+                Scan
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 text-[11px] px-2"
+                onClick={() => setMinPriceDialogOpen(true)}
+              >
+                Min Price
+              </Button>
+            </div>
+
+            <div className="h-4 w-px bg-border hidden sm:block" />
+
+            {/* Pagination Controls */}
+            {inventoryPagination && (inventoryPagination.totalItems > 0) && (
+              <div className="flex items-center gap-2">
+                <Select
+                  value={String(pageLimit)}
+                  onValueChange={(value) => {
+                    setPageLimit(Number(value));
+                    setPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-[60px] h-8 text-xs px-1.5">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <SelectItem key={size} value={String(size)}>
+                        {size}/p
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled={(inventoryPagination?.currentPage || 1) === 1}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setPage((prev) => Math.max(1, prev - 1));
+                    }}
+                  >
+                    ‹
+                  </Button>
+                  <span className="text-[11px] font-medium min-w-[32px] text-center">
+                    {inventoryPagination.currentPage} / {inventoryPagination.totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled={(inventoryPagination?.currentPage || 1) >= (inventoryPagination?.totalPages || 1)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setPage((prev) => prev + 1);
+                    }}
+                  >
+                    ›
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
+        </div>
 
-          <div className="flex gap-2">
-            <Button type="submit" size="sm" className="h-8">Apply</Button>
+        {/* Horizontal Active Filter Chips */}
+        {activeFiltersCount > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 py-1 text-xs border-t border-border/60 mt-1 pt-1.5">
+            <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mr-1">Active:</span>
+            {appliedFilters.searchSupplier && (
+              <Badge variant="secondary" className="h-5 text-[10px] gap-1 pl-2 pr-1 bg-muted border border-border">
+                Supplier: {appliedFilters.searchSupplier}
+                <button
+                  type="button"
+                  className="h-3 w-3 rounded-full hover:bg-muted-foreground/20 flex items-center justify-center font-bold text-muted-foreground"
+                  onClick={() => {
+                    setFilterForm(prev => ({ ...prev, searchSupplier: "" }));
+                    setAppliedFilters(prev => ({ ...prev, searchSupplier: "" }));
+                    setPage(1);
+                  }}
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {appliedFilters.searchProduct && (
+              <Badge variant="secondary" className="h-5 text-[10px] gap-1 pl-2 pr-1 bg-muted border border-border">
+                Product: {appliedFilters.searchProduct}
+                <button
+                  type="button"
+                  className="h-3 w-3 rounded-full hover:bg-muted-foreground/20 flex items-center justify-center font-bold text-muted-foreground"
+                  onClick={() => {
+                    setFilterForm(prev => ({ ...prev, searchProduct: "" }));
+                    setAppliedFilters(prev => ({ ...prev, searchProduct: "" }));
+                    setPage(1);
+                  }}
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {appliedFilters.searchSku && (
+              <Badge variant="secondary" className="h-5 text-[10px] gap-1 pl-2 pr-1 bg-muted border border-border">
+                SKU: {appliedFilters.searchSku}
+                <button
+                  type="button"
+                  className="h-3 w-3 rounded-full hover:bg-muted-foreground/20 flex items-center justify-center font-bold text-muted-foreground"
+                  onClick={() => {
+                    setFilterForm(prev => ({ ...prev, searchSku: "" }));
+                    setAppliedFilters(prev => ({ ...prev, searchSku: "" }));
+                    setPage(1);
+                  }}
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {appliedFilters.season && (
+              <Badge variant="secondary" className="h-5 text-[10px] gap-1 pl-2 pr-1 bg-muted border border-border">
+                Season: {appliedFilters.season}
+                <button
+                  type="button"
+                  className="h-3 w-3 rounded-full hover:bg-muted-foreground/20 flex items-center justify-center font-bold text-muted-foreground"
+                  onClick={() => {
+                    setFilterForm(prev => ({ ...prev, season: "" }));
+                    setAppliedFilters(prev => ({ ...prev, season: "" }));
+                    setPage(1);
+                  }}
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {appliedFilters.size && (
+              <Badge variant="secondary" className="h-5 text-[10px] gap-1 pl-2 pr-1 bg-muted border border-border">
+                Size: {appliedFilters.size}
+                <button
+                  type="button"
+                  className="h-3 w-3 rounded-full hover:bg-muted-foreground/20 flex items-center justify-center font-bold text-muted-foreground"
+                  onClick={() => {
+                    setFilterForm(prev => ({ ...prev, size: "" }));
+                    setAppliedFilters(prev => ({ ...prev, size: "" }));
+                    setPage(1);
+                  }}
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {appliedFilters.color && (
+              <Badge variant="secondary" className="h-5 text-[10px] gap-1 pl-2 pr-1 bg-muted border border-border">
+                Color: {appliedFilters.color}
+                <button
+                  type="button"
+                  className="h-3 w-3 rounded-full hover:bg-muted-foreground/20 flex items-center justify-center font-bold text-muted-foreground"
+                  onClick={() => {
+                    setFilterForm(prev => ({ ...prev, color: "" }));
+                    setAppliedFilters(prev => ({ ...prev, color: "" }));
+                    setPage(1);
+                  }}
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {appliedFilters.lowStock && (
+              <Badge variant="secondary" className="h-5 text-[10px] gap-1 pl-2 pr-1 bg-muted border border-border">
+                Low Stock
+                <button
+                  type="button"
+                  className="h-3 w-3 rounded-full hover:bg-muted-foreground/20 flex items-center justify-center font-bold text-muted-foreground"
+                  onClick={() => {
+                    setFilterForm(prev => ({ ...prev, lowStock: false }));
+                    setAppliedFilters(prev => ({ ...prev, lowStock: false }));
+                    setPage(1);
+                  }}
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {appliedFilters.needsReorder && (
+              <Badge variant="secondary" className="h-5 text-[10px] gap-1 pl-2 pr-1 bg-muted border border-border">
+                Reorder
+                <button
+                  type="button"
+                  className="h-3 w-3 rounded-full hover:bg-muted-foreground/20 flex items-center justify-center font-bold text-muted-foreground"
+                  onClick={() => {
+                    setFilterForm(prev => ({ ...prev, needsReorder: false }));
+                    setAppliedFilters(prev => ({ ...prev, needsReorder: false }));
+                    setPage(1);
+                  }}
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {(appliedFilters.minStock || appliedFilters.maxStock) && (
+              <Badge variant="secondary" className="h-5 text-[10px] gap-1 pl-2 pr-1 bg-muted border border-border">
+                Stock: {appliedFilters.minStock || "0"} - {appliedFilters.maxStock || "∞"}
+                <button
+                  type="button"
+                  className="h-3 w-3 rounded-full hover:bg-muted-foreground/20 flex items-center justify-center font-bold text-muted-foreground"
+                  onClick={() => {
+                    setFilterForm(prev => ({ ...prev, minStock: "", maxStock: "" }));
+                    setAppliedFilters(prev => ({ ...prev, minStock: "", maxStock: "" }));
+                    setPage(1);
+                  }}
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {(appliedFilters.minCost || appliedFilters.maxCost) && (
+              <Badge variant="secondary" className="h-5 text-[10px] gap-1 pl-2 pr-1 bg-muted border border-border">
+                Cost: £{appliedFilters.minCost || "0"} - £{appliedFilters.maxCost || "∞"}
+                <button
+                  type="button"
+                  className="h-3 w-3 rounded-full hover:bg-muted-foreground/20 flex items-center justify-center font-bold text-muted-foreground"
+                  onClick={() => {
+                    setFilterForm(prev => ({ ...prev, minCost: "", maxCost: "" }));
+                    setAppliedFilters(prev => ({ ...prev, minCost: "", maxCost: "" }));
+                    setPage(1);
+                  }}
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {(appliedFilters.minPrice || appliedFilters.maxPrice) && (
+              <Badge variant="secondary" className="h-5 text-[10px] gap-1 pl-2 pr-1 bg-muted border border-border">
+                Price: £{appliedFilters.minPrice || "0"} - £{appliedFilters.maxPrice || "∞"}
+                <button
+                  type="button"
+                  className="h-3 w-3 rounded-full hover:bg-muted-foreground/20 flex items-center justify-center font-bold text-muted-foreground"
+                  onClick={() => {
+                    setFilterForm(prev => ({ ...prev, minPrice: "", maxPrice: "" }));
+                    setAppliedFilters(prev => ({ ...prev, minPrice: "", maxPrice: "" }));
+                    setPage(1);
+                  }}
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {(appliedFilters.startDate || appliedFilters.endDate) && (
+              <Badge variant="secondary" className="h-5 text-[10px] gap-1 pl-2 pr-1 bg-muted border border-border">
+                Date: {appliedFilters.startDate || "Start"} to {appliedFilters.endDate || "End"}
+                <button
+                  type="button"
+                  className="h-3 w-3 rounded-full hover:bg-muted-foreground/20 flex items-center justify-center font-bold text-muted-foreground"
+                  onClick={() => {
+                    setFilterForm(prev => ({ ...prev, startDate: "", endDate: "" }));
+                    setAppliedFilters(prev => ({ ...prev, startDate: "", endDate: "" }));
+                    setPage(1);
+                  }}
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+
             <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8"
+              variant="ghost"
+              className="h-5 text-[10px] text-destructive hover:text-destructive hover:bg-destructive/5 px-2 font-medium"
               onClick={handleResetFilters}
             >
-              Reset
+              Clear All
             </Button>
-          </div>
-        </form>
-      </div>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <Boxes className="h-5 w-5 text-muted-foreground" />
-          <div className="text-sm text-muted-foreground">
-            Inventory records:{" "}
-            <span className="font-semibold text-foreground">
-              {inventoryPagination?.totalItems ?? filteredInventoryItems.length}
-            </span>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-8 gap-2"
-            onClick={() => setBarcodeUpdateDialogOpen(true)}
-          >
-            <Barcode className="h-4 w-4" />
-            Scan Barcode
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-8"
-            onClick={() => setMinPriceDialogOpen(true)}
-          >
-            Update Min Sell Price
-          </Button>
-        </div>
-        {/* Pagination Controls */}
-        {inventoryPagination && (inventoryPagination.totalItems > 0) && (
-          <div className="flex items-center gap-4 overflow-x-auto scrollbar-none pb-1">
-            {/* Page Size Selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Show</span>
-              <Select
-                value={String(pageLimit)}
-                onValueChange={(value) => {
-                  setPageLimit(Number(value));
-                  setPage(1); // Reset to first page when changing limit
-                }}
-              >
-                <SelectTrigger className="w-[70px] h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PAGE_SIZE_OPTIONS.map((size) => (
-                    <SelectItem key={size} value={String(size)}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <span className="text-sm text-muted-foreground">per page</span>
-            </div>
-            {/* Page Navigation */}
-            <Pagination className="w-auto mx-0">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      if ((inventoryPagination?.currentPage || 1) > 1) {
-                        setPage((prev) => Math.max(1, prev - 1));
-                      }
-                    }}
-                    aria-disabled={(inventoryPagination?.currentPage || 1) === 1}
-                    className={
-                      (inventoryPagination?.currentPage || 1) === 1
-                        ? "pointer-events-none opacity-50"
-                        : undefined
-                    }
-                  />
-                </PaginationItem>
-                {Array.from({ length: inventoryPagination.totalPages || 1 }).map(
-                  (_, index) => {
-                    const pageNumber = index + 1;
-                    return (
-                      <PaginationItem key={pageNumber}>
-                        <PaginationLink
-                          href="#"
-                          isActive={
-                            pageNumber === (inventoryPagination?.currentPage || 1)
-                          }
-                          onClick={(event) => {
-                            event.preventDefault();
-                            setPage(pageNumber);
-                          }}
-                        >
-                          {pageNumber}
-                        </PaginationLink>
-                      </PaginationItem>
-                    );
-                  }
-                )}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      if (
-                        (inventoryPagination?.currentPage || 1) <
-                        (inventoryPagination?.totalPages || 1)
-                      ) {
-                        setPage((prev) => prev + 1);
-                      }
-                    }}
-                    aria-disabled={
-                      (inventoryPagination?.currentPage || 1) >=
-                      (inventoryPagination?.totalPages || 1)
-                    }
-                    className={
-                      (inventoryPagination?.currentPage || 1) >=
-                        (inventoryPagination?.totalPages || 1)
-                        ? "pointer-events-none opacity-50"
-                        : undefined
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
           </div>
         )}
       </div>
+
+      {/* Advanced Filters Sliding Sheet */}
+      <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-0">
+          <SheetHeader className="px-6 py-4 border-b border-border">
+            <SheetTitle className="text-base font-bold flex items-center gap-2">
+              <Boxes className="h-5 w-5 text-primary" />
+              Advanced Inventory Filters
+            </SheetTitle>
+            <SheetDescription className="text-xs">
+              Refine the stock list by configuring the parameters below.
+            </SheetDescription>
+          </SheetHeader>
+
+          {/* Scrollable filter inputs container */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            <div className="grid grid-cols-1 gap-3.5 text-xs">
+              {/* Supplier Filter */}
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="filter-supplier" className="text-[11px] text-muted-foreground font-medium">Supplier</Label>
+                <Input
+                  id="filter-supplier"
+                  placeholder="Supplier name..."
+                  value={filterForm.searchSupplier}
+                  onChange={(e) => setFilterForm(prev => ({ ...prev, searchSupplier: e.target.value }))}
+                  className="h-8 text-xs px-2.5"
+                />
+              </div>
+
+              {/* Product Filter */}
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="filter-product" className="text-[11px] text-muted-foreground font-medium">Product</Label>
+                <Input
+                  id="filter-product"
+                  placeholder="Product name..."
+                  value={filterForm.searchProduct}
+                  onChange={(e) => setFilterForm(prev => ({ ...prev, searchProduct: e.target.value }))}
+                  className="h-8 text-xs px-2.5"
+                />
+              </div>
+
+              {/* SKU Filter */}
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="filter-sku" className="text-[11px] text-muted-foreground font-medium">SKU</Label>
+                <Input
+                  id="filter-sku"
+                  placeholder="SKU number..."
+                  value={filterForm.searchSku}
+                  onChange={(e) => setFilterForm(prev => ({ ...prev, searchSku: e.target.value }))}
+                  className="h-8 text-xs px-2.5"
+                />
+              </div>
+
+              {/* Season Filter */}
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="filter-season" className="text-[11px] text-muted-foreground font-medium">Season</Label>
+                <Select
+                  value={filterForm.season || "all"}
+                  onValueChange={(val) => setFilterForm(prev => ({ ...prev, season: val === "all" ? "" : val }))}
+                >
+                  <SelectTrigger id="filter-season" className="h-8 text-xs px-2.5">
+                    <SelectValue placeholder="All Seasons" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Seasons</SelectItem>
+                    <SelectItem value="SS">SS (Spring/Summer)</SelectItem>
+                    <SelectItem value="AW">AW (Autumn/Winter)</SelectItem>
+                    <SelectItem value="SS24">SS24</SelectItem>
+                    <SelectItem value="AW24">AW24</SelectItem>
+                    <SelectItem value="SS25">SS25</SelectItem>
+                    <SelectItem value="AW25">AW25</SelectItem>
+                    <SelectItem value="SS26">SS26</SelectItem>
+                    <SelectItem value="AW26">AW26</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Size Filter */}
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="filter-size" className="text-[11px] text-muted-foreground font-medium">Size</Label>
+                  <Input
+                    id="filter-size"
+                    placeholder="Size..."
+                    value={filterForm.size}
+                    onChange={(e) => setFilterForm(prev => ({ ...prev, size: e.target.value }))}
+                    className="h-8 text-xs px-2.5"
+                  />
+                </div>
+
+                {/* Color Filter */}
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="filter-color" className="text-[11px] text-muted-foreground font-medium">Color</Label>
+                  <Input
+                    id="filter-color"
+                    placeholder="Color..."
+                    value={filterForm.color}
+                    onChange={(e) => setFilterForm(prev => ({ ...prev, color: e.target.value }))}
+                    className="h-8 text-xs px-2.5"
+                  />
+                </div>
+              </div>
+
+              {/* Stock Range */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="filter-min-stock" className="text-[11px] text-muted-foreground font-medium">Min Stock</Label>
+                  <Input
+                    id="filter-min-stock"
+                    type="number"
+                    placeholder="Min qty"
+                    value={filterForm.minStock}
+                    onChange={(e) => setFilterForm(prev => ({ ...prev, minStock: e.target.value }))}
+                    className="h-8 text-xs px-2.5"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="filter-max-stock" className="text-[11px] text-muted-foreground font-medium">Max Stock</Label>
+                  <Input
+                    id="filter-max-stock"
+                    type="number"
+                    placeholder="Max qty"
+                    value={filterForm.maxStock}
+                    onChange={(e) => setFilterForm(prev => ({ ...prev, maxStock: e.target.value }))}
+                    className="h-8 text-xs px-2.5"
+                  />
+                </div>
+              </div>
+
+              {/* Cost Range */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="filter-min-cost" className="text-[11px] text-muted-foreground font-medium">Min Cost (£)</Label>
+                  <Input
+                    id="filter-min-cost"
+                    type="number"
+                    step="0.01"
+                    placeholder="Min cost"
+                    value={filterForm.minCost}
+                    onChange={(e) => setFilterForm(prev => ({ ...prev, minCost: e.target.value }))}
+                    className="h-8 text-xs px-2.5"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="filter-max-cost" className="text-[11px] text-muted-foreground font-medium">Max Cost (£)</Label>
+                  <Input
+                    id="filter-max-cost"
+                    type="number"
+                    step="0.01"
+                    placeholder="Max cost"
+                    value={filterForm.maxCost}
+                    onChange={(e) => setFilterForm(prev => ({ ...prev, maxCost: e.target.value }))}
+                    className="h-8 text-xs px-2.5"
+                  />
+                </div>
+              </div>
+
+              {/* Price Range */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="filter-min-price" className="text-[11px] text-muted-foreground font-medium">Min Price (£)</Label>
+                  <Input
+                    id="filter-min-price"
+                    type="number"
+                    step="0.01"
+                    placeholder="Min price"
+                    value={filterForm.minPrice}
+                    onChange={(e) => setFilterForm(prev => ({ ...prev, minPrice: e.target.value }))}
+                    className="h-8 text-xs px-2.5"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="filter-max-price" className="text-[11px] text-muted-foreground font-medium">Max Price (£)</Label>
+                  <Input
+                    id="filter-max-price"
+                    type="number"
+                    step="0.01"
+                    placeholder="Max price"
+                    value={filterForm.maxPrice}
+                    onChange={(e) => setFilterForm(prev => ({ ...prev, maxPrice: e.target.value }))}
+                    className="h-8 text-xs px-2.5"
+                  />
+                </div>
+              </div>
+
+              {/* Date Pickers */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="filter-start-date" className="text-[11px] text-muted-foreground font-medium">Start Date</Label>
+                  <Input
+                    id="filter-start-date"
+                    type="date"
+                    value={filterForm.startDate}
+                    onChange={(e) => setFilterForm(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="h-8 text-xs px-2.5"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="filter-end-date" className="text-[11px] text-muted-foreground font-medium">End Date</Label>
+                  <Input
+                    id="filter-end-date"
+                    type="date"
+                    value={filterForm.endDate}
+                    onChange={(e) => setFilterForm(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="h-8 text-xs px-2.5"
+                  />
+                </div>
+              </div>
+
+              {/* Switches inline */}
+              <div className="flex items-center gap-6 pt-2">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="sheet-filter-low-stock"
+                    checked={filterForm.lowStock}
+                    onCheckedChange={(checked) =>
+                      setFilterForm((prev) => ({ ...prev, lowStock: checked }))
+                    }
+                    className="scale-90 origin-left"
+                  />
+                  <Label htmlFor="sheet-filter-low-stock" className="text-[11px] text-muted-foreground cursor-pointer font-medium select-none">
+                    Low Stock
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="sheet-filter-reorder"
+                    checked={filterForm.needsReorder}
+                    onCheckedChange={(checked) =>
+                      setFilterForm((prev) => ({ ...prev, needsReorder: checked }))
+                    }
+                    className="scale-90 origin-left"
+                  />
+                  <Label htmlFor="sheet-filter-reorder" className="text-[11px] text-muted-foreground cursor-pointer font-medium select-none">
+                    Reorder
+                  </Label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Action buttons */}
+          <div className="p-4 border-t border-border bg-muted/30 flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 h-9 text-xs"
+              onClick={() => {
+                handleResetFilters();
+                setIsFilterOpen(false);
+              }}
+            >
+              Reset All
+            </Button>
+            <Button
+              type="submit"
+              className="flex-1 h-9 text-xs"
+              onClick={(e) => {
+                handleApplyFilters(e);
+                setIsFilterOpen(false);
+              }}
+            >
+              Apply Filters
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
       <DataTable
-        title="Inventory"
         columns={inventoryColumns}
         data={filteredInventoryItems}
         onDownloadPDF={handleDownloadPDF}
@@ -1173,6 +1641,7 @@ export default function StockPage() {
         enableSearch={false}
         paginate={false}
         expandableRow={true}
+        compact={true}
       />
     </div>
   );
@@ -1668,9 +2137,14 @@ export default function StockPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="mb-3">
-        <BackButton fallbackPath="/home" label="Back" />
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <BackButton fallbackPath="/home" label="Back" />
+          <h1 className="text-lg font-bold tracking-tight text-foreground ml-1.5 hidden sm:block">
+            Stock & Inventory
+          </h1>
+        </div>
       </div>
       {/* <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">

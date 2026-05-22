@@ -926,20 +926,35 @@ export default function LogisticsLedgerPage() {
                     <div className="text-xs text-muted-foreground">All transactions recorded</div>
                   </div>
                 </div>
-                <div className="relative rounded-lg border border-border/60 bg-gradient-to-br from-card via-background to-card p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
+                <div
+                  className={`relative rounded-lg border p-6 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group ${
+                    calculatedTotalBalance <= 0
+                      ? 'border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-emerald-50/30'
+                      : 'border-red-200 bg-gradient-to-br from-red-50/50 to-red-50/30'
+                  }`}
+                >
                   <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-primary/5 blur-xl group-hover:bg-primary/10 transition-all"></div>
                   <div className="relative z-10">
                     <div className="flex items-center justify-between mb-4">
-
                     </div>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.15em] mb-2 text-muted-foreground">
-                      Company Balance
+                    <div className="text-[10px] font-bold uppercase tracking-[0.15em] mb-2 text-muted-foreground">
+                      {ledgerCompanyFilter === 'all' || !ledgerCompanyFilter ? 'Total Company Balance' : 'Company Balance'}
                     </div>
-                    <div className={`text-3xl font-bold tabular-nums mb-1 ${calculatedTotalBalance <= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {calculatedTotalBalance <= 0 ? '+' : '-'}£{formatNumber(Math.abs(calculatedTotalBalance))}
+                    <div
+                      className={`text-3xl font-bold tabular-nums mb-1 ${
+                        calculatedTotalBalance <= 0 ? 'text-emerald-700' : 'text-red-700'
+                      }`}
+                    >
+                      £{formatNumber(Math.abs(calculatedTotalBalance))}
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {calculatedTotalBalance <= 0 ? 'Credit with company' : 'Amount owed to company'}
+                    <div
+                      className={`text-xs font-semibold mt-1 ${
+                        calculatedTotalBalance <= 0 ? 'text-emerald-600/80' : 'text-red-600/80'
+                      }`}
+                    >
+                      {calculatedTotalBalance <= 0
+                        ? 'Total recievable from company'
+                        : 'Total payable to company'}
                     </div>
                   </div>
                 </div>

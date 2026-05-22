@@ -157,7 +157,6 @@
 import { NextResponse } from 'next/server';
 import { verifyToken, decodeToken, hasPermission, hasRole, hasCrmAccess } from './lib/auth-utils';
 
-// Define route configurations
 const PUBLIC_ROUTES = ['/login', '/forgot-password', '/reset-password'];
 const AUTH_ROUTES = ['/login'];
 const API_AUTH_ROUTES = ['/api/auth/login'];
@@ -269,7 +268,7 @@ export function middleware(request) {
   // ============================================
 
   // Find matching route permission config
-  const routeConfig = Object.entries(ROUTE_PERMISSIONS).find(([route]) =>
+  const routeConfig = Object.entries(ROUTE_PERMISSIONS).find(([route]) => 
     pathname.startsWith(route)
   )?.[1];
 
@@ -277,36 +276,23 @@ export function middleware(request) {
     const decoded = decodeToken(token);
 
     if (!decoded) {
+      // Invalid token, redirect to login
       return NextResponse.redirect(new URL('/login', request.url));
     }
 
     // Check role requirements
-    if (routeConfig.roles) {
-      const hasRequiredRole = hasRole(token, routeConfig.roles);
-
-      if (!hasRequiredRole) {
-        const fallback = getFallbackRoute(decoded?.role);
-        // Prevent infinite loop if the fallback is the same as current pathname
-        if (pathname === fallback) {
-          return NextResponse.redirect(new URL('/login', request.url));
-        }
-        return NextResponse.redirect(new URL(fallback, request.url));
-      }
+    if (routeConfig.roles && !hasRole(token, routeConfig.roles)) {
+      return NextResponse.redirect(new URL('/buying', request.url));
     }
 
     // Check permission requirements
     if (routeConfig.permissions) {
-      const hasRequiredPermission = routeConfig.permissions.some(permission =>
+      const hasRequiredPermission = routeConfig.permissions.some(permission => 
         hasPermission(token, permission)
       );
 
       if (!hasRequiredPermission) {
-        const fallback = getFallbackRoute(decoded?.role);
-        // Prevent infinite loop if the fallback is the same as current pathname
-        if (pathname === fallback) {
-          return NextResponse.redirect(new URL('/login', request.url));
-        }
-        return NextResponse.redirect(new URL(fallback, request.url));
+        return NextResponse.redirect(new URL('/buying', request.url));
       }
     }
   }

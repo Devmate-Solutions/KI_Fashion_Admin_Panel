@@ -34,6 +34,7 @@ export default function DataTable({
   expandedRowAsColumns = false,
   onDownloadPDF = null,
   rowClassName,
+  compact = false,
 }) {
   const [query, setQuery] = useState("")
   const [internalPage, setInternalPage] = useState(1)
@@ -96,62 +97,66 @@ export default function DataTable({
   const displayEnd = manualPagination ? displayStart + filtered.length : Math.min(start + effectivePageSize, filtered.length)
   const displayTotal = manualPagination ? (totalItems || filtered.length) : filtered.length
 
+  const hasHeader = title || enableSearch || onAddNew
+
   return (
     <div className="rounded-lg border border-border bg-card transition-shadow duration-300">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border-b border-border">
-        {title && <h3 className="text-base font-semibold text-foreground">{title}</h3>}
-        <div className="flex items-center gap-2 flex-wrap">
-          {enableSearch && (
-            <div className="flex items-center gap-2 flex-1 sm:flex-initial min-w-0">
-              <input
-                type="search"
-                className="h-9 sm:h-10 w-full sm:w-44 md:w-64 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring focus:border-transparent min-w-0 transition-all duration-200 ease-in-out hover:border-ring/50"
-                placeholder="Search..."
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value)
-                  // Don't trigger search on every keystroke - only update local state
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
+      {hasHeader && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border-b border-border">
+          {title && <h3 className="text-base font-semibold text-foreground">{title}</h3>}
+          <div className="flex items-center gap-2 flex-wrap">
+            {enableSearch && (
+              <div className="flex items-center gap-2 flex-1 sm:flex-initial min-w-0">
+                <input
+                  type="search"
+                  className="h-9 sm:h-10 w-full sm:w-44 md:w-64 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring focus:border-transparent min-w-0 transition-all duration-200 ease-in-out hover:border-ring/50"
+                  placeholder="Search..."
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value)
+                    // Don't trigger search on every keystroke - only update local state
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      setPage(1)
+                      if (onSearch) onSearch(query)
+                    }
+                  }}
+                />
+                <button
+                  className="h-9 sm:h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all duration-200 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-shrink-0"
+                  onClick={() => {
                     setPage(1)
                     if (onSearch) onSearch(query)
-                  }
-                }}
-              />
+                  }}
+                  title="Search"
+                  aria-label="Search"
+                >
+                  Search
+                </button>
+              </div>
+            )}
+            {/* {onDownloadPDF && (
               <button
-                className="h-9 sm:h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all duration-200 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-shrink-0"
-                onClick={() => {
-                  setPage(1)
-                  if (onSearch) onSearch(query)
-                }}
-                title="Search"
-                aria-label="Search"
+                className="h-9 sm:h-10 rounded-md border border-input bg-red-600 px-3 text-white hover:bg-red-700 active:scale-95 transition-all duration-200 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                onClick={onDownloadPDF}
+                title="Download PDF"
               >
-                Search
+                <FileText className="h-4 w-4" />
               </button>
-            </div>
-          )}
-          {/* {onDownloadPDF && (
-            <button
-              className="h-9 sm:h-10 rounded-md border border-input bg-red-600 px-3 text-white hover:bg-red-700 active:scale-95 transition-all duration-200 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-              onClick={onDownloadPDF}
-              title="Download PDF"
-            >
-              <FileText className="h-4 w-4" />
-            </button>
-          )} */}
-          {onAddNew && (
-            <button
-              className="h-9 sm:h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all duration-200 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring whitespace-nowrap"
-              onClick={onAddNew}
-            >
-              Add New
-            </button>
-          )}
+            )} */}
+            {onAddNew && (
+              <button
+                className="h-9 sm:h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all duration-200 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring whitespace-nowrap"
+                onClick={onAddNew}
+              >
+                Add New
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="overflow-x-auto">
         {loading && (!Array.isArray(data) || data.length === 0) ? (
@@ -193,16 +198,16 @@ export default function DataTable({
               <thead className="bg-muted/30 sticky top-0 ">
                 <tr className="border-b border-border">
                   {expandableRow && (
-                    <th className="hidden sm:table-cell px-2 py-2.5 sm:py-3 w-8"></th>
+                    <th className={cn("hidden sm:table-cell w-8", compact ? "px-1.5 py-1" : "px-2 py-2.5 sm:py-3")}></th>
                   )}
                   {Array.isArray(columns) && columns.map((c) => (
-                    <th key={c.accessor || c.header} className={cn("px-3 sm:px-4 py-2.5 sm:py-3 text-left font-semibold text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap", c.className)}>
+                    <th key={c.accessor || c.header} className={cn("font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap", compact ? "px-2 py-1 text-[9px] sm:text-[10px]" : "px-3 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-xs", c.className)}>
                       {disableSorting ? (
                         <span className="flex items-center gap-1">{c.header}</span>
                       ) : (
                         <button
                           onClick={() => c.accessor && toggleSort(c.accessor)}
-                          className="flex items-center gap-1 hover:text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring rounded min-h-[44px]"
+                          className={cn("flex items-center gap-1 hover:text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring rounded", compact ? "min-h-0 py-0.5" : "min-h-[44px]")}
                           title={c.accessor ? "Sort" : undefined}
                           aria-label={c.accessor ? `Sort by ${c.header}` : undefined}
                         >
@@ -216,7 +221,11 @@ export default function DataTable({
                       )}
                     </th>
                   ))}
-                  {!hideActions && (onEdit || onDelete) && <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-left font-semibold text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider w-24 sm:w-32 whitespace-nowrap">Actions</th>}
+                  {!hideActions && (onEdit || onDelete) && (
+                    <th className={cn("font-semibold text-muted-foreground uppercase tracking-wider w-24 sm:w-32 whitespace-nowrap", compact ? "px-2 py-1 text-[9px] sm:text-[10px]" : "px-3 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-xs")}>
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
 <tbody className="divide-y divide-border">
@@ -244,7 +253,7 @@ export default function DataTable({
                         data-row-id={row.rowId || row.id || row._id}
                       >
                         {expandableRow && (
-                          <td className="hidden sm:table-cell px-2 py-2.5 sm:py-3 w-8 align-middle">
+                          <td className={cn("hidden sm:table-cell w-8 align-middle", compact ? "px-1.5 py-1" : "px-2 py-2.5 sm:py-3")}>
                             <button
                               className="p-0.5 rounded hover:bg-muted transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                               onClick={(e) => {
@@ -257,21 +266,21 @@ export default function DataTable({
                               {/* {isExpanded
                             ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
                             : <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                          } */}
+                           } */}
                             </button>
                           </td>
                         )}
                         {Array.isArray(columns) && columns.map((c) => (
-                          <td key={c.accessor || c.header} className={cn("px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm whitespace-nowrap align-middle", c.className)}>
+                          <td key={c.accessor || c.header} className={cn("whitespace-nowrap align-middle", compact ? "px-2 py-1 text-[10px] sm:text-xs" : "px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm", c.className)}>
                             {c.render ? c.render(row, { isExpanded }) : (c.cell ? c.cell(row) : String(row[c.accessor] ?? ""))}
                           </td>
                         ))}
                         {!hideActions && (onEdit || onDelete) && (
-                          <td className="px-3 sm:px-4 py-2.5 sm:py-3 align-middle">
+                          <td className={cn("align-middle", compact ? "px-2 py-1" : "px-3 sm:px-4 py-2.5 sm:py-3")}>
                             <div className="flex items-center gap-1.5 sm:gap-2">
                               {onEdit && (
                                 <button
-                                  className="text-[10px] sm:text-xs px-2 sm:px-3 py-1.5 border border-border rounded-md hover:bg-muted active:scale-95 transition-all duration-150 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-h-[36px] sm:min-h-[32px]"
+                                  className={cn("border border-border rounded-md hover:bg-muted active:scale-95 transition-all duration-150 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", compact ? "text-[10px] px-1.5 py-0.5 min-h-0" : "text-[10px] sm:text-xs px-2 sm:px-3 py-1.5 min-h-[36px] sm:min-h-[32px]")}
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     onEdit(row)
@@ -283,7 +292,7 @@ export default function DataTable({
                               )}
                               {onDelete && (
                                 <button
-                                  className="text-[10px] sm:text-xs px-2 sm:px-3 py-1.5 border border-border rounded-md text-destructive hover:bg-destructive/10 active:scale-95 transition-all duration-150 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-h-[36px] sm:min-h-[32px]"
+                                  className={cn("border border-border rounded-md text-destructive hover:bg-destructive/10 active:scale-95 transition-all duration-150 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", compact ? "text-[10px] px-1.5 py-0.5 min-h-0" : "text-[10px] sm:text-xs px-2 sm:px-3 py-1.5 min-h-[36px] sm:min-h-[32px]")}
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     onDelete(row)

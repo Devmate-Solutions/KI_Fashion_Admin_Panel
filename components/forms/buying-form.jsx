@@ -2338,8 +2338,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                       setDiscount(sanitized === "" ? "" : Number(sanitized || 0));
                     }}
                     onKeyDown={(e) => handlePaymentKeyDown(e, "discount")}
-                    className="h-11 w-full pl-10 pr-3 text-base font-medium rounded-lg border border-input bg-background focus-visible:ring-2 focus-visible:ring-primary/20"
-                    placeholder="0.00"
+                    className="h-11 w-full pl-10 pr-3 text-base font-medium text-black rounded-lg border border-input bg-background focus-visible:ring-2 focus-visible:ring-primary/20"
                   />
                 </div>
                 <p className="text-xs text-muted-foreground flex items-start gap-1.5">
@@ -2376,8 +2375,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                         setBank(sanitized === "" ? "" : Number(sanitized || 0));
                       }}
                       onKeyDown={(e) => handlePaymentKeyDown(e, "bank")}
-                      className="h-11 w-full pl-10 pr-3 text-base font-medium rounded-lg border border-input bg-background focus-visible:ring-2 focus-visible:ring-primary/20"
-                      placeholder="0.00"
+                      className="h-11 w-full pl-10 pr-3 text-base font-medium text-black rounded-lg border border-input bg-background focus-visible:ring-2 focus-visible:ring-primary/20"
                     />
                   </div>
                 </div>
@@ -2406,8 +2404,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                         setCash(sanitized === "" ? "" : Number(sanitized || 0));
                       }}
                       onKeyDown={(e) => handlePaymentKeyDown(e, "cash")}
-                      className="h-11 w-full pl-10 pr-3 text-base font-medium rounded-lg border border-input bg-background focus-visible:ring-2 focus-visible:ring-primary/20"
-                      placeholder="0.00"
+                      className="h-11 w-full pl-10 pr-3 text-base font-medium text-black rounded-lg border border-input bg-background focus-visible:ring-2 focus-visible:ring-primary/20"
                     />
                   </div>
                 </div>
