@@ -209,7 +209,7 @@ Do you still want to proceed?`;
       className: "hidden md:table-cell",
       render: (row) => {
         const logistics = row.logisticsCompany || {}
-        return <span className="font-medium text-foreground text-gray-400">{logistics.name || "—"}</span>
+        return <span className="font-medium text-gray-400">{logistics.name || "—"}</span>
       },
       pdfValue: (row) => row.logisticsCompany?.name || "—"
     },
@@ -347,7 +347,7 @@ Do you still want to proceed?`;
             </button>
           </div>
         </div>
-        <div className="[&>div]:border-0 [&>div]:rounded-none [&>div]:shadow-none [&>div>div:first-child]:!hidden">
+        <div className="[&>div]:border-0 [&>div]:rounded-none [&>div]:shadow-none">
           <DataTable
             columns={columns}
             data={filteredData}
