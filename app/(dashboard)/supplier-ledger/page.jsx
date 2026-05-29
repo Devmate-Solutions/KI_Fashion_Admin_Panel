@@ -3284,7 +3284,7 @@ export default function SupplierLedgerPage() {
   const [receiptReversalReason, setReceiptReversalReason] = useState("")
   const [isReversingReceipt, setIsReversingReceipt] = useState(false)
 
-  const [ledgerSupplierFilter, setLedgerSupplierFilter] = useState("")
+  const [ledgerSupplierFilter, setLedgerSupplierFilter] = useState("all")
   const [ledgerFilterBy, setLedgerFilterBy] = useState("all")
   const [ledgerSearch, setLedgerSearch] = useState("")
   const [supplierOpen, setSupplierOpen] = useState(false)
@@ -4439,7 +4439,7 @@ export default function SupplierLedgerPage() {
                       key="all"
                       value="all suppliers"
                       onSelect={() => {
-                        setLedgerSupplierFilter(ledgerSupplierFilter === "all" ? "" : "all")
+                        setLedgerSupplierFilter("all")
                         setSelectedSupplierId("")
                         setSupplierOpen(false)
                       }}

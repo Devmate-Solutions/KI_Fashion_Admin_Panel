@@ -1,13 +1,14 @@
 "use client"
 
-import { useState, useEffect, useRef, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, CreditCard, Banknote, Wallet, Printer, ArrowDownCircle, ArrowUpCircle } from "lucide-react"
+import { Loader2, ChevronsUpDown, Check } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { paymentAPI } from "@/lib/api/endpoints/payments"
 import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { useQueryClient } from "@tanstack/react-query"
@@ -46,10 +47,7 @@ export default function CustomerPaymentModal({
     const queryClient = useQueryClient()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [selectedEntityId, setSelectedEntityId] = useState(initialEntityId || '')
-    const [searchQuery, setSearchQuery] = useState('')
-    const [showSuggestions, setShowSuggestions] = useState(false)
-    const searchInputRef = useRef(null)
-    const dropdownRef = useRef(null)
+    const [selectorOpen, setSelectorOpen] = useState(false)
     const [form, setForm] = useState({
         cashAmount: '',
         bankAmount: '',
@@ -78,42 +76,11 @@ export default function CustomerPaymentModal({
     useEffect(() => {
         if (!open) {
             setForm({ cashAmount: '', bankAmount: '', debitAmount: '', date: '', notes: '', paymentDirection: 'credit' })
-            setSearchQuery('')
-            setShowSuggestions(false)
             if (!initialEntityId) {
                 setSelectedEntityId('')
             }
         }
     }, [open, initialEntityId])
-
-    // Filter entities based on search query
-    const filteredEntities = searchQuery.trim()
-        ? entities.filter((entity) => {
-            const entityName = (entity.name || '').toLowerCase()
-            const entityCompany = (entity.company || '').toLowerCase()
-            const query = searchQuery.toLowerCase()
-            return entityName.includes(query) || entityCompany.includes(query)
-        }).slice(0, 10)
-        : []
-
-    // Handle click outside to close dropdown
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (
-                dropdownRef.current &&
-                !dropdownRef.current.contains(event.target) &&
-                searchInputRef.current &&
-                !searchInputRef.current.contains(event.target)
-            ) {
-                setShowSuggestions(false)
-            }
-        }
-
-        if (showSuggestions) {
-            document.addEventListener('mousedown', handleClickOutside)
-            return () => document.removeEventListener('mousedown', handleClickOutside)
-        }
-    }, [showSuggestions])
 
     const cashAmount = parseFloat(form.cashAmount) || 0
     const bankAmount = parseFloat(form.bankAmount) || 0
@@ -122,8 +89,11 @@ export default function CustomerPaymentModal({
 
     // Get entity details based on selection
     const selectedEntity = entities.find(e => (e._id || e.id) === selectedEntityId || String(e.id) === selectedEntityId)
-    const entityName = selectedEntity?.company || initialEntityName || ''
+    const entityName = selectedEntity
+        ? (selectedEntity.buyerId ? `${selectedEntity.company}` : selectedEntity.company)
+        : (initialEntityName || '')
     const entityId = selectedEntityId || initialEntityId
+    const displayEntityId = selectedEntity?.buyerId || entityId || ''
 
     // Calculate totalBalance with priority:
     // 1. buyerBalanceMap (from allLedgerTransactions - same as parent page)
@@ -152,8 +122,6 @@ export default function CustomerPaymentModal({
 
     const handleClose = () => {
         setForm({ cashAmount: '', bankAmount: '', debitAmount: '', date: '', notes: '', paymentDirection: 'credit' })
-        setSearchQuery('')
-        setShowSuggestions(false)
         if (!initialEntityId) {
             setSelectedEntityId('')
         }
@@ -163,8 +131,6 @@ export default function CustomerPaymentModal({
     const handleCustomerSelect = (entity) => {
         const entityIdStr = String(entity._id || entity.id)
         setSelectedEntityId(entityIdStr)
-        setSearchQuery('')
-        setShowSuggestions(false)
     }
 
     const handleSubmit = async () => {
@@ -284,260 +250,75 @@ export default function CustomerPaymentModal({
     // Always show selector if we have entities
     const showEntitySelector = entities.length > 0
 
+    // Whether a buyer has been selected (used to gate other fields)
+    const hasBuyer = !!entityId
+
+    // Compute remaining balance based on payment direction
+    const remainingBalance = form.paymentDirection === 'debit'
+        ? totalBalance + totalPayment
+        : totalBalance - totalPayment
+
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-hidden">
+            <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-hidden">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <Wallet className="h-5 w-5" />
-                        {form.paymentDirection === 'debit' ? 'Issue Customer Credit/Refund' : 'Receive Customer Payment'}
+                    <DialogTitle className="text-base font-semibold">
+                        Receiving Details for ID: {displayEntityId || 0}
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="overflow-y-auto max-h-[60vh] space-y-4 py-4 px-2">
-                    {/* Payment Direction Toggle */}
-                    <div className="space-y-2">
-                        <Label>Transaction Type</Label>
-                        <div className="grid grid-cols-2 gap-2">
-                            <Button
-                                type="button"
-                                variant={form.paymentDirection === 'credit' ? 'default' : 'outline'}
-                                className={`flex items-center gap-2 ${form.paymentDirection === 'credit' ? 'bg-green-600 hover:bg-green-700' : ''}`}
-                                onClick={() => setForm({ ...form, paymentDirection: 'credit', debitReason: '' })}
-                            >
-                                <ArrowDownCircle className="h-4 w-4" />
-                                <span>Receive Payment</span>
-                            </Button>
-                            <Button
-                                type="button"
-                                variant={form.paymentDirection === 'debit' ? 'default' : 'outline'}
-                                className={`flex items-center gap-2 ${form.paymentDirection === 'debit' ? 'bg-red-600 hover:bg-red-700' : ''}`}
-                                onClick={() => setForm({ ...form, paymentDirection: 'debit' })}
-                            >
-                                <ArrowUpCircle className="h-4 w-4" />
-                                <span>Issue Credit/Refund</span>
-                            </Button>
+                <div className="overflow-y-auto max-h-[65vh] space-y-3 py-2 px-2">
+                    {/* Transaction Type Toggle */}
+                    <div className="grid grid-cols-[140px_1fr] items-start gap-x-4">
+                        <Label className="pt-2">Transaction Type</Label>
+                        <div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Button
+                                    type="button"
+                                    variant={form.paymentDirection === 'credit' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={form.paymentDirection === 'credit' ? 'bg-green-600 hover:bg-green-700' : ''}
+                                    onClick={() => setForm({ ...form, paymentDirection: 'credit', debitReason: '' })}
+                                >
+                                    Receive Payment
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={form.paymentDirection === 'debit' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={form.paymentDirection === 'debit' ? 'bg-red-600 hover:bg-red-700' : ''}
+                                    onClick={() => setForm({ ...form, paymentDirection: 'debit' })}
+                                >
+                                    Issue Credit/Refund
+                                </Button>
+                            </div>
+                            {/* <p className="text-xs text-muted-foreground mt-1">
+                                {form.paymentDirection === 'credit'
+                                    ? 'Customer pays us - reduces their outstanding balance'
+                                    : 'We owe customer - increases their credit (refund, price adjustment, etc.)'}
+                            </p> */}
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                            {form.paymentDirection === 'credit'
-                                ? 'Customer pays us - reduces their outstanding balance'
-                                : 'We owe customer - increases their credit (refund, price adjustment, etc.)'}
-                        </p>
                     </div>
 
                     {/* Debit Reason - only show for debit transactions */}
                     {form.paymentDirection === 'debit' && (
-                        <div className="space-y-2">
-                            <Label htmlFor="debit-reason">
+                        <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+                            <Label>
                                 Type <span className="text-red-500">*</span>
                             </Label>
-                            <div className="px-3 py-2 bg-muted rounded p-2 text-sm">
-                                <p className="font-medium">Adjustment</p>
-                            </div>
+                            <div className="px-3 py-2 bg-muted rounded text-sm font-medium">Adjustment</div>
                         </div>
                     )}
 
-                    {/* Customer Selector - Text Search Input */}
-                    {showEntitySelector && (
-                        <div className="space-y-2">
-                            <Label htmlFor="entity-search">Select Customer</Label>
-                            <div className="relative">
-                                <Input
-                                    id="entity-search"
-                                    ref={searchInputRef}
-                                    type="text"
-                                    placeholder="Search customer by name or company..."
-                                    value={searchQuery}
-                                    onChange={(e) => {
-                                        const value = e.target.value
-                                        setSearchQuery(value)
-                                        setShowSuggestions(value.trim().length > 0)
-                                    }}
-                                    onFocus={() => {
-                                        if (searchQuery.trim().length > 0) {
-                                            setShowSuggestions(true)
-                                        }
-                                    }}
-                                />
-                                {showSuggestions && filteredEntities.length > 0 && (
-                                    <div
-                                        ref={dropdownRef}
-                                        className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-auto"
-                                    >
-                                        <div className="p-1">
-                                            {filteredEntities.map((entity) => {
-                                                const entityIdStr = String(entity._id || entity.id)
-                                                const company = entity.company || ''
-                                                // const company = entity.company && entity.name ? ` (${entity.company})` : ''
-                                                const entityDisplay = `${company}`
-                                                const isSelected = selectedEntityId === entityIdStr
-
-                                                return (
-                                                    <div
-                                                        key={entityIdStr}
-                                                        onClick={() => handleCustomerSelect(entity)}
-                                                        className={`flex items-center justify-between px-3 py-2 text-sm rounded-sm cursor-pointer hover:bg-slate-100 ${isSelected ? 'bg-slate-50 font-medium' : ''
-                                                            }`}
-                                                    >
-                                                        <span>{entityDisplay}</span>
-                                                        {entity.balance > 0 && (
-                                                            <span className="text-xs text-red-600 font-medium">
-                                                                {formatAmount(entity.balance)}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                )
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-                                {showSuggestions && searchQuery.trim().length > 0 && filteredEntities.length === 0 && (
-                                    <div
-                                        ref={dropdownRef}
-                                        className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg p-3 text-sm text-muted-foreground"
-                                    >
-                                        No customers found.
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Customer Info */}
-                    <div className="rounded-lg border bg-muted/30 p-4">
-                        <div className="space-y-2">
-                            <div>
-                                <Label className="text-xs text-muted-foreground">Customer</Label>
-                                <p className="font-semibold">{entityName || 'Not selected'}</p>
-                            </div>
-                            <div>
-                                <Label className="text-xs text-muted-foreground">Outstanding Balance</Label>
-                                <p className={`text-lg font-bold ${totalBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                    {formatAmount(Math.abs(totalBalance))}
-                                    <span className="text-sm font-normal text-muted-foreground ml-1">
-                                        {totalBalance > 0 ? '(Pending)' : '(Clear)'}
-                                    </span>
-                                </p>
-                            </div>
-                        </div>
+                    {/* Id */}
+                    <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+                        <Label className="font-semibold">Id</Label>
+                        <Input value={displayEntityId || ''} readOnly className="bg-muted" />
                     </div>
 
-                    {/* Amount Fields - different based on payment direction */}
-                    {form.paymentDirection === 'debit' ? (
-                        <div className="space-y-2">
-                            <Label htmlFor="debitAmount" className="flex items-center gap-2">
-                                <Wallet className="h-4 w-4 text-red-600" />
-                                Amount <span className="text-red-500">*</span>
-                            </Label>
-                            <Input
-                                id="debitAmount"
-                                type="text"
-                                inputMode="decimal"
-                                min="0"
-                                step="0.01"
-                                placeholder="0.00"
-                                value={form.debitAmount}
-                                onChange={(e) => {
-                                    const value = e.target.value;
-                                    const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                                    setForm({ ...form, debitAmount: sanitized });
-                                }}
-                                className="text-right"
-                            />
-                        </div>
-                    ) : (
-                        <>
-                            {/* Cash Amount */}
-                            <div className="space-y-2">
-                                <Label htmlFor="cashAmount" className="flex items-center gap-2">
-                                    <Banknote className="h-4 w-4 text-green-600" />
-                                    Cash Amount
-                                </Label>
-                                <Input
-                                    id="cashAmount"
-                                    type="text"
-                                    inputMode="decimal"
-                                    min="0"
-                                    step="0.01"
-                                    placeholder="0.00"
-                                    value={form.cashAmount}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                                        setForm({ ...form, cashAmount: sanitized });
-                                    }}
-                                    className="text-right"
-                                />
-                            </div>
-
-                            {/* Bank Amount */}
-                            <div className="space-y-2">
-                                <Label htmlFor="bankAmount" className="flex items-center gap-2">
-                                    <CreditCard className="h-4 w-4 text-blue-600" />
-                                    Bank Amount
-                                </Label>
-                                <Input
-                                    id="bankAmount"
-                                    type="text"
-                                    inputMode="decimal"
-                                    min="0"
-                                    step="0.01"
-                                    placeholder="0.00"
-                                    value={form.bankAmount}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                                        setForm({ ...form, bankAmount: sanitized });
-                                    }}
-                                    className="text-right"
-                                />
-                            </div>
-                        </>
-                    )}
-
-                    {/* Total Payment Display */}
-                    {totalPayment > 0 && (
-                        <div className={`rounded-lg border p-3 ${form.paymentDirection === 'debit'
-                            ? 'bg-red-50 border-red-200'
-                            : (totalPayment > totalBalance && totalBalance > 0 ? 'bg-amber-50 border-amber-200' : 'bg-green-50')
-                            }`}>
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium">
-                                    {form.paymentDirection === 'debit' ? 'Total Credit/Refund:' : 'Total Payment:'}
-                                </span>
-                                <span className={`text-lg font-bold ${form.paymentDirection === 'debit' ? 'text-red-700' : 'text-green-700'}`}>
-                                    {formatAmount(totalPayment)}
-                                </span>
-                            </div>
-                            {form.paymentDirection === 'credit' && totalBalance > 0 && totalPayment <= totalBalance && (
-                                <div className="flex items-center justify-between mt-1">
-                                    <span className="text-xs text-muted-foreground">Remaining after payment:</span>
-                                    <span className="text-sm font-medium">{formatAmount(totalBalance - totalPayment)}</span>
-                                </div>
-                            )}
-                            {form.paymentDirection === 'credit' && totalBalance > 0 && totalPayment > totalBalance && (
-                                <div className="flex items-center justify-between mt-1">
-                                    <span className="text-xs text-amber-700 font-medium">Advance/Credit:</span>
-                                    <span className="text-sm font-bold text-amber-700">{formatAmount(totalPayment - totalBalance)}</span>
-                                </div>
-                            )}
-                            {form.paymentDirection === 'debit' && (
-                                <div className="flex items-center justify-between mt-1">
-                                    <span className="text-xs text-red-700">New balance after credit:</span>
-                                    <span className="text-sm font-medium text-red-700">
-                                        {formatAmount(totalBalance + totalPayment)}
-                                    </span>
-                                </div>
-                            )}
-
-                        </div>
-                    )}
-
-                    {/* Date (mandatory) */}
-                    <div className="space-y-2">
-                        <Label htmlFor="date">
-                            Date <span className="text-red-500">*</span>
-                        </Label>
+                    {/* Date */}
+                    <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+                        <Label className="font-semibold">Date</Label>
                         <BritishDatePicker
                             value={form.date ? new Date(form.date) : new Date()}
                             onChange={(date) => {
@@ -546,19 +327,172 @@ export default function CustomerPaymentModal({
                                 }
                             }}
                             restrictByRole={true}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={!hasBuyer}
+                            className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50${!hasBuyer ? ' opacity-50 cursor-not-allowed' : ''}`}
                         />
                     </div>
 
-                    {/* Notes */}
-                    <div className="space-y-2">
-                        <Label htmlFor="notes">Notes</Label>
-                        <Textarea
+                    {/* Buyer */}
+                    <div className="grid grid-cols-[140px_1fr] items-start gap-x-4">
+                        <Label className="font-semibold pt-2">Buyer</Label>
+                        <div>
+                            {showEntitySelector ? (
+                                <div className="relative">
+                                    <Popover open={selectorOpen} onOpenChange={setSelectorOpen}>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                aria-expanded={selectorOpen}
+                                                className="w-full justify-between font-normal text-left"
+                                            >
+                                                {entityName ? (
+                                                    <span className="truncate">{entityName}</span>
+                                                ) : (
+                                                    <span className="text-muted-foreground">Select customer...</span>
+                                                )}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                            <Command>
+                                                <CommandInput placeholder="Search customer..." />
+                                                <CommandList>
+                                                    <CommandEmpty>No customer found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {entities.map((entity) => {
+                                                            const entityIdStr = String(entity._id || entity.id)
+                                                            const company = entity.company || ''
+                                                            const buyerDisplay = entity.buyerId ? `${company}` : company
+                                                            const isSelected = selectedEntityId === entityIdStr
+
+                                                            return (
+                                                                <CommandItem
+                                                                    key={entityIdStr}
+                                                                    value={`${company} ${entity.name || ''} ${entity.buyerId || ''} ${entityIdStr}`}
+                                                                    onSelect={() => {
+                                                                        handleCustomerSelect(entity)
+                                                                        setSelectorOpen(false)
+                                                                    }}
+                                                                    className="flex items-center justify-between cursor-pointer"
+                                                                >
+                                                                    <div className="flex items-center min-w-0 mr-2">
+                                                                        <Check
+                                                                            className={cn(
+                                                                                "mr-2 h-4 w-4 shrink-0",
+                                                                                isSelected ? "opacity-100" : "opacity-0"
+                                                                            )}
+                                                                        />
+                                                                        <span className="truncate">{buyerDisplay}</span>
+                                                                    </div>
+                                                                   
+                                                                </CommandItem>
+                                                            )
+                                                        })}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                    
+                                </div>
+                            ) : (
+                                <Input value={entityName || ''} readOnly className="bg-muted" />
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Total Balance */}
+                    <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+                        <Label className="font-semibold text-red-600">Total Balance</Label>
+                        <Input
+                            value={hasBuyer ? formatAmount(Math.abs(totalBalance)) : ''}
+                            readOnly
+                            className="bg-muted"
+                        />
+                    </div>
+
+                    {/* Amount Fields - different based on payment direction */}
+                    {form.paymentDirection === 'debit' ? (
+                        <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+                            <Label className="font-semibold">
+                                Amount <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                                id="debitAmount"
+                                type="text"
+                                inputMode="decimal"
+                                min="0"
+                                step="0.01"
+                                disabled={!hasBuyer}
+                                value={form.debitAmount}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                                    setForm({ ...form, debitAmount: sanitized });
+                                }}
+                            />
+                        </div>
+                    ) : (
+                        <>
+                            {/* Cash */}
+                            <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+                                <Label className="font-semibold">Cash</Label>
+                                <Input
+                                    id="cashAmount"
+                                    type="text"
+                                    inputMode="decimal"
+                                    min="0"
+                                    step="0.01"
+                                    disabled={!hasBuyer}
+                                    value={form.cashAmount}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                                        setForm({ ...form, cashAmount: sanitized });
+                                    }}
+                                />
+                            </div>
+
+                            {/* Bank Cash */}
+                            <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+                                <Label className="font-semibold">Bank Cash</Label>
+                                <Input
+                                    id="bankAmount"
+                                    type="text"
+                                    inputMode="decimal"
+                                    min="0"
+                                    step="0.01"
+                                    disabled={!hasBuyer}
+                                    value={form.bankAmount}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                                        setForm({ ...form, bankAmount: sanitized });
+                                    }}
+                                />
+                            </div>
+                        </>
+                    )}
+
+                    {/* Remaining Balance */}
+                    <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+                        <Label className="font-semibold">Remaining Balance</Label>
+                        <Input
+                            value={hasBuyer ? formatAmount(remainingBalance) : ''}
+                            readOnly
+                            className="bg-muted"
+                        />
+                    </div>
+
+                    {/* Reference */}
+                    <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+                        <Label className="font-semibold">Reference</Label>
+                        <Input
                             id="notes"
-                            placeholder="Add any notes about this payment..."
+                            disabled={!hasBuyer}
                             value={form.notes}
                             onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                            rows={2}
                         />
                     </div>
                 </div>
@@ -575,7 +509,7 @@ export default function CustomerPaymentModal({
                             !form.date ||
                             totalPayment <= 0
                         }
-                        className={form.paymentDirection === 'debit' ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
+                        className="bg-green-600 hover:bg-green-700"
                     >
                         {isSubmitting ? (
                             <>
@@ -583,7 +517,7 @@ export default function CustomerPaymentModal({
                                 Processing...
                             </>
                         ) : (
-                            form.paymentDirection === 'debit' ? 'Issue Credit/Refund' : 'Submit Payment'
+                            'Submit'
                         )}
                     </Button>
                 </DialogFooter>

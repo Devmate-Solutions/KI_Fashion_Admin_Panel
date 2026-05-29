@@ -51,7 +51,7 @@ export default function LogisticsLedgerPage() {
   const [universalPaymentOpen, setUniversalPaymentOpen] = useState(false)
 
   // Filters for Tab 1 - Ledger
-  const [ledgerCompanyFilter, setLedgerCompanyFilter] = useState("") // Default to empty - require company selection
+  const [ledgerCompanyFilter, setLedgerCompanyFilter] = useState("all") // Default to all companies on load
   const [ledgerTypeFilter, setLedgerTypeFilter] = useState("all")
 
   // Filters for Tab 3 (Payment History)
@@ -88,8 +88,11 @@ export default function LogisticsLedgerPage() {
 
   // Fetch logistics ledger entries for Tab 1 (only when a company is selected)
   const ledgerFilterParams = useMemo(() => {
-    if (!ledgerCompanyFilter || ledgerCompanyFilter === 'all') {
+    if (!ledgerCompanyFilter) {
       return null // Don't fetch if no company selected
+    }
+    if (ledgerCompanyFilter === 'all') {
+      return { limit: 500 } // Fetch all companies
     }
     return { logisticsCompanyId: ledgerCompanyFilter, limit: 100 }
   }, [ledgerCompanyFilter])
@@ -813,9 +816,7 @@ export default function LogisticsLedgerPage() {
                   value={ledgerCompanyFilter}
                   onValueChange={(value) => {
                     setLedgerCompanyFilter(value)
-                    if (value && value !== 'all') {
-                      setSelectedCompanyId(value)
-                    }
+                    setSelectedCompanyId(value)
                   }}
                   disabled={allCompaniesLoading}
                 >
@@ -823,6 +824,7 @@ export default function LogisticsLedgerPage() {
                     <SelectValue placeholder="Select a company..." />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="all">All Companies</SelectItem>
                     {allCompanies.map((company) => (
                       <SelectItem key={company._id || company.id} value={company._id || company.id}>
                         {company.name}
@@ -860,7 +862,7 @@ export default function LogisticsLedgerPage() {
 
         {/* Content Section */}
         <div className="p-3 sm:p-6">
-          {!ledgerCompanyFilter || ledgerCompanyFilter === 'all' ? (
+          {!ledgerCompanyFilter ? (
             <div className="flex flex-col items-center justify-center py-20 px-4">
               <div className="relative mb-6">
                 <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl"></div>

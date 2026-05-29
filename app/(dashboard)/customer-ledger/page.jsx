@@ -1608,7 +1608,7 @@ export default function CustomerLedgerPage() {
   const comboboxOptions = useMemo(() => {
     const options = dropdownBuyers.map(b => ({
       value: b.id,
-      label: `${b.name}${b.company ? ` (${b.company})` : ''}`,
+      label: b.company || '',
     }))
     return [{ value: 'all', label: 'All Buyers' }, ...options]
   }, [dropdownBuyers])

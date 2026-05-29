@@ -81,17 +81,32 @@ export default function ProfitLossReportPage() {
 
   const columns = [
     {
-      header: "SN",
-      accessor: "sno",
-      align: "center",
-      render: (row) => row.sno,
-      pdfValue: (row) => row.sno
+      header: "Product Code",
+      accessor: "productCode",
+      render: (row) => {
+        const productCode = row.productCode || "—"
+        const productId = row.productId
+        if (productId && productCode !== "—") {
+          return (
+            <Link
+              href={`/stock/${productId}/packets`}
+              className="font-mono text-xs text-blue-600 hover:text-blue-800 hover:underline"
+            >
+              {productCode}
+            </Link>
+          )
+        }
+        return <span className="font-mono text-xs">{productCode}</span>
+      },
+      pdfValue: (row) => row.productCode || "—"
     },
+
     {
       header: "Date",
       accessor: "date",
       render: (row) => formatDate(row.date),
       pdfValue: (row) => formatDate(row.date)
+
     },
     {
       header: "Invoice No.",
@@ -112,32 +127,12 @@ export default function ProfitLossReportPage() {
       pdfValue: (row) => row.customerName || "Walk-in"
     },
     {
-      header: "Product Code",
-      accessor: "productCode",
-      render: (row) => {
-        const productCode = row.productCode || "—"
-        const productId = row.productId
-        if (productId && productCode !== "—") {
-          return (
-            <Link
-              href={`/stock/${productId}/packets`}
-              className="font-mono text-xs text-blue-600 hover:text-blue-800 hover:underline"
-            >
-              {productCode}
-            </Link>
-          )
-        }
-        return <span className="font-mono text-xs">{productCode}</span>
-      },
-      pdfValue: (row) => row.productCode || "—"
-    },
-    {
       header: "Product Name",
       accessor: "productName",
       pdfValue: (row) => row.productName || "—"
     },
     {
-      header: "Qty",
+      header: "Items Sold",
       accessor: "itemsSold",
       align: "right",
       pdfValue: (row) => row.itemsSold || 0

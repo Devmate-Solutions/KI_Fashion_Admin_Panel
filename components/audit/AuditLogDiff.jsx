@@ -218,6 +218,7 @@ function renderItemsList(items, isOld) {
 
 export default function AuditLogDiff({ oldData, newData, resource }) {
   const diff = computeDiff(oldData, newData, resource);
+  const hasLegacyOldPlaceholder = oldData !== null && oldData !== undefined && typeof oldData !== 'object';
   
   const normResource = resource ? resource.replace(/-/g, '').toLowerCase() : null;
   const whitelist = normResource ? IMPORTANT_FIELDS[normResource] : null;
@@ -235,11 +236,26 @@ export default function AuditLogDiff({ oldData, newData, resource }) {
   }
 
   if (entries.length === 0) {
-    return <p className="text-sm text-muted-foreground italic">No meaningful data changes recorded in this snapshot.</p>;
+    return (
+      <div className="space-y-2">
+        {hasLegacyOldPlaceholder && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+            Previous snapshot was not captured in object form for this older audit entry.
+          </p>
+        )}
+        <p className="text-sm text-muted-foreground italic">No meaningful data changes recorded in this snapshot.</p>
+      </div>
+    );
   }
 
   return (
-    <div className="border border-slate-100 overflow-hidden bg-white transition-all">
+    <div className="space-y-2">
+      {hasLegacyOldPlaceholder && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+          Previous snapshot was not captured in object form for this older audit entry.
+        </p>
+      )}
+      <div className="border border-slate-100 overflow-hidden bg-white transition-all">
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-slate-50 border-b border-slate-100">
@@ -282,6 +298,7 @@ export default function AuditLogDiff({ oldData, newData, resource }) {
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

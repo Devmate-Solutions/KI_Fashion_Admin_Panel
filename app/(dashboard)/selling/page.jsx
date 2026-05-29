@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import Link from "next/link"
 import BackButton from "@/components/BackButton"
 import Tabs from "@/components/tabs"
@@ -58,6 +58,27 @@ export default function SellingPage() {
   const [activeTab, setActiveTab] = useState(initialTab)
   const today = formatLocalDate(new Date())
   const [dateRange, setDateRange] = useState({ from: "", to: "" })
+  const [sellingColumnFilters, setSellingColumnFilters] = useState({
+    buyer: "",
+    date: "",
+    total: "",
+    cash: "",
+    bank: "",
+    discount: "",
+    balance: "",
+    products: "",
+  })
+
+  // When user uses the column date filter, reflect it in page-level dateRange
+  // so the backend query (useSales) receives startDate/endDate and fetches from DB.
+  // If date is empty, clear page-level range.
+  useEffect(() => {
+    if (sellingColumnFilters.date) {
+      setDateRange({ from: sellingColumnFilters.date, to: sellingColumnFilters.date })
+    } else {
+      setDateRange({ from: "", to: "" })
+    }
+  }, [sellingColumnFilters.date])
 
   // Fetch sales data
   const { data: sellingRows = [], isLoading: salesLoading } = useSales({
@@ -85,6 +106,58 @@ export default function SellingPage() {
     })
   }, [sellingRows, dateRange.from, dateRange.to])
 
+  const columnFilteredSellingRows = useMemo(() => {
+    const buyerFilter = sellingColumnFilters.buyer.trim().toLowerCase()
+    const dateFilter = sellingColumnFilters.date
+    const totalFilter = sellingColumnFilters.total.trim().toLowerCase()
+    const cashFilter = sellingColumnFilters.cash.trim().toLowerCase()
+    const bankFilter = sellingColumnFilters.bank.trim().toLowerCase()
+    const discountFilter = sellingColumnFilters.discount.trim().toLowerCase()
+    const balanceFilter = sellingColumnFilters.balance.trim().toLowerCase()
+    const productsFilter = sellingColumnFilters.products.trim().toLowerCase()
+
+    return filteredSellingRows.filter((row) => {
+      if (buyerFilter) {
+        const buyerName = String(row.customerName || "").toLowerCase()
+        const companyName = String(row.companyName || "").toLowerCase()
+        if (!buyerName.includes(buyerFilter) && !companyName.includes(buyerFilter)) return false
+      }
+
+      if (dateFilter) {
+        const rowDate = row.date ? new Date(row.date) : null
+        if (!rowDate || Number.isNaN(rowDate.getTime())) return false
+        if (rowDate.toLocaleDateString("en-CA") !== dateFilter) return false
+      }
+
+      if (totalFilter) {
+        if (!String(row.total || "").toLowerCase().includes(totalFilter)) return false
+      }
+
+      if (cashFilter) {
+        if (!String(row.cash || "").toLowerCase().includes(cashFilter)) return false
+      }
+
+      if (bankFilter) {
+        if (!String(row.bankCash || "").toLowerCase().includes(bankFilter)) return false
+      }
+
+      if (discountFilter) {
+        if (!String(row.discount || "").toLowerCase().includes(discountFilter)) return false
+      }
+
+      if (balanceFilter) {
+        if (!String(row.balance || "").toLowerCase().includes(balanceFilter)) return false
+      }
+
+      if (productsFilter) {
+        const productsText = (row.items || []).map(i => String(i.product?.name || i.productCode || "")).join(" ").toLowerCase()
+        if (!productsText.includes(productsFilter)) return false
+      }
+
+      return true
+    })
+  }, [filteredSellingRows, sellingColumnFilters])
+
   // Fetch buyers for payment modal
   const { data: buyers = [] } = useBuyers({ limit: 100 })
 
@@ -96,6 +169,11 @@ export default function SellingPage() {
       {
         header: "Date",
         accessor: "date",
+        filter: {
+          type: "date",
+          value: sellingColumnFilters.date,
+          onChange: (val) => setSellingColumnFilters((prev) => ({ ...prev, date: val })),
+        },
         render: (row) => (
           <div className="flex flex-col">
             <span className="font-medium">
@@ -125,6 +203,7 @@ export default function SellingPage() {
       {
         header: "Buyer",
         accessor: "customerName",
+        filter: { type: "text", value: sellingColumnFilters.buyer, onChange: (val) => setSellingColumnFilters((prev) => ({ ...prev, buyer: val })) },
         render: (row) => {
           const company = row.companyName;
           const name = row.customerName;
@@ -154,6 +233,7 @@ export default function SellingPage() {
       {
         header: "Products",
         accessor: "items",
+        filter: { type: "text", value: sellingColumnFilters.products, onChange: (val) => setSellingColumnFilters((prev) => ({ ...prev, products: val })) },
         render: (row) => (
           <div className="flex flex-col gap-2">
             {row.items && row.items.length > 0 ? (
@@ -212,6 +292,7 @@ export default function SellingPage() {
       {
         header: "Total",
         accessor: "total",
+        filter: { type: "text", value: sellingColumnFilters.total, onChange: (val) => setSellingColumnFilters((prev) => ({ ...prev, total: val })) },
         render: (row) => <span className="tabular-nums font-medium">{currency(row.total || 0)}</span>,
         pdfValue: (row) => row.total || 0
       },
@@ -227,23 +308,10 @@ export default function SellingPage() {
         render: (row) => <span className="tabular-nums">{currency((row.bankCash || 0))}</span>,
         pdfValue: (row) => (row.bankCash || 0)
       },
-      {
-        header: "Discount",
-        accessor: "discount",
-        render: (row) => <span className="tabular-nums">{currency((row.discount || 0))}</span>,
-        pdfValue: (row) => (row.discount || 0)
-      },
-      {
-        header: "Balance",
-        accessor: "balance",
-        render: (row) => <span className="tabular-nums">{currency(row.balance || 0)}</span>,
-        pdfValue: (row) => row.balance || 0
-      },
-      // {
-      //   header: "Status",
-      //   accessor: "paymentStatus",
-      //   render: (row) => {
-      //     const statusStyles = {
+      { header: "Cash Paid", accessor: "cash", filter: { type: "text", value: sellingColumnFilters.cash, onChange: (val) => setSellingColumnFilters((prev) => ({ ...prev, cash: val })) }, render: (row) => <span className="tabular-nums">{currency((row.cash || 0))}</span>, pdfValue: (row) => (row.cash || 0) },
+      { header: "Bank Paid", accessor: "bank", filter: { type: "text", value: sellingColumnFilters.bank, onChange: (val) => setSellingColumnFilters((prev) => ({ ...prev, bank: val })) }, render: (row) => <span className="tabular-nums">{currency((row.bankCash || 0))}</span>, pdfValue: (row) => (row.bankCash || 0) },
+      { header: "Discount", accessor: "discount", filter: { type: "text", value: sellingColumnFilters.discount, onChange: (val) => setSellingColumnFilters((prev) => ({ ...prev, discount: val })) }, render: (row) => <span className="tabular-nums">{currency((row.discount || 0))}</span>, pdfValue: (row) => (row.discount || 0) },
+      { header: "Balance", accessor: "balance", filter: { type: "text", value: sellingColumnFilters.balance, onChange: (val) => setSellingColumnFilters((prev) => ({ ...prev, balance: val })) }, render: (row) => <span className="tabular-nums">{currency(row.balance || 0)}</span>, pdfValue: (row) => row.balance || 0 },
       //       paid: "bg-emerald-500/15 text-emerald-600 border-emerald-200",
       //       partial: "bg-amber-500/15 text-amber-600 border-amber-200",
       //       pending: "bg-sky-500/15 text-sky-600 border-sky-200",
@@ -261,7 +329,7 @@ export default function SellingPage() {
       //   pdfValue: (row) => (row.paymentStatus || "pending").toUpperCase()
       // },
     ],
-    [],
+    [router, sellingColumnFilters],
   )
 
   const handleDownloadPDF = async () => {
@@ -525,12 +593,13 @@ export default function SellingPage() {
                   <DataTable
                     title="Selling"
                     columns={sellingColumns}
-                    data={filteredSellingRows}
+                    data={columnFilteredSellingRows}
                     onAddNew={handleAddNew}
                     onDownloadPDF={handleDownloadPDF}
                     loading={salesLoading}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    enableColumnFilters={true}
                   />
                 </div>
               </div>

@@ -48,6 +48,17 @@ export default function ExpensesPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingExpense, setEditingExpense] = useState(null)
 
+  const [columnFilters, setColumnFilters] = useState({
+    expenseNumber: "",
+    date: "",
+    description: "",
+    costType: "",
+    amount: "",
+    paymentMethod: "",
+  })
+  
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
+
   const updateFilters = (nextValues) => {
     setFilters((prev) => ({
       ...prev,
@@ -56,18 +67,12 @@ export default function ExpensesPage() {
     }))
   }
 
-  const queryParams = useMemo(() => {
-    const params = { page: filters.page }
-    if (filters.search?.trim()) params.search = filters.search.trim()
-    if (filters.costType !== 'all') params.costType = filters.costType
-    if (filters.status !== 'all') params.status = filters.status
-    if (filters.paymentMethod !== 'all') params.paymentMethod = filters.paymentMethod
-    if (filters.startDate) params.startDate = filters.startDate
-    if (filters.endDate) params.endDate = filters.endDate
-    return params
-  }, [filters])
-
-  const { data: expensesData, isLoading, error } = useExpenses(queryParams)
+  const { data: expensesData, isLoading, error } = useExpenses({
+    page: filters.search?.trim() ? 1 : filters.page,
+    limit: 500,
+    startDate: filters.startDate || undefined,
+    endDate: filters.endDate || undefined,
+  })
 
   const { data: costTypesResponse = [] } = useCostTypes({ isActive: true })
   const costTypes = Array.isArray(costTypesResponse) ? costTypesResponse : costTypesResponse?.data || []
@@ -79,6 +84,116 @@ export default function ExpensesPage() {
     if (Array.isArray(expensesData)) return expensesData
     return []
   }, [expensesData])
+
+  // Client-side filtering
+  const filteredExpenses = useMemo(() => {
+    const query = filters.search?.trim().toLowerCase() || ""
+    const expenseNumberFilter = columnFilters.expenseNumber.trim().toLowerCase()
+    const dateFilter = columnFilters.date
+    const descriptionFilter = columnFilters.description.trim().toLowerCase()
+    const costTypeFilter = columnFilters.costType.trim().toLowerCase()
+    const amountFilter = columnFilters.amount.trim().toLowerCase()
+    const paymentMethodFilter = columnFilters.paymentMethod.trim().toLowerCase()
+
+    const topCostType = filters.costType !== 'all' ? filters.costType : ""
+    const topStatus = filters.status !== 'all' ? filters.status : ""
+    const topPaymentMethod = filters.paymentMethod !== 'all' ? filters.paymentMethod : ""
+
+    return expenses.filter((row) => {
+      // 1. Top-level Search
+      if (query) {
+        const desc = String(row.description || "").toLowerCase()
+        const num = String(row.expenseNumber || "").toLowerCase()
+        if (!desc.includes(query) && !num.includes(query)) return false
+      }
+
+      // 2. Top-level Dropdown Filters
+      if (topCostType) {
+        const selectedCostType = costTypes.find(c => c.id === topCostType)?.name || topCostType
+        if (row.costType !== selectedCostType && row.costTypeId !== topCostType) return false
+      }
+      if (topStatus) {
+        if (row.status !== topStatus) return false
+      }
+      if (topPaymentMethod) {
+        if (row.paymentMethod !== topPaymentMethod) return false
+      }
+
+      // 3. Column Filters
+      if (expenseNumberFilter) {
+        if (!String(row.expenseNumber || "").toLowerCase().includes(expenseNumberFilter)) return false
+      }
+      if (dateFilter) {
+        const rowDate = row.date ? new Date(row.date).toLocaleDateString("en-GB").toLowerCase() : ""
+        if (!rowDate.includes(dateFilter.toLowerCase().trim())) return false
+      }
+      if (descriptionFilter) {
+        if (!String(row.description || "").toLowerCase().includes(descriptionFilter)) return false
+      }
+      if (costTypeFilter) {
+        if (!String(row.costType || "").toLowerCase().includes(costTypeFilter)) return false
+      }
+      if (amountFilter) {
+        const amountStr = String(row.amount || 0).toLowerCase()
+        const currencyStr = String(currency(row.amount || 0)).toLowerCase()
+        if (!amountStr.includes(amountFilter) && !currencyStr.includes(amountFilter)) return false
+      }
+      if (paymentMethodFilter) {
+        const labels = { cash: 'Cash', card: 'Card', bank_transfer: 'Bank Transfer', cheque: 'Cheque', online: 'Online' }
+        const method = row.paymentMethod || 'cash'
+        const methodStr = String(labels[method] || method).toLowerCase()
+        if (!methodStr.includes(paymentMethodFilter)) return false
+      }
+
+      return true
+    })
+  }, [expenses, filters, columnFilters, costTypes])
+
+  const sortedExpenses = useMemo(() => {
+    if (!sortConfig.key) return filteredExpenses
+    const dir = sortConfig.direction === 'asc' ? 1 : -1
+    return [...filteredExpenses].sort((a, b) => {
+      const aVal = a[sortConfig.key] ?? ""
+      const bVal = b[sortConfig.key] ?? ""
+      if (aVal === bVal) return 0
+      return aVal > bVal ? dir : -dir
+    })
+  }, [filteredExpenses, sortConfig])
+
+  // Pagination
+  const pagination = useMemo(() => {
+    const hasColumnFilters = Object.values(columnFilters).some((value) => String(value || "").trim())
+    const hasTopFilters = filters.search?.trim() || filters.costType !== 'all' || filters.status !== 'all' || filters.paymentMethod !== 'all'
+
+    if (!hasTopFilters && !hasColumnFilters && !sortConfig.key) {
+      return expensesData?.pagination || {}
+    }
+
+    const pageSize = 20
+    const totalFiltered = sortedExpenses.length
+    const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize))
+    const currentPageNum = Math.min(filters.page, totalPages)
+
+    return {
+      currentPage: currentPageNum,
+      totalPages,
+      totalItems: totalFiltered,
+      pageSize,
+    }
+  }, [sortedExpenses, columnFilters, filters, sortConfig, expensesData?.pagination])
+
+  const displayRows = useMemo(() => {
+    const hasColumnFilters = Object.values(columnFilters).some((value) => String(value || "").trim())
+    const hasTopFilters = filters.search?.trim() || filters.costType !== 'all' || filters.status !== 'all' || filters.paymentMethod !== 'all'
+
+    if (!hasTopFilters && !hasColumnFilters && !sortConfig.key) {
+      return sortedExpenses
+    }
+
+    const pageSize = 20
+    const startIndex = ((pagination.currentPage || 1) - 1) * pageSize
+    return sortedExpenses.slice(startIndex, startIndex + pageSize)
+  }, [sortedExpenses, columnFilters, filters, sortConfig, pagination.currentPage])
 
   const summary = expensesData?.summary || {}
 
@@ -181,6 +296,11 @@ export default function ExpensesPage() {
       {
         header: "Expense #",
         accessor: "expenseNumber",
+        filter: {
+          type: "text",
+          value: columnFilters.expenseNumber,
+          onChange: (val) => setColumnFilters((prev) => ({ ...prev, expenseNumber: val })),
+        },
         render: (row) => (
           <span className="font-medium">{row.expenseNumber || "—"}</span>
         ),
@@ -189,6 +309,11 @@ export default function ExpensesPage() {
       {
         header: "Date",
         accessor: "date",
+        filter: {
+          type: "text",
+          value: columnFilters.date,
+          onChange: (val) => setColumnFilters((prev) => ({ ...prev, date: val })),
+        },
         render: (row) => (
           <span>
             {row.date ? new Date(row.date).toLocaleDateString('en-GB') : "—"}
@@ -199,6 +324,11 @@ export default function ExpensesPage() {
       {
         header: "Description",
         accessor: "description",
+        filter: {
+          type: "text",
+          value: columnFilters.description,
+          onChange: (val) => setColumnFilters((prev) => ({ ...prev, description: val })),
+        },
         render: (row) => (
           <span className="max-w-[300px] truncate block" title={row.description}>
             {row.description || "—"}
@@ -208,6 +338,11 @@ export default function ExpensesPage() {
       {
         header: "Cost Type",
         accessor: "costType",
+        filter: {
+          type: "text",
+          value: columnFilters.costType,
+          onChange: (val) => setColumnFilters((prev) => ({ ...prev, costType: val })),
+        },
         render: (row) => (
           <span>{row.costType || "—"}</span>
         ),
@@ -215,6 +350,11 @@ export default function ExpensesPage() {
       {
         header: "Amount",
         accessor: "amount",
+        filter: {
+          type: "text",
+          value: columnFilters.amount,
+          onChange: (val) => setColumnFilters((prev) => ({ ...prev, amount: val })),
+        },
         render: (row) => (
           <span className="font-medium">{currency(row.amount || 0)}</span>
         ),
@@ -231,6 +371,11 @@ export default function ExpensesPage() {
       {
         header: "Payment Method",
         accessor: "paymentMethod",
+        filter: {
+          type: "text",
+          value: columnFilters.paymentMethod,
+          onChange: (val) => setColumnFilters((prev) => ({ ...prev, paymentMethod: val })),
+        },
         render: (row) => {
           const method = row.paymentMethod || 'cash'
           return <span className="capitalize">{labels[method] || method}</span>
@@ -240,40 +385,40 @@ export default function ExpensesPage() {
           return labels[method] || method
         }
       },
-      {
-        header: "Reference",
-        accessor: "dispatchOrderNumber",
-        render: (row) => (
-          row.dispatchOrderId ? (
-            <div className="flex flex-col">
-              <Link
-                href={`/dispatch-orders/${row.dispatchOrderId}`}
-                className="text-primary hover:underline font-medium"
-              >
-                {row.dispatchOrderNumber || "View"}
-              </Link>
-              {row.supplierName && (
-                <span className="text-[10px] text-muted-foreground mt-0.5 bg-muted px-1.5 py-0.5 rounded w-fit leading-none">
-                  {row.supplierName}
-                </span>
-              )}
-            </div>
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          )
-        ),
-        pdfValue: (row) => row.dispatchOrderNumber || row.supplierName || "—"
-      },
-      {
-        header: "Status",
-        accessor: "status",
-        render: (row) => (
-          <Badge className={statusStyles[row.status] || statusStyles.pending}>
-            {row.status || 'pending'}
-          </Badge>
-        ),
-        pdfValue: (row) => (row.status || 'pending').toUpperCase()
-      },
+      // {
+      //   header: "Reference",
+      //   accessor: "dispatchOrderNumber",
+      //   render: (row) => (
+      //     row.dispatchOrderId ? (
+      //       <div className="flex flex-col">
+      //         <Link
+      //           href={`/dispatch-orders/${row.dispatchOrderId}`}
+      //           className="text-primary hover:underline font-medium"
+      //         >
+      //           {row.dispatchOrderNumber || "View"}
+      //         </Link>
+      //         {row.supplierName && (
+      //           <span className="text-[10px] text-muted-foreground mt-0.5 bg-muted px-1.5 py-0.5 rounded w-fit leading-none">
+      //             {row.supplierName}
+      //           </span>
+      //         )}
+      //       </div>
+      //     ) : (
+      //       <span className="text-muted-foreground">—</span>
+      //     )
+      //   ),
+      //   pdfValue: (row) => row.dispatchOrderNumber || row.supplierName || "—"
+      // },
+      // {
+      //   header: "Status",
+      //   accessor: "status",
+      //   render: (row) => (
+      //     <Badge className={statusStyles[row.status] || statusStyles.pending}>
+      //       {row.status || 'pending'}
+      //     </Badge>
+      //   ),
+      //   pdfValue: (row) => (row.status || 'pending').toUpperCase()
+      // },
       {
         header: "Actions",
         accessor: "actions",
@@ -301,7 +446,7 @@ export default function ExpensesPage() {
         ),
       },
     ]
-  }, [handleEdit, handleDelete])  // <-- add your dependencies here
+  }, [handleEdit, handleDelete, columnFilters])  // <-- add your dependencies here
   const handleDownloadPDF = async () => {
     try {
       const result = await exportToPDF({
@@ -436,25 +581,7 @@ export default function ExpensesPage() {
             </Select>
           </div>
 
-          {/* Status Filter */}
-          <div className="flex flex-col gap-1">
-            <Label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">Status</Label>
-            <Select
-              value={filters.status}
-              onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
-            >
-              <SelectTrigger className="h-9 w-full sm:w-[130px] border-border">
-                <SelectValue placeholder="All Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          
 
           {/* Payment Method Filter */}
           <div className="flex flex-col gap-1">
@@ -491,16 +618,19 @@ export default function ExpensesPage() {
 
       <DataTable
         columns={expenseColumns}
-        data={expenses}
+        data={displayRows}
         onDownloadPDF={handleDownloadPDF}
         isLoading={isLoading}
-        enableSearch={true}
+        enableSearch={false}
         onSearch={(val) => setFilters(prev => ({ ...prev, search: val, page: 1 }))}
         manualPagination={true}
-        currentPage={filters.page || 1}
-        totalPages={expensesData?.pagination?.totalPages || 1}
-        totalItems={expensesData?.pagination?.totalItems || 0}
+        currentPage={pagination.currentPage || 1}
+        totalPages={pagination.totalPages || 1}
+        totalItems={pagination.totalItems || 0}
         onPageChange={(page) => setFilters(prev => ({ ...prev, page }))}
+        enableColumnFilters={true}
+        sortConfig={sortConfig}
+        onSortChange={setSortConfig}
       />
 
       {/* Form Dialog */}

@@ -139,13 +139,13 @@ export default function ProductSummaryReportPage() {
       render: (row) => (row.itemsSold || 0).toLocaleString(),
     },
     {
-      header: "Stock in Hand",
+      header: "Items Remaining",
       accessor: "stockInHand",
       align: "right",
       render: (row) => (row.stockInHand || row.itemsRemaining || 0).toLocaleString(),
     },
     {
-      header: "Total Value",
+      header: "Stock in Hand",
       accessor: "totalPrice",
       align: "right",
       render: (row) => currency(row.totalPrice || 0),
@@ -155,6 +155,12 @@ export default function ProductSummaryReportPage() {
       accessor: "totalSales",
       align: "right",
       render: (row) => currency(row.totalSales || 0),
+    },
+    {
+      header: "Percentage %",
+      accessor: "percentage",
+      align: "right",
+      render: (row) => `${(row.percentage || 0).toFixed(1)}%`,
     },
     {
       header: "Landed Price",
@@ -167,12 +173,6 @@ export default function ProductSummaryReportPage() {
       accessor: "minSellingPrice",
       align: "right",
       render: (row) => currency(row.minSellingPrice || 0),
-    },
-    {
-      header: "% Sold",
-      accessor: "percentage",
-      align: "right",
-      render: (row) => `${(row.percentage || 0).toFixed(1)}%`,
     },
   ]
 

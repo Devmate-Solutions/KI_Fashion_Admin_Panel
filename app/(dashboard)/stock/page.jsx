@@ -215,281 +215,7 @@ const getImageArray = (item) => {
   return [];
 };
 
-const inventoryColumns = [
-  {
-    header: "Image",
-    accessor: "productImage",
-    render: (row) => {
-      return (
-        <ProductImageGallery
-          images={getImageArray(row)}
-          alt={row.productName || "Product"}
-          size="xs"
-          maxVisible={1}
-          showCount={true}
-        />
-      );
-    },
-    pdfValue: (row) => row.productName || "Product"
-  },
-  {
-    header: "Supplier",
-    accessor: "supplierName",
-    render: (row) => {
-      console.log("[Supplier Column]", {
-        supplierName: row.supplierName,
-        product: row.product,
-        suppliers: row.product?.suppliers,
-      });
-      return <div className="font-medium">{row.supplierName || "—"}</div>;
-    },
-    pdfValue: (row) => row.supplierName || "—"
-  },
-  {
-    header: "Product",
-    accessor: "productName",
-    render: (row) => (
-      <div>
-        <a
-          href={`/stock/product-history?productId=${row.productId || row.product?._id}`}
-          className="font-medium leading-tight text-blue-600 hover:underline cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
-        >
-          {row.productName}
-        </a>
-      </div>
-    ),
-    pdfValue: (row) => row.productName || "—"
-  },
-  {
-    header: "SKU",
-    accessor: "sku",
-    className: "hidden md:table-cell",
-    render: (row) => (
-      <a
-        href={`/stock/${row.productId || row.product?._id}/packets`}
-        className="font-medium text-blue-600 hover:underline cursor-pointer"
-        onClick={(e) => {
-          e.stopPropagation();
-        }}
-      >
-        {row.sku || "-"}
-      </a>
-    ),
-    pdfValue: (row) => row.sku || "-"
-  },
-  {
-    header: "Season",
-    accessor: "season",
-    className: "hidden md:table-cell",
-    render: (row, { isExpanded } = {}) => {
-      const season = row.product?.season;
-      const seasons = Array.isArray(season) ? season : season ? [season] : [];
-      if (isExpanded) {
-        return (
-          <div className="flex flex-wrap gap-1">
-            {seasons.map((s, idx) => (
-              <span key={idx} className="inline-block px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded text-[10px] font-medium">{s}</span>
-            ))}
-          </div>
-        );
-      }
-      return <TruncatedBadgeList items={seasons} max={3} colorClass="bg-purple-100 text-purple-800" />;
-    },
-    pdfValue: (row) => {
-      const season = row.product?.season;
-      const seasons = Array.isArray(season) ? season : season ? [season] : [];
-      return seasons.join(", ") || "—"
-    }
-  },
-  {
-    header: "Size",
-    accessor: "size",
-    className: "hidden md:table-cell",
-    render: (row, { isExpanded } = {}) => {
-      let sizes = [];
-      const productSize = row.product?.size;
-      if (Array.isArray(productSize) && productSize.length > 0) {
-        sizes = productSize;
-      } else if (productSize) {
-        sizes = [productSize];
-      } else if (
-        row.raw?.variantComposition &&
-        Array.isArray(row.raw.variantComposition) &&
-        row.raw.variantComposition.length > 0
-      ) {
-        const sizeSet = new Set();
-        row.raw.variantComposition.forEach((variant) => {
-          if (variant.size) sizeSet.add(variant.size);
-        });
-        sizes = Array.from(sizeSet);
-      } else {
-        const size = row.raw?.size;
-        sizes = Array.isArray(size) ? size : size ? [size] : [];
-      }
-      if (isExpanded) {
-        return (
-          <div className="flex flex-wrap gap-1">
-            {sizes.map((s, idx) => (
-              <span key={idx} className="inline-block px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-[10px] font-medium">{s}</span>
-            ))}
-          </div>
-        );
-      }
-      return <TruncatedBadgeList items={sizes} max={3} colorClass="bg-green-100 text-green-800" />;
-    },
-    pdfValue: (row) => {
-      let sizes = [];
-      const productSize = row.product?.size;
-      if (Array.isArray(productSize) && productSize.length > 0) {
-        sizes = productSize;
-      } else if (productSize) {
-        sizes = [productSize];
-      } else if (
-        row.raw?.variantComposition &&
-        Array.isArray(row.raw.variantComposition) &&
-        row.raw.variantComposition.length > 0
-      ) {
-        const sizeSet = new Set();
-        row.raw.variantComposition.forEach((variant) => {
-          if (variant.size) sizeSet.add(variant.size);
-        });
-        sizes = Array.from(sizeSet);
-      } else {
-        const size = row.raw?.size;
-        sizes = Array.isArray(size) ? size : size ? [size] : [];
-      }
-      return sizes.join(", ") || "—"
-    }
-  },
-  {
-    header: "Color",
-    accessor: "color",
-    className: "hidden md:table-cell",
-    render: (row, { isExpanded } = {}) => {
-      let colors = [];
-      const productColor = row.product?.color;
-      if (Array.isArray(productColor) && productColor.length > 0) {
-        colors = productColor;
-      } else if (productColor) {
-        colors = [productColor];
-      } else if (
-        row.raw?.variantComposition &&
-        Array.isArray(row.raw.variantComposition) &&
-        row.raw.variantComposition.length > 0
-      ) {
-        const colorSet = new Set();
-        row.raw.variantComposition.forEach((variant) => {
-          if (variant.color) colorSet.add(variant.color);
-        });
-        colors = Array.from(colorSet);
-      } else {
-        const color =
-          row.raw?.primaryColor ||
-          row.raw?.color ||
-          row.product?.specifications?.color;
-        colors = Array.isArray(color) ? color : color ? [color] : [];
-      }
-      if (isExpanded) {
-        return (
-          <div className="flex flex-wrap gap-1">
-            {colors.map((c, idx) => (
-              <span key={idx} className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px] font-medium">{c}</span>
-            ))}
-          </div>
-        );
-      }
-      return <TruncatedBadgeList items={colors} max={3} colorClass="bg-blue-100 text-blue-800" />;
-    },
-    pdfValue: (row) => {
-      let colors = [];
-      const productColor = row.product?.color;
-      if (Array.isArray(productColor) && productColor.length > 0) {
-        colors = productColor;
-      } else if (productColor) {
-        colors = [productColor];
-      } else if (
-        row.raw?.variantComposition &&
-        Array.isArray(row.raw.variantComposition) &&
-        row.raw.variantComposition.length > 0
-      ) {
-        const colorSet = new Set();
-        row.raw.variantComposition.forEach((variant) => {
-          if (variant.color) colorSet.add(variant.color);
-        });
-        colors = Array.from(colorSet);
-      } else {
-        const color =
-          row.raw?.primaryColor ||
-          row.raw?.color ||
-          row.product?.specifications?.color;
-        colors = Array.isArray(color) ? color : color ? [color] : [];
-      }
-      return colors.join(", ") || "—"
-    }
-  },
-  {
-    header: "Available Stock",
-    accessor: "currentStock",
-    render: (row) => (
-      <div className="tabular-nums font-semibold">
-        {formatNumber(row.currentStock)}
-      </div>
-    ),
-    pdfValue: (row) => row.currentStock || 0
-  },
-  {
-    header: "Landed Cost",
-    accessor: "averageCostPrice",
-    className: "hidden md:table-cell",
-    render: (row) => (
-      <span className="tabular-nums">
-        {formatDecimal(row.averageCostPrice)}
-      </span>
-    ),
-    pdfValue: (row) => row.averageCostPrice || 0
-  },
-  {
-    header: "Min Sell Price",
-    accessor: "minSellingPrice",
-    className: "hidden md:table-cell",
-    render: (row) => (
-      <span className="tabular-nums font-medium">
-        {formatDecimal(row.pricing?.minSellingPrice ?? row.pricing?.sellingPrice ?? 0)}
-      </span>
-    ),
-    pdfValue: (row) => row.pricing?.minSellingPrice ?? row.pricing?.sellingPrice ?? 0
-  },
-  {
-    header: "Value",
-    accessor: "totalValue",
-    render: (row) => (
-      <span className="tabular-nums font-semibold">
-        {formatDecimal(row.totalValue)}
-      </span>
-    ),
-    pdfValue: (row) => row.totalValue || 0
-  },
-  {
-    header: "Date",
-    accessor: "firstArrivalDate",
-    className: "hidden md:table-cell",
-    render: (row) => {
-      const displayDate = row.firstArrivalDate || row.createdAt || row.lastStockUpdate;
-      return (
-        <div className="text-sm text-muted-foreground">
-          {displayDate ? new Date(displayDate).toLocaleDateString('en-GB') : "—"}
-        </div>
-      );
-    },
-    pdfValue: (row) => {
-      const displayDate = row.firstArrivalDate || row.createdAt || row.lastStockUpdate;
-      return displayDate ? new Date(displayDate).toLocaleDateString('en-GB') : "—";
-    }
-  },
-];
+// inventoryColumns is now dynamically memoized inside the StockPage component to access filter states.
 
 
 function currency(n) {
@@ -539,6 +265,8 @@ export default function StockPage() {
       maxPrice: "",
       startDate: "",
       endDate: "",
+      minValue: "",
+      maxValue: "",
     }),
     []
   );
@@ -563,6 +291,8 @@ export default function StockPage() {
     if (appliedFilters.maxPrice) count++;
     if (appliedFilters.startDate) count++;
     if (appliedFilters.endDate) count++;
+    if (appliedFilters.minValue) count++;
+    if (appliedFilters.maxValue) count++;
     return count;
   }, [appliedFilters]);
 
@@ -659,8 +389,24 @@ export default function StockPage() {
   const inventoryItems = inventoryData?.items ?? [];
 
   // Since date and column filtering are handled fully on the backend aggregation pipeline,
-  // we map inventoryItems directly to filteredInventoryItems. This ensures total count pagination values align.
-  const filteredInventoryItems = inventoryItems;
+  // we map inventoryItems directly to filteredInventoryItems. We add client-side filtering for
+  // computed columns like Value.
+  const filteredInventoryItems = useMemo(() => {
+    let items = inventoryItems;
+    if (appliedFilters.minValue?.trim()) {
+      const minVal = Number(appliedFilters.minValue.trim());
+      if (Number.isFinite(minVal)) {
+        items = items.filter(item => (item.totalValue || 0) >= minVal);
+      }
+    }
+    if (appliedFilters.maxValue?.trim()) {
+      const maxVal = Number(appliedFilters.maxValue.trim());
+      if (Number.isFinite(maxVal)) {
+        items = items.filter(item => (item.totalValue || 0) <= maxVal);
+      }
+    }
+    return items;
+  }, [inventoryItems, appliedFilters.minValue, appliedFilters.maxValue]);
 
   // Calculate summary statistics based on filtered items
   const totalStockValue = filteredInventoryItems.reduce(
@@ -849,7 +595,9 @@ export default function StockPage() {
   const [isSavingMinPrice, setIsSavingMinPrice] = useState(false);
 
   const handleApplyFilters = (event) => {
-    event.preventDefault();
+    if (event && typeof event.preventDefault === "function") {
+      event.preventDefault();
+    }
     setAppliedFilters(filterForm);
     setPage(1);
   };
@@ -859,6 +607,387 @@ export default function StockPage() {
     setAppliedFilters(defaultFilterState);
     setPage(1);
   };
+
+  useEffect(() => {
+    if (isFilterOpen) return;
+
+    const handler = setTimeout(() => {
+      const isChanged = Object.keys(filterForm).some(key => filterForm[key] !== appliedFilters[key]);
+      if (isChanged) {
+        setAppliedFilters(filterForm);
+        setPage(1);
+      }
+    }, 200);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [filterForm, isFilterOpen, appliedFilters]);
+
+  const inventoryColumns = useMemo(
+    () => [
+      {
+        header: "Image",
+        accessor: "productImage",
+        render: (row) => {
+          return (
+            <ProductImageGallery
+              images={getImageArray(row)}
+              alt={row.productName || "Product"}
+              size="xs"
+              maxVisible={1}
+              showCount={true}
+            />
+          );
+        },
+        pdfValue: (row) => row.productName || "Product"
+      },
+      {
+        header: "Supplier",
+        accessor: "supplierName",
+        render: (row) => {
+          console.log("[Supplier Column]", {
+            supplierName: row.supplierName,
+            product: row.product,
+            suppliers: row.product?.suppliers,
+          });
+          return <div className="font-medium">{row.supplierName || "—"}</div>;
+        },
+        pdfValue: (row) => row.supplierName || "—",
+        filter: {
+          type: "text",
+          placeholder: "Filter supplier...",
+          value: filterForm.searchSupplier,
+          onChange: (val) => setFilterForm(prev => ({ ...prev, searchSupplier: val })),
+          onSubmit: () => handleApplyFilters(),
+        }
+      },
+      {
+        header: "Product",
+        accessor: "productName",
+        render: (row) => (
+          <div>
+            <a
+              href={`/stock/product-history?productId=${row.productId || row.product?._id}`}
+              className="font-medium leading-tight text-blue-600 hover:underline cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            >
+              {row.productName}
+            </a>
+          </div>
+        ),
+        pdfValue: (row) => row.productName || "—",
+        filter: {
+          type: "text",
+          placeholder: "Filter product...",
+          value: filterForm.searchProduct,
+          onChange: (val) => setFilterForm(prev => ({ ...prev, searchProduct: val })),
+          onSubmit: () => handleApplyFilters(),
+        }
+      },
+      {
+        header: "SKU",
+        accessor: "sku",
+        className: "hidden md:table-cell",
+        render: (row) => (
+          <a
+            href={`/stock/${row.productId || row.product?._id}/packets`}
+            className="font-medium text-blue-600 hover:underline cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            {row.sku || "-"}
+          </a>
+        ),
+        pdfValue: (row) => row.sku || "-",
+        filter: {
+          type: "text",
+          placeholder: "Filter SKU...",
+          value: filterForm.searchSku,
+          onChange: (val) => setFilterForm(prev => ({ ...prev, searchSku: val })),
+          onSubmit: () => handleApplyFilters(),
+        }
+      },
+      {
+        header: "Season",
+        accessor: "season",
+        className: "hidden md:table-cell",
+        render: (row, { isExpanded } = {}) => {
+          const season = row.product?.season;
+          const seasons = Array.isArray(season) ? season : season ? [season] : [];
+          if (isExpanded) {
+            return (
+              <div className="flex flex-wrap gap-1">
+                {seasons.map((s, idx) => (
+                  <span key={idx} className="inline-block px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded text-[10px] font-medium">{s}</span>
+                ))}
+              </div>
+            );
+          }
+          return <TruncatedBadgeList items={seasons} max={3} colorClass="bg-purple-100 text-purple-800" />;
+        },
+        pdfValue: (row) => {
+          const season = row.product?.season;
+          const seasons = Array.isArray(season) ? season : season ? [season] : [];
+          return seasons.join(", ") || "—"
+        },
+        filter: {
+          type: "text",
+          placeholder: "Filter season...",
+          value: filterForm.season,
+          onChange: (val) => setFilterForm(prev => ({ ...prev, season: val })),
+          onSubmit: () => handleApplyFilters(),
+        }
+      },
+      {
+        header: "Size",
+        accessor: "size",
+        className: "hidden md:table-cell",
+        render: (row, { isExpanded } = {}) => {
+          let sizes = [];
+          const productSize = row.product?.size;
+          if (Array.isArray(productSize) && productSize.length > 0) {
+            sizes = productSize;
+          } else if (productSize) {
+            sizes = [productSize];
+          } else if (
+            row.raw?.variantComposition &&
+            Array.isArray(row.raw.variantComposition) &&
+            row.raw.variantComposition.length > 0
+          ) {
+            const sizeSet = new Set();
+            row.raw.variantComposition.forEach((variant) => {
+              if (variant.size) sizeSet.add(variant.size);
+            });
+            sizes = Array.from(sizeSet);
+          } else {
+            const size = row.raw?.size;
+            sizes = Array.isArray(size) ? size : size ? [size] : [];
+          }
+          if (isExpanded) {
+            return (
+              <div className="flex flex-wrap gap-1">
+                {sizes.map((s, idx) => (
+                  <span key={idx} className="inline-block px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-[10px] font-medium">{s}</span>
+                ))}
+              </div>
+            );
+          }
+          return <TruncatedBadgeList items={sizes} max={3} colorClass="bg-green-100 text-green-800" />;
+        },
+        pdfValue: (row) => {
+          let sizes = [];
+          const productSize = row.product?.size;
+          if (Array.isArray(productSize) && productSize.length > 0) {
+            sizes = productSize;
+          } else if (productSize) {
+            sizes = [productSize];
+          } else if (
+            row.raw?.variantComposition &&
+            Array.isArray(row.raw.variantComposition) &&
+            row.raw.variantComposition.length > 0
+          ) {
+            const sizeSet = new Set();
+            row.raw.variantComposition.forEach((variant) => {
+              if (variant.size) sizeSet.add(variant.size);
+            });
+            sizes = Array.from(sizeSet);
+          } else {
+            const size = row.raw?.size;
+            sizes = Array.isArray(size) ? size : size ? [size] : [];
+          }
+          return sizes.join(", ") || "—"
+        },
+        filter: {
+          type: "text",
+          placeholder: "Filter size...",
+          value: filterForm.size,
+          onChange: (val) => setFilterForm(prev => ({ ...prev, size: val })),
+          onSubmit: () => handleApplyFilters(),
+        }
+      },
+      {
+        header: "Color",
+        accessor: "color",
+        className: "hidden md:table-cell",
+        render: (row, { isExpanded } = {}) => {
+          let colors = [];
+          const productColor = row.product?.color;
+          if (Array.isArray(productColor) && productColor.length > 0) {
+            colors = productColor;
+          } else if (productColor) {
+            colors = [productColor];
+          } else if (
+            row.raw?.variantComposition &&
+            Array.isArray(row.raw.variantComposition) &&
+            row.raw.variantComposition.length > 0
+          ) {
+            const colorSet = new Set();
+            row.raw.variantComposition.forEach((variant) => {
+              if (variant.color) colorSet.add(variant.color);
+            });
+            colors = Array.from(colorSet);
+          } else {
+            const color =
+              row.raw?.primaryColor ||
+              row.raw?.color ||
+              row.product?.specifications?.color;
+            colors = Array.isArray(color) ? color : color ? [color] : [];
+          }
+          if (isExpanded) {
+            return (
+              <div className="flex flex-wrap gap-1">
+                {colors.map((c, idx) => (
+                  <span key={idx} className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px] font-medium">{c}</span>
+                ))}
+              </div>
+            );
+          }
+          return <TruncatedBadgeList items={colors} max={3} colorClass="bg-blue-100 text-blue-800" />;
+        },
+        pdfValue: (row) => {
+          let colors = [];
+          const productColor = row.product?.color;
+          if (Array.isArray(productColor) && productColor.length > 0) {
+            colors = productColor;
+          } else if (productColor) {
+            colors = [productColor];
+          } else if (
+            row.raw?.variantComposition &&
+            Array.isArray(row.raw.variantComposition) &&
+            row.raw.variantComposition.length > 0
+          ) {
+            const colorSet = new Set();
+            row.raw.variantComposition.forEach((variant) => {
+              if (variant.color) colorSet.add(variant.color);
+            });
+            colors = Array.from(colorSet);
+          } else {
+            const color =
+              row.raw?.primaryColor ||
+              row.raw?.color ||
+              row.product?.specifications?.color;
+            colors = Array.isArray(color) ? color : color ? [color] : [];
+          }
+          return colors.join(", ") || "—"
+        },
+        filter: {
+          type: "text",
+          placeholder: "Filter color...",
+          value: filterForm.color,
+          onChange: (val) => setFilterForm(prev => ({ ...prev, color: val })),
+          onSubmit: () => handleApplyFilters(),
+        }
+      },
+      {
+        header: "Available Stock",
+        accessor: "currentStock",
+        render: (row) => (
+          <div className="tabular-nums font-semibold">
+            {formatNumber(row.currentStock)}
+          </div>
+        ),
+        pdfValue: (row) => row.currentStock || 0,
+        filter: {
+          type: "text",
+          placeholder: "Min Stock...",
+          value: filterForm.minStock,
+          onChange: (val) => setFilterForm(prev => ({ ...prev, minStock: val })),
+          onSubmit: () => handleApplyFilters(),
+        }
+      },
+      {
+        header: "Landed Cost",
+        accessor: "averageCostPrice",
+        className: "hidden md:table-cell",
+        render: (row) => (
+          <span className="tabular-nums">
+            {formatDecimal(row.averageCostPrice)}
+          </span>
+        ),
+        pdfValue: (row) => row.averageCostPrice || 0,
+        filter: {
+          type: "text",
+          placeholder: "Min Cost...",
+          value: filterForm.minCost,
+          onChange: (val) => setFilterForm(prev => ({ ...prev, minCost: val })),
+          onSubmit: () => handleApplyFilters(),
+        }
+      },
+      {
+        header: "Min Sell Price",
+        accessor: "minSellingPrice",
+        className: "hidden md:table-cell",
+        render: (row) => (
+          <span className="tabular-nums font-medium">
+            {formatDecimal(row.pricing?.minSellingPrice ?? row.pricing?.sellingPrice ?? 0)}
+          </span>
+        ),
+        pdfValue: (row) => row.pricing?.minSellingPrice ?? row.pricing?.sellingPrice ?? 0,
+        filter: {
+          type: "text",
+          placeholder: "Min Price...",
+          value: filterForm.minPrice,
+          onChange: (val) => setFilterForm(prev => ({ ...prev, minPrice: val })),
+          onSubmit: () => handleApplyFilters(),
+        }
+      },
+      {
+        header: "Value",
+        accessor: "totalValue",
+        render: (row) => (
+          <span className="tabular-nums font-semibold">
+            {formatDecimal(row.totalValue)}
+          </span>
+        ),
+        pdfValue: (row) => row.totalValue || 0,
+        filter: {
+          type: "text",
+          placeholder: "Min Value...",
+          value: filterForm.minValue,
+          onChange: (val) => setFilterForm(prev => ({ ...prev, minValue: val })),
+          onSubmit: () => handleApplyFilters(),
+        }
+      },
+      {
+        header: "Date",
+        accessor: "firstArrivalDate",
+        className: "hidden md:table-cell",
+        render: (row) => {
+          const displayDate = row.firstArrivalDate || row.createdAt || row.lastStockUpdate;
+          return (
+            <div className="text-sm text-muted-foreground">
+              {displayDate ? new Date(displayDate).toLocaleDateString('en-GB') : "—"}
+            </div>
+          );
+        },
+        pdfValue: (row) => {
+          const displayDate = row.firstArrivalDate || row.createdAt || row.lastStockUpdate;
+          return displayDate ? new Date(displayDate).toLocaleDateString('en-GB') : "—";
+        },
+        filter: {
+          render: () => (
+            <div className="flex items-center min-w-[120px] w-full">
+              <BritishDatePicker
+                value={filterForm.startDate}
+                onChange={(date) => {
+                  const formatted = formatDateToISO(date);
+                  setFilterForm(prev => ({ ...prev, startDate: formatted, endDate: formatted }));
+                  setTimeout(() => handleApplyFilters(), 0);
+                }}
+                placeholder=""
+                className="w-full h-7 px-1 text-[10px] border border-border rounded bg-background focus:ring-1 focus:ring-ring outline-none min-w-0"
+              />
+            </div>
+          )
+        }
+      },
+    ],
+    [filterForm, handleApplyFilters]
+  );
 
 
 
@@ -1052,72 +1181,31 @@ export default function StockPage() {
       <div className="rounded-[4px] border border-border bg-card p-2 space-y-2">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between text-xs">
           {/* Left side: Search & Apply */}
-          <form onSubmit={handleApplyFilters} className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
-            <div className="flex-1 min-w-[150px]">
-              <Input
-                id="filter-search"
-                placeholder="Search SKU, product, supplier..."
-                value={filterForm.search}
-                onChange={(event) =>
-                  setFilterForm((prev) => ({
-                    ...prev,
-                    search: event.target.value,
-                  }))
-                }
-                className="h-8 text-xs"
-              />
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Button type="submit" size="sm" className="h-8 text-xs px-2.5">Apply</Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs px-2.5"
-                onClick={handleResetFilters}
-              >
-                Reset
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={`h-8 text-xs px-2.5 transition-all duration-200 ${
-                  activeFiltersCount > 0
-                    ? "border-primary text-primary bg-primary/5 hover:bg-primary/10 hover:text-primary font-semibold"
-                    : ""
-                }`}
-                onClick={() => setIsFilterOpen(true)}
-              >
-                Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}
-              </Button>
-            </div>
-          </form>
-
+          {/* Quick Actions */}
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              size="lg"
+              variant="outline"
+              className="h-8 text-[11px] px-2 gap-1"
+              onClick={() => setBarcodeUpdateDialogOpen(true)}
+            >
+              <Barcode className="h-3.5 w-3.5" />
+              Set Minimumm Seling Price
+            </Button>
+            {/* <Button
+              type="button"
+              size="lg"
+              variant="outline"
+              className="h-8 text-[11px] px-2"
+              onClick={() => setMinPriceDialogOpen(true)}
+            >
+              Min Price
+            </Button> */}
+          </div>
           {/* Right side: Actions & Pagination */}
           <div className="flex flex-wrap items-center gap-2 md:justify-end">
-            {/* Quick Actions */}
-            <div className="flex items-center gap-1">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-8 text-[11px] px-2 gap-1"
-                onClick={() => setBarcodeUpdateDialogOpen(true)}
-              >
-                <Barcode className="h-3.5 w-3.5" />
-                Scan
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-8 text-[11px] px-2"
-                onClick={() => setMinPriceDialogOpen(true)}
-              >
-                Min Price
-              </Button>
-            </div>
+
 
             <div className="h-4 w-px bg-border hidden sm:block" />
 
@@ -1359,7 +1447,9 @@ export default function StockPage() {
             )}
             {(appliedFilters.startDate || appliedFilters.endDate) && (
               <Badge variant="secondary" className="h-5 text-[10px] gap-1 pl-2 pr-1 bg-muted border border-border">
-                Date: {formatToBritishDate(appliedFilters.startDate) || "Start"} to {formatToBritishDate(appliedFilters.endDate) || "End"}
+                Date: {appliedFilters.startDate === appliedFilters.endDate
+                  ? formatToBritishDate(appliedFilters.startDate)
+                  : `${formatToBritishDate(appliedFilters.startDate) || "Start"} to ${formatToBritishDate(appliedFilters.endDate) || "End"}`}
                 <button
                   type="button"
                   className="h-3 w-3 rounded-full hover:bg-muted-foreground/20 flex items-center justify-center font-bold text-muted-foreground"
@@ -1569,28 +1659,19 @@ export default function StockPage() {
                 </div>
               </div>
 
-              {/* Date Pickers */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <Label htmlFor="filter-start-date" className="text-[11px] text-muted-foreground font-medium">Start Date</Label>
-                  <BritishDatePicker
-                    id="filter-start-date"
-                    value={filterForm.startDate}
-                    onChange={(date) => setFilterForm(prev => ({ ...prev, startDate: formatDateToISO(date) }))}
-                    className="h-8 text-xs px-2.5 w-full rounded-md border border-input bg-background font-medium text-foreground outline-none focus:ring-2 focus:ring-ring focus:border-transparent hover:border-ring/50"
-                    wrapperClassName="w-full"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label htmlFor="filter-end-date" className="text-[11px] text-muted-foreground font-medium">End Date</Label>
-                  <BritishDatePicker
-                    id="filter-end-date"
-                    value={filterForm.endDate}
-                    onChange={(date) => setFilterForm(prev => ({ ...prev, endDate: formatDateToISO(date) }))}
-                    className="h-8 text-xs px-2.5 w-full rounded-md border border-input bg-background font-medium text-foreground outline-none focus:ring-2 focus:ring-ring focus:border-transparent hover:border-ring/50"
-                    wrapperClassName="w-full"
-                  />
-                </div>
+              {/* Date Picker */}
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="filter-date" className="text-[11px] text-muted-foreground font-medium">Arrival Date</Label>
+                <BritishDatePicker
+                  id="filter-date"
+                  value={filterForm.startDate}
+                  onChange={(date) => {
+                    const formatted = formatDateToISO(date);
+                    setFilterForm(prev => ({ ...prev, startDate: formatted, endDate: formatted }));
+                  }}
+                  className="h-8 text-xs px-2.5 w-full rounded-md border border-input bg-background font-medium text-foreground outline-none focus:ring-2 focus:ring-ring focus:border-transparent hover:border-ring/50"
+                  wrapperClassName="w-full"
+                />
               </div>
 
               {/* Switches inline */}
@@ -1662,6 +1743,7 @@ export default function StockPage() {
         paginate={false}
         expandableRow={true}
         compact={true}
+        enableColumnFilters={true}
       />
     </div>
   );
@@ -1946,9 +2028,9 @@ export default function StockPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
-        
+
           <CardContent>
             Total Value
             <div className="text-2xl font-bold tabular-nums">
@@ -1957,7 +2039,7 @@ export default function StockPage() {
           </CardContent>
         </Card>
         <Card>
-         
+
           <CardContent>
             Low Stock
             <div className="text-2xl font-bold tabular-nums text-amber-600">
@@ -1967,14 +2049,14 @@ export default function StockPage() {
         </Card>
       </div>
 
-     
+
       <DataTable
         columns={packetStockColumns}
         data={looseStockItems}
         loading={looseStockLoading}
       />
 
-    
+
     </div>
   );
 
@@ -1995,7 +2077,7 @@ export default function StockPage() {
             </div>
           </CardContent>
         </Card>
-       
+
         <Card>
           {/* <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -2024,7 +2106,7 @@ export default function StockPage() {
         </Card>
       </div>
 
-   
+
 
       {/* Data Table */}
       <DataTable

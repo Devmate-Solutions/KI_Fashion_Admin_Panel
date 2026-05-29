@@ -1,12 +1,14 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Loader2, PlusCircle, UserPlus } from "lucide-react"
+import { Loader2, ChevronsUpDown, Check } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { useCreateSupplierDebitAdjustment } from "@/lib/hooks/useLedger"
 import toast from "react-hot-toast"
 import BritishDatePicker from "@/components/BritishDatePicker"
@@ -24,10 +26,7 @@ export default function ManualSupplierDebtModal({
     const isSuperAdmin = user?.role === 'super-admin'
     const mutation = useCreateSupplierDebitAdjustment()
     const [selectedEntityId, setSelectedEntityId] = useState(initialEntityId || '')
-    const [searchQuery, setSearchQuery] = useState('')
-    const [showSuggestions, setShowSuggestions] = useState(false)
-    const searchInputRef = useRef(null)
-    const dropdownRef = useRef(null)
+    const [searchOpen, setSearchOpen] = useState(false)
     const [form, setForm] = useState({
         amount: '',
         date: '',
@@ -53,51 +52,27 @@ export default function ManualSupplierDebtModal({
     useEffect(() => {
         if (!open) {
             setForm({ amount: '', date: '', notes: '' })
-            setSearchQuery('')
-            setShowSuggestions(false)
+            setSearchOpen(false)
             if (!initialEntityId) {
                 setSelectedEntityId('')
             }
         }
     }, [open, initialEntityId])
 
-    // Filter entities based on search query
-    const filteredEntities = searchQuery.trim()
-        ? entities.filter((entity) => {
-            const entityName = (entity.name || '').toLowerCase()
-            const entityCompany = (entity.company || '').toLowerCase()
-            const query = searchQuery.toLowerCase()
-            return entityName.includes(query) || entityCompany.includes(query)
-        }).slice(0, 10)
-        : []
-
-    // Handle click outside to close dropdown
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (
-                dropdownRef.current &&
-                !dropdownRef.current.contains(event.target) &&
-                searchInputRef.current &&
-                !searchInputRef.current.contains(event.target)
-            ) {
-                setShowSuggestions(false)
-            }
-        }
-
-        if (showSuggestions) {
-            document.addEventListener('mousedown', handleClickOutside)
-            return () => document.removeEventListener('mousedown', handleClickOutside)
-        }
-    }, [showSuggestions])
-
     const selectedEntity = entities.find(e => (e._id || e.id) === selectedEntityId || String(e.id) === selectedEntityId)
-    const entityName = selectedEntity?.company && selectedEntity?.name ? `${selectedEntity.company} (${selectedEntity.name})` : (selectedEntity?.company || selectedEntity?.name || initialEntityName || '')
+    const baseSupplierName = selectedEntity 
+        ? (selectedEntity.company && selectedEntity.name 
+            ? `${selectedEntity.company}` 
+            : (selectedEntity.company || selectedEntity.name || ''))
+        : (initialEntityName || '')
+    
+    const entityName = selectedEntity?.supplierId ? `${baseSupplierName}` : baseSupplierName
     const entityId = selectedEntityId || initialEntityId
+    const displayEntityId = selectedEntity?.supplierId || entityId || ''
 
     const handleClose = () => {
         setForm({ amount: '', date: '', notes: '' })
-        setSearchQuery('')
-        setShowSuggestions(false)
+        setSearchOpen(false)
         if (!initialEntityId) {
             setSelectedEntityId('')
         }
@@ -107,8 +82,6 @@ export default function ManualSupplierDebtModal({
     const handleSupplierSelect = (entity) => {
         const entityIdStr = String(entity._id || entity.id)
         setSelectedEntityId(entityIdStr)
-        setSearchQuery('')
-        setShowSuggestions(false)
     }
 
     const handleSubmit = async () => {
@@ -148,114 +121,27 @@ export default function ManualSupplierDebtModal({
     }
 
     const showEntitySelector = entities.length > 0 && (!initialEntityId || initialEntityId === 'all')
+    const hasSupplier = !!entityId
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-hidden">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <PlusCircle className="h-5 w-5 text-red-600" />
-                        Add Supplier Debt
+                    <DialogTitle className="text-base font-semibold">
+                        Supplier Debt Details for ID: {displayEntityId || 0}
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4 py-4">
-                    {/* Entity Selector - Text Search Input */}
-                    {showEntitySelector && (
-                        <div className="space-y-2">
-                            <Label htmlFor="manual-entity-search">Select a Supplier</Label>
-                            <div className="relative">
-                                <Input
-                                    id="manual-entity-search"
-                                    ref={searchInputRef}
-                                    type="text"
-                                    placeholder="Search supplier..."
-                                    value={searchQuery}
-                                    onChange={(e) => {
-                                        const value = e.target.value
-                                        setSearchQuery(value)
-                                        setShowSuggestions(value.trim().length > 0)
-                                    }}
-                                    onFocus={() => {
-                                        if (searchQuery.trim().length > 0) {
-                                            setShowSuggestions(true)
-                                        }
-                                    }}
-                                />
-                                {showSuggestions && filteredEntities.length > 0 && (
-                                    <div
-                                        ref={dropdownRef}
-                                        className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-auto"
-                                    >
-                                        <div className="p-1">
-                                            {filteredEntities.map((entity) => {
-                                                const entityIdStr = String(entity._id || entity.id)
-                                                const entityDisplay = entity.company && entity.name ? `${entity.company} (${entity.name})` : (entity.company || entity.name || '')
-                                                const isSelected = selectedEntityId === entityIdStr
-
-                                                return (
-                                                    <div
-                                                        key={entityIdStr}
-                                                        onClick={() => handleSupplierSelect(entity)}
-                                                        className={`flex items-center px-3 py-2 text-sm rounded-sm cursor-pointer hover:bg-slate-100 ${isSelected ? 'bg-slate-50 font-medium' : ''
-                                                            }`}
-                                                    >
-                                                        {entity.company && entity.name ? (
-                                                            <div className="flex items-center gap-1.5 overflow-hidden">
-                                                                <span className="font-bold truncate">{entity.company}</span>
-                                                                <span className="text-muted-foreground truncate font-normal">({entity.name})</span>
-                                                            </div>
-                                                        ) : (
-                                                            <span className={isSelected ? 'font-bold' : ''}>
-                                                                {entity.company || entity.name || ''}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                )
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Entity Info */}
-                    <div className="rounded-lg border bg-muted/30 p-4">
-                        <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground uppercase tracking-wider">Supplier</Label>
-                            {selectedEntity?.company && selectedEntity?.name ? (
-                                <div className="flex flex-col">
-                                    <span className="font-bold text-lg text-primary">{selectedEntity.company}</span>
-                                    <span className="text-sm text-muted-foreground">({selectedEntity.name})</span>
-                                </div>
-                            ) : (
-                                <p className="font-bold text-lg">{entityName || 'Not selected'}</p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Amount */}
-                    <div className="space-y-2">
-                        <Label htmlFor="chargeAmount">Debt Amount</Label>
-                        <Input
-                            id="chargeAmount"
-                            type="text"
-                            inputMode="decimal"
-                            placeholder="0.00"
-                            value={form.amount}
-                            onChange={(e) => {
-                                const value = e.target.value;
-                                const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                                setForm({ ...form, amount: sanitized });
-                            }}
-                            className="text-lg font-medium"
-                        />
+                <div className="overflow-y-auto max-h-[65vh] space-y-3 py-2 px-2">
+                    {/* Id */}
+                    <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+                        <Label className="font-semibold">Id</Label>
+                        <Input value={displayEntityId || ''} readOnly className="bg-muted" />
                     </div>
 
                     {/* Date */}
-                    <div className="space-y-2">
-                        <Label htmlFor="chargeDate">Date</Label>
+                    <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+                        <Label className="font-semibold">Date</Label>
                         <BritishDatePicker
                             value={form.date ? new Date(form.date) : new Date()}
                             onChange={(date) => {
@@ -263,19 +149,122 @@ export default function ManualSupplierDebtModal({
                                     setForm({ ...form, date: date.toLocaleDateString('en-CA') });
                                 }
                             }}
-                            disabled={!isSuperAdmin}
+                            restrictByRole={true}
+                            disabled={!hasSupplier}
+                            className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50${!hasSupplier ? ' opacity-50 cursor-not-allowed' : ''}`}
                         />
                     </div>
 
-                    {/* Notes */}
-                    <div className="space-y-2">
-                        <Label htmlFor="chargeNotes">Notes / Reason</Label>
-                        <Textarea
+                    {/* Supplier Selector */}
+                    <div className="grid grid-cols-[140px_1fr] items-start gap-x-4">
+                        <Label className="font-semibold pt-2">Supplier</Label>
+                        <div>
+                            {showEntitySelector ? (
+                                <div className="relative">
+                                    <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                aria-expanded={searchOpen}
+                                                className="w-full justify-between font-normal text-left"
+                                            >
+                                                {entityName ? (
+                                                    <span className="truncate">{entityName}</span>
+                                                ) : (
+                                                    <span className="text-muted-foreground">Select supplier...</span>
+                                                )}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                            <Command>
+                                                <CommandInput placeholder="Search supplier..." />
+                                                <CommandList>
+                                                    <CommandEmpty>No supplier found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {entities.map((entity) => {
+                                                            const entityIdStr = String(entity._id || entity.id)
+                                                            const baseSupplierName = entity.company && entity.name 
+                                                                ? `${entity.company}` 
+                                                                : (entity.company || entity.name || '')
+                                                            const isSelected = selectedEntityId === entityIdStr
+
+                                                            return (
+                                                                <CommandItem
+                                                                    key={entityIdStr}
+                                                                    value={`${entity.company || ''} ${entity.name || ''} ${entityIdStr}`}
+                                                                    onSelect={() => {
+                                                                        handleSupplierSelect(entity)
+                                                                        setSearchOpen(false)
+                                                                    }}
+                                                                    className="flex items-center justify-between cursor-pointer"
+                                                                >
+                                                                    <div className="flex items-center min-w-0 mr-2">
+                                                                        <Check
+                                                                            className={cn(
+                                                                                "mr-2 h-4 w-4 shrink-0",
+                                                                                isSelected ? "opacity-100" : "opacity-0"
+                                                                            )}
+                                                                        />
+                                                                        <span className="truncate">{baseSupplierName}</span>
+                                                                    </div>
+                                                                </CommandItem>
+                                                            )
+                                                        })}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                            ) : (
+                                <Input value={entityName || ''} readOnly className="bg-muted" />
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Total Balance */}
+                    {selectedEntity && selectedEntity.balance !== undefined && (
+                        <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+                            <Label className="font-semibold text-red-600">Total Balance</Label>
+                            <Input
+                                value={hasSupplier ? Number(selectedEntity.balance).toFixed(2) : ''}
+                                readOnly
+                                className="bg-muted"
+                            />
+                        </div>
+                    )}
+
+                    {/* Debt Amount */}
+                    <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+                        <Label className="font-semibold">
+                            Debt Amount <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                            id="chargeAmount"
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="0.00"
+                            disabled={!hasSupplier}
+                            value={form.amount}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                                setForm({ ...form, amount: sanitized });
+                            }}
+                        />
+                    </div>
+
+                    {/* Notes / Reason */}
+                    <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+                        <Label className="font-semibold">Notes / Reason</Label>
+                        <Input
                             id="chargeNotes"
                             placeholder="Reason for this debt (e.g., custom packing, extra logistics)..."
+                            disabled={!hasSupplier}
                             value={form.notes}
                             onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                            rows={3}
                         />
                     </div>
                 </div>
@@ -287,7 +276,7 @@ export default function ManualSupplierDebtModal({
                     <Button
                         onClick={handleSubmit}
                         disabled={mutation.isPending || !entityId || !form.amount || !form.date}
-                        className="bg-red-600 hover:bg-red-700"
+                        className="bg-red-600 hover:bg-red-700 text-white"
                     >
                         {mutation.isPending ? (
                             <>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { ChevronUp, ChevronDown, Filter } from "lucide-react"
+import { ChevronUp, ChevronDown, Filter, ArrowUpDown } from "lucide-react"
 
 function normalize(v) {
   return String(v ?? "").toLowerCase()
@@ -12,7 +12,7 @@ export default function PrintableTable({
   data,
   loading = false,
   enableSearch = true,
-  enableSort = false,
+  enableSort = true,
   enableColumnFilters = true,
   pageSize = 50,
   showTotals = false,
@@ -31,6 +31,24 @@ export default function PrintableTable({
     const safeData = Array.isArray(data) ? data : []
     const safeColumns = Array.isArray(columns) ? columns : []
 
+    const getFilterString = (row, key) => {
+      const col = safeColumns.find((c) => c.accessor === key)
+      if (col && typeof col.pdfValue === "function") {
+        return normalize(col.pdfValue(row))
+      }
+      return normalize(row[key])
+    }
+
+    const getSortValue = (row, key) => {
+      let val = row[key]
+      if (typeof val === "object" && val !== null) {
+        const col = safeColumns.find((c) => c.accessor === key)
+        if (col && typeof col.pdfValue === "function") {
+          val = col.pdfValue(row)
+        }
+      }
+      return val
+    }
 
     // Global search filter
     const q = normalize(query)
@@ -39,27 +57,26 @@ export default function PrintableTable({
           const keysToSearch = (searchableColumns && searchableColumns.length > 0)
             ? searchableColumns
             : safeColumns.map((c) => c.accessor).filter(Boolean)
-          return keysToSearch.some((key) => normalize(row[key]).includes(q))
+          return keysToSearch.some((key) => getFilterString(row, key).includes(q))
         })
       : safeData
 
-
     // Column-specific filters
-    // if (enableColumnFilters) {
-    //   Object.entries(columnFilters).forEach(([key, filterValue]) => {
-    //     if (filterValue && filterValue.trim()) {
-    //       const fv = normalize(filterValue)
-    //       base = base.filter((row) => normalize(row[key]).includes(fv))
-    //     }
-    //   })
-    // }
+    if (enableColumnFilters) {
+      Object.entries(columnFilters).forEach(([key, filterValue]) => {
+        if (filterValue && filterValue.trim()) {
+          const fv = normalize(filterValue)
+          base = base.filter((row) => getFilterString(row, key).includes(fv))
+        }
+      })
+    }
 
     // Sorting
     if (enableSort && sort.key) {
       const dir = sort.dir === "asc" ? 1 : -1
       base = [...base].sort((a, b) => {
-        const av = a[sort.key]
-        const bv = b[sort.key]
+        const av = getSortValue(a, sort.key)
+        const bv = getSortValue(b, sort.key)
         if (av === bv) return 0
         if (av === null || av === undefined) return 1
         if (bv === null || bv === undefined) return -1
@@ -70,7 +87,7 @@ export default function PrintableTable({
       })
     }
     return base
-  }, [data, columns, query, sort, enableSort])
+  }, [data, columns, query, sort, enableSort, columnFilters, enableColumnFilters])
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
   const start = (page - 1) * pageSize
@@ -110,24 +127,7 @@ export default function PrintableTable({
           </div>
           </div>
 
-          {/* Search - Hidden in print */}
-          {enableSearch && (
-            <div className="no-print flex items-center gap-2 ">
-              <input
-                type="search"
-                className="h-8 flex-1 max-w-xs rounded border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring"
-                placeholder="Search in table..."
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value)
-                  setPage(1)
-                }}
-              />
-              <span className="text-xs text-muted-foreground">
-                {filtered.length} record{filtered.length !== 1 ? "s" : ""}
-              </span>
-            </div>
-          )}
+          {/* Search - Disabled */}
         </div>
       )}
 
@@ -135,34 +135,48 @@ export default function PrintableTable({
       {/* Table */}
       <div className="overflow-auto max-h-[calc(100vh-260px)] print:overflow-visible print:max-h-none">
         <table className="w-full text-sm">
-          <thead className="bg-muted print:bg-gray-100">
+          <thead className="bg-gray-100 print:bg-gray-100">
             <tr>
               {Array.isArray(columns) &&
                 columns.map((c) => (
                   <th
                     key={c.accessor || c.header}
-                    className={`px-3 py-2.5 text-left font-semibold text-xs uppercase tracking-wider text-muted-foreground border-b border-border ${c.align === "right" ? "text-right" : ""
+                    className={`px-2 py-1.5 text-left font-semibold text-xs uppercase tracking-wider text-muted-foreground border border-border ${c.align === "right" ? "text-right" : ""
                       } ${c.align === "center" ? "text-center" : ""}`}
                   >
-                    {enableSort && c.accessor ? (
-                      <button
-                        onClick={() => toggleSort(c.accessor)}
-                        className="flex items-center gap-1 hover:text-foreground transition-colors no-print-style"
-                      >
-                        <span>{c.header}</span>
-                        {sort.key === c.accessor && (
-                          <span className="no-print">
-                            {sort.dir === "asc" ? (
-                              <ChevronUp className="h-3 w-3" />
-                            ) : (
-                              <ChevronDown className="h-3 w-3" />
-                            )}
-                          </span>
-                        )}
-                      </button>
-                    ) : (
-                      <span>{c.header}</span>
-                    )}
+                    <div className={`flex flex-col gap-2 ${c.align === "right" ? "items-end" : c.align === "center" ? "items-center" : "items-start"}`}>
+                      <span className="truncate">{c.header}</span>
+                      
+                      {(enableColumnFilters || enableSort) && c.accessor && (
+                        <div className="flex items-center gap-1 w-full max-w-[150px] no-print">
+                          {enableColumnFilters && (
+                            <input
+                              type="text"
+                              className={`h-7 px-2 text-xs font-normal border border-input rounded bg-background w-full ${c.align === "right" ? "text-right" : c.align === "center" ? "text-center" : "text-left"}`}
+                              value={columnFilters[c.accessor] || ""}
+                              onChange={(e) => setColumnFilters(prev => ({ ...prev, [c.accessor]: e.target.value }))}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          )}
+                          {enableSort && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSort(c.accessor);
+                              }}
+                              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground shrink-0"
+                              title="Sort"
+                            >
+                              {sort.key === c.accessor ? (
+                                sort.dir === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ArrowUpDown className="h-4 w-4 opacity-50" />
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </th>
                 ))}
             </tr>
@@ -174,14 +188,14 @@ export default function PrintableTable({
                 return (
                   <tr
                     key={row.id ?? row._id ?? idx}
-                    className={`border-b border-border hover:bg-muted/30 print:hover:bg-transparent ${!isVisibleOnScreen ? 'print-only-row' : ''}${onRowClick ? ' cursor-pointer' : ''}`}
+                    className={`${idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-stone-200 print:hover:bg-transparent transition-colors ${!isVisibleOnScreen ? 'print-only-row' : ''}${onRowClick ? ' cursor-pointer' : ''}`}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
                   >
                     {Array.isArray(columns) &&
                       columns.map((c) => (
                         <td
                           key={c.accessor || c.header}
-                          className={`px-3 py-2.5 ${c.align === "right" ? "text-right tabular-nums" : ""
+                          className={`px-2 py-1.5 border border-border ${c.align === "right" ? "text-right tabular-nums" : ""
                             } ${c.align === "center" ? "text-center" : ""}`}
                         >
                           {c.render ? c.render(row) : String(row[c.accessor] ?? "—")}
@@ -194,7 +208,7 @@ export default function PrintableTable({
               <tr>
                 <td
                   colSpan={columns?.length || 1}
-                  className="px-3 py-8 text-center text-muted-foreground"
+                  className="px-2 py-8 text-center text-muted-foreground border border-border"
                 >
                   No data available
                 </td>
@@ -208,7 +222,7 @@ export default function PrintableTable({
                   columns.map((c, idx) => (
                     <td
                       key={c.accessor || c.header}
-                      className={`px-3 py-2.5 ${c.align === "right" ? "text-right tabular-nums" : ""
+                      className={`px-2 py-1.5 border border-border ${c.align === "right" ? "text-right tabular-nums" : ""
                         } ${c.align === "center" ? "text-center" : ""}`}
                     >
                       {idx === 0 ? "TOTAL" : totalsRow[c.accessor] ?? ""}

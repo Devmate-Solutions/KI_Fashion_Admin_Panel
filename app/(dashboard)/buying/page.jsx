@@ -81,6 +81,17 @@ export default function BuyingPage() {
 
   const [page, setPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
+  const [buyingColumnFilters, setBuyingColumnFilters] = useState({
+    purchaseNumber: "",
+    supplierName: "",
+    product: "",
+    purchaseDate: "",
+    boxes: "",
+    quantity: "",
+    colors: "",
+    sizes: "",
+    landedPrice: "",
+  })
   const today = useMemo(() => new Date().toLocaleDateString('en-CA'), [])
   const yesterday = useMemo(() => {
     const d = new Date()
@@ -165,16 +176,175 @@ export default function BuyingPage() {
     })
   }, [allBuyingRows, searchQuery])
 
+  const extractItemColors = (item) => {
+    if (!item) return []
+
+    const extracted = new Set()
+    const collectColors = (value) => {
+      if (!value) return
+      if (Array.isArray(value)) {
+        value.forEach((color) => {
+          if (typeof color === "string" && color.trim()) extracted.add(color.trim())
+          if (color && typeof color === "object" && color.name) extracted.add(String(color.name).trim())
+        })
+        return
+      }
+      if (typeof value === "string" && value.trim()) {
+        extracted.add(value.trim())
+        return
+      }
+      if (typeof value === "object" && value.name) {
+        extracted.add(String(value.name).trim())
+      }
+    }
+
+    collectColors(item.primaryColor)
+    collectColors(item.primaryColorDisplay)
+    collectColors(item.color)
+
+    if (Array.isArray(item.packets)) {
+      item.packets.forEach((packet) => {
+        if (!Array.isArray(packet?.composition)) return
+        packet.composition.forEach((comp) => {
+          collectColors(comp?.color)
+          collectColors(comp?.primaryColor)
+        })
+      })
+    }
+
+    return Array.from(extracted).filter(Boolean)
+  }
+
+  const extractItemSizes = (item) => {
+    if (!item) return []
+
+    const extracted = new Set()
+    const collectSize = (value) => {
+      if (!value) return
+      if (Array.isArray(value)) {
+        value.forEach((size) => {
+          if (typeof size === "string" && size.trim()) extracted.add(size.trim())
+        })
+        return
+      }
+      if (typeof value === "string" && value.trim()) {
+        extracted.add(value.trim())
+      }
+    }
+
+    collectSize(item.size)
+    collectSize(item.sizeArray)
+
+    if (Array.isArray(item.packets)) {
+      item.packets.forEach((packet) => {
+        if (!Array.isArray(packet?.composition)) return
+        packet.composition.forEach((comp) => collectSize(comp?.size))
+      })
+    }
+
+    return Array.from(extracted).filter(Boolean)
+  }
+
+  const getTotalBoxesValue = (row) => {
+    let totalBoxes = row.totalBoxes
+    if (totalBoxes === undefined || totalBoxes === null) totalBoxes = row.raw?.totalBoxes
+    if ((totalBoxes === undefined || totalBoxes === null) && row.dispatchOrder) totalBoxes = row.dispatchOrder.totalBoxes
+    if ((totalBoxes === undefined || totalBoxes === null) && row.raw?.dispatchOrder) totalBoxes = row.raw.dispatchOrder.totalBoxes
+    if (typeof totalBoxes === "string") {
+      const parsed = parseInt(totalBoxes, 10)
+      totalBoxes = Number.isNaN(parsed) ? 0 : parsed
+    }
+    return totalBoxes ?? 0
+  }
+
+  const getLandedPriceValue = (row) => {
+    let landedPrice = row?.landedPrice
+    if ((landedPrice == null || landedPrice === 0) && row?.currentItem?.costPrice) {
+      const exRate = row?.exchangeRate || 1
+      const pct = row?.percentage || 0
+      landedPrice = (row.currentItem.costPrice / exRate) * (1 + (pct / 100))
+    }
+    return landedPrice
+  }
+
+  const filteredBuyingRows = useMemo(() => {
+    const purchaseNumberFilter = buyingColumnFilters.purchaseNumber.trim().toLowerCase()
+    const supplierFilter = buyingColumnFilters.supplierName.trim().toLowerCase()
+    const productFilter = buyingColumnFilters.product.trim().toLowerCase()
+    const dateFilter = buyingColumnFilters.purchaseDate
+    const boxesFilter = buyingColumnFilters.boxes.trim().toLowerCase()
+    const quantityFilter = buyingColumnFilters.quantity.trim().toLowerCase()
+    const colorsFilter = buyingColumnFilters.colors.trim().toLowerCase()
+    const sizesFilter = buyingColumnFilters.sizes.trim().toLowerCase()
+    const landedPriceFilter = buyingColumnFilters.landedPrice.trim().toLowerCase()
+
+    return buyingRows.filter((row) => {
+      if (purchaseNumberFilter) {
+        const purchaseNumber = String(row.purchaseNumber || "").toLowerCase()
+        if (!purchaseNumber.includes(purchaseNumberFilter)) return false
+      }
+
+      if (supplierFilter) {
+        const supplierCompany = String(row.supplier?.company || row.supplierCompany || "").toLowerCase()
+        const supplierName = String(row.supplier?.name || row.supplierName || "").toLowerCase()
+        if (!supplierCompany.includes(supplierFilter) && !supplierName.includes(supplierFilter)) return false
+      }
+
+      if (productFilter) {
+        const productName = String(row.productName || "").toLowerCase()
+        const productCode = String(row.productCode || "").toLowerCase()
+        if (!productName.includes(productFilter) && !productCode.includes(productFilter)) return false
+      }
+
+      if (dateFilter) {
+        const purchaseDate = row.purchaseDate ? new Date(row.purchaseDate) : null
+        if (!purchaseDate || Number.isNaN(purchaseDate.getTime())) return false
+        const rowDate = purchaseDate.toLocaleDateString("en-CA")
+        if (rowDate !== dateFilter) return false
+      }
+
+      if (boxesFilter) {
+        const totalBoxesValue = String(getTotalBoxesValue(row)).toLowerCase()
+        if (!totalBoxesValue.includes(boxesFilter)) return false
+      }
+
+      if (quantityFilter) {
+        const quantityValue = String(row.quantity || 0).toLowerCase()
+        if (!quantityValue.includes(quantityFilter)) return false
+      }
+
+      if (colorsFilter) {
+        const colorString = extractItemColors(row.currentItem).join(" ").toLowerCase()
+        if (!colorString.includes(colorsFilter)) return false
+      }
+
+      if (sizesFilter) {
+        const sizeString = extractItemSizes(row.currentItem).join(" ").toLowerCase()
+        if (!sizeString.includes(sizesFilter)) return false
+      }
+
+      if (landedPriceFilter) {
+        const landedPrice = getLandedPriceValue(row)
+        const landedPriceText = landedPrice != null && landedPrice !== 0 ? String(Number(landedPrice).toFixed(2)).toLowerCase() : ""
+        if (!landedPriceText.includes(landedPriceFilter)) return false
+      }
+
+      return true
+    })
+  }, [buyingRows, buyingColumnFilters])
+
   // Calculate pagination - use filtered results when searching
   const pagination = useMemo(() => {
-    if (!searchQuery.trim()) {
+    const hasColumnFilters = Object.values(buyingColumnFilters).some((value) => String(value || "").trim())
+
+    if (!searchQuery.trim() && !hasColumnFilters) {
       // No search - use API pagination
       return purchasesData?.pagination || {}
     }
 
-    // Search active - calculate pagination from filtered results
+    // Search or column filtering active - calculate pagination from filtered results
     const pageSize = 20
-    const totalFiltered = buyingRows.length
+    const totalFiltered = filteredBuyingRows.length
     const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize))
     const currentPageNum = Math.min(page, totalPages)
 
@@ -184,19 +354,21 @@ export default function BuyingPage() {
       totalItems: totalFiltered,
       pageSize,
     }
-  }, [buyingRows, searchQuery, page, purchasesData?.pagination])
+  }, [filteredBuyingRows, buyingColumnFilters, searchQuery, page, purchasesData?.pagination])
 
   // Get paginated rows for display
   const displayRows = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return buyingRows // API already paginated
+    const hasColumnFilters = Object.values(buyingColumnFilters).some((value) => String(value || "").trim())
+
+    if (!searchQuery.trim() && !hasColumnFilters) {
+      return filteredBuyingRows // API already paginated when no column filters
     }
 
-    // Client-side pagination for filtered results
+    // Client-side pagination for search/column-filtered results
     const pageSize = 20
     const startIndex = ((pagination.currentPage || 1) - 1) * pageSize
-    return buyingRows.slice(startIndex, startIndex + pageSize)
-  }, [buyingRows, searchQuery, pagination.currentPage])
+    return filteredBuyingRows.slice(startIndex, startIndex + pageSize)
+  }, [filteredBuyingRows, buyingColumnFilters, searchQuery, pagination.currentPage])
 
   const deliveryMetrics = purchasesData?.metrics ?? {
     total: buyingRows.length,
@@ -227,6 +399,11 @@ export default function BuyingPage() {
       {
         header: "Buying ID",
         accessor: "purchaseNumber",
+        filter: {
+          type: "text",
+          value: buyingColumnFilters.purchaseNumber,
+          onChange: (val) => setBuyingColumnFilters((prev) => ({ ...prev, purchaseNumber: val })),
+        },
         render: (row) => (
           <div className="flex flex-col gap-0.5">
             {row.dispatchOrderId ? (
@@ -250,6 +427,11 @@ export default function BuyingPage() {
       {
         header: "Date",
         accessor: "purchaseDate",
+        filter: {
+          type: "date",
+          value: buyingColumnFilters.purchaseDate,
+          onChange: (val) => setBuyingColumnFilters((prev) => ({ ...prev, purchaseDate: val })),
+        },
         render: (row) => (
           <span className="font-medium text-foreground">
             {row.purchaseDate ? new Date(row.purchaseDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "—"}
@@ -260,6 +442,11 @@ export default function BuyingPage() {
       {
         header: "Supplier",
         accessor: "supplierName",
+        filter: {
+          type: "text",
+          value: buyingColumnFilters.supplierName,
+          onChange: (val) => setBuyingColumnFilters((prev) => ({ ...prev, supplierName: val })),
+        },
         render: (row) => {
           const company = row.supplier?.company || row.supplierCompany
           const name = row.supplier?.name || row.supplierName
@@ -281,6 +468,11 @@ export default function BuyingPage() {
       {
         header: "Products",
         accessor: "productsSearch",
+        filter: {
+          type: "text",
+          value: buyingColumnFilters.product,
+          onChange: (val) => setBuyingColumnFilters((prev) => ({ ...prev, product: val })),
+        },
         render: (row) => {
           if (!row.currentItem) return <span className="text-sm text-muted-foreground">No product</span>
 
@@ -315,53 +507,31 @@ export default function BuyingPage() {
       {
         header: "Boxes",
         accessor: "totalBoxes",
+        filter: {
+          type: "text",
+          value: buyingColumnFilters.boxes,
+          onChange: (val) => setBuyingColumnFilters((prev) => ({ ...prev, boxes: val })),
+        },
         render: (row) => {
           // Match Dispatch Orders approach: purchases are created from dispatch orders
           // so they should have totalBoxes at root level, same as dispatch orders
-          let totalBoxes = row.totalBoxes
-
-          // If not at root, check other possible locations
-          if (totalBoxes === undefined || totalBoxes === null) {
-            totalBoxes = row.raw?.totalBoxes
-          }
-
-          // Check dispatchOrder if populated
-          if ((totalBoxes === undefined || totalBoxes === null) && row.dispatchOrder) {
-            totalBoxes = row.dispatchOrder.totalBoxes
-          }
-
-          // Check raw dispatchOrder
-          if ((totalBoxes === undefined || totalBoxes === null) && row.raw?.dispatchOrder) {
-            totalBoxes = row.raw.dispatchOrder.totalBoxes
-          }
-
-          // Parse if string
-          if (typeof totalBoxes === 'string') {
-            const parsed = parseInt(totalBoxes)
-            totalBoxes = isNaN(parsed) ? 0 : parsed
-          }
-
-          // Default to 0 if still undefined/null (match Dispatch Orders behavior)
-          totalBoxes = totalBoxes ?? 0
+          const totalBoxes = getTotalBoxesValue(row)
 
           // Display exactly like Dispatch Orders: show the number (including 0)
           return <span className="tabular-nums text-sm font-semibold text-foreground">{totalBoxes}</span>
         },
         pdfValue: (row) => {
-          let totalBoxes = row.totalBoxes
-          if (totalBoxes === undefined || totalBoxes === null) totalBoxes = row.raw?.totalBoxes
-          if ((totalBoxes === undefined || totalBoxes === null) && row.dispatchOrder) totalBoxes = row.dispatchOrder.totalBoxes
-          if ((totalBoxes === undefined || totalBoxes === null) && row.raw?.dispatchOrder) totalBoxes = row.raw.dispatchOrder.totalBoxes
-          if (typeof totalBoxes === 'string') {
-            const parsed = parseInt(totalBoxes)
-            totalBoxes = isNaN(parsed) ? 0 : parsed
-          }
-          return totalBoxes ?? 0
+          return getTotalBoxesValue(row)
         }
       },
       {
         header: "Qty",
         accessor: "quantity",
+        filter: {
+          type: "text",
+          value: buyingColumnFilters.quantity,
+          onChange: (val) => setBuyingColumnFilters((prev) => ({ ...prev, quantity: val })),
+        },
         render: (row) => {
           const itemQty = row.quantity || 0
 
@@ -374,48 +544,22 @@ export default function BuyingPage() {
       {
         header: "Colors",
         accessor: "colors",
+        filter: {
+          type: "text",
+          value: buyingColumnFilters.colors,
+          onChange: (val) => setBuyingColumnFilters((prev) => ({ ...prev, colors: val })),
+        },
+        className: "whitespace-normal max-w-[180px] overflow-hidden",
         render: (row, { isExpanded } = {}) => {
           if (!row.currentItem) return <span className="text-muted-foreground">—</span>
 
           const item = row.currentItem
-
-          const extractColors = (value) => {
-            const extracted = []
-            if (!value) return extracted
-            if (Array.isArray(value)) {
-              value.forEach(color => {
-                if (color && typeof color === 'string' && color.trim()) extracted.push(color.trim())
-                else if (color && typeof color === 'object' && color.name) extracted.push(color.name.trim())
-              })
-            } else if (typeof value === 'string' && value.trim()) {
-              extracted.push(value.trim())
-            } else if (typeof value === 'object' && value.name) {
-              extracted.push(value.name.trim())
-            }
-            return extracted
-          }
-
-          const colors = new Set()
-          if (item.primaryColor) extractColors(item.primaryColor).forEach(c => colors.add(c))
-          if (item.primaryColorDisplay) extractColors(item.primaryColorDisplay).forEach(c => colors.add(c))
-          if (item.color) extractColors(item.color).forEach(c => colors.add(c))
-          if (item.packets && Array.isArray(item.packets)) {
-            item.packets.forEach(packet => {
-              if (packet.composition && Array.isArray(packet.composition)) {
-                packet.composition.forEach(comp => {
-                  if (comp.color) extractColors(comp.color).forEach(c => colors.add(c))
-                  if (comp.primaryColor) extractColors(comp.primaryColor).forEach(c => colors.add(c))
-                })
-              }
-            })
-          }
-
-          const colorArray = Array.from(colors).filter(Boolean)
+          const colorArray = extractItemColors(item)
           if (colorArray.length === 0) return <span className="text-muted-foreground">—</span>
 
           if (isExpanded) {
             return (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1 max-w-[520px]">
                 {colorArray.map((color, idx) => (
                   <span key={idx} className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px] font-medium">{color}</span>
                 ))}
@@ -423,73 +567,36 @@ export default function BuyingPage() {
             )
           }
 
-          return <TruncatedBadgeList items={colorArray} max={3} colorClass="bg-blue-100 text-blue-800" />
+          return (
+            <div className="max-w-[180px] overflow-hidden">
+              <TruncatedBadgeList items={colorArray} max={3} colorClass="bg-blue-100 text-blue-800" />
+            </div>
+          )
         },
         pdfValue: (row) => {
           if (!row.currentItem) return "—"
-          const item = row.currentItem
-          const extractColors = (value) => {
-            const extracted = []
-            if (!value) return extracted
-            if (Array.isArray(value)) {
-              value.forEach(color => {
-                if (color && typeof color === 'string' && color.trim()) extracted.push(color.trim())
-                else if (color && typeof color === 'object' && color.name) extracted.push(color.name.trim())
-              })
-            } else if (typeof value === 'string' && value.trim()) {
-              extracted.push(value.trim())
-            } else if (typeof value === 'object' && value.name) {
-              extracted.push(value.name.trim())
-            }
-            return extracted
-          }
-          const colors = new Set()
-          if (item.primaryColor) extractColors(item.primaryColor).forEach(c => colors.add(c))
-          if (item.primaryColorDisplay) extractColors(item.primaryColorDisplay).forEach(c => colors.add(c))
-          if (item.color) extractColors(item.color).forEach(c => colors.add(c))
-          if (item.packets && Array.isArray(item.packets)) {
-            item.packets.forEach(packet => {
-              if (packet.composition && Array.isArray(packet.composition)) {
-                packet.composition.forEach(comp => {
-                  if (comp.color) extractColors(comp.color).forEach(c => colors.add(c))
-                  if (comp.primaryColor) extractColors(comp.primaryColor).forEach(c => colors.add(c))
-                })
-              }
-            })
-          }
-          return Array.from(colors).filter(Boolean).join(", ") || "—"
+          return extractItemColors(row.currentItem).join(", ") || "—"
         }
       },
       {
         header: "Sizes",
         accessor: "sizes",
+        filter: {
+          type: "text",
+          value: buyingColumnFilters.sizes,
+          onChange: (val) => setBuyingColumnFilters((prev) => ({ ...prev, sizes: val })),
+        },
+        className: "whitespace-normal max-w-[140px] overflow-hidden",
         render: (row, { isExpanded } = {}) => {
           const item = row.currentItem
           if (!item) return <span className="text-muted-foreground">—</span>
 
-          const sizes = new Set()
-          // Check current item's size fields
-          if (item.size) {
-            if (Array.isArray(item.size)) item.size.forEach(s => { if (s && s.trim()) sizes.add(s.trim()) })
-            else if (typeof item.size === 'string' && item.size.trim()) sizes.add(item.size.trim())
-          }
-          if (item.sizeArray && Array.isArray(item.sizeArray)) {
-            item.sizeArray.forEach(s => { if (s && s.trim()) sizes.add(s.trim()) })
-          }
-          if (item.packets && item.packets.length > 0) {
-            item.packets.forEach(packet => {
-              if (packet.composition) {
-                packet.composition.forEach(comp => { if (comp.size && comp.size.trim()) sizes.add(comp.size.trim()) })
-              }
-            })
-          }
-
-          const sizeArray = Array.from(sizes).filter(Boolean)
+          const sizeArray = extractItemSizes(item)
           if (sizeArray.length === 0) return <span className="text-muted-foreground">—</span>
 
           if (isExpanded) {
             return (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1 max-w-[520px]">
                 {sizeArray.map((size, idx) => (
                   <span key={idx} className="inline-block px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-[10px] font-medium">{size}</span>
                 ))}
@@ -497,27 +604,15 @@ export default function BuyingPage() {
             )
           }
 
-          return <TruncatedBadgeList items={sizeArray} max={3} colorClass="bg-green-100 text-green-800" />
+          return (
+            <div className="max-w-[140px] overflow-hidden">
+              <TruncatedBadgeList items={sizeArray} max={3} colorClass="bg-green-100 text-green-800" />
+            </div>
+          )
         },
         pdfValue: (row) => {
-          const item = row.currentItem
-          if (!item) return "—"
-          const sizes = new Set()
-          if (item.size) {
-            if (Array.isArray(item.size)) item.size.forEach(s => { if (s && s.trim()) sizes.add(s.trim()) })
-            else if (typeof item.size === 'string' && item.size.trim()) sizes.add(item.size.trim())
-          }
-          if (item.sizeArray && Array.isArray(item.sizeArray)) {
-            item.sizeArray.forEach(s => { if (s && s.trim()) sizes.add(s.trim()) })
-          }
-          if (item.packets && item.packets.length > 0) {
-            item.packets.forEach(packet => {
-              if (packet.composition) {
-                packet.composition.forEach(comp => { if (comp.size && comp.size.trim()) sizes.add(comp.size.trim()) })
-              }
-            })
-          }
-          return Array.from(sizes).filter(Boolean).sort().join(", ") || "—"
+          if (!row.currentItem) return "—"
+          return extractItemSizes(row.currentItem).sort().join(", ") || "—"
         }
       },
 
@@ -542,15 +637,14 @@ export default function BuyingPage() {
 
       {
         header: "Landed Price",
+        accessor: "landedPrice",
+        filter: {
+          type: "text",
+          value: buyingColumnFilters.landedPrice,
+          onChange: (val) => setBuyingColumnFilters((prev) => ({ ...prev, landedPrice: val })),
+        },
         render: (row) => {
-          let landedPrice = row?.landedPrice;
-
-          // Frontend fallback if backend somehow misses it or for legacy data
-          if ((landedPrice == null || landedPrice === 0) && row?.currentItem?.costPrice) {
-            const exRate = row?.exchangeRate || 1;
-            const pct = row?.percentage || 0;
-            landedPrice = (row.currentItem.costPrice / exRate) * (1 + (pct / 100));
-          }
+          const landedPrice = getLandedPriceValue(row)
 
           return (
             <span className="tabular-nums font-semibold text-sm text-foreground">
@@ -559,12 +653,7 @@ export default function BuyingPage() {
           )
         },
         pdfValue: (row) => {
-          let landedPrice = row?.landedPrice;
-          if ((landedPrice == null || landedPrice === 0) && row?.currentItem?.costPrice) {
-            const exRate = row?.exchangeRate || 1;
-            const pct = row?.percentage || 0;
-            landedPrice = (row.currentItem.costPrice / exRate) * (1 + (pct / 100));
-          }
+          const landedPrice = getLandedPriceValue(row)
           return landedPrice != null && landedPrice !== 0 ? landedPrice.toFixed(2) : "—"
         }
       },
@@ -647,7 +736,7 @@ export default function BuyingPage() {
         },
       },
     ]
-  }, [router])
+  }, [router, isSuperAdmin, buyingColumnFilters])
 
   const handleDownloadPDF = async () => {
     try {
@@ -861,6 +950,7 @@ export default function BuyingPage() {
             }}
             pageSize={20}
             expandableRow={true}
+            enableColumnFilters={true}
           />
         </div>
 

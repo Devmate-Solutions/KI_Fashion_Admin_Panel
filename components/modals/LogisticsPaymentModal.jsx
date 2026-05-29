@@ -1,21 +1,21 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, CreditCard, Banknote, Truck } from "lucide-react"
+import { Loader2, ChevronsUpDown, Check } from "lucide-react"
 import { ledgerAPI } from "@/lib/api/endpoints/ledger"
 import { useQueryClient } from "@tanstack/react-query"
 import { useLogisticsPayableDetail } from "@/lib/hooks/useLogisticsPayables"
 import { useLogisticsLedger } from "@/lib/hooks/useLedger"
-import { useMemo } from "react"
 import toast from "react-hot-toast"
 import BritishDatePicker from "@/components/BritishDatePicker"
 import { useAuthStore } from "@/store/store"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { cn } from "@/lib/utils"
 
 // Logistics currency format (GBP - Pounds)
 function currency(n) {
@@ -45,9 +45,7 @@ export default function LogisticsPaymentModal({
   const [showDebugInfo, setShowDebugInfo] = useState(false)
   const [selectedEntityId, setSelectedEntityId] = useState(initialEntityId || '')
   const [searchQuery, setSearchQuery] = useState('')
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const searchInputRef = useRef(null)
-  const dropdownRef = useRef(null)
+  const [searchOpen, setSearchOpen] = useState(false)
 
   const [transactionType, setTransactionType] = useState('credit')
   const [form, setForm] = useState({
@@ -90,7 +88,7 @@ export default function LogisticsPaymentModal({
       setForm({ cashAmount: '', bankAmount: '', debitAmount: '', date: '', notes: '' })
       setTransactionType('credit')
       setSearchQuery('')
-      setShowSuggestions(false)
+      setSearchOpen(false)
       setApiResponses([])
       setShowDebugInfo(false)
       if (!initialEntityId) {
@@ -99,34 +97,17 @@ export default function LogisticsPaymentModal({
     }
   }, [open, initialEntityId])
 
-  // Filter entities based on search query
-  const filteredEntities = searchQuery.trim()
-    ? entities.filter((entity) => {
+  // Filter entities based on search query using useMemo
+  const filteredEntities = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return entities
+
+    return entities.filter((entity) => {
       const name = (entity.name || '').toLowerCase()
       const company = (entity.company || '').toLowerCase()
-      const query = searchQuery.toLowerCase()
       return name.includes(query) || company.includes(query)
-    }).slice(0, 10)
-    : []
-
-  // Handle click outside to close dropdown
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target) &&
-        searchInputRef.current &&
-        !searchInputRef.current.contains(event.target)
-      ) {
-        setShowSuggestions(false)
-      }
-    }
-
-    if (showSuggestions) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [showSuggestions])
+    })
+  }, [entities, searchQuery])
 
   const cashAmount = parseFloat(form.cashAmount) || 0
   const bankAmount = parseFloat(form.bankAmount) || 0
@@ -134,18 +115,20 @@ export default function LogisticsPaymentModal({
   const totalCreditPayment = cashAmount + bankAmount
 
   // Get entity details based on selection
-  const selectedEntity = entities.find(e => (e._id || e.id) === selectedEntityId)
+  const selectedEntity = useMemo(() => {
+    return entities.find(e => (e._id || e.id) === selectedEntityId) || null
+  }, [entities, selectedEntityId])
+
   const entityName = selectedEntity?.name || selectedEntity?.company || initialEntityName || ''
   const entityId = selectedEntityId || initialEntityId
+  const displayEntityId = selectedEntity?.logisticsCompanyId || selectedEntity?._id || selectedEntity?.id || entityId || ''
 
   // Calculate balance from ledger entries using the same method as the main page
-  // This matches the running balance calculation used in the logistics ledger page
   const ledgerBalance = useMemo(() => {
     if (!ledgerData?.entries || ledgerData.entries.length === 0) {
-      return null  // Return null to indicate no data available
+      return null
     }
     
-    // Filter entries to only include relevant transaction types (same as main page)
     const filteredEntries = ledgerData.entries.filter(entry =>
       entry.transactionType === 'charge' ||
       entry.transactionType === 'payment' ||
@@ -156,15 +139,12 @@ export default function LogisticsPaymentModal({
       return null
     }
     
-    // Sort by createdAt ASCENDING (oldest first) for running balance calculation (same as main page)
     const sortedAsc = [...filteredEntries].sort((a, b) => {
       const createdAtA = new Date(a.createdAt || a.date || 0).getTime()
       const createdAtB = new Date(b.createdAt || b.date || 0).getTime()
       return createdAtA - createdAtB
     })
     
-    // Calculate running balance (same method as main page)
-    // Debit = charge (increases what admin owes), Credit = payment (decreases what admin owes)
     let runningBalance = 0
     for (const entry of sortedAsc) {
       runningBalance += (Number(entry.debit) || 0) - (Number(entry.credit) || 0)
@@ -173,14 +153,12 @@ export default function LogisticsPaymentModal({
     return runningBalance
   }, [ledgerData])
 
-  // Calculate total balance: prioritize calculated balance from ledger entries (matches main page)
-  // Fallback to initialBalance prop, then other sources
-  // Only calculate balance if a company is selected
+  // Calculate total balance: prioritize calculated balance from ledger entries
   const totalBalance = entityId && entityId !== 'all'
     ? (ledgerBalance !== null
-      ? ledgerBalance  // Use calculated balance from ledger entries (matches main page calculation)
+      ? ledgerBalance
       : (initialBalance !== undefined && initialBalance !== null
-        ? initialBalance  // Fallback to balance from main page prop
+        ? initialBalance
         : (companyDetail?.outstandingBalance !== undefined
           ? companyDetail.outstandingBalance
           : (selectedEntity?.balance !== undefined
@@ -188,27 +166,19 @@ export default function LogisticsPaymentModal({
             : 0))))
     : 0
 
-  // Combined loading state
   const isLoadingBalance = isLoadingLedger || isLoadingPayableDetail
 
   const handleClose = () => {
     setForm({ cashAmount: '', bankAmount: '', debitAmount: '', date: '', notes: '' })
     setTransactionType('credit')
     setSearchQuery('')
-    setShowSuggestions(false)
+    setSearchOpen(false)
     setApiResponses([])
     setShowDebugInfo(false)
     if (!initialEntityId) {
       setSelectedEntityId('')
     }
     onClose()
-  }
-
-  const handleCompanySelect = (entity) => {
-    const entityIdStr = String(entity._id || entity.id)
-    setSelectedEntityId(entityIdStr)
-    setSearchQuery('')
-    setShowSuggestions(false)
   }
 
   const handleSubmit = async () => {
@@ -241,9 +211,6 @@ export default function LogisticsPaymentModal({
     try {
       if (transactionType === 'credit') {
         let isPendingApproval = false
-        // Credit transactions (payments)
-        // Process sequentially to avoid race conditions with pending charges
-        // Cash payment is processed first, then bank payment sees updated balances
         if (cashAmount > 0) {
           const cashResponse = await ledgerAPI.distributeLogisticsPayment(entityId, {
             amount: cashAmount,
@@ -284,7 +251,6 @@ export default function LogisticsPaymentModal({
 
         toast.success(`Payment of ${currency(totalCreditPayment)} recorded successfully`)
       } else {
-        // Debit transactions (charges/adjustments)
         const debitResponse = await ledgerAPI.createEntry({
           type: 'logistics',
           entityId: entityId,
@@ -340,270 +306,234 @@ export default function LogisticsPaymentModal({
   }
 
   const showEntitySelector = entities.length > 0
+  const hasCompany = !!entityId
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Truck className="h-5 w-5" />
-            {transactionType === 'credit' ? 'Add Logistics Payment' : 'Add Logistics Charge'}
+          <DialogTitle className="text-base font-semibold">
+            Logistics Details
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          {/* Transaction Type Selector */}
-          <div className="space-y-2">
-            <Label>Transaction Type</Label>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  value="credit"
-                  checked={transactionType === 'credit'}
-                  onChange={(e) => {
+        <div className="overflow-y-auto max-h-[65vh] space-y-3 py-2 px-2">
+          {/* Transaction Type Toggle */}
+          <div className="grid grid-cols-[140px_1fr] items-start gap-x-4">
+            <Label className="pt-2 font-semibold">Transaction Type</Label>
+            <div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={transactionType === 'credit' ? 'default' : 'outline'}
+                  size="sm"
+                  className={transactionType === 'credit' ? 'bg-green-600 hover:bg-green-700 text-white font-medium' : ''}
+                  onClick={() => {
                     setTransactionType('credit')
                     setForm({ ...form, debitAmount: '' })
                   }}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm">Credit (Payment to Company)</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  value="debit"
-                  checked={transactionType === 'debit'}
-                  onChange={(e) => {
+                >
+                  Receive Payment
+                </Button>
+                <Button
+                  type="button"
+                  variant={transactionType === 'debit' ? 'default' : 'outline'}
+                  size="sm"
+                  className={transactionType === 'debit' ? 'bg-red-600 hover:bg-red-700 text-white font-medium' : ''}
+                  onClick={() => {
                     setTransactionType('debit')
                     setForm({ ...form, cashAmount: '', bankAmount: '' })
                   }}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm">Debit (Charge/Adjustment)</span>
-              </label>
+                >
+                  Issue Credit/Charge
+                </Button>
+              </div>
             </div>
           </div>
 
-          {/* Entity Selector - Text Search Input */}
-          {showEntitySelector && (
-            <div className="space-y-2">
-              <Label htmlFor="entity-search">Select Logistics Company</Label>
-              <div className="relative">
-                <Input
-                  id="entity-search"
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search company by name..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    setSearchQuery(value)
-                    setShowSuggestions(value.trim().length > 0)
-                  }}
-                  onFocus={() => {
-                    if (searchQuery.trim().length > 0) {
-                      setShowSuggestions(true)
-                    }
-                  }}
-                />
-                {showSuggestions && filteredEntities.length > 0 && (
-                  <div
-                    ref={dropdownRef}
-                    className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-auto"
-                  >
-                    <div className="p-1">
-                      {filteredEntities.map((entity) => {
-                        const entityIdStr = String(entity._id || entity.id)
-                        const entityName = entity.name || entity.company || ''
-                        const isSelected = selectedEntityId === entityIdStr
+          {/* Id */}
+          {/* <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+            <Label className="font-semibold">Id</Label>
+            <Input value={displayEntityId || ''} readOnly className="bg-muted" />
+          </div> */}
 
-                        return (
-                          <div
-                            key={entityIdStr}
-                            onClick={() => handleCompanySelect(entity)}
-                            className={`flex items-center px-3 py-2 text-sm rounded-sm cursor-pointer hover:bg-slate-100 ${isSelected ? 'bg-slate-50 font-medium' : ''
-                              }`}
-                          >
-                            {entityName}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-                {showSuggestions && searchQuery.trim().length > 0 && filteredEntities.length === 0 && (
-                  <div
-                    ref={dropdownRef}
-                    className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg p-3 text-sm text-muted-foreground"
-                  >
-                    No companies found.
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          {/* Date */}
+          <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+            <Label className="font-semibold">Date</Label>
+            <BritishDatePicker
+              value={form.date ? new Date(form.date) : new Date()}
+              onChange={(date) => {
+                if (date) {
+                  setForm({ ...form, date: date.toLocaleDateString('en-CA') });
+                }
+              }}
+              restrictByRole={true}
+              disabled={!hasCompany}
+              className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50${!hasCompany ? ' opacity-50 cursor-not-allowed' : ''}`}
+            />
+          </div>
 
-          {/* Entity Info */}
-          <div className="rounded-lg border bg-muted/30 p-4">
-            <div className="space-y-2">
-              <div>
-                <Label className="text-xs text-muted-foreground">Logistics Company</Label>
-                <p className="font-semibold">{entityName || 'Not selected'}</p>
-              </div>
-              {transactionType === 'credit' && (
-                <div>
-                  <Label className="text-xs text-muted-foreground">Total Balance (GBP)</Label>
-                  <p className={`font-semibold text-lg ${totalBalance > 0 ? 'text-red-600' : totalBalance < 0 ? 'text-green-600' : 'text-slate-600'}`}>
-                    {isLoadingBalance ? (
-                      <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
-                    ) : entityId && entityId !== 'all' ? (
-                      <span>
-                        {totalBalance < 0 && '-'}
-                        {currency(Math.abs(totalBalance))}
-                      </span>
-                    ) : (
-                      '-'
-                    )}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {totalBalance > 0 ? 'Admin owes company' : totalBalance < 0 ? 'Company owes admin (credit)' : 'No balance'}
-                  </p>
+          {/* Company Selector */}
+          <div className="grid grid-cols-[140px_1fr] items-start gap-x-4">
+            <Label className="font-semibold pt-2">Company</Label>
+            <div>
+              {showEntitySelector ? (
+                <div className="relative">
+                  <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={searchOpen}
+                        className="w-full justify-between font-normal text-left"
+                      >
+                        {entityName ? (
+                          <span className="truncate">{entityName}</span>
+                        ) : (
+                          <span className="text-muted-foreground">Select company...</span>
+                        )}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search company..." />
+                        <CommandList>
+                          <CommandEmpty>No company found.</CommandEmpty>
+                          <CommandGroup>
+                            {entities.map((entity) => {
+                              const entityIdStr = String(entity._id || entity.id)
+                              const name = entity.name || entity.company || ''
+                              const isSelected = selectedEntityId === entityIdStr
+
+                              return (
+                                <CommandItem
+                                  key={entityIdStr}
+                                  value={`${name} ${entityIdStr}`}
+                                  onSelect={() => {
+                                    setSelectedEntityId(entityIdStr)
+                                    setSearchOpen(false)
+                                  }}
+                                  className="flex items-center justify-between cursor-pointer"
+                                >
+                                  <div className="flex items-center min-w-0 mr-2">
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4 shrink-0",
+                                        isSelected ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    <span className="truncate">{name}</span>
+                                  </div>
+                                </CommandItem>
+                              )
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
+              ) : (
+                <Input value={entityName || ''} readOnly className="bg-muted" />
               )}
             </div>
           </div>
 
-          {/* Credit Form Fields */}
+          {/* Total Balance */}
           {transactionType === 'credit' && (
-            <>
-              {/* Cash Amount */}
-              <div className="space-y-2">
-                <Label htmlFor="cashAmount" className="flex items-center gap-2">
-                  <Banknote className="h-4 w-4 text-green-600" />
-                  Cash Amount (£)
-                </Label>
-                <Input
-                  id="cashAmount"
-                  type="text"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={form.cashAmount}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // Allow only numbers and one decimal point
-                    const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                    setForm({ ...form, cashAmount: sanitized });
-                  }}
-                  className="text-right"
-                />
-              </div>
-
-              {/* Bank Amount */}
-              <div className="space-y-2">
-                <Label htmlFor="bankAmount" className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-blue-600" />
-                  Bank Amount (£)
-                </Label>
-                <Input
-                  id="bankAmount"
-                  type="text"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={form.bankAmount}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // Allow only numbers and one decimal point
-                    const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                    setForm({ ...form, bankAmount: sanitized });
-                  }}
-                  className="text-right"
-                />
-              </div>
-
-              {/* Total Payment Display */}
-              {totalCreditPayment > 0 && (
-                <div className={`rounded-lg border p-3 ${totalCreditPayment > totalBalance && totalBalance > 0 ? 'bg-amber-50 border-amber-200' : 'bg-green-50'}`}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Total Payment:</span>
-                    <span className="text-lg font-bold text-green-700">{currency(totalCreditPayment)}</span>
-                  </div>
-                  {totalBalance > 0 && totalCreditPayment <= totalBalance && (
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs text-muted-foreground">Remaining after payment:</span>
-                      <span className="text-sm font-medium">{currency(totalBalance - totalCreditPayment)}</span>
-                    </div>
-                  )}
-                  {totalBalance > 0 && totalCreditPayment > totalBalance && (
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs text-amber-700 font-medium">Credit to Company:</span>
-                      <span className="text-sm font-bold text-amber-700">{currency(totalCreditPayment - totalBalance)}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Debit Form Fields */}
-          {transactionType === 'debit' && (
-            <div className="space-y-2">
-              <Label htmlFor="debitAmount" className="flex items-center gap-2">
-                <Banknote className="h-4 w-4 text-red-600" />
-                Charge Amount (£)
-              </Label>
+            <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+              <Label className="font-semibold text-red-600">Total Balance</Label>
               <Input
-                id="debitAmount"
-                type="text"
-                inputMode="decimal"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                value={form.debitAmount}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  // Allow only numbers and one decimal point
-                  const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                  setForm({ ...form, debitAmount: sanitized });
-                }}
-                className="text-right"
+                value={hasCompany ? (isLoadingBalance ? 'Loading...' : currency(totalBalance)) : ''}
+                readOnly
+                className="bg-muted"
               />
             </div>
           )}
 
-          {/* Date (mandatory) */}
-          <div className="space-y-2">
-            <Label htmlFor="date">
-              Date <span className="text-red-500">*</span>
-            </Label>
-            <BritishDatePicker
-                value={form.date ? new Date(form.date) : new Date()}
-                onChange={(date) => {
-                    if (date) {
-                        setForm({ ...form, date: date.toLocaleDateString('en-CA') });
-                    }
-                }}
-                restrictByRole={true}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            />
-          </div>
+          {/* Amounts based on Transaction Nature */}
+          {transactionType === 'credit' ? (
+            <>
+              {/* Cash Amount */}
+              <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+                <Label className="font-semibold">Cash Amount</Label>
+                <Input
+                  id="cashAmount"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  disabled={!hasCompany}
+                  value={form.cashAmount}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                    setForm({ ...form, cashAmount: sanitized });
+                  }}
+                />
+              </div>
 
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
+              {/* Bank Amount */}
+              <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+                <Label className="font-semibold">Bank Amount</Label>
+                <Input
+                  id="bankAmount"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  disabled={!hasCompany}
+                  value={form.bankAmount}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                    setForm({ ...form, bankAmount: sanitized });
+                  }}
+                />
+              </div>
+            </>
+          ) : (
+            /* Debit / Charge Amount */
+            <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+              <Label className="font-semibold">Charge Amount</Label>
+              <Input
+                id="debitAmount"
+                type="text"
+                inputMode="decimal"
+                placeholder="0.00"
+                disabled={!hasCompany}
+                value={form.debitAmount}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  const sanitized = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                  setForm({ ...form, debitAmount: sanitized });
+                }}
+              />
+            </div>
+          )}
+
+          {/* Remaining Balance */}
+          {transactionType === 'credit' && (
+            <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+              <Label className="font-semibold">Remaining Balance</Label>
+              <Input
+                value={hasCompany ? currency(totalBalance - totalCreditPayment) : ''}
+                readOnly
+                className="bg-muted"
+              />
+            </div>
+          )}
+
+          {/* Reference / Notes */}
+          <div className="grid grid-cols-[140px_1fr] items-center gap-x-4">
+            <Label className="font-semibold">Reference</Label>
+            <Input
               id="notes"
-              placeholder={transactionType === 'credit' ? "Add any notes about this payment..." : "Add any notes about this charge..."}
+              placeholder={transactionType === 'credit' ? "Add payment notes..." : "Add charge notes..."}
+              disabled={!hasCompany}
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              rows={2}
             />
           </div>
-
         </div>
 
         <DialogFooter>
@@ -619,7 +549,7 @@ export default function LogisticsPaymentModal({
               (transactionType === 'credit' && totalCreditPayment <= 0) ||
               (transactionType === 'debit' && debitAmount <= 0)
             }
-            className={transactionType === 'credit' ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
+            className={transactionType === 'credit' ? "bg-green-600 hover:bg-green-700 text-white" : "bg-red-600 hover:bg-red-700 text-white"}
           >
             {isSubmitting ? (
               <>

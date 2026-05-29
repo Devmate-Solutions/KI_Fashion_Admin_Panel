@@ -108,6 +108,12 @@ export default function ReceivablesReportPage() {
 
   const columns = [
     {
+      header: "Customer ID",
+      accessor: "buyerId",
+      render: (row) => <div className="font-medium text-muted-foreground">{row.buyerId || "—"}</div>,
+      pdfValue: (row) => row.buyerId || "—"
+    },
+    {
       header: "Name",
       accessor: "name",
       render: (row) => (
@@ -120,22 +126,22 @@ export default function ReceivablesReportPage() {
       ),
       pdfValue: (row) => row.company || row.name || "—"
     },
+    // {
+    //   header: "Total Sales",
+    //   accessor: "totalSales",
+    //   align: "right",
+    //   render: (row) => `£${formatNumber(row.totalSales || 0)}`,
+    //   pdfValue: (row) => `£${formatNumber(row.totalSales || 0)}`
+    // },
+    // {
+    //   header: "Total Received",
+    //   accessor: "amountReceived",
+    //   align: "right",
+    //   render: (row) => `£${formatNumber(row.amountReceived || row.amountGiven || 0)}`,
+    //   pdfValue: (row) => `£${formatNumber(row.amountReceived || row.amountGiven || 0)}`
+    // },
     {
-      header: "Total Sales",
-      accessor: "totalSales",
-      align: "right",
-      render: (row) => `£${formatNumber(row.totalSales || 0)}`,
-      pdfValue: (row) => `£${formatNumber(row.totalSales || 0)}`
-    },
-    {
-      header: "Total Received",
-      accessor: "amountReceived",
-      align: "right",
-      render: (row) => `£${formatNumber(row.amountReceived || row.amountGiven || 0)}`,
-      pdfValue: (row) => `£${formatNumber(row.amountReceived || row.amountGiven || 0)}`
-    },
-    {
-      header: "RemainingBalance",
+      header: "Balance",
       accessor: "remainingBalance",
       align: "right",
       render: (row) => {
@@ -194,6 +200,7 @@ export default function ReceivablesReportPage() {
         columns={columns}
         data={receivablesData}
         loading={isLoading}
+        enableSearch={false}
         showTotals={true}
         totalsRow={totalsRow}
         totalColumns={[{ title: "Total Receivable", value: "remainingBalance" }]}

@@ -1,8 +1,7 @@
 "use client"
 
 import React, { useMemo, useState, useEffect } from "react"
-import { ChevronRight, ChevronDown, FileText } from "lucide-react"
-import { Skeleton } from "@/components/ui/skeleton"
+import { ChevronRight, ChevronDown, FileText, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 function normalize(v) {
@@ -35,10 +34,15 @@ export default function DataTable({
   onDownloadPDF = null,
   rowClassName,
   compact = false,
+  enableColumnFilters = false,
+  onSortChange,
+  sortConfig,
 }) {
   const [query, setQuery] = useState("")
   const [internalPage, setInternalPage] = useState(1)
-  const [sort, setSort] = useState({ key: null, dir: "asc" })
+  const [internalSort, setInternalSort] = useState({ key: null, dir: "asc" })
+  const sort = sortConfig || internalSort
+  
   const [pageInput, setPageInput] = useState("")
   const [expandedRowId, setExpandedRowId] = useState(null)
 
@@ -49,6 +53,16 @@ export default function DataTable({
   useEffect(() => {
     setPageInput("")
   }, [page])
+
+  const hasActiveColumnFilters = (columns || []).some(col =>
+    col.filter && String(col.filter.value || "").trim() !== ""
+  )
+
+  const handleResetColumnFilters = () => {
+    (columns || []).forEach(col => {
+      if (col.filter?.onChange) col.filter.onChange("")
+    })
+  }
 
   const filtered = useMemo(() => {
     // Ensure data and columns are arrays
@@ -86,10 +100,22 @@ export default function DataTable({
   function toggleSort(key) {
     if (disableSorting) return // Early return if sorting is disabled
     if (!manualPagination) setPage(1)
-    setSort((cur) => {
-      if (cur.key !== key) return { key, dir: "asc" }
-      return { key, dir: cur.dir === "asc" ? "desc" : "asc" }
-    })
+    
+    const cur = sort
+    let nextSort
+    if (cur.key !== key) {
+      nextSort = { key, dir: "asc", direction: "asc" }
+    } else {
+      const nextDir = (cur.dir || cur.direction) === "asc" ? "desc" : "asc"
+      nextSort = { key, dir: nextDir, direction: nextDir }
+    }
+    
+    if (!sortConfig) {
+      setInternalSort(nextSort)
+    }
+    if (onSortChange) {
+      onSortChange(nextSort)
+    }
   }
 
   // Calculate stats for display
@@ -160,36 +186,43 @@ export default function DataTable({
 
       <div className="overflow-x-auto">
         {loading && (!Array.isArray(data) || data.length === 0) ? (
-          <div className="p-4 space-y-4">
-            <div className="flex items-center space-x-4">
-              <Skeleton className="h-12 w-12 rounded-full" />
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-[250px]" />
-                <Skeleton className="h-4 w-[200px]" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-            </div>
+          <div className="flex flex-col items-center justify-center p-8 sm:p-12 animate-in fade-in duration-300">
+            <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
+            <p className="text-sm text-muted-foreground font-medium">Loading inventory data...</p>
           </div>
         ) : !Array.isArray(data) || data.length === 0 ? (
           <div className="text-center p-8 sm:p-12 animate-in fade-in duration-300">
             <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted/50 mb-4">
               <svg className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707-.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
               </svg>
             </div>
             <p className="text-sm sm:text-base text-muted-foreground mb-2 font-medium">No data available</p>
-            {onAddNew && (
-              <button
-                onClick={onAddNew}
-                className="mt-4 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 hover:shadow-lg transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring active:scale-95 min-h-[44px]"
-              >
-                Add First Entry
-              </button>
+
+            {hasActiveColumnFilters ? (
+              <div className="mt-3">
+                <p className="text-xs text-muted-foreground mb-3">
+                  No results match your current column filters.
+                </p>
+                <button
+                  onClick={handleResetColumnFilters}
+                  className="mt-1 px-4 py-2 text-sm font-medium bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-all duration-200 active:scale-95 min-h-[44px] inline-flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Clear Column Filters
+                </button>
+              </div>
+            ) : (
+              onAddNew && (
+                <button
+                  onClick={onAddNew}
+                  className="mt-4 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 hover:shadow-lg transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring active:scale-95 min-h-[44px]"
+                >
+                  Add First Entry
+                </button>
+              )
             )}
           </div>
         ) : (
@@ -212,9 +245,17 @@ export default function DataTable({
                           aria-label={c.accessor ? `Sort by ${c.header}` : undefined}
                         >
                           <span>{c.header}</span>
-                          {sort.key === c.accessor ? (
-                            <span aria-hidden className="text-[10px]" aria-label={sort.dir === "asc" ? "Ascending" : "Descending"}>
-                              {sort.dir === "asc" ? "▲" : "▼"}
+                          {c.accessor ? (
+                            <span aria-hidden className="ml-1 flex items-center">
+                              {sort.key === c.accessor ? (
+                                (sort.dir || sort.direction) === "asc" ? (
+                                  <ArrowUp className="w-3 h-3" />
+                                ) : (
+                                  <ArrowDown className="w-3 h-3" />
+                                )
+                              ) : (
+                                <ArrowUpDown className="w-3 h-3 opacity-50" />
+                              )}
                             </span>
                           ) : null}
                         </button>
@@ -227,6 +268,105 @@ export default function DataTable({
                     </th>
                   )}
                 </tr>
+                {enableColumnFilters && (
+                  <tr className="border-b border-border bg-background">
+                    {expandableRow && (
+                      <th className={cn("hidden sm:table-cell w-8 px-1 py-1")}></th>
+                    )}
+                    {Array.isArray(columns) && columns.map((c, colIdx) => (
+                      <th
+                        key={`filter-${c.accessor || c.header || colIdx}`}
+                        className={cn(
+                          "px-1 py-1 font-normal whitespace-nowrap align-middle",
+                          c.className
+                        )}
+                      >
+                        {c.filter ? (
+                          c.filter.render ? (
+                            c.filter.render()
+                          ) : c.filter.type === "select" ? (
+                            <select
+                              value={c.filter.value || ""}
+                              onChange={(e) => c.filter.onChange(e.target.value)}
+                              className="w-full h-7 px-1.5 text-[11px] border border-border rounded bg-background focus:ring-1 focus:ring-ring outline-none"
+                            >
+                              <option value="">All</option>
+                              {c.filter.options?.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          ) : c.filter.type === "number-range" ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                placeholder="Min"
+                                value={c.filter.minValue || ""}
+                                onChange={(e) => c.filter.onMinChange(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && c.filter.onSubmit) {
+                                    e.preventDefault();
+                                    c.filter.onSubmit();
+                                  }
+                                }}
+                                className="w-full h-7 px-1 text-[10px] border border-border rounded bg-background focus:ring-1 focus:ring-ring outline-none min-w-0"
+                              />
+                              <span className="text-[10px] text-muted-foreground">-</span>
+                              <input
+                                type="number"
+                                placeholder="Max"
+                                value={c.filter.maxValue || ""}
+                                onChange={(e) => c.filter.onMaxChange(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && c.filter.onSubmit) {
+                                    e.preventDefault();
+                                    c.filter.onSubmit();
+                                  }
+                                }}
+                                className="w-full h-7 px-1 text-[10px] border border-border rounded bg-background focus:ring-1 focus:ring-ring outline-none min-w-0"
+                              />
+                            </div>
+                          ) : c.filter.type === "date-range" ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="date"
+                                placeholder="Start"
+                                value={c.filter.startDateValue || ""}
+                                onChange={(e) => c.filter.onStartDateChange(e.target.value)}
+                                className="w-full h-7 px-1 text-[9px] border border-border rounded bg-background focus:ring-1 focus:ring-ring outline-none min-w-0"
+                              />
+                              <span className="text-[10px] text-muted-foreground">-</span>
+                              <input
+                                type="date"
+                                placeholder="End"
+                                value={c.filter.endDateValue || ""}
+                                onChange={(e) => c.filter.onEndDateChange(e.target.value)}
+                                className="w-full h-7 px-1 text-[9px] border border-border rounded bg-background focus:ring-1 focus:ring-ring outline-none min-w-0"
+                              />
+                            </div>
+                          ) : (
+                            <input
+                              type={c.filter.type || "text"}
+                              value={c.filter.value || ""}
+                              onChange={(e) => c.filter.onChange(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && c.filter.onSubmit) {
+                                  e.preventDefault();
+                                  c.filter.onSubmit();
+                                }
+                              }}
+                              className="w-full h-7 px-1.5 text-[11px] border border-border rounded bg-background focus:ring-1 focus:ring-ring outline-none"
+                            />
+                          )
+                        ) : null}
+                      </th>
+                    ))}
+                    {!hideActions && (onEdit || onDelete) && (
+                      <th className="px-1 py-1"></th>
+                    )}
+                  </tr>
+                )}
               </thead>
 <tbody className="divide-y divide-border">
                 {Array.isArray(slice) && slice.map((row, idx) => {

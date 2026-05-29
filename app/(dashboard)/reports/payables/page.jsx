@@ -98,6 +98,12 @@ export default function PayablesReportPage() {
 
   const columns = [
     {
+      header: "Supplier ID",
+      accessor: "supplierId",
+      render: (row) => <div className="font-medium text-muted-foreground">{row.supplierId || "—"}</div>,
+      pdfValue: (row) => row.supplierId || "—"
+    },
+    {
       header: "Name",
       accessor: "name",
       render: (row) => (
@@ -110,22 +116,22 @@ export default function PayablesReportPage() {
       ),
       pdfValue: (row) => row.company || row.name || row.supplierName || "—"
     },
+    // {
+    //   header: "Total Purchases",
+    //   accessor: "totalPurchases",
+    //   align: "right",
+    //   render: (row) => formatNumber(row.totalPurchases || row.totalAmount || 0),
+    //   pdfValue: (row) => formatNumber(row.totalPurchases || row.totalAmount || 0)
+    // },
+    // {
+    //   header: "Total Paid",
+    //   accessor: "totalPaid",
+    //   align: "right",
+    //   render: (row) => formatNumber(row.totalPaid || row.amountPaid || 0),
+    //   pdfValue: (row) => formatNumber(row.totalPaid || row.amountPaid || 0)
+    // },
     {
-      header: "Total Purchases",
-      accessor: "totalPurchases",
-      align: "right",
-      render: (row) => formatNumber(row.totalPurchases || row.totalAmount || 0),
-      pdfValue: (row) => formatNumber(row.totalPurchases || row.totalAmount || 0)
-    },
-    {
-      header: "Total Paid",
-      accessor: "totalPaid",
-      align: "right",
-      render: (row) => formatNumber(row.totalPaid || row.amountPaid || 0),
-      pdfValue: (row) => formatNumber(row.totalPaid || row.amountPaid || 0)
-    },
-    {
-      header: "RemainingBalance",
+      header: "Balance",
       accessor: "remainingBalance",
       align: "right",
       render: (row) => {
@@ -183,6 +189,7 @@ export default function PayablesReportPage() {
         columns={columns}
         data={payablesData}
         loading={isLoading}
+        enableSearch={false}
         showTotals={true}
         totalsRow={totalsRow}
         totalColumns={[{ title: "Total Payable", value: "remainingBalance" }]}
