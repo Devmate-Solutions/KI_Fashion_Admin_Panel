@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import ReportLayout from "@/components/reports/ReportLayout"
-import PrintableTable from "@/components/reports/PrintableTable"
+import PrintableTableFiltered from "@/components/reports/PrintableTableFiltered"
 import { usePayablesReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
@@ -100,12 +100,16 @@ export default function PayablesReportPage() {
     {
       header: "Supplier ID",
       accessor: "supplierId",
+      filterType: "text",
+
       render: (row) => <div className="font-medium text-muted-foreground">{row.supplierId || "—"}</div>,
       pdfValue: (row) => row.supplierId || "—"
     },
     {
       header: "Name",
       accessor: "name",
+      filterType: "autocomplete",
+
       render: (row) => (
         <div>
           <div className="font-medium">{row.company || row.name || row.supplierName || "—"}</div>
@@ -133,6 +137,8 @@ export default function PayablesReportPage() {
     {
       header: "Balance",
       accessor: "remainingBalance",
+      filterType: "text",
+
       align: "right",
       render: (row) => {
         const outstanding = row.remainingBalance || row.outstanding || row.balance || 0
@@ -166,9 +172,58 @@ export default function PayablesReportPage() {
 
   const totalsRow = {
     name: "TOTAL",
-    totalPurchases: formatNumber(totals.totalPurchases),
-    totalPaid: formatNumber(totals.totalPaid),
-    remainingBalance: formatNumber(totals.outstanding),
+
+    totalPurchases: totals.totalPurchases,
+
+    totalPaid: totals.totalPaid,
+
+    remainingBalance: totals.outstanding,
+  }
+
+  const computeTotals = (rows) => {
+    const totalPurchases = rows.reduce(
+      (sum, r) =>
+        sum +
+        Number(
+          r.totalPurchases ??
+          r.totalAmount ??
+          0
+        ),
+      0
+    )
+
+    const totalPaid = rows.reduce(
+      (sum, r) =>
+        sum +
+        Number(
+          r.totalPaid ??
+          r.amountPaid ??
+          0
+        ),
+      0
+    )
+
+    const remainingBalance = rows.reduce(
+      (sum, r) =>
+        sum +
+        Number(
+          r.remainingBalance ??
+          r.outstanding ??
+          r.balance ??
+          0
+        ),
+      0
+    )
+
+    return {
+      name: "",
+
+      totalPurchases: formatNumber(totalPurchases),
+
+      totalPaid: formatNumber(totalPaid),
+
+      remainingBalance: formatNumber(remainingBalance),
+    }
   }
 
   return (
@@ -185,13 +240,14 @@ export default function PayablesReportPage() {
       summary={summary}
       showBeginningButton={true}
     >
-      <PrintableTable
+      <PrintableTableFiltered enableColumnFilters={true}
         columns={columns}
         data={payablesData}
         loading={isLoading}
-        enableSearch={false}
         showTotals={true}
+        computeTotals={computeTotals}
         totalsRow={totalsRow}
+        searchableColumns={[columns[0].accessor]}
         totalColumns={[{ title: "Total Payable", value: "remainingBalance" }]}
         onRowClick={(row) => router.push(`/supplier-ledger?supplierId=${row._id}`)}
       />

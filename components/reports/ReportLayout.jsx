@@ -106,7 +106,7 @@ export default function ReportLayout({
                   <div className="flex flex-wrap items-end gap-3">
             {dateRange && onDateChange && !hideDateFilter && (
               <>
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 z-[9999]">
                   <Label htmlFor="fromDate" className="text-xs">From Date</Label>
                   <div className="flex gap-1">
                     {showBeginningButton && (
@@ -129,7 +129,7 @@ export default function ReportLayout({
                     />
                   </div>
                 </div>
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 z-[9999]">
                   <Label htmlFor="toDate" className="text-xs">To Date</Label>
                   <BritishDatePicker
                     value={dateRange.to || null}

@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
-import PrintableTable from "@/components/reports/PrintableTable"
+import PrintableTableFiltered from "@/components/reports/PrintableTableFiltered"
 import { useDailySalesReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
@@ -115,6 +115,7 @@ export default function DailySalesReportPage() {
     {
       header: "ID",
       accessor: "saleNumber",
+      filterType: "text",
       render: (row) => {
         const displayText = row.saleNumber || "—"
         if (row._id && displayText !== "—") {
@@ -134,18 +135,21 @@ export default function DailySalesReportPage() {
     {
       header: "Transaction Type",
       accessor: "transactionType",
+      // filterType: "text",
       render: () => "Sale Invoice",
       pdfValue: () => "Sale Invoice"
     },
     {
       header: "Invoice Date",
       accessor: "saleDate",
+      filterType: "date-picker",
       render: (row) => formatDate(row.saleDate),
       pdfValue: (row) => formatDate(row.saleDate)
     },
     {
       header: "Name",
       accessor: "buyer",
+      filterType: "autocomplete",
       render: (row) => {
         const buyer = row.buyer
         if (!buyer) return "Walk-in"
@@ -162,6 +166,7 @@ export default function DailySalesReportPage() {
     {
       header: "Total",
       accessor: "subtotal",
+      filterType: "text",
       align: "right",
       render: (row) => currency(row.subtotal || 0),
       pdfValue: (row) => currency(row.subtotal || 0)
@@ -169,6 +174,7 @@ export default function DailySalesReportPage() {
     {
       header: "Discount",
       accessor: "discount",
+      filterType: "text",
       align: "right",
       render: (row) => currency(row.discount || 0),
       pdfValue: (row) => currency(row.discount || 0)
@@ -176,6 +182,7 @@ export default function DailySalesReportPage() {
     {
       header: "VAT",
       accessor: "vat",
+      filterType: "text",
       align: "right",
       render: (row) => currency(resolveSaleVat(row)),
       pdfValue: (row) => currency(resolveSaleVat(row))
@@ -183,6 +190,7 @@ export default function DailySalesReportPage() {
     {
       header: "Grand Total",
       accessor: "grandTotal",
+      filterType: "text",
       align: "right",
       render: (row) => currency(row.grandTotal || 0),
       pdfValue: (row) => currency(row.grandTotal || 0)
@@ -190,6 +198,7 @@ export default function DailySalesReportPage() {
     {
       header: "Bank Cash",
       accessor: "bankPayment",
+      filterType: "text",
       align: "right",
       render: (row) => currency(row.bankPayment || 0),
       pdfValue: (row) => currency(row.bankPayment || 0)
@@ -197,6 +206,7 @@ export default function DailySalesReportPage() {
     {
       header: "Cash",
       accessor: "cashPayment",
+      filterType: "text",
       align: "right",
       render: (row) => currency(row.cashPayment || 0),
       pdfValue: (row) => currency(row.cashPayment || 0)
@@ -204,6 +214,7 @@ export default function DailySalesReportPage() {
     {
       header: "Remaining",
       accessor: "remaining",
+      filterType: "text",
       align: "right",
       render: (row) => {
         const total = row.grandTotal || 0
@@ -252,6 +263,19 @@ export default function DailySalesReportPage() {
     remaining: currency(totals.grandTotal - (totals.bankPayment + totals.cashPayment)),
   }
 
+  const computeTotals = (rows) => ({
+    saleNumber: "TOTAL",
+    subtotal: currency(rows.reduce((s, r) => s + (r.subtotal || 0), 0)),
+    discount: currency(rows.reduce((s, r) => s + (r.discount || 0), 0)),
+    vat: currency(rows.reduce((s, r) => s + resolveSaleVat(r), 0)),
+    grandTotal: currency(rows.reduce((s, r) => s + (r.grandTotal || 0), 0)),
+    bankPayment: currency(rows.reduce((s, r) => s + (r.bankPayment || 0), 0)),
+    cashPayment: currency(rows.reduce((s, r) => s + (r.cashPayment || 0), 0)),
+    remaining: currency(
+      rows.reduce((s, r) => s + ((r.grandTotal || 0) - (r.bankPayment || 0) - (r.cashPayment || 0)), 0)
+    ),
+  })
+
   return (
     <ReportLayout
       title="Daily Sales Invoice Wise Report"
@@ -266,14 +290,15 @@ export default function DailySalesReportPage() {
       error={isError ? error : null}
       summary={summary}
     >
-      <PrintableTable
+      <PrintableTableFiltered enableColumnFilters={true}
         columns={columns}
         data={salesData}
         loading={isLoading}
         showTotals={true}
+        computeTotals={computeTotals}
         totalsRow={totalsRow}
         searchableColumns={[columns[0].accessor]}
-        totalColumns={[{ title: "Total Remaining", value: "remaining" }]}
+        totalColumns={[{ title: "Total Sales", value: "subtotal" }]}
       />
     </ReportLayout>
   )

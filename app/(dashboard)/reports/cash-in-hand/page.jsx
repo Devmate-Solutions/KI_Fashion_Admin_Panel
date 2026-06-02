@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import ReportLayout from "@/components/reports/ReportLayout"
-import PrintableTable from "@/components/reports/PrintableTable"
+import PrintableTableFiltered from "@/components/reports/PrintableTableFiltered"
 import { useCashInHandReport } from "@/lib/hooks/useReports"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
 import { exportToPDF } from "@/lib/utils/pdfExport"
@@ -113,6 +113,7 @@ export default function CashInHandReportPage() {
         {
             header: "ID",
             accessor: "id",
+            filterType: "text",
             render: (row) => (
                 <span className="">{row.id || "—"}</span>
             ),
@@ -128,12 +129,16 @@ export default function CashInHandReportPage() {
         {
             header: "Date",
             accessor: "date",
+            filterType: "date-picker",
+
             render: (row) => formatDate(row.date),
             pdfValue: (row) => formatDate(row.date)
         },
         {
             header: "Name",
             accessor: "name",
+            filterType: "autocomplete",
+
             render: (row) => row.transactionType === "Expense" ? row.costType || row.name || "—" : row.company || row.name || "—",
             pdfValue: (row) => row.transactionType === "Expense" ? row.costType || row.name || "—" : row.company || row.name || "—",
             excelValue: (row) => row.transactionType === "Expense" ? row.costType || row.name || "—" : row.company || row.name || "—"
@@ -143,6 +148,8 @@ export default function CashInHandReportPage() {
             header: "Sales Cash",
             accessor: "salesCash",
             align: "right",
+            filterType: "text",
+
             render: (row) =>
                 row.transactionType === "Sales"
                     ? <span className="text-emerald-700 font-medium">{currency(row.salesCash)}</span>
@@ -152,6 +159,8 @@ export default function CashInHandReportPage() {
         {
             header: "Sales Bank",
             accessor: "salesBank",
+            filterType: "text",
+
             align: "right",
             render: (row) =>
                 row.transactionType === "Sales"
@@ -163,6 +172,8 @@ export default function CashInHandReportPage() {
             header: "Sales Remaining",
             accessor: "salesRemainingBalance",
             align: "right",
+            filterType: "text",
+
             render: (row) =>
                 row.transactionType === "Sales"
                     ? <span className={row.salesRemainingBalance > 0 ? "text-amber-600" : "text-muted-foreground"}>
@@ -176,6 +187,8 @@ export default function CashInHandReportPage() {
             header: "VAT",
             accessor: "vat",
             align: "right",
+            filterType: "text",
+
             render: (row) =>
                 (row.transactionType === "Sales" || row.transactionType === "Expense")
                     ? <span className="font-medium">{currency(resolveTransactionVat(row))}</span>
@@ -187,6 +200,8 @@ export default function CashInHandReportPage() {
             header: "Ledger Cash",
             accessor: "ledgerCash",
             align: "right",
+            filterType: "text",
+
             render: (row) =>
                 row.transactionType === "Ledger"
                     ? <span className="text-blue-700 font-medium">{currency(row.ledgerCash)}</span>
@@ -197,6 +212,8 @@ export default function CashInHandReportPage() {
             header: "Ledger Bank",
             accessor: "ledgerBank",
             align: "right",
+            filterType: "text",
+            
             render: (row) =>
                 row.transactionType === "Ledger"
                     ? <span className="text-blue-700 font-medium">{currency(row.ledgerBank)}</span>
@@ -208,6 +225,8 @@ export default function CashInHandReportPage() {
             header: "Expense Cash",
             accessor: "expenseCash",
             align: "right",
+            filterType: "text",
+
             render: (row) =>
                 row.transactionType === "Expense"
                     ? <span className="text-red-700 font-medium">{currency(row.expenseCash)}</span>
@@ -218,6 +237,8 @@ export default function CashInHandReportPage() {
             header: "Expense Bank",
             accessor: "expenseBank",
             align: "right",
+            filterType: "text",
+
             render: (row) =>
                 row.transactionType === "Expense"
                     ? <span className="text-red-700 font-medium">{currency(row.expenseBank)}</span>
@@ -229,11 +250,13 @@ export default function CashInHandReportPage() {
             header: "Cash in Hand",
             accessor: "totalCashInHand",
             align: "right",
+            filterType: "text",
+
             render: (row) => {
                 const val = row.totalCashInHand || 0
                 return (
                     <span className={`font-bold ${val >= 0 ? "text-emerald-700" : "text-red-600"}`}>
-                        {currency(val)}
+                        {currency(Math.abs(val))}
                     </span>
                 )
             },
@@ -243,16 +266,85 @@ export default function CashInHandReportPage() {
 
     // Column totals row (summing numeric columns)
     const totalsRow = {
-        sno: "TOTAL",
-        salesCash: currency(summary.totalSalesCash || 0),
-        salesBank: currency(summary.totalSalesBank || 0),
-        salesRemainingBalance: currency(transactions.reduce((s, t) => s + (t.salesRemainingBalance || 0), 0)),
-        ledgerCash: currency(summary.totalLedgerCash || 0),
-        ledgerBank: currency(summary.totalLedgerBank || 0),
-        expenseCash: currency(summary.totalExpenseCash || 0),
-        expenseBank: currency(summary.totalExpenseBank || 0),
-        vat: currency(transactions.reduce((s, t) => s + resolveTransactionVat(t), 0)),
-        totalCashInHand: currency(netCashInHand),
+        name: "TOTAL",
+
+        salesCash: currency(
+            transactions.reduce((s, t) => s + Number(t.salesCash || 0), 0)
+        ),
+
+        salesBank: currency(
+            transactions.reduce((s, t) => s + Number(t.salesBank || 0), 0)
+        ),
+
+        salesRemainingBalance: currency(
+            transactions.reduce((s, t) => s + Number(t.salesRemainingBalance || 0), 0)
+        ),
+
+        ledgerCash: currency(
+            transactions.reduce((s, t) => s + Number(t.ledgerCash || 0), 0)
+        ),
+
+        ledgerBank: currency(
+            transactions.reduce((s, t) => s + Number(t.ledgerBank || 0), 0)
+        ),
+
+        expenseCash: currency(
+            transactions.reduce((s, t) => s + Number(t.expenseCash || 0), 0)
+        ),
+
+        expenseBank: currency(
+            transactions.reduce((s, t) => s + Number(t.expenseBank || 0), 0)
+        ),
+
+        vat: currency(
+            transactions.reduce((s, t) => s + Number(resolveTransactionVat(t)), 0)
+        ),
+
+        totalCashInHand: currency(
+            transactions.reduce((s, t) => s + Number(t.totalCashInHand || 0), 0)
+        ),
+    }
+
+    const computeTotals = (rows) => {
+        return {
+            name: "TOTAL",
+
+            salesCash: currency(
+                rows.reduce((s, r) => s + Number(r.salesCash || 0), 0)
+            ),
+
+            salesBank: currency(
+                rows.reduce((s, r) => s + Number(r.salesBank || 0), 0)
+            ),
+
+            salesRemainingBalance: currency(
+                rows.reduce((s, r) => s + Number(r.salesRemainingBalance || 0), 0)
+            ),
+
+            ledgerCash: currency(
+                rows.reduce((s, r) => s + Number(r.ledgerCash || 0), 0)
+            ),
+
+            ledgerBank: currency(
+                rows.reduce((s, r) => s + Number(r.ledgerBank || 0), 0)
+            ),
+
+            expenseCash: currency(
+                rows.reduce((s, r) => s + Number(r.expenseCash || 0), 0)
+            ),
+
+            expenseBank: currency(
+                rows.reduce((s, r) => s + Number(r.expenseBank || 0), 0)
+            ),
+
+            vat: currency(
+                rows.reduce((s, r) => s + Number(resolveTransactionVat(r)), 0)
+            ),
+
+            totalCashInHand: currency(
+                rows.reduce((s, r) => s + Number(r.totalCashInHand || 0), 0)
+            ),
+        }
     }
 
     const summaryCards = [
@@ -296,7 +388,7 @@ export default function CashInHandReportPage() {
             summary={summaryCards}
             hideDateFilter={isEmployee}
         >
-            <PrintableTable
+            {/* <PrintableTable
                 columns={columns}
                 data={transactions}
                 loading={isLoading}
@@ -309,7 +401,20 @@ export default function CashInHandReportPage() {
                 ]}
                 searchableColumns={["id", "name", "transactionType", "transactionTypeLabel"]}
                 pageSize={100}
+            /> */}
+
+            <PrintableTableFiltered enableColumnFilters={true}
+                columns={columns}
+                data={transactions}
+                loading={isLoading}
+                showTotals={true}
+                computeTotals={computeTotals}
+                totalsRow={totalsRow}
+                searchableColumns={[columns[0].accessor]}
+                totalColumns={[{ title: "Total Cash in Hand", value: "totalCashInHand" }]}
             />
+
+
         </ReportLayout>
     )
 }

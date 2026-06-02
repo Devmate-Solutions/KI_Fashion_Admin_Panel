@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
-import PrintableTable from "@/components/reports/PrintableTable"
+import PrintableTableFiltered from "@/components/reports/PrintableTableFiltered"
 import { useMonthEndDetailedReport, useSettings } from "@/lib/hooks/useReports"
 import { useSettings as useSystemSettings } from "@/lib/hooks/useSettings"
 import { exportMonthEndToExcel } from "@/lib/utils/exportToExcel"
@@ -12,8 +12,11 @@ import { getDefaultDateRange } from "@/lib/utils/getDefaultDateRange"
 import toast from "react-hot-toast"
 
 function currency(n) {
-    const num = Number(n || 0)
-    return `${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    const num = Math.abs(Number(n || 0))
+    return `${num.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    })}`
 }
 
 function formatDate(date) {
@@ -32,7 +35,7 @@ export default function MonthEndReportPage() {
     const { data: settings } = useSystemSettings()
     const commissionRate = settings?.reports?.commissionRate ?? 2.5
 
-    const data = useMemo(() => reportData || [], [reportData])
+    const data = useMemo(() => reportData?.reportData || [], [reportData])
 
     const handleExport = async () => {
         try {
@@ -103,12 +106,16 @@ export default function MonthEndReportPage() {
         {
             header: "Date",
             accessor: "date",
+            filterType: "date-filter",
+
             render: (row) => formatDate(row.date),
             pdfValue: (row) => formatDate(row.date)
         },
         {
             header: "Selling Id",
             accessor: "sellingId",
+            filterType: "text",
+
             render: (row) => (
                 <Link href={`/selling/${row.saleId}`} className="text-blue-600 hover:underline font-mono text-[11px]">
                     {row.sellingId}
@@ -119,12 +126,16 @@ export default function MonthEndReportPage() {
         {
             header: "Buyer",
             accessor: "buyer",
+            filterType: "autocomplete",
+
             render: (row) => row.buyer || "—",
             pdfValue: (row) => row.buyer || "—"
         },
         {
             header: "Product Code",
             accessor: "productCode",
+            filterType: "autocomplete",
+
             render: (row) => (
                 <Link href={`/stock/product-history?productId=${row.productId}`} className="text-blue-600 hover:underline font-medium">
                     {row.productCode}
@@ -135,6 +146,8 @@ export default function MonthEndReportPage() {
         {
             header: "Item Sold",
             accessor: "itemSold",
+            filterType: "text",
+
             align: "center",
             render: (row) => row.itemSold,
             pdfValue: (row) => row.itemSold
@@ -142,6 +155,8 @@ export default function MonthEndReportPage() {
         {
             header: "Selling Price",
             accessor: "sellingPrice",
+            filterType: "text",
+
             align: "right",
             render: (row) => currency(row.sellingPrice),
             pdfValue: (row) => currency(row.sellingPrice)
@@ -149,6 +164,8 @@ export default function MonthEndReportPage() {
         {
             header: "Total Sell",
             accessor: "totalSell",
+            filterType: "text",
+
             align: "right",
             render: (row) => <span className="font-semibold">{currency(row.totalSell)}</span>,
             pdfValue: (row) => currency(row.totalSell)
@@ -156,6 +173,8 @@ export default function MonthEndReportPage() {
         {
             header: "Landed Price",
             accessor: "landedPrice",
+            filterType: "text",
+
             align: "right",
             render: (row) => currency(row.landedPrice),
             pdfValue: (row) => currency(row.landedPrice)
@@ -163,6 +182,8 @@ export default function MonthEndReportPage() {
         {
             header: "Difference",
             accessor: "difference",
+            filterType: "text",
+
             align: "right",
             render: (row) => (
                 <span className={row.difference >= 0 ? "text-emerald-600" : "text-red-600"}>
@@ -174,6 +195,8 @@ export default function MonthEndReportPage() {
         {
             header: "PNL",
             accessor: "pnl",
+            filterType: "text",
+
             align: "right",
             render: (row) => (
                 <span className={`font-bold ${row.pnl >= 0 ? "text-emerald-700" : "text-red-700"}`}>
@@ -191,6 +214,8 @@ export default function MonthEndReportPage() {
         {
             header: "Supplier",
             accessor: "supplier",
+            filterType: "autocomplete",
+
             render: (row) => row.supplier || "—",
             pdfValue: (row) => row.supplier || "—"
         },
@@ -208,11 +233,45 @@ export default function MonthEndReportPage() {
         {
             header: "Sell in Loss",
             accessor: "sellInLoss",
+            filterType: "text",
+
             align: "right",
             render: (row) => currency(row.sellInLoss),
             pdfValue: (row) => currency(row.sellInLoss)
         },
     ]
+
+    const computeTotals = (rows) => {
+        return {
+            date: "TOTAL",
+
+            itemSold: rows.reduce(
+                (s, r) => s + Number(r.itemSold || 0),
+                0
+            ),
+
+            totalSell: currency(
+                rows.reduce(
+                    (s, r) => s + Number(r.totalSell || 0),
+                    0
+                )
+            ),
+
+            pnl: currency(
+                rows.reduce(
+                    (s, r) => s + Number(r.pnl || 0),
+                    0
+                )
+            ),
+
+            sellInLoss: currency(
+                rows.reduce(
+                    (s, r) => s + Number(r.sellInLoss || 0),
+                    0
+                )
+            ),
+        }
+    }
 
     const totalsRow = {
         date: "TOTAL",
@@ -258,19 +317,21 @@ export default function MonthEndReportPage() {
             error={isError ? error : null}
             summary={summaryCards}
         >
-            <PrintableTable
+            {/* {JSON.stringify(data)} */}
+
+
+            <PrintableTableFiltered enableColumnFilters={true}
                 columns={columns}
                 data={data}
                 loading={isLoading}
-                enableSearch={true}
                 showTotals={true}
+                computeTotals={computeTotals}
                 totalsRow={totalsRow}
+                searchableColumns={[columns[0].accessor]}
                 totalColumns={[
                     { title: "Total Revenue", value: "totalSell" },
                     { title: "Total PNL", value: "pnl" },
                 ]}
-                searchableColumns={["sellingId", "buyer", "productCode", "buyingId", "supplier"]}
-                pageSize={100}
             />
         </ReportLayout>
     )

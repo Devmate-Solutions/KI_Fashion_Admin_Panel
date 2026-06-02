@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
-import PrintableTable from "@/components/reports/PrintableTable"
+import PrintableTableFiltered from "@/components/reports/PrintableTableFiltered"
 import { useBuyingProductWiseReport } from "@/lib/hooks/useReports"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
 import { exportToPDF } from "@/lib/utils/pdfExport"
@@ -15,9 +15,8 @@ function formatNumber(n) {
   return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-// Format with pound symbol
 function currency(n) {
-  return `${formatNumber(n)}`
+  return `£${formatNumber(n)}`
 }
 
 function formatDate(date) {
@@ -53,12 +52,32 @@ export default function BuyingProductWiseReportPage() {
     return flatData
   }, [data])
 
-  const totals = useMemo(() => {
-    return {
-      quantity: productData.reduce((sum, p) => sum + (p.quantity || 0), 0),
-      cost: productData.reduce((sum, p) => sum + (p.totalPrice || p.quantity * p.costPrice || 0), 0),
-    }
-  }, [productData])
+// const totals = useMemo(() => {
+//   return {
+//     quantity: productData.reduce((sum, p) => sum + (p.quantity || 0), 0),
+//     cost: productData.reduce((sum, p) => sum + (p.totalPrice || p.quantity * p.costPrice || 0), 0),
+//   }
+// }, [productData])
+
+
+const totals = useMemo(() => {
+  return {
+    quantity: productData.reduce(
+      (sum, p) => sum + Number(p.quantity || 0),
+      0
+    ),
+
+    cost: productData.reduce(
+      (sum, p) =>
+        sum +
+        Number(
+          p.totalPrice ??
+          ((p.quantity || 0) * (p.costPrice || 0))
+        ),
+      0
+    ),
+  }
+}, [productData])
 
   const handleExport = async () => {
     try {
@@ -102,12 +121,15 @@ export default function BuyingProductWiseReportPage() {
     {
       header: "TC",
       accessor: "tc",
+
       render: (row) => <span className="font-mono text-xs">{row.tc}</span>,
       pdfValue: (row) => row.tc || "—"
     },
     {
       header: "Transaction Date",
       accessor: "transactionDate",
+      filterType: "date-picker",
+
       render: (row) => formatDate(row.transactionDate),
       pdfValue: (row) => formatDate(row.transactionDate)
     },
@@ -121,12 +143,16 @@ export default function BuyingProductWiseReportPage() {
     {
       header: "Supplier Name",
       accessor: "supplierName",
+      filterType: "autocomplete",
+
       render: (row) => row.supplierCompany || row.supplierName || "—",
       pdfValue: (row) => row.supplierCompany || row.supplierName || "—"
     },
     {
       header: "Product",
       accessor: "productName",
+      filterType: "autocomplete",
+
       render: (row) => (
         <span className="font-mono text-xs">{row.productName}</span>
       ),
@@ -135,6 +161,8 @@ export default function BuyingProductWiseReportPage() {
     {
       header: "Product Code",
       accessor: "productCode",
+      filterType: "autocomplete",
+
       render: (row) => {
         const productCode = row.productCode || row.sku || "—"
         const productId = row.productId || row.product?._id
@@ -155,12 +183,14 @@ export default function BuyingProductWiseReportPage() {
     {
       header: "Items Bought",
       accessor: "quantity",
+      filterType: "text",
       align: "right",
       pdfValue: (row) => row.quantity || 0
     },
     {
       header: "CPI",
       accessor: "costPrice",
+      filterType: "text",
       align: "right",
       render: (row) => currency(row.costPrice || 0),
       pdfValue: (row) => currency(row.costPrice || 0)
@@ -168,6 +198,7 @@ export default function BuyingProductWiseReportPage() {
     {
       header: "Total",
       accessor: "totalPrice",
+      filterType: "text",
       align: "right",
       render: (row) => currency(row.totalPrice || (row.quantity * row.costPrice) || 0),
       pdfValue: (row) => currency(row.totalPrice || (row.quantity * row.costPrice) || 0)
@@ -198,11 +229,28 @@ export default function BuyingProductWiseReportPage() {
     totalPrice: currency(totals.cost),
   }
 
-  const grandTotalSection = {
-    supplierName: "",
-    quantity: totals.remaining,
-    totalPrice: currency(totals.cost),
-  }
+
+
+  
+
+const computeTotals = (rows) => ({
+  supplierName: "FILTERED TOTAL",
+
+  quantity: rows.reduce(
+    (s, r) => s + Number(r.quantity || 0),
+    0
+  ),
+
+  totalPrice: rows.reduce(
+    (s, r) =>
+      s +
+      Number(
+        r.totalPrice ??
+        ((r.quantity || 0) * (r.costPrice || 0))
+      ),
+    0
+  ),
+})
 
   return (
     <ReportLayout
@@ -217,15 +265,17 @@ export default function BuyingProductWiseReportPage() {
       error={isError ? error : null}
       summary={summary}
     >
-      <PrintableTable
+      {/* {JSON.stringify(productData)} */}
+
+      <PrintableTableFiltered enableColumnFilters={true}
         columns={columns}
         data={productData}
         loading={isLoading}
         showTotals={true}
+        computeTotals={computeTotals}
         totalsRow={totalsRow}
-        grandTotalSection={totalsRow}
+        searchableColumns={[columns[0].accessor]}
         totalColumns={[{ title: "Total Buying Value", value: "totalPrice" }]}
-
       />
     </ReportLayout>
   )

@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import ReportLayout from "@/components/reports/ReportLayout"
-import PrintableTable from "@/components/reports/PrintableTable"
+import PrintableTableFiltered from "@/components/reports/PrintableTableFiltered"
 import { useReceivablesReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
@@ -110,12 +110,16 @@ export default function ReceivablesReportPage() {
     {
       header: "Customer ID",
       accessor: "buyerId",
+      filterType: "text",
+
       render: (row) => <div className="font-medium text-muted-foreground">{row.buyerId || "—"}</div>,
       pdfValue: (row) => row.buyerId || "—"
     },
     {
       header: "Name",
       accessor: "name",
+      filterType: "autocomplete",
+
       render: (row) => (
         <div>
           <div className="font-medium">{row.company || row.name || "—"}</div>
@@ -143,6 +147,8 @@ export default function ReceivablesReportPage() {
     {
       header: "Balance",
       accessor: "remainingBalance",
+      filterType: "text",
+
       align: "right",
       render: (row) => {
         const outstanding = row.remainingBalance || row.outstanding || row.ledgerBalance || 0
@@ -181,6 +187,46 @@ export default function ReceivablesReportPage() {
     remainingBalance: `£${formatNumber(totals.outstanding)}`,
   }
 
+  const computeTotals = (rows) => {
+  const totalSales = rows.reduce(
+    (sum, r) => sum + Number(r.totalSales || 0),
+    0
+  )
+
+  const totalReceived = rows.reduce(
+    (sum, r) =>
+      sum +
+      Number(
+        r.amountReceived ||
+        r.amountGiven ||
+        0
+      ),
+    0
+  )
+
+  const remainingBalance = rows.reduce(
+    (sum, r) =>
+      sum +
+      Number(
+        r.remainingBalance ||
+        r.outstanding ||
+        r.ledgerBalance ||
+        0
+      ),
+    0
+  )
+
+  return {
+    name: "",
+
+    totalSales: formatNumber(totalSales),
+
+    amountReceived: formatNumber(totalReceived),
+
+    remainingBalance: formatNumber(remainingBalance),
+  }
+}
+
   return (
     <ReportLayout
       title="Receivable Report"
@@ -196,16 +242,22 @@ export default function ReceivablesReportPage() {
       showBeginningButton={!isEmployee}
       hideDateFilter={isEmployee}
     >
-      <PrintableTable
+     
+
+
+      <PrintableTableFiltered enableColumnFilters={true}
         columns={columns}
         data={receivablesData}
         loading={isLoading}
-        enableSearch={false}
         showTotals={true}
+        computeTotals={computeTotals}
         totalsRow={totalsRow}
+        searchableColumns={[columns[0].accessor]}
         totalColumns={[{ title: "Total Receivable", value: "remainingBalance" }]}
         onRowClick={(row) => router.push(`/customer-ledger?buyerId=${row._id}`)}
+
       />
+
     </ReportLayout>
   )
 }

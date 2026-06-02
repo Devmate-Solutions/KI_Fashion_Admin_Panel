@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
-import PrintableTable from "@/components/reports/PrintableTable"
+import PrintableTableFiltered from "@/components/reports/PrintableTableFiltered"
 import { useSalesReturnsProductWiseReport } from "@/lib/hooks/useReports"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
 import { exportToPDF } from "@/lib/utils/pdfExport"
@@ -61,25 +61,46 @@ export default function SalesReturnsProductWiseReportPage() {
 
   const totals = useMemo(() => ({
     quantity: productData.reduce((sum, p) => sum + (p.returnedQuantity || 0), 0),
-    value: productData.reduce((sum, p) => sum + ((p.returnedQuantity || 0) * (p.unitPrice || 0)), 0),
+    value: productData.reduce(
+      (sum, p) => sum + Number(p.totalValue || 0),
+      0
+    ),
   }), [productData])
 
+  const computeTotals = (rows) => {
+  const returnedQuantity = rows.reduce(
+    (sum, r) => sum + Number(r.returnedQuantity || 0),
+    0
+  )
+
+  const totalValue = rows.reduce(
+    (sum, r) => sum + Number(r.totalValue || 0),
+    0
+  )
+
+  return {
+    buyerName: "",
+
+    returnedQuantity,
+
+    totalValue: currency(totalValue),
+  }
+}
+
   const columns = [
-    {
-      header: "Sno",
-      accessor: "sno",
-      render: (row) => row.sno,
-      pdfValue: (row) => row.sno
-    },
+
     {
       header: "Return Date",
       accessor: "returnDate",
+      filterType: "date-picker",
       render: (row) => formatDate(row.returnDate),
       pdfValue: (row) => formatDate(row.returnDate)
     },
     {
       header: "Sale #",
       accessor: "saleNumber",
+      filterType: "text",
+
       render: (row) => {
         const displayText = row.saleNumber
         const saleId = row.saleId
@@ -100,11 +121,15 @@ export default function SalesReturnsProductWiseReportPage() {
     {
       header: "Buyer",
       accessor: "buyerName",
+      filterType: "autocomplete",
+
       pdfValue: (row) => row.buyerName || "—"
     },
     {
       header: "Product Code",
       accessor: "productCode",
+      filterType: "autocomplete",
+
       render: (row) => {
         const { productCode, productId } = row
         if (productId && productCode !== "—") {
@@ -124,17 +149,23 @@ export default function SalesReturnsProductWiseReportPage() {
     {
       header: "Product Name",
       accessor: "productName",
+      filterType: "autocomplete",
+
       pdfValue: (row) => row.productName || "—"
     },
     {
       header: "Returned Qty",
       accessor: "returnedQuantity",
       align: "right",
+      filterType: "text",
+
       pdfValue: (row) => row.returnedQuantity || 0
     },
     {
       header: "Unit Price",
       accessor: "unitPrice",
+      filterType: "text",
+
       align: "right",
       render: (row) => currency(row.unitPrice || 0),
       pdfValue: (row) => currency(row.unitPrice || 0)
@@ -142,6 +173,8 @@ export default function SalesReturnsProductWiseReportPage() {
     {
       header: "Total Value",
       accessor: "totalValue",
+      filterType: "text",
+
       align: "right",
       render: (row) => (
         <span className="text-red-600 font-medium">
@@ -247,12 +280,14 @@ export default function SalesReturnsProductWiseReportPage() {
       error={isError ? error : null}
       summary={summary}
     >
-      <PrintableTable
+      <PrintableTableFiltered
         columns={columns}
         data={productData}
         loading={isLoading}
         showTotals={true}
         totalsRow={totalsRow}
+        computeTotals={computeTotals}
+
         grandTotalSection={totalsRow}
         totalColumns={[{ title: "Total Return Value", value: "totalValue" }]}
       />

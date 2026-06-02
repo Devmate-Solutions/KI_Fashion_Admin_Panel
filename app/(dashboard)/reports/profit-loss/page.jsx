@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
-import PrintableTable from "@/components/reports/PrintableTable"
+import PrintableTableFiltered from "@/components/reports/PrintableTableFiltered"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
 import { exportToPDF } from "@/lib/utils/pdfExport"
 import { useProfitLossReport } from "@/lib/hooks/useReports"
@@ -83,6 +83,7 @@ export default function ProfitLossReportPage() {
     {
       header: "Product Code",
       accessor: "productCode",
+      filterType: "autocomplete",
       render: (row) => {
         const productCode = row.productCode || "—"
         const productId = row.productId
@@ -104,6 +105,8 @@ export default function ProfitLossReportPage() {
     {
       header: "Date",
       accessor: "date",
+      filterType: "date-picker",
+
       render: (row) => formatDate(row.date),
       pdfValue: (row) => formatDate(row.date)
 
@@ -111,6 +114,8 @@ export default function ProfitLossReportPage() {
     {
       header: "Invoice No.",
       accessor: "invoiceNumber",
+      filterType: "text",
+
       render: (row) => (
         <Link
           href={`/selling?saleId=${row.saleId}`}
@@ -124,22 +129,30 @@ export default function ProfitLossReportPage() {
     {
       header: "Customer",
       accessor: "customerName",
+      filterType: "autocomplete",
+
       pdfValue: (row) => row.customerName || "Walk-in"
     },
     {
       header: "Product Name",
       accessor: "productName",
+      filterType: "autocomplete",
+
       pdfValue: (row) => row.productName || "—"
     },
     {
       header: "Items Sold",
       accessor: "itemsSold",
+      filterType: "text",
+
       align: "right",
       pdfValue: (row) => row.itemsSold || 0
     },
     {
       header: "Selling Price",
       accessor: "sellingPrice",
+      filterType: "text",
+
       align: "right",
       render: (row) => currency(row.sellingPrice || 0),
       pdfValue: (row) => currency(row.sellingPrice || 0)
@@ -147,6 +160,8 @@ export default function ProfitLossReportPage() {
     {
       header: "Cost Price",
       accessor: "averageCost",
+      filterType: "text",
+
       align: "right",
       render: (row) => currency(row.averageCost || 0),
       pdfValue: (row) => currency(row.averageCost || 0)
@@ -154,6 +169,8 @@ export default function ProfitLossReportPage() {
     {
       header: "PNL",
       accessor: "pnl",
+      filterType: "text",
+
       align: "right",
       render: (row) => {
         const pnl = row.pnl || 0
@@ -176,10 +193,67 @@ export default function ProfitLossReportPage() {
   ]
 
   const totalsRow = {
-    sno: "TOTAL",
-    itemsSold: reportData.reduce((sum, row) => sum + (row.itemsSold || 0), 0),
-    totalSales: reportData.reduce((sum, row) => sum + (row.totalSales || 0), 0),
-    pnl: Number((reportData.reduce((sum, row) => sum + (row.pnl || 0), 0)).toFixed(2)),
+    productName: "TOTAL",
+
+    itemsSold: reportData.reduce(
+      (sum, row) => sum + Number(row.itemsSold || 0),
+      0
+    ),
+
+    sellingPrice: currency(
+      reportData.reduce(
+        (sum, row) => sum + Number(row.sellingPrice || 0),
+        0
+      )
+    ),
+
+    averageCost: currency(
+      reportData.reduce(
+        (sum, row) => sum + Number(row.averageCost || 0),
+        0
+      )
+    ),
+
+    pnl: currency(
+      reportData.reduce(
+        (sum, row) => sum + Number(row.pnl || 0),
+        0
+      )
+    ),
+  }
+
+  const computeTotals = (rows) => {
+    const itemsSold = rows.reduce(
+      (sum, row) => sum + Number(row.itemsSold || 0),
+      0
+    )
+
+    const sellingPrice = rows.reduce(
+      (sum, row) => sum + Number(row.sellingPrice || 0),
+      0
+    )
+
+    const averageCost = rows.reduce(
+      (sum, row) => sum + Number(row.averageCost || 0),
+      0
+    )
+
+    const pnl = rows.reduce(
+      (sum, row) => sum + Number(row.pnl || 0),
+      0
+    )
+
+    return {
+      productName: "TOTAL",
+
+      itemsSold,
+
+      sellingPrice: currency(sellingPrice),
+
+      averageCost: currency(averageCost),
+
+      pnl: currency(pnl),
+    }
   }
 
   const summaryCards = [
@@ -219,12 +293,15 @@ export default function ProfitLossReportPage() {
       summary={summaryCards}
       hideDateFilter={isEmployee}
     >
-      <PrintableTable
+
+      <PrintableTableFiltered enableColumnFilters={true}
         columns={columns}
         data={reportData}
         loading={isLoading}
         showTotals={true}
+        computeTotals={computeTotals}
         totalsRow={totalsRow}
+        searchableColumns={[columns[0].accessor]}
         totalColumns={[{ title: "Net Profit/Loss", value: "pnl" }]}
       />
     </ReportLayout>

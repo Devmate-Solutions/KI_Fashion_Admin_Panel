@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
-import PrintableTable from "@/components/reports/PrintableTable"
+import PrintableTableFiltered from "@/components/reports/PrintableTableFiltered"
 import { useSalesProductWiseReport } from "@/lib/hooks/useReports"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
 import { exportToPDF } from "@/lib/utils/pdfExport"
@@ -196,6 +196,26 @@ export default function SalesProductWiseReportPage() {
     totalPrice: currency(totals.revenue),
   }
 
+  
+const computeTotals = (rows) => ({
+  buyerName: "FILTERED TOTAL",
+
+  quantity: rows.reduce(
+    (s, r) => s + Number(r.quantity || 0),
+    0
+  ),
+
+  totalPrice: rows.reduce(
+    (s, r) =>
+      s +
+      Number(
+        r.totalPrice ??
+        ((r.quantity || 0) * (r.costPrice || 0))
+      ),
+    0
+  ),
+})
+
   return (
     <ReportLayout
       title="Daily Sales Product Wise Report"
@@ -209,7 +229,7 @@ export default function SalesProductWiseReportPage() {
       error={isError ? error : null}
       summary={summary}
     >
-      <PrintableTable
+      {/* <PrintableTable
         columns={columns}
         data={productData}
         loading={isLoading}
@@ -217,6 +237,17 @@ export default function SalesProductWiseReportPage() {
         totalsRow={totalsRow}
         totalColumns={[{ title: "Total Sales Value", value: "totalPrice" }]}
 
+      /> */}
+    {JSON.stringify(productData)}
+      <PrintableTableFiltered enableColumnFilters={true}
+        columns={columns}
+        data={productData}
+        loading={isLoading}
+        showTotals={true}
+        computeTotals={computeTotals}
+        totalsRow={totalsRow}
+        searchableColumns={[columns[0].accessor]}
+        totalColumns={[{ title: "Total Buying Value", value: "totalPrice" }]}
       />
     </ReportLayout>
   )

@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
-import PrintableTable from "@/components/reports/PrintableTable"
+import PrintableTableFiltered from "@/components/reports/PrintableTableFiltered"
 import { useDailyBuyingReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
@@ -91,6 +91,7 @@ export default function DailyBuyingReportPage() {
     {
       header: "ID",
       accessor: "orderNumber",
+      filterType: "text",
       render: (row) => {
         const displayText = row.orderNumber || row._id?.slice(-8) || "—"
         if (row._id && displayText !== "—") {
@@ -117,12 +118,14 @@ export default function DailyBuyingReportPage() {
     {
       header: "Invoice Date",
       accessor: "dispatchDate",
+      filterType: "date-picker",
       render: (row) => formatDate(row.dispatchDate || row.createdAt),
       pdfValue: (row) => formatDate(row.dispatchDate || row.createdAt)
     },
     {
       header: "Name",
       accessor: "supplier",
+       filterType: "autocomplete",
       render: (row) => {
         const supplier = row.supplier
         if (!supplier) return "—"
@@ -139,6 +142,7 @@ export default function DailyBuyingReportPage() {
     {
       header: "Total",
       accessor: "supplierPaymentTotal",
+       filterType: "text",
       align: "right",
       render: (row) => currency(row.supplierPaymentTotal + row.totalDiscount || 0),
       pdfValue: (row) => currency(row.supplierPaymentTotal + row.totalDiscount || 0)
@@ -146,6 +150,7 @@ export default function DailyBuyingReportPage() {
     {
       header: "Discount",
       accessor: "totalDiscount",
+       filterType: "text",
       align: "right",
       render: (row) => currency(row.totalDiscount || 0),
       pdfValue: (row) => currency(row.totalDiscount || 0)
@@ -153,6 +158,7 @@ export default function DailyBuyingReportPage() {
     {
       header: "Total After Disc.",
       accessor: "totalAfterDiscount",
+       filterType: "text",
       align: "right",
       render: (row) => currency(row.supplierPaymentTotal || 0),
       pdfValue: (row) => currency(row.supplierPaymentTotal || 0)
@@ -160,6 +166,7 @@ export default function DailyBuyingReportPage() {
     {
       header: "Bank Cash",
       accessor: "bankPayment",
+       filterType: "text",
       align: "right",
       render: (row) => currency(row.bankPayment || 0),
       pdfValue: (row) => currency(row.bankPayment || 0)
@@ -167,6 +174,7 @@ export default function DailyBuyingReportPage() {
     {
       header: "Cash",
       accessor: "cashPayment",
+       filterType: "text",
       align: "right",
       render: (row) => currency(row.cashPayment || 0),
       pdfValue: (row) => currency(row.cashPayment || 0)
@@ -174,6 +182,7 @@ export default function DailyBuyingReportPage() {
     {
       header: "Remaining",
       accessor: "remaining",
+       filterType: "text",
       align: "right",
       render: (row) => {
         const total = row.supplierPaymentTotal || 0
@@ -211,14 +220,86 @@ export default function DailyBuyingReportPage() {
     },
   ]
 
+  // const totalsRow = {
+  //   grandTotal: currency(totals.total),
+  //   discount: currency(totals.discount),
+  //   totalAfterDiscount: currency(totals.total),
+  //   bankPayment: currency(totals.bankPayment),
+  //   cashPayment: currency(totals.cashPayment),
+  //   remaining: currency(totals.balance),
+  // }
+
   const totalsRow = {
-    grandTotal: currency(totals.total),
-    discount: currency(totals.discount),
-    totalAfterDiscount: currency(totals.total),
-    bankPayment: currency(totals.bankPayment),
-    cashPayment: currency(totals.cashPayment),
-    remaining: currency(totals.balance),
+  orderNumber: "TOTAL",
+
+  supplierPaymentTotal: totals.total + totals.discount,
+
+  totalDiscount: totals.discount,
+
+  totalAfterDiscount: totals.total,
+
+  bankPayment: totals.bankPayment,
+
+  cashPayment: totals.cashPayment,
+
+  remaining:
+    totals.total -
+    totals.bankPayment -
+    totals.cashPayment,
+}
+
+const computeTotals = (rows) => {
+  const total = rows.reduce(
+    (s, r) =>
+      s +
+      Number(
+        (r.supplierPaymentTotal || 0) +
+        (r.totalDiscount || 0)
+      ),
+    0
+  )
+
+  const discount = rows.reduce(
+    (s, r) => s + Number(r.totalDiscount || 0),
+    0
+  )
+
+  const totalAfterDiscount = rows.reduce(
+    (s, r) => s + Number(r.supplierPaymentTotal || 0),
+    0
+  )
+
+  const bankPayment = rows.reduce(
+    (s, r) => s + Number(r.bankPayment || 0),
+    0
+  )
+
+  const cashPayment = rows.reduce(
+    (s, r) => s + Number(r.cashPayment || 0),
+    0
+  )
+
+  const remaining =
+    totalAfterDiscount -
+    bankPayment -
+    cashPayment
+
+  return {
+    orderNumber: "FILTERED TOTAL",
+
+    supplierPaymentTotal: formatNumber(total),
+
+    totalDiscount: formatNumber(discount),
+
+    totalAfterDiscount: formatNumber(totalAfterDiscount),
+
+    bankPayment: formatNumber(bankPayment),
+
+    cashPayment: formatNumber(cashPayment),
+
+    remaining: formatNumber(remaining),
   }
+}
 
   return (
     <ReportLayout
@@ -233,14 +314,16 @@ export default function DailyBuyingReportPage() {
       error={isError ? error : null}
       summary={summary}
     >
-      <PrintableTable
+
+      <PrintableTableFiltered enableColumnFilters={true}
         columns={columns}
         data={purchaseData}
         loading={isLoading}
         showTotals={true}
         totalsRow={totalsRow}
-        totalColumns={[{ title: "Total Remaining", value: "remaining" }]}
-
+        computeTotals={computeTotals}
+        searchableColumns={[columns[0].accessor]}
+        totalColumns={[{ title: "Total Buying", value: "remaining" }]}
       />
     </ReportLayout>
   )

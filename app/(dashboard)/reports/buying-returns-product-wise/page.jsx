@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
-import PrintableTable from "@/components/reports/PrintableTable"
+import PrintableTableFiltered from "@/components/reports/PrintableTableFiltered"
 import { useBuyingReturnsProductWiseReport } from "@/lib/hooks/useReports"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
 import { exportToPDF } from "@/lib/utils/pdfExport"
@@ -45,6 +45,7 @@ export default function BuyingReturnsProductWiseReportPage() {
             productName: item.product?.name || "—",
             productId: item.product?._id,
             itemReason: item.reason || ret.notes || "—",
+            totalValue: (item.returnedQuantity || 0) * (item.costPrice || 0), // Pre-calculated for filtering & dynamic totals
           })
         })
       }
@@ -56,28 +57,49 @@ export default function BuyingReturnsProductWiseReportPage() {
     const returns = data?.returns || []
     return {
       quantity: productData.reduce((sum, p) => sum + (p.returnedQuantity || 0), 0),
-      value: productData.reduce((sum, p) => sum + ((p.returnedQuantity || 0) * (p.costPrice || 0)), 0),
+      value: productData.reduce((sum, p) => sum + Number(p.totalValue || 0), 0),
       cashRefund: returns.reduce((sum, r) => sum + (r.cashRefund || 0), 0),
       accountCredit: returns.reduce((sum, r) => sum + (r.accountCredit || 0), 0),
     }
   }, [productData, data])
 
+  const computeTotals = (rows) => {
+    const returnedQuantity = rows.reduce(
+      (sum, r) => sum + Number(r.returnedQuantity || 0),
+      0
+    )
+
+    const totalValue = rows.reduce(
+      (sum, r) => sum + Number(r.totalValue || 0),
+      0
+    )
+
+    return {
+      supplierName: "",
+      returnedQuantity,
+      totalValue: currency(totalValue),
+    }
+  }
+
   const columns = [
     {
       header: "Sno",
       accessor: "sno",
+      filterType: "text",
       render: (row) => row.sno,
       pdfValue: (row) => row.sno
     },
     {
       header: "Return Date",
       accessor: "returnDate",
+      filterType: "date-picker",
       render: (row) => formatDate(row.returnDate),
       pdfValue: (row) => formatDate(row.returnDate)
     },
     {
       header: "Order #",
       accessor: "orderNumber",
+      filterType: "text",
       render: (row) => {
         const displayText = row.orderNumber
         const orderId = row.dispatchOrderId
@@ -98,12 +120,14 @@ export default function BuyingReturnsProductWiseReportPage() {
     {
       header: "Supplier",
       accessor: "supplierName",
+      filterType: "autocomplete",
       render: (row) => row.supplierCompany || row.supplierName || "—",
       pdfValue: (row) => row.supplierCompany || row.supplierName || "—"
     },
     {
       header: "Product Code",
       accessor: "productCode",
+      filterType: "autocomplete",
       render: (row) => {
         const { productCode, productId } = row
         if (productId && productCode !== "—") {
@@ -123,18 +147,21 @@ export default function BuyingReturnsProductWiseReportPage() {
     {
       header: "Product Name",
       accessor: "productName",
+      filterType: "autocomplete",
       pdfValue: (row) => row.productName || "—"
     },
     {
       header: "Returned Qty",
       accessor: "returnedQuantity",
       align: "right",
+      filterType: "text",
       pdfValue: (row) => row.returnedQuantity || 0
     },
     {
       header: "Cost Price",
       accessor: "costPrice",
       align: "right",
+      filterType: "text",
       render: (row) => currency(row.costPrice || 0),
       pdfValue: (row) => currency(row.costPrice || 0)
     },
@@ -142,16 +169,18 @@ export default function BuyingReturnsProductWiseReportPage() {
       header: "Total Value",
       accessor: "totalValue",
       align: "right",
+      filterType: "text",
       render: (row) => (
         <span className="text-green-600 font-medium">
-          {currency((row.returnedQuantity || 0) * (row.costPrice || 0))}
+          {currency(row.totalValue || 0)}
         </span>
       ),
-      pdfValue: (row) => currency((row.returnedQuantity || 0) * (row.costPrice || 0))
+      pdfValue: (row) => currency(row.totalValue || 0)
     },
     {
       header: "Reason",
       accessor: "itemReason",
+      filterType: "text",
       pdfValue: (row) => row.itemReason || "—"
     },
   ]
@@ -241,12 +270,13 @@ export default function BuyingReturnsProductWiseReportPage() {
       error={isError ? error : null}
       summary={summary}
     >
-      <PrintableTable
+      <PrintableTableFiltered
         columns={columns}
         data={productData}
         loading={isLoading}
         showTotals={true}
         totalsRow={totalsRow}
+        computeTotals={computeTotals}
         grandTotalSection={totalsRow}
         totalColumns={[{ title: "Total Return Value", value: "totalValue" }]}
       />

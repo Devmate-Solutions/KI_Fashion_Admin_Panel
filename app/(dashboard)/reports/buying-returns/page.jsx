@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
-import PrintableTable from "@/components/reports/PrintableTable"
+import PrintableTableFiltered from "@/components/reports/PrintableTableFiltered"
 import { useBuyingReturnsReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
 import { getDefaultDateRange } from "@/lib/utils/getDefaultDateRange"
@@ -49,11 +49,13 @@ export default function BuyingReturnsReportPage() {
     {
       header: "Date",
       accessor: "returnedAt",
+      filterType: "date-picker",
       render: (row) => formatDate(row.returnedAt || row.createdAt),
     },
     {
       header: "Return ID",
       accessor: "_id",
+      filterType: "text",
       render: (row) => (
         <span className="font-mono text-xs">{row._id?.slice(-8) || "—"}</span>
       ),
@@ -61,6 +63,7 @@ export default function BuyingReturnsReportPage() {
     {
       header: "Order #",
       accessor: "dispatchOrder",
+      filterType: "text",
       render: (row) => {
         const displayText = row.dispatchOrder?.orderNumber || row.dispatchOrder?._id?.slice(-8) || "—"
         const orderId = row.dispatchOrder?._id
@@ -80,16 +83,19 @@ export default function BuyingReturnsReportPage() {
     {
       header: "Supplier",
       accessor: "supplier",
+      filterType: "autocomplete",
       render: (row) => row.supplier?.company || row.supplier?.name || "—",
     },
     {
       header: "Items",
       accessor: "items",
+      filterType: "autocomplete",
       render: (row) => `${row.items?.length || 0} item(s)`,
     },
     {
       header: "Return Value",
       accessor: "totalReturnValue",
+      filterType: "text",
       align: "right",
       render: (row) => (
         <span className="font-semibold text-green-600">
@@ -100,18 +106,24 @@ export default function BuyingReturnsReportPage() {
     {
       header: "Cash Refund",
       accessor: "cashRefund",
+      filterType: "text",
+
       align: "right",
       render: (row) => currency(row.cashRefund || 0),
     },
     {
       header: "Account Credit",
       accessor: "accountCredit",
+      filterType: "text",
+
       align: "right",
       render: (row) => currency(row.accountCredit || 0),
     },
     {
       header: "Reason",
       accessor: "reason",
+      filterType: "text",
+
       render: (row) => {
         const reason = row.items?.[0]?.reason || row.notes || "—"
         return (
@@ -154,6 +166,16 @@ export default function BuyingReturnsReportPage() {
     accountCredit: currency(totals.accountCredit),
   }
 
+  const computeTotals = (rows) => ({
+    supplier: "",
+    items: totals.itemsReturned + " item(s)",
+   
+    totalReturnValue: currency(rows.reduce((s, r) => s + (r.totalValue || 0), 0)),
+    cashRefund: currency(rows.reduce((s, r) => s + (r.cashRefund || 0), 0)),
+    accountCredit: currency(rows.reduce((s, r) => s + (r.accountCredit || 0), 0)),
+    
+  })
+
   return (
     <ReportLayout
       title="Daily Buying Return Report"
@@ -165,12 +187,17 @@ export default function BuyingReturnsReportPage() {
       error={isError ? error : null}
       summary={summary}
     >
-      <PrintableTable
+     
+
+       <PrintableTableFiltered enableColumnFilters={true}
         columns={columns}
         data={returnsData}
         loading={isLoading}
         showTotals={true}
+        computeTotals={computeTotals}
         totalsRow={totalsRow}
+        searchableColumns={[columns[0].accessor]}
+        totalColumns={[{ title: "Total Returns", value: "totalValue" }]}
       />
     </ReportLayout>
   )

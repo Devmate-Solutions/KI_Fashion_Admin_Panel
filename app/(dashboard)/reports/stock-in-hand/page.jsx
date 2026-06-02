@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import ReportLayout from "@/components/reports/ReportLayout"
-import PrintableTable from "@/components/reports/PrintableTable"
+import PrintableTableFiltered from "@/components/reports/PrintableTableFiltered"
 import { useStockInHandReport } from "@/lib/hooks/useReports"
 import { Badge } from "@/components/ui/badge"
 import { exportToExcelWithTotals } from "@/lib/utils/exportToExcel"
@@ -112,6 +112,8 @@ export default function StockInHandReportPage() {
       header: "Supplier",
       accessor: "supplierName",
       type: "string",
+      filterType: "autocomplete",
+
       render: (row) => {
         const companyName = row.supplierCompany;
         const contactName = row.supplierName;
@@ -145,6 +147,7 @@ export default function StockInHandReportPage() {
     {
       header: "Product Code",
       accessor: "productCode",
+      filterType: "autocomplete",
       type: "string",
       render: (row) => {
         const productCode = row.productCode || row.sku || row.product?.productCode || row.product?.sku || "—"
@@ -167,33 +170,36 @@ export default function StockInHandReportPage() {
       header: "Product Description",
       accessor: "productName",
       type: "string",
+      filterType: "autocomplete",
+
       render: (row) => row.productName || row.name || row.description || "—",
       pdfValue: (row) => row.productName || row.name || row.description || "—"
     },
-    {
-      header: "Color",
-      accessor: "color",
-      type: "string",
-      render: (row) => {
-        // Try to get color from multiple sources
-        if (row.color) return row.color;
-        if (row.variantComposition && row.variantComposition.length > 0) {
-          return row.variantComposition.map(v => v.color).join(", ");
-        }
-        return "—";
-      },
-      pdfValue: (row) => {
-        if (row.color) return row.color;
-        if (row.variantComposition && row.variantComposition.length > 0) {
-          return row.variantComposition.map(v => v.color).join(", ");
-        }
-        return "—";
-      }
-    },
+    // {
+    //   header: "Color",
+    //   accessor: "color",
+    //   type: "string",
+    //   render: (row) => {
+    //     // Try to get color from multiple sources
+    //     if (row.color) return row.color;
+    //     if (row.variantComposition && row.variantComposition.length > 0) {
+    //       return row.variantComposition.map(v => v.color).join(", ");
+    //     }
+    //     return "—";
+    //   },
+    //   pdfValue: (row) => {
+    //     if (row.color) return row.color;
+    //     if (row.variantComposition && row.variantComposition.length > 0) {
+    //       return row.variantComposition.map(v => v.color).join(", ");
+    //     }
+    //     return "—";
+    //   }
+    // },
     {
       header: "Items Bought",
       accessor: "itemsBought",
       align: "right",
+      filterType: "text",
       render: (row) => row.itemsBought || 0,
       pdfValue: (row) => row.itemsBought || 0
     },
@@ -201,15 +207,17 @@ export default function StockInHandReportPage() {
       header: "Items Sold",
       accessor: "itemsSold",
       align: "right",
-      render: (row) => (row.itemsSold || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-      pdfValue: (row) => (row.itemsSold || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      filterType: "text",
+      render: (row) => (row.itemsSold || 0),
+      pdfValue: (row) => (row.itemsSold || 0)
     },
     {
       header: "Remaining",
       accessor: "currentStock",
       align: "right",
+      filterType: "text",
       render: (row) => {
-        const stock = row.currentStock || row.stockInHand || 0
+        const stock = row.itemsBought - row.itemsSold || 0
         const isLow = stock <= (row.reorderLevel || row.minimumStock || 10)
         return (
           <span className={isLow ? "text-red-600 font-semibold" : ""}>
@@ -223,6 +231,7 @@ export default function StockInHandReportPage() {
       header: "Min Sell Price",
       accessor: "minSellPrice",
       align: "right",
+      filterType: "text",
       render: (row) => {
         const minSellPrice = toNumber(
           row.minSellPrice ??
@@ -244,6 +253,7 @@ export default function StockInHandReportPage() {
       header: "Landed Price",
       accessor: "landedPrice",
       align: "right",
+      filterType: "text",
       render: (row) => {
         const price = row.landedPrice || row.averageCostPrice || row.costPrice || row.averageLandedPrice || 0
         return currency(price)
@@ -289,6 +299,49 @@ export default function StockInHandReportPage() {
     minSellPrice: "",
   }
 
+  // const computeTotals = (rows) => ({
+  //   productName: "",
+  //   itemsBought: rows.reduce((s, r) => s + (r.totalBought || 0), 0),
+  //   itemsSold: rows.reduce((s, r) => s + (r.totalSold || 0), 0), //totals.totalSold,
+  //   currentStock: rows.reduce((s, r) => s + (r.totalStock || 0), 0),//totals.totalStock,
+  //   totalValue: currency(rows.reduce((s, r) => s + (r.totalValue || 0), 0)),// currency(totals.totalValue),
+  //   landedPrice: currency(rows.reduce((s, r) => s + (r.totalLandedValue || 0), 0)), //currency(totals.totalLandedValue),
+  //   minSellPrice: "",
+  // })
+
+  const computeTotals = (rows) => ({
+    productName: "",
+
+    itemsBought: rows.reduce(
+      (s, r) => s + toNumber(r.itemsBought),
+      0
+    ),
+
+    itemsSold: rows.reduce(
+      (s, r) => s + toNumber(r.itemsSold),
+      0
+    ),
+
+    currentStock: rows.reduce(
+      (s, r) => s + toNumber(r.currentStock ?? r.stockInHand),
+      0
+    ),
+
+    landedPrice: currency(
+      rows.reduce((s, r) => {
+        const remaining = toNumber(r.currentStock ?? r.stockInHand)
+
+        const landedPerItem = toNumber(
+          r.landedPrice || r.averageCostPrice || r.costPrice || r.averageLandedPrice
+        )
+
+        return s + (remaining * landedPerItem)
+      }, 0)
+    ),
+
+    minSellPrice: "",
+  })
+
   return (
     <ReportLayout
       title="Stock in Hand Report"
@@ -302,15 +355,18 @@ export default function StockInHandReportPage() {
       error={isError ? error : null}
       summary={summary}
     >
-      <PrintableTable
+
+      <PrintableTableFiltered enableColumnFilters={true}
         columns={columns}
         data={stockData}
         loading={isLoading}
         showTotals={true}
+        computeTotals={computeTotals}
         totalsRow={totalsRow}
+        searchableColumns={[columns[0].accessor]}
         totalColumns={[{ title: "Stock In Hand", value: "landedPrice" }]}
-        searchableColumns={["supplierName", "productCode", "productName"]}
       />
+
     </ReportLayout>
   )
 }
