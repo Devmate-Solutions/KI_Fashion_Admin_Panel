@@ -136,8 +136,17 @@ export default function DailySalesReportPage() {
       header: "Transaction Type",
       accessor: "transactionType",
       // filterType: "text",
-      render: () => "Sale Invoice",
-      pdfValue: () => "Sale Invoice"
+      render: (row) => {
+        if (row.saleOrigin === 'website') return 'Website Sale';
+        // if (row.saleOrigin === 'crm_manual' || row.saleOrigin === 'crm_buyer') return 'CRM Sale';
+        return 'CRM Sale';
+      },
+      pdfValue: (row) => {
+        if (row.saleOrigin === 'website') return 'Website Sale';
+        return 'CRM Sale'
+        // if (row.saleOrigin === 'crm_manual' || row.saleOrigin === 'crm_buyer') return 'CRM Sale';
+        // return 'Sale Invoice';
+      }
     },
     {
       header: "Invoice Date",

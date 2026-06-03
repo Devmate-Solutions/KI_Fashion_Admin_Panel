@@ -20,8 +20,7 @@
 // import { Badge } from "@/components/ui/badge"
 // import toast from "react-hot-toast"
 // import LogisticsPaymentModal from "@/components/modals/LogisticsPaymentModal"
-// import LogisticsPaymentReceiptModal from "@/components/modals/LogisticsPaymentReceiptModal"
-
+// 
 // function formatNumber(n) {
 //   const num = Number(n || 0)
 //   return num.toFixed(2)
@@ -31,6 +30,9 @@
 //   const num = Number(n || 0)
 //   return `£${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 // }
+
+// 
+
 
 // export default function LogisticsLedgerPage() {
 //   const [selectedCompanyId, setSelectedCompanyId] = useState("") // Default to empty - require company selection
@@ -64,9 +66,7 @@
 //   const [paymentReceiptCompany, setPaymentReceiptCompany] = useState("") // Default to empty - require company selection
 //   const [paymentReceiptDateFrom, setPaymentReceiptDateFrom] = useState("")
 //   const [paymentReceiptDateTo, setPaymentReceiptDateTo] = useState("")
-//   const [selectedReceipt, setSelectedReceipt] = useState(null)
-//   const [receiptModalOpen, setReceiptModalOpen] = useState(false)
-
+//   //   
 //   const queryClient = useQueryClient()
 
 //   // Fetch ALL logistics companies for dropdowns
@@ -149,10 +149,9 @@
 //   }, [paymentReceiptCompany, paymentReceiptDateFrom, paymentReceiptDateTo])
 
 //   const { data: paymentReceiptsData, isLoading: paymentReceiptsLoading } = useLogisticsPaymentReceipts(
-//     paymentReceiptCompany && paymentReceiptParams ? paymentReceiptCompany : '',
-//     paymentReceiptParams || {},
-//     { enabled: !!paymentReceiptCompany && paymentReceiptCompany !== 'all' }
-//   )
+    // paymentReceiptCompany === 'all' ? 'all' : (paymentReceiptCompany || 'all'),
+    // paymentReceiptParams || {}
+  // )
 
 //   const paymentReceipts = useMemo(() => {
 //     if (!paymentReceiptsData?.receipts) return []
@@ -1696,18 +1695,10 @@
 //         }}
 //       />
 
-//       {/* Logistics Payment Receipt Modal */}
-//       <LogisticsPaymentReceiptModal
-//         open={receiptModalOpen}
-//         onOpenChange={setReceiptModalOpen}
-//         receipt={selectedReceipt}
-//       />
+//       
 //     </div>
 //   )
 // }
-
-
-
 "use client"
 
 import { useState, useMemo, useEffect, useCallback, useDeferredValue } from "react"
@@ -1725,17 +1716,128 @@ import DataTableFiltered from "@/components/data-table-filtered"
 import BritishDatePicker from "@/components/BritishDatePicker"
 import { Badge } from "@/components/ui/badge"
 import toast from "react-hot-toast"
-import { Loader2, Plus, RotateCcw, Eye, Box } from "lucide-react"
+import { Loader2, Plus, Eye, Box } from "lucide-react"
 
 import { useLogisticsLedger, useAllLogisticsLedgers, useLogisticsPaymentReceipts } from "@/lib/hooks/useLedger"
 import { ledgerAPI } from "@/lib/api/endpoints/ledger"
-import { balancesAPI } from "@/lib/api/endpoints/balances"
 import { logisticsCompaniesAPI } from "@/lib/api/endpoints/logisticsCompanies"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { exportToPDF } from "@/lib/utils/pdfExport"
 
 import LogisticsPaymentModal from "@/components/modals/LogisticsPaymentModal"
-import LogisticsPaymentReceiptModal from "@/components/modals/LogisticsPaymentReceiptModal"
+
+function generateLogisticsReceiptHTML(receipt) {
+  const distributionRows = (receipt.distributions || []).map((distribution) => `
+    <tr>
+      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${distribution.orderNumber || distribution.dispatchOrderId?.orderNumber || "-"}</td>
+      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">${distribution.boxesCount || 0}</td>
+      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${distribution.shippingInfo?.destination || "-"}</td>
+      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">£${Number(distribution.amountApplied || 0).toFixed(2)}</td>
+      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">£${Number(distribution.previousBalance || 0).toFixed(2)}</td>
+      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">£${Number(distribution.newBalance || 0).toFixed(2)}</td>
+    </tr>
+  `).join("")
+
+  const paymentDate = receipt.paymentDate || receipt.createdAt;
+  const formattedDate = paymentDate ? new Date(paymentDate).toLocaleString('en-GB', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true
+  }).toUpperCase() : "-";
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Logistics Payment Receipt - ${receipt.receiptNumber}</title>
+      <style>
+        @page { size: A4; margin: 15mm; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; width: 100%; margin: 0; padding: 0; color: #111827; line-height: 1.5; font-size: 13px; }
+        .container { max-width: 180mm; margin: 0 auto; }
+        .header { border-bottom: 3px solid #111827; padding-bottom: 10px; margin-bottom: 25px; display:flex; justify-content:space-between; align-items:flex-end; }
+        .header h1 { margin:0; font-size:26px; font-weight:800 }
+        .receipt-no { font-family: monospace; font-size: 16px; font-weight:600; color:#4b5563 }
+        
+        .info-table { width:100%; border-collapse: collapse; margin-bottom: 18px; border: 1px solid #d1d5db; }
+        .info-table th { text-align:left; padding: 8px; background:#f3f4f6; color:#4b5563; font-size:12px; border: 1px solid #d1d5db; width: 20%; }
+        .info-table td { padding:8px; font-weight:600; border: 1px solid #d1d5db; }
+        
+        .items-table { width:100%; border-collapse: collapse; margin-top:10px; border: 1px solid #d1d5db; }
+        .items-table th { background:#111827; color:white; padding:12px 10px; text-align:left; font-size:11px; text-transform:uppercase; border: 1px solid #111827; }
+        .items-table td { border: 1px solid #d1d5db; }
+        .right { text-align:right }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div>
+            <h1>LOGISTICS PAYMENT RECEIPT</h1>
+            <p style="margin:5px 0 0 0; color:#6b7280;">KI FASHION - Logistics Copy</p>
+          </div>
+          <div class="receipt-no">${receipt.receiptNumber}</div>
+        </div>
+
+        <table class="info-table">
+          <tbody>
+            <tr>
+              <th>Logistics Company</th>
+              <td>${receipt.logisticsCompanyId?.name || receipt.companyName || "Unknown Company"}</td>
+              <th>Date</th>
+              <td>${formattedDate}</td>
+            </tr>
+            <tr>
+              <th>Contact</th>
+              <td>${receipt.logisticsCompanyId?.email || "-"}</td>
+              <th>Method</th>
+              <td>${(receipt.paymentMethod || "cash").toUpperCase()}</td>
+            </tr>
+            <tr>
+              <th>Total Amount</th>
+              <td>£${Number(receipt.totalAmount || 0).toFixed(2)}</td>
+              <th>Total Boxes</th>
+              <td>${receipt.totalBoxes || 0}</td>
+            </tr>
+            <tr>
+              <th>Balance Before</th>
+              <td>£${Number(Math.abs(receipt.balanceBefore || 0)).toFixed(2)}</td>
+              <th>Balance After</th>
+              <td>£${Number(Math.abs(receipt.balanceAfter || 0)).toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Order Number</th>
+              <th class="right">Boxes</th>
+              <th>Destination</th>
+              <th class="right">Amount Applied</th>
+              <th class="right">Prev. Balance</th>
+              <th class="right">New Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${distributionRows}
+          </tbody>
+        </table>
+      </div>
+    </body>
+    </html>
+  `
+}
+
+function printLogisticsReceipt(receipt) {
+  if (!receipt) return
+  const printWindow = window.open("", "_blank")
+  if (!printWindow) return
+  printWindow.document.write(generateLogisticsReceiptHTML(receipt))
+  printWindow.document.close()
+  printWindow.focus()
+  setTimeout(() => {
+    printWindow.print()
+  }, 250)
+}
 
 function formatLocalDate(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ""
@@ -1756,9 +1858,10 @@ function currency(n) {
 }
 
 function formatDateTime(_date) {
-  const dateTime = _date.date || _date.createdAt || _date;
+  const dateTime = _date?.date || _date?.createdAt || _date;
   if (!dateTime) return "-";
   const d = new Date(dateTime);
+  if (isNaN(d.getTime())) return "-";
   const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true });
   const date = d.toLocaleDateString('en-GB');
   return `${date} ${time}`;
@@ -1782,7 +1885,7 @@ export default function LogisticsLedgerPage() {
   const [receiptModalOpen, setReceiptModalOpen] = useState(false)
   const [selectedReceipt, setSelectedReceipt] = useState(null)
   
-  // Pending Action State (Kept from original logistics logic)
+  // Pending Action State
   const [markAsPaidDialog, setMarkAsPaidDialog] = useState({ open: false, balance: null })
   const [markAsPaidForm, setMarkAsPaidForm] = useState({ method: 'cash', amount: '' })
   const [isMarkingAsPaid, setIsMarkingAsPaid] = useState(false)
@@ -1829,30 +1932,47 @@ export default function LogisticsLedgerPage() {
   }, [selectedCompanyId, allCompanies])
 
   const ledgerFilterParams = useMemo(() => {
-    const params = {
-      startDate: dateRange.from || undefined,
-      endDate: dateRange.to || undefined,
-    }
     if (!selectedCompanyId || selectedCompanyId === 'all') {
-      return { ...params, limit: 5000 }
+      return { limit: 500 } 
     }
-    return { ...params, logisticsCompanyId: selectedCompanyId, limit: 1000 }
-  }, [selectedCompanyId, dateRange])
+    return { logisticsCompanyId: selectedCompanyId, limit: 100 }
+  }, [selectedCompanyId])
 
-  const { data: allLedgerData, isLoading: allLedgerLoading } = useAllLogisticsLedgers(
-    ledgerFilterParams || {},
-    { staleTime: 60_000 }
-  )
+  const { data: allLedgerData, isLoading: allLedgerLoading, error: allLedgerError } = useAllLogisticsLedgers(ledgerFilterParams || {})
 
-  const { data: paymentReceiptsData, isLoading: paymentReceiptsLoading, isFetching: receiptsFetching } = useLogisticsPaymentReceipts(
-    selectedCompanyId !== 'all' ? selectedCompanyId : '',
-    { ...ledgerFilterParams },
-    { enabled: true }
+  const companyBalances = useMemo(() => {
+    const balances = {};
+    if (allLedgerData?.entries) {
+      const sortedEntries = [...allLedgerData.entries].sort((a, b) => {
+        return new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime();
+      });
+      
+      sortedEntries.forEach(entry => {
+        const compId = typeof entry.entityId === 'object' ? (entry.entityId._id || entry.entityId.id) : entry.entityId;
+        if (compId && balances[compId] === undefined) {
+          balances[compId] = entry.balance || 0;
+        }
+      });
+    }
+    return balances;
+  }, [allLedgerData]);
+
+  // FIX: Always return a params object so receipts load universally
+  const paymentReceiptParams = useMemo(() => {
+    const params = { limit: 500 }
+    if (dateRange.from) params.dateFrom = dateRange.from
+    if (dateRange.to) params.dateTo = dateRange.to
+    return params
+  }, [dateRange])
+
+  // FIX: Feed in selectedCompanyId directly rather than an unused state variable
+  const { data: paymentReceiptsData, isLoading: paymentReceiptsLoading } = useLogisticsPaymentReceipts(
+    selectedCompanyId || 'all',
+    paymentReceiptParams
   )
 
   // --- CALCULATIONS & DATA TRANSFORMATION ---
 
-  // Transform all ledger entries with client-side running balance
   const allLedgerTransactions = useMemo(() => {
     if (!allLedgerData?.entries) return []
 
@@ -1862,12 +1982,18 @@ export default function LogisticsLedgerPage() {
       entry.transactionType === 'adjustment'
     )
 
-    const mappedItems = filteredEntries.map(entry => {
+    const transformedEntries = filteredEntries.map(entry => {
       const company = entry.entityId || {}
       let typeLabel = entry.transactionType || '-'
 
       if (entry.transactionType === 'payment') {
-        typeLabel = `Payment - ${entry.paymentMethod === 'bank' ? 'Bank' : 'Cash'}`
+        if (entry.paymentMethod === 'cash') {
+          typeLabel = 'Payment - Cash'
+        } else if (entry.paymentMethod === 'bank') {
+          typeLabel = 'Payment - Bank'
+        } else {
+          typeLabel = 'Payment'
+        }
       } else if (entry.transactionType === 'charge') {
         typeLabel = 'Logistics Charge'
       } else if (entry.transactionType === 'adjustment') {
@@ -1877,17 +2003,24 @@ export default function LogisticsLedgerPage() {
       let readableReference = '-'
       let supplierCompany = '-'
       let supplierContact = '-'
+      let totalBoxes = null
 
-      if (entry.referenceId) {
-        if (typeof entry.referenceId === 'object' && entry.referenceId !== null) {
-          readableReference = entry.referenceId.orderNumber || entry.referenceId._id || '-'
-          supplierCompany = entry.referenceId.supplierCompany || '-'
-          supplierContact = entry.referenceId.supplierName || '-'
-        } else {
-          readableReference = entry.referenceId.toString()
-        }
+      if (entry.referenceId && typeof entry.referenceId === 'object' && entry.referenceId !== null) {
+        const ref = entry.referenceId;
+        readableReference = ref.orderNumber || ref.referenceNumber || ref._id || '-'
+        
+        // FIX: Broaden checks for nested supplier relationships often found in dispatch models
+        supplierCompany = ref.supplierCompany || ref.supplierId?.companyName || ref.supplier?.companyName || '-'
+        supplierContact = ref.supplierName || ref.supplierId?.name || ref.supplier?.name || '-'
+        
+        // FIX: Deeply check for boxes in referenced orders
+        totalBoxes = entry.boxes ?? entry.boxesCount ?? ref.boxesCount ?? ref.totalBoxes ?? (Array.isArray(ref.boxes) ? ref.boxes.length : null)
       } else if (entry.reference || entry.referenceNumber) {
         readableReference = entry.reference || entry.referenceNumber
+        totalBoxes = entry.boxes ?? entry.boxesCount ?? null
+      } else if (entry.referenceId) {
+        readableReference = entry.referenceId.toString()
+        totalBoxes = entry.boxes ?? entry.boxesCount ?? null
       }
 
       return {
@@ -1896,31 +2029,32 @@ export default function LogisticsLedgerPage() {
         createdAt: entry.createdAt,
         company: company.name || 'Unknown Company',
         companyId: company._id || company.id,
-        supplierName: supplierCompany || supplierContact || '-',
+        supplierName: supplierCompany !== '-' ? supplierCompany : supplierContact,
         supplierCompany,
         supplierContact,
         type: typeLabel,
-        transactionType: entry.transactionType,
+        transactionType: entry.transactionType || entry.type,
         description: entry.description || entry.notes || '-',
         debit: entry.debit || 0,
         credit: entry.credit || 0,
         cashPaid: (entry.transactionType === 'payment' && entry.paymentMethod === 'cash') ? (entry.credit || 0) : 0,
         bankPaid: (entry.transactionType === 'payment' && entry.paymentMethod === 'bank') ? (entry.credit || 0) : 0,
         balance: entry.balance || 0, 
-        boxes: entry.boxes ?? null,
+        boxes: totalBoxes,
         boxRateSnapshot: entry.boxRateSnapshot ?? null,
         reference: readableReference,
         referenceId: (entry.referenceId && typeof entry.referenceId === 'object' && entry.referenceId._id)
           ? entry.referenceId._id.toString()
           : (entry.referenceId ? entry.referenceId.toString() : null),
+        referenceModel: entry.referenceModel || '-',
         paymentMethod: entry.paymentMethod || null,
+        paymentDetails: entry.paymentDetails || null,
         boxRate: company.rates?.boxRate || null,
         raw: entry
       }
     })
 
-    // Sort Ascending to calculate running balance accurately
-    const sortedAsc = [...mappedItems].sort((a, b) => {
+    const sortedAsc = [...transformedEntries].sort((a, b) => {
       const createdAtA = new Date(a.date || a.createdAt || 0).getTime()
       const createdAtB = new Date(b.date || b.createdAt || 0).getTime()
       return createdAtA - createdAtB
@@ -1935,18 +2069,24 @@ export default function LogisticsLedgerPage() {
     return withRunningBalance.reverse()
   }, [allLedgerData])
 
-  // 1. Filtered Ledger
   const filteredLedgerTransactions = useMemo(() => {
     let result = allLedgerTransactions;
 
     if (dateRange.from) {
       const from = new Date(dateRange.from)
-      result = result.filter(entry => new Date(entry.date) >= from)
+      from.setHours(0, 0, 0, 0)
+      result = result.filter(entry => {
+        const entryDate = new Date(entry.date || entry.createdAt)
+        return entryDate >= from
+      })
     }
     if (dateRange.to) {
       const to = new Date(dateRange.to)
       to.setHours(23, 59, 59, 999)
-      result = result.filter(entry => new Date(entry.date) <= to)
+      result = result.filter(entry => {
+        const entryDate = new Date(entry.date || entry.createdAt)
+        return entryDate <= to
+      })
     }
 
     if (deferredSearch) {
@@ -1961,36 +2101,36 @@ export default function LogisticsLedgerPage() {
     return result
   }, [allLedgerTransactions, deferredSearch, dateRange])
 
-  // 2. Payment History Extraction
   const paymentHistoryTransactions = useMemo(() => {
     if (!allLedgerTransactions?.length) return []
     let filtered = allLedgerTransactions.filter(entry => entry.transactionType === 'payment')
 
     if (dateRange.from) {
-      const fromDate = new Date(dateRange.from)
-      filtered = filtered.filter(entry => new Date(entry.date) >= fromDate)
+      const from = new Date(dateRange.from)
+      from.setHours(0, 0, 0, 0)
+      filtered = filtered.filter(entry => new Date(entry.date || entry.createdAt) >= from)
     }
     if (dateRange.to) {
-      const toDate = new Date(dateRange.to)
-      toDate.setHours(23, 59, 59, 999)
-      filtered = filtered.filter(entry => new Date(entry.date) <= toDate)
+      const to = new Date(dateRange.to)
+      to.setHours(23, 59, 59, 999)
+      filtered = filtered.filter(entry => new Date(entry.date || entry.createdAt) <= to)
     }
     return filtered
   }, [allLedgerTransactions, dateRange])
 
-  // 3. Payment Receipts
   const paymentReceiptsTransactions = useMemo(() => {
     if (!paymentReceiptsData?.receipts) return []
     let filtered = paymentReceiptsData.receipts
 
     if (dateRange.from) {
-      const fromDate = new Date(dateRange.from)
-      filtered = filtered.filter(entry => new Date(entry.paymentDate || entry.createdAt) >= fromDate)
+      const from = new Date(dateRange.from)
+      from.setHours(0, 0, 0, 0)
+      filtered = filtered.filter(entry => new Date(entry.paymentDate || entry.createdAt) >= from)
     }
     if (dateRange.to) {
-      const toDate = new Date(dateRange.to)
-      toDate.setHours(23, 59, 59, 999)
-      filtered = filtered.filter(entry => new Date(entry.paymentDate || entry.createdAt) <= toDate)
+      const to = new Date(dateRange.to)
+      to.setHours(23, 59, 59, 999)
+      filtered = filtered.filter(entry => new Date(entry.paymentDate || entry.createdAt) <= to)
     }
     return filtered
   }, [paymentReceiptsData, dateRange])
@@ -2023,18 +2163,20 @@ export default function LogisticsLedgerPage() {
         </button>
       )
     },
-    {
-      header: "Box Rate",
-      accessor: "rates",
-      render: (row) => <span className="text-muted-foreground">{currency(row.rates?.boxRate || 0)}</span>,
-    },
     { 
       header: "Total Balance", 
       filterType: "text", 
       accessor: "balance", 
-      render: (row) => <span className={`tabular-nums font-bold ${row.balance < 0 ? 'text-green-600' : 'text-red-600'}`}>{currency(Math.abs(row.balance || 0))} {row.balance < 0 ? '(CR)' : ''}</span> 
+      render: (row) => {
+        const companyBalance = row.balance ?? row.totalBalance ?? companyBalances[row.id || row._id] ?? 0;
+        return (
+          <span className={`tabular-nums font-bold ${companyBalance < 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {currency(Math.abs(companyBalance))} 
+          </span>
+        )
+      } 
     },
-  ], [])
+  ], [companyBalances]) 
 
   const allLedgerColumns = useMemo(() => [
     { header: "Date", accessor: "date", filterType: "date-picker", render: (row) => formatDateTime(row), pdfValue: (row) => formatDateTime(row) },
@@ -2055,34 +2197,38 @@ export default function LogisticsLedgerPage() {
       filterType: "text",
       render: (row) => (
         <div className="flex flex-col">
-          <span className="font-medium text-xs">{row.supplierCompany || row.supplierName || '-'}</span>
+          <span className="font-medium text-xs">{row.supplierName || '-'}</span>
         </div>
       ),
-      pdfValue: (row) => row.supplierCompany || row.supplierName || '-'
+      pdfValue: (row) => row.supplierName || '-'
     },
     { 
       header: "Boxes", 
       accessor: "boxes", 
-      render: (row) => {
-        const totalBoxes = row.raw?.boxes ?? (Array.isArray(row.raw?.referenceId?.boxes) ? row.raw.referenceId.boxes.length : null);
-        return <span>{totalBoxes || '-'}</span>
-      }
+      render: (row) => <span>{row.boxes ?? '-'}</span>
     },
     { header: "Box Rate", accessor: "boxRate", render: (row) => <span>{row.raw?.boxRateSnapshot ? currency(row.raw.boxRateSnapshot) : currency(row.boxRate)}</span> },
     { header: "Debit (Charges)", accessor: "debit", filterType: "text", render: (row) => <span className={row.debit > 0 ? "text-red-600 font-medium" : "text-muted-foreground"}>{row.debit > 0 ? formatNumber(row.debit) : '-'}</span>, pdfValue: (row) => row.debit > 0 ? row.debit : 0 },
     { header: "Cash Paid", accessor: "cashPaid", filterType: "text", render: (row) => <span className={row.cashPaid > 0 ? "text-green-600 font-medium" : "text-muted-foreground"}>{row.cashPaid > 0 ? formatNumber(row.cashPaid) : '-'}</span>, pdfValue: (row) => row.cashPaid > 0 ? row.cashPaid : 0 },
     { header: "Bank Paid", accessor: "bankPaid", filterType: "text", render: (row) => <span className={row.bankPaid > 0 ? "text-green-600 font-medium" : "text-muted-foreground"}>{row.bankPaid > 0 ? formatNumber(row.bankPaid) : '-'}</span>, pdfValue: (row) => row.bankPaid > 0 ? row.bankPaid : 0 },
-    { header: "Balance", accessor: "runningBalance", filterType: "text", render: (row) => <span className={`font-bold tabular-nums ${row.runningBalance < 0 ? 'text-green-600' : 'text-red-600'}`}>{formatNumber(Math.abs(row.runningBalance))} {row.runningBalance < 0 ? 'CR' : ''}</span>, pdfValue: (row) => row.runningBalance }
+    { header: "Balance", accessor: "runningBalance", filterType: "text", render: (row) => <span className={`font-bold tabular-nums ${row.runningBalance < 0 ? 'text-green-600' : 'text-red-600'}`}>{formatNumber(Math.abs(row.runningBalance))}</span>, pdfValue: (row) => row.runningBalance }
   ], [])
 
   const paymentHistoryColumns = useMemo(() => {
     const cols = [
       {
+        header: "ID",
+        accessor: "entryNumber",
+        filterType: "text",
+        render: (row) => <span className="font-mono text-blue-600 font-medium">{row.raw?.entryNumber || String(row.id).slice(-6)}</span>,
+        pdfValue: (row) => row.raw?.entryNumber || String(row.id).slice(-6)
+      },
+      {
         header: "Date",
         accessor: "date",
         filterType: "date-picker",
-        render: (row) => formatDateTime(row),
-        pdfValue: (row) => formatDateTime(row)
+        render: (row) => formatDateTime({ date: row.date }),
+        pdfValue: (row) => formatDateTime({ date: row.date })
       }
     ]
 
@@ -2097,15 +2243,40 @@ export default function LogisticsLedgerPage() {
     }
 
     cols.push(
-      { header: "Order Reference", accessor: "reference", filterType: "text", render: (row) => <span className="font-medium">{row.reference || '-'}</span>, pdfValue: (row) => row.reference || '-' },
-      { header: "Method", accessor: "paymentMethod", filterType: "text", render: (row) => <Badge variant="outline" className="capitalize">{row.paymentMethod || 'cash'}</Badge>, pdfValue: (row) => (row.paymentMethod || 'cash').toUpperCase() },
-      { header: "Amount", accessor: "credit", filterType: "text", render: (row) => <span className="tabular-nums font-bold text-green-600">{formatNumber(row.credit || 0)}</span>, pdfValue: (row) => row.credit || 0 },
-      { header: "Notes", accessor: "description", render: (row) => <span className="text-sm text-muted-foreground">{row.description || '-'}</span>, pdfValue: (row) => row.description || '-' }
+      {
+        header: "Total Balance",
+        accessor: "totalBalance",
+        filterType: "text",
+        render: (row) => <span className="tabular-nums font-medium">{formatNumber(row.runningBalance + (row.credit || 0))}</span>,
+        pdfValue: (row) => row.runningBalance + (row.credit || 0)
+      },
+      {
+        header: "Cash Paid",
+        accessor: "cashPaid",
+        filterType: "text",
+        render: (row) => <span className="tabular-nums font-medium">{formatNumber(row.cashPaid)}</span>,
+        pdfValue: (row) => row.cashPaid
+      },
+      {
+        header: "Bank Paid", 
+        accessor: "bankPaid",
+        filterType: "text",
+        render: (row) => <span className="tabular-nums font-medium">{formatNumber(row.bankPaid)}</span>,
+        pdfValue: (row) => row.bankPaid
+      },
+      {
+        header: "Remaining Balance",
+        accessor: "runningBalance",
+        filterType: "text",
+        render: (row) => <span className="tabular-nums font-medium">{formatNumber(row.runningBalance)}</span>,
+        pdfValue: (row) => row.runningBalance
+      }
     )
 
     return cols
   }, [selectedCompanyId])
 
+  
   const paymentReceiptsColumns = useMemo(() => {
     const baseColumns = [
       { header: "Receipt #", accessor: "receiptNumber", filterType: "text", render: (row) => <span className="font-mono font-medium text-blue-600">{row.receiptNumber}</span>, pdfValue: (row) => row.receiptNumber },
@@ -2129,7 +2300,7 @@ export default function LogisticsLedgerPage() {
       { header: "Orders Affected", accessor: "ordersAffected", render: (row) => <span className="tabular-nums">{row.ordersAffected || 0}</span>, pdfValue: (row) => row.ordersAffected || 0 },
       {
         header: "Actions", accessor: "actions", render: (row) => (
-          <Button size="sm" variant="ghost" className="h-8 text-blue-600" onClick={() => { setSelectedReceipt(row); setReceiptModalOpen(true); }}><Eye className="h-4 w-4 mr-1" /> View</Button>
+          <Button size="sm" variant="ghost" className="h-8 text-blue-600" onClick={() => printLogisticsReceipt(row)}><Eye className="h-4 w-4 mr-1" /> View</Button>
         )
       }
     ]
@@ -2232,6 +2403,7 @@ export default function LogisticsLedgerPage() {
       label: "Payment History",
       content: (
         <div className="space-y-4">
+          {allLedgerError && <div className="text-red-500 text-sm mb-2">Error loading ledger data: {allLedgerError.message}</div>}
           <DataTableFiltered
             title="All Logistics Payments"
             columns={paymentHistoryColumns}
@@ -2250,11 +2422,12 @@ export default function LogisticsLedgerPage() {
       label: "Payment Receipts",
       content: (
         <div className="space-y-4">
+          {/* FIX: Removed the empty screen blocker. Users can now see all global receipts */}
           <DataTableFiltered
             title="All Logistics Receipts"
             columns={paymentReceiptsColumns}
             data={paymentReceiptsTransactions}
-            loading={paymentReceiptsLoading || receiptsFetching}
+            loading={paymentReceiptsLoading}
             onDownloadPDF={handleExportReceiptsPDF}
             paginate={true}
             pageSize={20}
@@ -2286,6 +2459,7 @@ export default function LogisticsLedgerPage() {
               </div>
             </div>
           </div>
+          {allLedgerError && <div className="text-red-500 text-sm mb-2">Error loading ledger data: {allLedgerError.message}</div>}
           <DataTableFiltered
             title="Logistics Ledger"
             columns={allLedgerColumns}
@@ -2325,7 +2499,7 @@ export default function LogisticsLedgerPage() {
             title="Payment Receipts"
             columns={paymentReceiptsColumns}
             data={paymentReceiptsTransactions}
-            loading={paymentReceiptsLoading || receiptsFetching}
+            loading={paymentReceiptsLoading}
             onDownloadPDF={handleExportReceiptsPDF}
             enableSearch={true}
             paginate={true}
@@ -2347,7 +2521,7 @@ export default function LogisticsLedgerPage() {
             <Combobox
               options={comboboxOptions}
               value={selectedCompanyId}
-              onValueChange={(value) => { setSelectedCompanyId(value || "all"); setActiveTab(0); }}
+              onValueChange={(value) => { setSelectedCompanyId(value || "all"); }}
               placeholder="Select logistics company..."
               searchPlaceholder="Search company..."
               emptyMessage="No company found"
@@ -2404,13 +2578,7 @@ export default function LogisticsLedgerPage() {
         }}
       />
 
-      <LogisticsPaymentReceiptModal
-        open={receiptModalOpen}
-        onOpenChange={setReceiptModalOpen}
-        receipt={selectedReceipt}
-      />
-
-      {/* Mark Specific Balance As Paid Dialog (Maintained from original functionality) */}
+      {/* Mark Specific Balance As Paid Dialog */}
       <Dialog open={markAsPaidDialog.open} onOpenChange={(open) => setMarkAsPaidDialog({ open, balance: null })}>
         <DialogContent>
           <DialogHeader>

@@ -82,7 +82,11 @@ export default function DailySalesReportPage() {
     {
       header: "Transaction Type",
       accessor: "transactionType",
-      render: () => "Sale Invoice",
+      render: (row) => {
+        if (row.saleOrigin === 'website') return 'Website Sale';
+        if (row.saleOrigin === 'crm_manual' || row.saleOrigin === 'crm_buyer') return 'CRM Sale';
+        return 'Sale Invoice';
+      },
     },
     {
       header: "Date",
