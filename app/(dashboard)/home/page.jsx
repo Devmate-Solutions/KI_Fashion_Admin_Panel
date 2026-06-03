@@ -10,6 +10,7 @@ import {
   useSuppliersReport,
   useCustomersReport,
   useProductSummaryReport,
+  useTopStatsReport,
 } from "@/lib/hooks/useReports";
 import ProductSummaryReportPage from "@/app/(dashboard)/reports/product-summary/page";
 import StockCountTab from "@/components/stock/StockCountTab";
@@ -46,6 +47,8 @@ import {
   Zap,
   ShieldAlert,
   ArrowUpRight,
+  Trophy,          // Added for Top Performers
+  ArrowDownCircle, // Added for Top Payables
 } from "lucide-react";
 import {
   Card,
@@ -67,6 +70,9 @@ import {
 } from "recharts";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
+
+// Make sure to export your fetcher in this location, or adjust the path accordingly
+import { getDashboardTopStats } from "@/lib/api/endpoints/reports"
 
 // Helper to get image array
 const getImageArray = (item) => {
@@ -98,34 +104,46 @@ export default function HomePage() {
   const searchParams = useSearchParams();
   const today = new Date().toLocaleDateString('en-CA');
 
-  // Fetch all dashboard data
-  const { data: dashboardData, isLoading: dashboardLoading } =
-    useDashboardSummary();
+  // Time calculations
   const fourteenDaysAgo = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() - 14);
     return d.toLocaleDateString('en-CA');
   }, []);
+
   const thirtyDaysAgo = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
     return d.toLocaleDateString('en-CA');
   }, []);
+
+  const [topStatsDateRange, setTopStatsDateRange] = useState({
+    startDate: thirtyDaysAgo,
+    endDate: today
+  });
+
+  // Fetch all dashboard data
+  const { data: dashboardData, isLoading: dashboardLoading } = useDashboardSummary();
   const { data: salesData, isLoading: salesLoading } = useSalesReport({ startDate: fourteenDaysAgo, endDate: today });
-  const { data: financialData, isLoading: financialLoading } =
-    useFinancialReport();
+  const { data: financialData, isLoading: financialLoading } = useFinancialReport();
   const { data: suppliersData } = useSuppliersReport();
-  const { data: customersData, isLoading: customersLoading } =
-    useCustomersReport({ startDate: thirtyDaysAgo, endDate: today });
-  const { data: inventoryData, isLoading: inventoryLoading } = useInventoryList(
-    { limit: 100 }
-  );
-  const { data: inventoryValuationData, isLoading: inventoryValuationLoading } =
-    useInventoryValuationReport();
-  // Removed useDailyCashSummary per user request
+  const { data: customersData, isLoading: customersLoading } = useCustomersReport({ startDate: thirtyDaysAgo, endDate: today });
+  const { data: inventoryData, isLoading: inventoryLoading } = useInventoryList({ limit: 100 });
+  const { data: inventoryValuationData, isLoading: inventoryValuationLoading } = useInventoryValuationReport();
   const { data: supplierLedgerData } = useAllSupplierLedgers({ limit: 10 });
   const { data: buyerLedgerData } = useAllBuyerLedgers({ limit: 10 });
   const { data: productSummaryData, isLoading: productSummaryLoading } = useProductSummaryReport();
+
+  // --- NEW: Fetch Top Performers using React Query ---
+  const { data: topStatsData, isLoading: topStatsLoading } = useTopStatsReport({
+    startDate: topStatsDateRange.startDate,
+    endDate: topStatsDateRange.endDate,
+  });
+  const {
+    topBuyers = [],
+    topReceivables = [],
+    topPayables = []
+  } = topStatsData || {};
 
   const inventoryItems = inventoryData?.items || [];
   const fallbackStockValue = inventoryItems.reduce(
@@ -138,7 +156,6 @@ export default function HomePage() {
     (item) => item.lowStock || item.needsReorder
   ).length;
 
-  // Underperforming logic: Items with >10 in hand and <5% sold
   const underperformingProducts = useMemo(() => {
     const products = Array.isArray(productSummaryData) ? productSummaryData : productSummaryData?.products || [];
     return products
@@ -171,7 +188,6 @@ export default function HomePage() {
     }));
   }, [salesData]);
 
-  // Merge ledger entries for recent activity
   const recentEntries = useMemo(() => {
     return [
       ...(supplierLedgerData?.entries || []).map((entry) => ({
@@ -222,98 +238,144 @@ export default function HomePage() {
           description=""
           onClick={() => router.push("/selling")}
         />
-        {/* <StatCard
-          label="Active Buyers"
-          value={customersData?.totalActiveCustomers?.toString() || "0"}
-          icon={Users}
-          loading={customersLoading}
-          color="warning"
-          description="Total active in last 30 days"
-          onClick={() => router.push("/customer-ledger")}
-        /> */}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        {/* Inventory Health Section */}
-        {/* <Card className="xl:col-span-6 border-none shadow-sm bg-white overflow-hidden">
-          <CardHeader className="p-6">
-            <CardTitle className="text-xl font-bold flex items-center gap-2">
-              <ShieldAlert className="h-5 w-5 text-rose-500" />
-              Inventory Health
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-6 pb-6">
-            <div className="flex gap-4 mb-6">
-              <div className="flex-1 p-4 rounded-xl bg-slate-50 border border-slate-100">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Low Stock</p>
-                <p className="text-2xl font-black text-slate-900">{stockHealth.lowCount}</p>
-                <div className="mt-2 h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-amber-500" style={{ width: `${stockHealth.low}%` }} />
-                </div>
-              </div>
-              <div className="flex-1 p-4 rounded-xl bg-slate-50 border border-slate-100">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Out of Stock</p>
-                <p className="text-2xl font-black text-rose-600">{stockHealth.outCount}</p>
-                <div className="mt-2 h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-rose-500" style={{ width: `${stockHealth.out}%` }} />
-                </div>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <p className="text-sm font-bold text-slate-900 mb-2">Priority Alerts</p>
-              {inventoryItems.filter(p => p.lowStock || (p.stockInHand || 0) === 0).slice(0, 3).map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors group">
-                  <div className="flex items-center gap-3">
-                    <div className={cn("h-2 w-2 rounded-full", (item.stockInHand || 0) === 0 ? "bg-rose-500" : "bg-amber-500")} />
-                    <span className="text-sm font-semibold text-slate-700">{item.productName || item.product?.name}</span>
-                  </div>
-                  <Badge variant="outline" className="text-[10px] group-hover:bg-white">
-                    {item.stockInHand || 0} left
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card> */}
 
-        {/* Underperforming Products */}
-        {/* <Card className="xl:col-span-6 border-none shadow-sm bg-white overflow-hidden">
-          <CardHeader className="p-6">
-            <CardTitle className="text-xl font-bold flex items-center gap-2">
-              <TrendingDown className="h-5 w-5 text-amber-500" />
-              Underperforming
-            </CardTitle>
-            <CardDescription>Stale stock with low sell-through</CardDescription>
-          </CardHeader>
-          <CardContent className="px-6 pb-6">
-            <div className="space-y-1">
-              {underperformingProducts.length > 0 ? underperformingProducts.map((product, idx) => (
-                <div key={idx} className="flex items-center justify-between p-4 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 font-bold text-xs">
-                      {Math.round(product.percentage || 0)}%
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-800 line-clamp-1">{product.productName}</p>
-                      <p className="text-[10px] font-medium text-slate-400 capitalize">{product.color} • {product.stockInHand || product.itemsRemaining} units left</p>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="icon" asChild>
-                    <Link href={`/stock/product-history?productId=${product.productId}`}>
-                      <ChevronRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              )) : (
-                <div className="h-64 flex flex-col items-center justify-center text-slate-400 gap-2">
-                  <CheckCircle2 className="h-8 w-8 text-emerald-500" />
-                  <p className="text-sm font-medium">All products performing well!</p>
-                </div>
-              )}
+        {/* --- NEW: Top Performers Section --- */}
+        <div className="xl:col-span-12 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-amber-500" />
+                Top Performers
+              </h2>
+              <p className="text-sm text-slate-500">Highest value accounts by date range</p>
             </div>
-          </CardContent>
-        </Card> */}
+
+            {/* Top Stats Date Range Picker */}
+            <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm w-fit">
+              <input
+                type="date"
+                value={topStatsDateRange.startDate}
+                onChange={(e) => setTopStatsDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                className="text-xs border-none bg-slate-50 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none cursor-pointer"
+              />
+              <span className="text-slate-400 text-xs font-medium">to</span>
+              <input
+                type="date"
+                value={topStatsDateRange.endDate}
+                onChange={(e) => setTopStatsDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                className="text-xs border-none bg-slate-50 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none cursor-pointer"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {/* Top Buyers */}
+            <Card className="border border-slate-200 shadow-sm flex flex-col bg-white">
+              <CardHeader className="pb-3 border-b border-slate-50">
+                <CardTitle className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-blue-600" />
+                  Top 5 Buyers (Sales)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 flex-1">
+                {topStatsLoading ? (
+                  <div className="p-4 space-y-3">
+                    {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-8 bg-slate-100 animate-pulse rounded" />)}
+                  </div>
+                ) : topBuyers.length > 0 ? (
+                  <div className="divide-y divide-slate-50">
+                    {topBuyers.map((buyer, idx) => (
+                      <div key={buyer._id} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <span className="text-xs font-bold text-slate-400 w-3">{idx + 1}.</span>
+                          <div className="truncate">
+                            <p className="text-sm font-medium text-slate-900 truncate">{buyer.name || 'Unknown'}</p>
+                            {buyer.contact && <p className="text-[10px] text-slate-500 truncate">{buyer.contact}</p>}
+                          </div>
+                        </div>
+                        <span className="text-sm font-bold text-slate-700 shrink-0 ml-2">
+                          {currency(buyer.totalValue)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-sm text-slate-500">No data for this period</div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Top Receivables */}
+            <Card className="border border-slate-200 shadow-sm flex flex-col bg-white">
+              <CardHeader className="pb-3 border-b border-slate-50">
+                <CardTitle className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                  <ArrowUpRight className="h-4 w-4 text-emerald-600" />
+                  Top 5 Receivables
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 flex-1">
+                {topStatsLoading ? (
+                  <div className="p-4 space-y-3">
+                    {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-8 bg-slate-100 animate-pulse rounded" />)}
+                  </div>
+                ) : topReceivables.length > 0 ? (
+                  <div className="divide-y divide-slate-50">
+                    {topReceivables.map((rec, idx) => (
+                      <div key={rec._id} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <span className="text-xs font-bold text-slate-400 w-3">{idx + 1}.</span>
+                          <p className="text-sm font-medium text-slate-900 truncate">{rec.name || 'Unknown'}</p>
+                        </div>
+                        <span className="text-sm font-bold text-emerald-600 shrink-0 ml-2">
+                          {currency(rec.netBalance)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-sm text-slate-500">No outstanding receivables</div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Top Payables */}
+            <Card className="border border-slate-200 shadow-sm flex flex-col bg-white">
+              <CardHeader className="pb-3 border-b border-slate-50">
+                <CardTitle className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                  <ArrowDownCircle className="h-4 w-4 text-rose-500" />
+                  Top 5 Payables
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 flex-1">
+                {topStatsLoading ? (
+                  <div className="p-4 space-y-3">
+                    {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-8 bg-slate-100 animate-pulse rounded" />)}
+                  </div>
+                ) : topPayables.length > 0 ? (
+                  <div className="divide-y divide-slate-50">
+                    {topPayables.map((pay, idx) => (
+                      <div key={pay._id} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <span className="text-xs font-bold text-slate-400 w-3">{idx + 1}.</span>
+                          <p className="text-sm font-medium text-slate-900 truncate">{pay.name || 'Unknown'}</p>
+                        </div>
+                        <span className="text-sm font-bold text-rose-600 shrink-0 ml-2">
+                          {currency(pay.netBalance)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-sm text-slate-500">No outstanding payables</div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+        {/* --- END: Top Performers Section --- */}
 
         {/* Recent Activity Feed */}
         <Card className="xl:col-span-12 border-none shadow-sm bg-white overflow-hidden">
@@ -409,111 +471,6 @@ export default function HomePage() {
       label: "Payables",
       content: <PayablesReportPage />,
     },
-    // {
-    //   label: "Balances",
-    //   content: (
-    //     <div className="space-y-6">
-    //       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-    //         <StatCard
-    //           label="Active Accounts"
-    //           value={(customersData?.totalActiveCustomers || 0).toString()}
-    //           icon={Users}
-    //           loading={customersLoading}
-    //           color="warning"
-    //         />
-    //         <StatCard
-    //           label="Total Receivables"
-    //           value={currency(financialData?.receivables?.total || 0)}
-    //           icon={TrendingUp}
-    //           loading={financialLoading}
-    //           color="success"
-    //         />
-    //         <StatCard
-    //           label="Total Payables"
-    //           value={currency(financialData?.payables?.total || 0)}
-    //           icon={TrendingDown}
-    //           loading={financialLoading}
-    //           color="danger"
-    //         />
-    //         <StatCard
-    //           label="Net Liquidity"
-    //           value={currency(
-    //             (financialData?.receivables?.total || 0) -
-    //               (financialData?.payables?.total || 0)
-    //           )}
-    //           icon={Wallet}
-    //           loading={financialLoading}
-    //           color="purple"
-    //         />
-    //       </div>
-
-    //       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-    //         <Card className="border border-border bg-card rounded-lg overflow-hidden">
-    //           <CardHeader className="p-8 pb-4">
-    //             <CardTitle className="text-lg font-black text-slate-900 tracking-tight">
-    //               Outstanding Receivables
-    //             </CardTitle>
-    //             <CardDescription className="text-xs">
-    //               Top 5 debtors by ledger balance
-    //             </CardDescription>
-    //           </CardHeader>
-    //           <CardContent className="p-0">
-    //             <div className="divide-y divide-slate-50">
-    //               {customersData?.activeCustomers
-    //                 ?.filter((c) => (c.ledgerBalance || 0) > 0)
-    //                 .slice(0, 5)
-    //                 .map((customer, idx) => (
-    //                   <div
-    //                     key={idx}
-    //                     className="px-8 py-5 flex items-center justify-between hover:bg-slate-50/30 transition-all duration-150 rounded-lg mx-2"
-    //                   >
-    //                     <span className="font-bold text-slate-900">
-    //                       {customer.name || customer.company || "Unknown"}
-    //                     </span>
-    //                     <span className="font-black text-slate-900 tabular-nums">
-    //                       {currency(customer.ledgerBalance || 0)}
-    //                     </span>
-    //                   </div>
-    //                 ))}
-    //             </div>
-    //           </CardContent>
-    //         </Card>
-
-    //         <Card className="border border-border bg-card rounded-lg overflow-hidden">
-    //           <CardHeader className="p-8 pb-4">
-    //             <CardTitle className="text-lg font-black text-slate-900 tracking-tight">
-    //               Outstanding Payables
-    //             </CardTitle>
-    //             <CardDescription className="text-xs">
-    //               Top 5 suppliers by outstanding credit
-    //             </CardDescription>
-    //           </CardHeader>
-    //           <CardContent className="p-0">
-    //             <div className="divide-y divide-slate-50">
-    //               {suppliersData?.topSuppliers
-    //                 ?.slice(0, 5)
-    //                 .map((supplier, idx) => (
-    //                   <div
-    //                     key={idx}
-    //                     className="px-8 py-5 flex items-center justify-between hover:bg-slate-50/30 transition-all duration-150 rounded-lg mx-2"
-    //                   >
-    //                     <span className="font-bold text-slate-900">
-    //                       {supplier.supplierName ||
-    //                         supplier.company ||
-    //                         "Unknown"}
-    //                     </span>
-    //                     <span className="font-black text-rose-600 tabular-nums">
-    //                       {currency(supplier.totalAmount || 0)}
-    //                     </span>
-    //                   </div>
-    //                 ))}
-    //             </div>
-    //           </CardContent>
-    //         </Card>
-    //       </div>
-    //     </div>
-    //   ),
-    // },
   ];
 
   // Tab state sync

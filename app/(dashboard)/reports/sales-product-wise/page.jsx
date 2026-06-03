@@ -238,7 +238,6 @@ const computeTotals = (rows) => ({
         totalColumns={[{ title: "Total Sales Value", value: "totalPrice" }]}
 
       /> */}
-    {JSON.stringify(productData)}
       <PrintableTableFiltered enableColumnFilters={true}
         columns={columns}
         data={productData}
