@@ -245,13 +245,7 @@ export default function HomePage() {
         {/* --- NEW: Top Performers Section --- */}
         <div className="xl:col-span-12 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-amber-500" />
-                Top Performers
-              </h2>
-              <p className="text-sm text-slate-500">Highest value accounts by date range</p>
-            </div>
+            
 
             {/* Top Stats Date Range Picker */}
             <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm w-fit">
@@ -274,7 +268,7 @@ export default function HomePage() {
           <div className="grid gap-4 md:grid-cols-3">
             {/* Top Buyers */}
             <Card className="border border-slate-200 shadow-sm flex flex-col bg-white">
-              <CardHeader className="pb-3 border-b border-slate-50">
+              <CardHeader className=" border-b border-slate-50">
                 <CardTitle className="text-sm font-semibold text-slate-900 flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-blue-600" />
                   Top 5 Buyers (Sales)
