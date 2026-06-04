@@ -5474,7 +5474,9 @@ function mapLedgerEntry(entry) {
     date: entry.date || entry.createdAt,
     createdAt: entry.createdAt,
     supplier: supplier.company || supplier.name || "Unknown Supplier",
-    supplierId: supplier._id || supplier.id,
+    companyName: supplier.company || "",
+    supplierName: supplier.name || "",
+    supplierId: supplier.supplierId || supplier._id || supplier.id,
     type: typeLabel,
     transactionType: entry.transactionType || entry.type,
     description: entry.description || entry.notes || "-",
@@ -5759,8 +5761,9 @@ export default function SupplierLedgerPage() {
         id: receipt._id || receipt.id || receipt.receiptNumber,
         receiptNumber: receipt.receiptNumber,
         date: receipt.date || receipt.createdAt,
-        supplierName: supplier.company || supplier.name || "Unknown Supplier",
-        supplierId: supplier._id || supplier.id || receipt.supplierId,
+        supplierName: supplier.name || "",
+        companyName: supplier.company || "",
+        supplierId: supplier.supplierId || '',
         totalAmount: receipt.totalAmount || 0,
         cashAmount: receipt.cashAmount || 0,
         bankAmount: receipt.bankAmount || 0,
@@ -5778,7 +5781,7 @@ export default function SupplierLedgerPage() {
   }, [supplierReceiptsData, dateRange])
 
   const handlePrintSupplierReceipt = useCallback(async (receiptRow) => {
-    const supplierId = receiptRow.raw?.supplierId?._id || receiptRow.raw?.supplierId || selectedSupplierId
+    const supplierId = receiptRow.raw?.supplierId || selectedSupplierId
     if (!supplierId || supplierId === "all") return toast.error("Supplier ID missing for receipt")
 
     setIsLoadingSupplierReceipt(true)
@@ -5801,8 +5804,9 @@ export default function SupplierLedgerPage() {
       header: "Supplier ID",
       accessor: "id",
       filterType: "text",
-      render: (row) => <span className="font-mono text-xs text-muted-foreground">{String(row.id || row._id).slice(-8)}</span>,
-      pdfValue: (row) => String(row.id || row._id).slice(-8)
+      // Show actual supplierId if available, otherwise fallback to sliced Mongo ID
+      render: (row) => <span className="font-mono text-xs text-muted-foreground">{row.supplierId || String(row.id || row._id).slice(-8)}</span>,
+      pdfValue: (row) => row.supplierId || String(row.id || row._id).slice(-8)
     },
     {
       header: "Supplier Name",
@@ -5836,8 +5840,18 @@ export default function SupplierLedgerPage() {
       { header: "Date", accessor: "date", filterType: "date-picker", render: (row) => formatDateTime(row), pdfValue: (row) => formatDateTime(row) },
     ]
     if (selectedSupplierId === "all") {
+      // base.push({
+      //   header: "Supplier ID", accessor: "supplierId", filterType: "text", render: (row) => <div className="font-medium text-muted-foreground">{row.supplierId || "-"}</div>, pdfValue: (row) => row.supplierId || "-"
+      // })
       base.push({
-        header: "Supplier", accessor: "supplier", filterType: "autocomplete", render: (row) => <span className="font-medium">{row.supplier}</span>, pdfValue: (row) => row.supplier
+        header: "Supplier", accessor: "supplier", filterType: "autocomplete", render: (row) => (
+          <div className="flex flex-col">
+            <span className="font-medium text-blue-600">{row.companyName || row.supplierName || "-"}</span>
+            {row.companyName && row.supplierName && row.companyName !== row.supplierName && (
+              <span className="text-[10px] text-muted-foreground leading-tight">({row.supplierName})</span>
+            )}
+          </div>
+        ), pdfValue: (row) => row.companyName || row.supplierName
       })
     }
     const tail = [
@@ -5876,16 +5890,26 @@ export default function SupplierLedgerPage() {
     ]
 
     if (selectedSupplierId === 'all') {
+      // cols.push({
+      //   header: "Supplier ID",
+      //   accessor: "supplierId",
+      //   filterType: "text",
+      //   render: (row) => <div className="font-medium text-muted-foreground">{row.supplierId || "—"}</div>,
+      //   pdfValue: (row) => row.supplierId || "—"
+      // })
       cols.push({
         header: "Supplier Name",
         accessor: "supplierName",
         filterType: "autocomplete",
         render: (row) => (
           <div className="flex flex-col">
-            <span className="font-medium text-blue-600">{row.supplier || row.supplierName || "-"}</span>
+            <span className="font-medium text-blue-600">{row.companyName || row.supplierName || "-"}</span>
+            {row.companyName && row.supplierName && row.companyName !== row.supplierName && (
+              <span className="text-[10px] text-muted-foreground leading-tight">({row.supplierName})</span>
+            )}
           </div>
         ),
-        pdfValue: (row) => row.supplier || row.supplierName
+        pdfValue: (row) => row.companyName || row.supplierName
       })
     }
 
@@ -5943,7 +5967,21 @@ export default function SupplierLedgerPage() {
     ]
     if (selectedSupplierId === "all") {
       base.push({
-        header: "Supplier", accessor: "supplierName", filterType: "autocomplete", render: (row) => <span className="font-medium">{row.supplierName || "-"}</span>, pdfValue: (row) => row.supplierName
+        header: "Supplier ID",
+        accessor: "supplierId",
+        filterType: "text",
+        render: (row) => <div className="font-medium text-muted-foreground">{row.supplierId || "—"}</div>,
+        pdfValue: (row) => row.supplierId || "—"
+      })
+      base.push({
+        header: "Supplier", accessor: "supplierName", filterType: "autocomplete", render: (row) => (
+          <div className="flex flex-col">
+            <span className="font-medium text-blue-600">{row.companyName || row.supplierName || "-"}</span>
+            {row.companyName && row.supplierName && row.companyName !== row.supplierName && (
+              <span className="text-[10px] text-muted-foreground leading-tight">({row.supplierName})</span>
+            )}
+          </div>
+        ), pdfValue: (row) => row.companyName || row.supplierName
       })
     }
     const tail = [
@@ -6198,7 +6236,7 @@ export default function SupplierLedgerPage() {
               if (!selectedReceipt || !receiptReversalReason.trim()) return
               setIsReversingReceipt(true)
               try {
-                const supplierId = selectedReceipt.raw?.supplierId?._id || selectedReceipt.raw?.supplierId || selectedSupplierId
+                const supplierId =  selectedReceipt.raw?.supplierId || selectedSupplierId
                 await ledgerAPI.reverseSupplierReceipt(supplierId, selectedReceipt.receiptNumber, receiptReversalReason.trim())
                 toast.success(`Receipt ${selectedReceipt.receiptNumber} reversed successfully`)
                 queryClient.invalidateQueries({ queryKey: ["supplier-payment-receipts"] })

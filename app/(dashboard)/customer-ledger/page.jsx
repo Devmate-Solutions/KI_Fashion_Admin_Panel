@@ -1311,6 +1311,7 @@ const ledgerFilterParams = useMemo(() => {
         id: entry._id || entry.id,
         date: entry.date || entry.createdAt,
         createdAt: entry.createdAt,
+        buyerId: buyer.buyerId || '',
         buyer: buyer.company || buyer.name || 'Unknown Customer',
         customerName: buyer.name || '',
         companyName: buyer.company || '',
@@ -1442,6 +1443,7 @@ const ledgerFilterParams = useMemo(() => {
       customerName: payment.customerId?.company || payment.customerId?.name || 'Unknown',
       individualName: payment.customerId?.name || '',
       companyName: payment.customerId?.company || '',
+      buyerId: payment.customerId?.buyerId ||  '',
       raw: payment
     }))
   }, [paymentReceiptsData])
@@ -1553,9 +1555,9 @@ const ledgerFilterParams = useMemo(() => {
       header: "Customer ID",
       accessor: "id",
       filterType: "text",
-      // Slicing the last 8 characters makes MongoDB IDs look clean (like "16b61673")
-      render: (row) => <span className="font-mono text-xs text-muted-foreground">{String(row.id || row._id).slice(-8)}</span>,
-      pdfValue: (row) => String(row.id || row._id).slice(-8)
+      // Show actual buyerId if available, otherwise fallback to sliced Mongo ID
+      render: (row) => <span className="font-mono text-xs text-muted-foreground">{row.buyerId}</span>,
+      pdfValue: (row) => row.buyerId
     },
     {
       header: "Customer Name",
@@ -1647,6 +1649,13 @@ const ledgerFilterParams = useMemo(() => {
 
     // Only show Customer Name if we are in the Global dashboard view
     if (selectedBuyerId === 'all') {
+      // cols.push({
+      //   header: "Customer ID",
+      //   accessor: "buyerId",
+      //   filterType: "text",
+      //   render: (row) => <div className="font-medium text-muted-foreground">{row.buyerId || "—"}</div>,
+      //   pdfValue: (row) => row.buyerId || "—"
+      // })
       cols.push({
         header: "Customer Name",
         accessor: "buyer",
@@ -1706,6 +1715,13 @@ const ledgerFilterParams = useMemo(() => {
     ]
 
     if (selectedBuyerId === 'all') {
+      // baseColumns.push({
+      //   header: "Customer ID",
+      //   accessor: "buyerId",
+      //   filterType: "text",
+      //   render: (row) => <div className="font-medium text-muted-foreground">{row.buyerId || "—"}</div>,
+      //   pdfValue: (row) => row.buyerId || "—"
+      // })
       baseColumns.push({
         header: "Buyer",
         accessor: "customerName",
