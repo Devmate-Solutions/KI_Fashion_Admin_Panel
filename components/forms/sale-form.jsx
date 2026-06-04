@@ -2665,6 +2665,11 @@ export default function SaleForm({ onSave, initialData, saleId }) {
       setError('Please enter buyer phone')
       return
     }
+    if (!newBuyerCompany.trim()) {
+      setError('Please enter buyer phone')
+      return
+    }
+    
     // Optionally validate email format if provided
     if (newBuyerEmail && !/^\S+@\S+\.\S+$/.test(newBuyerEmail)) {
       setError('Please enter a valid email address')
@@ -3731,7 +3736,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
                         <Input
                           type="text"
                           inputMode="numeric"
-                          value={row.quantity}
+                          // value={""}
                           onChange={(e) => {
                             const sanitized = e.target.value.replace(/[^0-9]/g, '');
                             if (sanitized === "") {
@@ -4197,7 +4202,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-buyer-company">Company Name</Label>
+              <Label htmlFor="new-buyer-company">Company Name <span className="text-red-500">*</span></Label>
               <Input
                 id="new-buyer-company"
                 value={newBuyerCompany}

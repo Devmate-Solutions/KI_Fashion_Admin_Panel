@@ -2853,7 +2853,6 @@
 //   );
 // }
 
-
 "use client";
 
 import { useEffect, useMemo, useState, useRef } from "react";
@@ -2894,14 +2893,13 @@ import { Label } from "@/components/ui/label";
 import { suppliersAPI } from "@/lib/api/endpoints/suppliers";
 import { purchasesAPI } from "@/lib/api/endpoints/purchases";
 import { productsAPI } from "@/lib/api/endpoints/products";
-import { usersAPI } from "@/lib/api/endpoints/users";
 import { logisticsCompaniesAPI } from "@/lib/api/endpoints/logisticsCompanies";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { SEASON_OPTIONS, normalizeSeasonArray } from "@/lib/constants/seasons";
 import ImageGallery from "@/components/ui/ImageGallery";
 import PacketConfigurationModal from "@/components/modals/PacketConfigurationModal";
 import BritishDatePicker from "@/components/BritishDatePicker";
-import AutocompleteFilter from "@/components/ui/autocomplete-filter"; // Make sure this path matches your project structure
+import AutocompleteFilter from "@/components/ui/autocomplete-filter";
 import "react-datepicker/dist/react-datepicker.css";
 
 const normalizeNameForCompare = (name) => {
@@ -2924,23 +2922,15 @@ const getImageArray = (row) => {
 
 /**
  * Truncate a number to 2 decimal places (no rounding)
- * Example: 14.554472 -> 14.55, 19.125456 -> 19.12, 13.337555 -> 13.33
- * @param {number} value - The number to truncate
- * @returns {number} The truncated number with at most 2 decimal places
  */
 const truncateToTwoDecimals = (value) => {
   if (typeof value !== 'number' || isNaN(value)) return 0;
   return Math.floor(value * 100) / 100;
 };
 
-import { useSupplierUsers } from "@/lib/hooks/useSupplierUsers";
-
-// A multi-section buying form: supplier/metadata, products cart, and payment summary.
-// Enhanced with keyboard shortcuts and better UX
-// Integrated with backend APIs for suppliers and purchases
-
 export default function BuyingForm({ initialSuppliers = [], onSave }) {
   const router = useRouter();
+  
   // Loading and error states
   const [isLoadingSuppliers, setIsLoadingSuppliers] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -2967,45 +2957,30 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
   const [isCreatingSupplier, setIsCreatingSupplier] = useState(false);
   const newSupplierPhoneInputRef = useRef(null);
 
-  // Autocomplete Derived Values
+  // Autocomplete Derived Values formatting { label, subLabel, value }
   const supplierOptions = useMemo(() => {
-    return suppliers.map(s => s.company || s.name).filter(Boolean);
+    return suppliers.map(s => ({
+      label: s.company || s.name,
+      subLabel: s.company ? s.name : "",
+      value: String(s.id)
+    }));
   }, [suppliers]);
-
-  const selectedSupplierObj = useMemo(() => {
-    return suppliers.find((s) => String(s.id) === String(supplierId));
-  }, [suppliers, supplierId]);
-
-  const currentSupplierName = selectedSupplierObj 
-    ? (selectedSupplierObj.company || selectedSupplierObj.name) 
-    : "";
 
   const handleSupplierChange = (val) => {
     if (!val) {
       setSupplierId("");
-      return;
-    }
-    const found = suppliers.find(s => (s.company || s.name) === val);
-    if (found) {
-      setSupplierId(String(found.id));
     } else {
-      setSupplierId(""); 
+      setSupplierId(val);
     }
   };
 
   // Logistics company
   const [logisticsCompanies, setLogisticsCompanies] = useState([]);
-  const [isLoadingLogisticsCompanies, setIsLoadingLogisticsCompanies] =
-    useState(false);
+  const [isLoadingLogisticsCompanies, setIsLoadingLogisticsCompanies] = useState(false);
   const [logisticsCompanyId, setLogisticsCompanyId] = useState("");
   const [enableLogisticsTracking, setEnableLogisticsTracking] = useState(false);
 
-  // Products tied to selected supplier (removed automatic fetching)
-  const [products, setProducts] = useState([]);
-  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
-  const [productsError, setProductsError] = useState(null);
-
-  // Metadata fields (removed tc and TC_OPTIONS)
+  // Metadata fields
   const [invoiceDate, setInvoiceDate] = useState(
     new Date().toLocaleDateString('en-CA')
   );
@@ -3020,7 +2995,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
   const [totalBoxes, setTotalBoxes] = useState(0);
 
   // Packet configuration state
-  const [productPackets, setProductPackets] = useState({}); // { rowId: { useVariantTracking: bool, packets: [] } }
+  const [productPackets, setProductPackets] = useState({});
   const [packetModalOpen, setPacketModalOpen] = useState(false);
   const [packetModalProduct, setPacketModalProduct] = useState(null);
 
@@ -3038,14 +3013,14 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
   }, [rows, productPackets]);
 
   // Product image upload state
-  const [productImages, setProductImages] = useState({}); // { rowId: File[] }
-  const [imagePreviews, setImagePreviews] = useState({}); // { rowId: { fileId: string } }
+  const [productImages, setProductImages] = useState({});
+  const [imagePreviews, setImagePreviews] = useState({});
 
   // Inline editing state for primary color and size (array inputs)
-  const [editingCell, setEditingCell] = useState(null); // { rowId: string, fieldName: 'primaryColor' | 'size' } | null
-  const [editValue, setEditValue] = useState(""); // Shared edit value
-  const [rowInputValues, setRowInputValues] = useState({}); // { [rowId]: { primaryColor: '', size: '' } }
-  const [imageGalleryState, setImageGalleryState] = useState(null); // { rowId: string, images: [] } | null
+  const [editingCell, setEditingCell] = useState(null);
+  const [editValue, setEditValue] = useState("");
+  const [rowInputValues, setRowInputValues] = useState({});
+  const [imageGalleryState, setImageGalleryState] = useState(null);
 
   // Payment section
   const [discount, setDiscount] = useState();
@@ -3056,31 +3031,25 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
   const cashInputRef = useRef(null);
   const bankInputRef = useRef(null);
   const saveButtonRef = useRef(null);
-
-  // Refs for file inputs (one per row)
   const fileInputRefs = useRef({});
 
-  // Helper function to generate unique file ID
   const getFileId = (file) => {
     return `${file.name}-${file.size}-${file.lastModified}`;
   };
 
-  // Fetch all suppliers (including those without user accounts)
+  // Fetch all suppliers
   useEffect(() => {
     async function fetchAllSuppliers() {
       try {
         setIsLoadingSuppliers(true);
         setError(null);
 
-        // Fetch all suppliers (not just those with user accounts)
         const response = await suppliersAPI.getAll({
           isActive: true,
           limit: 1000,
         });
 
-        // Handle different response formats
         let suppliersList = [];
-
         if (response.data?.data && Array.isArray(response.data.data)) {
           suppliersList = response.data.data;
         } else if (response.data && Array.isArray(response.data)) {
@@ -3089,7 +3058,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           suppliersList = response;
         }
 
-        // Normalize supplier data for the form
         const normalizedSuppliers = suppliersList.map((supplier) => ({
           id: supplier._id || supplier.id,
           name: supplier.name,
@@ -3101,10 +3069,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         }));
 
         setSuppliers(normalizedSuppliers);
-
-        if (normalizedSuppliers.length === 0 && !initialSuppliers?.length) {
-          // Don't show error if no suppliers, just allow creating new ones
-        }
       } catch (err) {
         console.error("Error fetching supplier users:", err);
         setError("Failed to load suppliers. Please refresh the page.");
@@ -3128,13 +3092,9 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
         let companiesList = [];
         if (response?.data?.data) {
-          companiesList = Array.isArray(response.data.data)
-            ? response.data.data
-            : [];
+          companiesList = Array.isArray(response.data.data) ? response.data.data : [];
         } else if (response?.data?.rows) {
-          companiesList = Array.isArray(response.data.rows)
-            ? response.data.rows
-            : [];
+          companiesList = Array.isArray(response.data.rows) ? response.data.rows : [];
         } else if (Array.isArray(response?.data)) {
           companiesList = response.data;
         }
@@ -3150,7 +3110,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
     fetchLogisticsCompanies();
   }, []);
 
-  // Clear catalog details when supplier changes to avoid cross-data leakage
+  // Clear catalog details when supplier changes
   useEffect(() => {
     if (!supplierId) {
       setRows([]);
@@ -3175,28 +3135,24 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
     );
   }, [supplierId]);
 
-  // Add new supplier (Quick add with API integration)
   async function handleAddSupplier() {
     if (!newSupplierName.trim()) {
       setError("Please enter supplier name");
       return;
     }
-
+    
     if (!newSupplierCompany.trim()) {
-      setError("Please enter supplier company name");
+      setError("Please enter supplier company");
       return;
     }
-
     if (!newSupplierPhone.trim()) {
       setError("Please enter supplier phone");
       return;
     }
-
     if (!newSupplierEmail.trim()) {
       setError("Please enter supplier email");
       return;
     }
-
     if (!newSupplierAddress.trim()) {
       setError("Please enter supplier address");
       return;
@@ -3206,23 +3162,19 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       setIsCreatingSupplier(true);
       setError(null);
 
-      // Create supplier with required fields for quick-add flow
       const response = await suppliersAPI.create({
         name: newSupplierName.trim(),
         phone: newSupplierPhone.trim(),
         phoneAreaCode: newSupplierPhoneAreaCode.trim() || undefined,
         company: newSupplierCompany.trim() || undefined,
         email: newSupplierEmail.trim(),
-        address: {
-          street: newSupplierAddress.trim(),
-        },
+        address: { street: newSupplierAddress.trim() },
         createUserAccount: true,
       });
 
       const newSupplier = response.data?.data || response.data;
 
       if (newSupplier) {
-        // Add new supplier to the list
         const normalizedSupplier = {
           id: newSupplier._id || newSupplier.id,
           name: newSupplier.name,
@@ -3244,7 +3196,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         setShowAddSupplier(false);
       }
     } catch (err) {
-      console.error("Error creating supplier:", err);
       const errorMessage =
         err.response?.data?.message ||
         err.response?.data?.error ||
@@ -3267,7 +3218,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       costPrice: 0,
       primaryColor: [],
       size: [],
-      quantity: "",
+      quantity: "", // Init as blank
       minSellingPrice: "",
       photo: null,
     };
@@ -3281,48 +3232,20 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
         const updated = { ...row, [field]: value };
 
-        // Clear productId if code or name is changed manually
         if (field === "productCode" || field === "productName") {
           updated.productId = "";
         }
 
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/e0660d90-406d-498c-9b9c-ed0297888613', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: 'debug-session',
-            runId: 'pre-fix',
-            hypothesisId: 'H3',
-            location: 'components/forms/buying-form.jsx:updateRow',
-            message: 'Row updated',
-            data: {
-              id,
-              field,
-              rawValue: value,
-              parsedCostPrice: Number(field === 'costPrice' ? value : row.costPrice || 0),
-              parsedQuantity: Number(field === 'quantity' ? value : row.quantity || 0),
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => { });
-        // #endregion agent log
-
-        // Auto-calculate supplier payment and landed price when cost price, exchange rate, or percentage changes
         const costPrice = Number(updated.costPrice || 0);
-        const quantity = Number(updated.quantity || 0);
+        const quantity = Number(updated.quantity || 0); // Handle empty as 0 for calc
         const exRate = Number(exchangeRate);
         const percent = Number(percentage);
         const hasValidExchangeRate = !isNaN(exRate) && exRate > 0;
         const hasValidPercentage = !isNaN(percent) && percent >= 0;
 
-        // Calculations (matching confirm order page):
-        // Supplier Payment Amount = costPrice (NO exchange rate, NO profit margin) - what admin pays supplier in supplier currency
         const supplierPaymentAmount = costPrice;
         const supplierPaymentTotal = supplierPaymentAmount * quantity;
 
-        // Landed Price = (Cost Price / Exchange Rate) × (1 + Percentage/100) - for inventory valuation in base currency
-        // Truncate to 2 decimal places (no rounding) for display consistency with backend
         const landedPrice =
           hasValidExchangeRate && hasValidPercentage
             ? truncateToTwoDecimals((costPrice / exRate) * (1 + percent / 100))
@@ -3351,14 +3274,9 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           const hasValidExchangeRate = !isNaN(exRate) && exRate > 0;
           const hasValidPercentage = !isNaN(percent) && percent >= 0;
 
-          // Supplier Payment Amount (what admin pays supplier - NO exchange rate, NO profit margin)
-          // Formula: costPrice × quantity (in supplier currency)
           const supplierPaymentAmount = costPrice;
           const supplierPaymentTotal = supplierPaymentAmount * quantity;
 
-          // Landed Price (for inventory valuation - WITH profit margin)
-          // Formula: (cost price / exchange rate) × (1 + percentage/100)
-          // Truncate to 2 decimal places (no rounding) for display consistency with backend
           const landedPrice =
             hasValidExchangeRate && hasValidPercentage
               ? truncateToTwoDecimals((costPrice / exRate) * (1 + percent / 100))
@@ -3377,13 +3295,11 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
     }
   }, [exchangeRate, percentage]);
 
-  // Handler functions for inline editing of primary color and size
   const handleCellClick = (rowId, fieldName) => {
     const row = rows.find((r) => r.id === rowId);
     if (!row) return;
 
     setEditingCell({ rowId, fieldName });
-    // For arrays, show empty string to start adding
     if (fieldName === "primaryColor" || fieldName === "size") {
       setEditValue("");
     } else {
@@ -3396,11 +3312,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
   const handleCellSave = (rowId, fieldName) => {
     const trimmedValue = editValue.trim();
-    if (
-      !trimmedValue &&
-      (fieldName === "primaryColor" || fieldName === "size")
-    ) {
-      // Allow saving empty array if user clears input
+    if (!trimmedValue && (fieldName === "primaryColor" || fieldName === "size")) {
       updateRow(rowId, fieldName, []);
       setEditingCell(null);
       setEditValue("");
@@ -3411,20 +3323,14 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
     if (!row) return;
 
     if (fieldName === "primaryColor" || fieldName === "size") {
-      // For arrays, add the new value to existing array
-      const currentArray = Array.isArray(row[fieldName])
-        ? row[fieldName]
-        : row[fieldName]
-          ? [row[fieldName]]
-          : [];
+      const currentArray = Array.isArray(row[fieldName]) ? row[fieldName] : row[fieldName] ? [row[fieldName]] : [];
 
       if (trimmedValue && !currentArray.includes(trimmedValue)) {
         updateRow(rowId, fieldName, [...currentArray, trimmedValue]);
       } else {
         updateRow(rowId, fieldName, currentArray);
       }
-      setEditValue(""); // Clear input for next value
-      // Keep editing cell active to allow adding more values
+      setEditValue(""); 
     } else {
       updateRow(rowId, fieldName, trimmedValue);
       setEditingCell(null);
@@ -3439,25 +3345,18 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
   function removeRow(id) {
     setRows((r) => r.filter((x) => x.id !== id));
-
-    // Clean up images when row is removed
     const newImages = { ...productImages };
     const newPreviews = { ...imagePreviews };
     delete newImages[id];
     delete newPreviews[id];
     setProductImages(newImages);
     setImagePreviews(newPreviews);
-
-    // Clean up packet configuration
     const newPackets = { ...productPackets };
     delete newPackets[id];
     setProductPackets(newPackets);
-
-    // Clean up file input ref
     delete fileInputRefs.current[id];
   }
 
-  // Handle packet configuration save
   const handleSavePackets = (packets, context) => {
     const rowId = context?.id ?? packetModalProduct?.id;
     if (!rowId) return;
@@ -3470,7 +3369,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
     }));
   };
 
-  // Handle image upload for a product row
   const handleImageChange = (e, rowId) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -3479,20 +3377,15 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
     const maxSize = 5 * 1024 * 1024; // 5MB
     const maxImages = 20;
 
-    // Get current images for this row
     const existingPreviews = imagePreviews[rowId] || {};
-    const existingImageKeys = Object.keys(existingPreviews).filter((key) =>
-      key.startsWith("existing-")
-    );
+    const existingImageKeys = Object.keys(existingPreviews).filter((key) => key.startsWith("existing-"));
     const existingCount = existingImageKeys.length;
     const currentImages = productImages[rowId] || [];
     const newFilesCount = currentImages.length;
     const totalCurrentCount = existingCount + newFilesCount;
 
     if (totalCurrentCount + files.length > maxImages) {
-      alert(
-        `Maximum ${maxImages} images allowed per product. You currently have ${totalCurrentCount} image(s).`
-      );
+      alert(`Maximum ${maxImages} images allowed per product. You currently have ${totalCurrentCount} image(s).`);
       e.target.value = "";
       return;
     }
@@ -3501,20 +3394,14 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
     const invalidFiles = [];
 
     files.forEach((file) => {
-      // Validate file type
       if (!validTypes.includes(file.type)) {
-        invalidFiles.push(
-          `${file.name}: Invalid file type. Only JPG, PNG, and WebP are allowed.`
-        );
+        invalidFiles.push(`${file.name}: Invalid file type. Only JPG, PNG, and WebP are allowed.`);
         return;
       }
-
-      // Validate file size
       if (file.size > maxSize) {
         invalidFiles.push(`${file.name}: File size exceeds 5MB limit.`);
         return;
       }
-
       validFiles.push(file);
     });
 
@@ -3523,12 +3410,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
     }
 
     if (validFiles.length > 0) {
-      // Add new files to existing ones
       const updatedImages = { ...productImages };
       updatedImages[rowId] = [...currentImages, ...validFiles];
       setProductImages(updatedImages);
 
-      // Create previews for new files
       const updatedPreviews = { ...imagePreviews };
       if (!updatedPreviews[rowId]) {
         updatedPreviews[rowId] = {};
@@ -3552,18 +3437,14 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         reader.readAsDataURL(file);
       });
     }
-
-    // Reset input value to allow selecting the same file again
     e.target.value = "";
   };
 
-  // Handle image removal
   const handleRemoveImage = (rowId, file) => {
     const fileId = getFileId(file);
     const updatedImages = { ...productImages };
     updatedImages[rowId] = (updatedImages[rowId] || []).filter((f) => {
       const fId = getFileId(f);
-      // Clean up object URL if it was created
       if (fId === fileId && f instanceof File) {
         const preview = imagePreviews[rowId]?.[fileId];
         if (preview && preview.startsWith("blob:")) {
@@ -3576,7 +3457,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
     const updatedPreviews = { ...imagePreviews };
     if (updatedPreviews[rowId]) {
-      // Clean up object URL before removing
       const preview = updatedPreviews[rowId][fileId];
       if (preview && preview.startsWith("blob:")) {
         URL.revokeObjectURL(preview);
@@ -3589,38 +3469,19 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
     setImagePreviews(updatedPreviews);
   };
 
-  // Derived totals - sum of all landedTotal values
   const totals = useMemo(() => {
-    // Calculate supplier payment total (what admin pays supplier - NO exchange rate, NO profit margin)
-    // Formula: costPrice × quantity (in supplier currency)
     const supplierPaymentTotal = rows.reduce((sum, row) => {
       const costPrice = Number(row.costPrice || 0);
       const quantity = Number(row.quantity || 0);
       return sum + costPrice * quantity;
     }, 0);
 
-    // Calculate landed total (for inventory valuation - WITH profit margin)
-    const grandTotal = rows.reduce(
-      (sum, row) => sum + Number(row.landedTotal || 0),
-      0
-    );
-
-    // Calculate sum of landed prices (for display in Pricing Breakdown)
-    const landedPriceTotal = rows.reduce(
-      (sum, row) => sum + Number(row.landedPrice || 0),
-      0
-    );
-
-    // Discount applies to supplierPaymentTotal (what admin owes supplier), not landed total
+    const grandTotal = rows.reduce((sum, row) => sum + Number(row.landedTotal || 0), 0);
+    const landedPriceTotal = rows.reduce((sum, row) => sum + Number(row.landedPrice || 0), 0);
     const discountAmount = Number(discount || 0);
-    const supplierPaymentAfterDiscount = Math.max(
-      0,
-      supplierPaymentTotal - discountAmount
-    );
+    const supplierPaymentAfterDiscount = Math.max(0, supplierPaymentTotal - discountAmount);
 
     const paid = Number(cash || 0) + Number(bank || 0);
-    // Remaining balance = supplierPaymentTotal - discount - paid
-    // Allow negative values to show overpayment (credit)
     const remaining = supplierPaymentAfterDiscount - paid;
     return {
       supplierPaymentTotal,
@@ -3633,9 +3494,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
     };
   }, [rows, discount, cash, bank]);
 
-  // Keyboard shortcuts
   function handlePaymentKeyDown(e, field) {
-    // Enter key - move to next field or save
     if (e.key === "Enter") {
       e.preventDefault();
       if (field === "discount") {
@@ -3646,14 +3505,12 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         saveButtonRef.current?.focus();
       }
     }
-    // Ctrl+S to save
     if (e.ctrlKey && e.key === "s") {
       e.preventDefault();
       handleSave();
     }
   }
 
-  // Save purchase to backend (updated to use supplier user ID)
   const getSupplierIdFromProduct = (product) => {
     if (!product) return null;
     if (product.supplier?._id || product.supplier) {
@@ -3674,48 +3531,17 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
   };
 
   const handleSave = async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/e0660d90-406d-498c-9b9c-ed0297888613', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: 'debug-session',
-        runId: 'pre-fix',
-        hypothesisId: 'H1',
-        location: 'components/forms/buying-form.jsx:handleSave',
-        message: 'Handle save invoked',
-        data: {
-          supplierId,
-          rowsCount: rows.length,
-          totalBoxes,
-          totalsSnapshot: {
-            subtotal: totals.subtotal,
-            remaining: totals.remaining,
-            supplierPaymentAfterDiscount: totals.supplierPaymentAfterDiscount,
-          },
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => { });
-    // #endregion agent log
-
-    // Validation
     if (!supplierId) {
       setError("Please select a supplier");
       return;
     }
-
     if (rows.length === 0) {
       setError("Please add at least one product");
       return;
     }
 
     const parsedExchangeRate = Number(exchangeRate);
-    if (
-      exchangeRate === "" ||
-      isNaN(parsedExchangeRate) ||
-      parsedExchangeRate <= 0
-    ) {
+    if (exchangeRate === "" || isNaN(parsedExchangeRate) || parsedExchangeRate <= 0) {
       setError("Exchange rate is required and must be greater than 0");
       return;
     }
@@ -3726,53 +3552,41 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       return;
     }
 
-    // Validate box count only if logistics tracking is enabled
     if (enableLogisticsTracking && (!totalBoxes || Number(totalBoxes) < 1)) {
       setError("Number of boxes must be at least 1 when logistics tracking is enabled");
       return;
     }
 
-    // Validate that all rows have required fields
-    // Product ID is optional if product name is provided (manual entry)
-    const invalidRows = rows.filter(
-      (row) => {
-        const costPrice = Number(row.costPrice);
-        const quantity = Number(row.quantity);
-        // Quantity must be a positive integer (no decimals)
-        const isValidInteger = !isNaN(quantity) &&
-          quantity > 0 &&
-          Number.isInteger(quantity);
+    const invalidRows = rows.filter((row) => {
+      const costPrice = Number(row.costPrice);
+      const quantity = Number(row.quantity);
+      const isValidInteger = !isNaN(quantity) && quantity > 0 && Number.isInteger(quantity);
 
-        // Colors and sizes are now required for all rows to ensure packet stock can be created
-        const hasColors = Array.isArray(row.primaryColor) ? row.primaryColor.length > 0 : (typeof row.primaryColor === 'string' && row.primaryColor.trim());
-        const hasSizes = Array.isArray(row.size) ? row.size.length > 0 : (typeof row.size === 'string' && row.size.trim());
+      const hasColors = Array.isArray(row.primaryColor) ? row.primaryColor.length > 0 : (typeof row.primaryColor === 'string' && row.primaryColor.trim());
+      const hasSizes = Array.isArray(row.size) ? row.size.length > 0 : (typeof row.size === 'string' && row.size.trim());
 
-        return (
-          !row.productName ||
-          !row.productCode ||
-          !row.season ||
-          row.season.length === 0 ||
-          !row.costPrice ||
-          isNaN(costPrice) ||
-          costPrice <= 0 ||
-          !row.minSellingPrice ||
-          parseFloat(row.minSellingPrice) <= 0 ||
-          !row.quantity ||
-          !isValidInteger ||
-          !hasColors ||
-          !hasSizes
-        );
-      }
-    );
+      return (
+        !row.productName ||
+        !row.productCode ||
+        !row.season ||
+        row.season.length === 0 ||
+        !row.costPrice ||
+        isNaN(costPrice) ||
+        costPrice <= 0 ||
+        !row.minSellingPrice ||
+        parseFloat(row.minSellingPrice) <= 0 ||
+        row.quantity === "" ||
+        !isValidInteger ||
+        !hasColors ||
+        !hasSizes
+      );
+    });
 
     if (invalidRows.length > 0) {
-      setError(
-        "Please fill in product name, code, season, cost price, min sell price, quantity, primary color, and size for all rows"
-      );
+      setError("Please fill in product name, code, season, cost price, min sell price, quantity, primary color, and size for all rows");
       return;
     }
 
-    // Strict Packet Validation
     const packetErrors = [];
     rows.forEach((row) => {
       const packetConfig = productPackets[row.id];
@@ -3783,19 +3597,16 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         return;
       }
 
-      // Check each packet has composition
       const emptyPackets = packetConfig.packets.filter(p => !Array.isArray(p.composition) || p.composition.length === 0);
       if (emptyPackets.length > 0) {
         packetErrors.push(`${rowLabel}: Some packets have no composition (colors/sizes)`);
       }
 
-      // Check total quantity matches
       const totalInPackets = packetConfig.packets.reduce((sum, p) => sum + (parseInt(p.totalItemsPerPacket || p.totalItems) || 0), 0);
       if (totalInPackets !== parseInt(row.quantity)) {
         packetErrors.push(`${rowLabel}: Packet quantity (${totalInPackets}) does not match row quantity (${row.quantity})`);
       }
 
-      // Validate that all colors/sizes in packets match the row's colors/sizes
       const rowColors = Array.isArray(row.primaryColor) ? row.primaryColor : [row.primaryColor];
       const rowSizes = Array.isArray(row.size) ? row.size : [row.size];
 
@@ -3812,7 +3623,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
     });
 
     if (packetErrors.length > 0) {
-      setError(`Packet Configuration Error: ${packetErrors[0]}`); // Show first error
+      setError(`Packet Configuration Error: ${packetErrors[0]}`); 
       return;
     }
 
@@ -3828,125 +3639,71 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
             ? "partial"
             : "pending";
 
-      // Find the selected supplier
-      const selectedSupplier = suppliers.find(
-        (s) => String(s.id) === String(supplierId)
-      );
+      const selectedSupplier = suppliers.find((s) => String(s.id) === String(supplierId));
 
-      // For rows without productId, try to find product by name or code
       const itemsWithProducts = await Promise.all(
         rows.map(async (row) => {
           let productId = row.productId;
           const supplierFilter = supplierId ? { supplierId } : {};
 
-          // If no productId but we have product name or code, try to find it
           if (!productId && (row.productName || row.productCode)) {
             try {
-              // Try lookup by code first
               if (row.productCode) {
                 try {
-                  const codeResponse = await productsAPI.lookupByCode(
-                    row.productCode,
-                    supplierFilter
-                  );
+                  const codeResponse = await productsAPI.lookupByCode(row.productCode, supplierFilter);
                   const product = codeResponse.data?.data || codeResponse.data;
                   if (product && matchesSupplier(product, supplierId)) {
                     productId = product._id || product.id;
                   }
-                } catch (codeErr) {
-                  // If code lookup fails, we should NOT fallback to name search
-                  // because that leads to "Product code mismatch" if the name exists
-                  // with a different code. We'll let it proceed to create a new product.
-                  console.log(`Code lookup failed for ${row.productCode}, will create new or re-validate.`);
-                }
+                } catch (codeErr) {}
               } else if (row.productName) {
-                // Try name search
                 const nameResponse = await productsAPI.search(row.productName, supplierFilter);
-                const productsList =
-                  nameResponse.data?.data || nameResponse.data || [];
-                const product =
-                  productsList.find(
-                    (p) =>
-                      matchesSupplier(p, supplierId) &&
-                      normalizeNameForCompare(p.name) ===
-                      normalizeNameForCompare(row.productName)
-                  ) || productsList.find((p) => matchesSupplier(p, supplierId));
+                const productsList = nameResponse.data?.data || nameResponse.data || [];
+                const product = productsList.find((p) => matchesSupplier(p, supplierId) && normalizeNameForCompare(p.name) === normalizeNameForCompare(row.productName)) || productsList.find((p) => matchesSupplier(p, supplierId));
                 if (product && matchesSupplier(product, supplierId)) {
                   productId = product._id || product.id;
                 }
               }
-            } catch (searchErr) {
-              console.error("Error searching for product:", searchErr);
-            }
+            } catch (searchErr) {}
           }
 
-          // If still no productId, create the product automatically
           if (!productId) {
             try {
-              // Create product with required fields
-              // Note: productCode is not in the validation schema, so we'll use SKU instead
               const productData = {
                 name: row.productName.trim(),
                 sku: (row.productCode || `AUTO-${Date.now()}`).toUpperCase(),
-                supplier: supplierId, // Required by Product model
+                supplier: supplierId,
                 season: normalizeSeasonArray(row.season || []),
-                category: "General", // Default category, can be updated later
-                size:
-                  Array.isArray(row.size) && row.size.length > 0
-                    ? row.size.join(", ")
-                    : typeof row.size === "string"
-                      ? row.size
-                      : undefined,
+                category: "General",
+                size: Array.isArray(row.size) && row.size.length > 0 ? row.size.join(", ") : typeof row.size === "string" ? row.size : undefined,
                 specifications: {
-                  color:
-                    Array.isArray(row.primaryColor) &&
-                      row.primaryColor.length > 0
-                      ? row.primaryColor.join(", ")
-                      : typeof row.primaryColor === "string"
-                        ? row.primaryColor
-                        : undefined,
+                  color: Array.isArray(row.primaryColor) && row.primaryColor.length > 0 ? row.primaryColor.join(", ") : typeof row.primaryColor === "string" ? row.primaryColor : undefined,
                 },
                 pricing: {
                   costPrice: Number(row.costPrice || 0),
-                  sellingPrice: Number(row.costPrice || 0) * 1.2, // Default 20% markup
+                  sellingPrice: Number(row.costPrice || 0) * 1.2, 
                 },
-                useVariantTracking: true, // IMPORTANT: Enable variant tracking for packet stock
+                useVariantTracking: true, 
                 unit: "piece",
               };
 
               const createResponse = await productsAPI.create(productData);
-              const createdProduct =
-                createResponse.data?.data || createResponse.data;
+              const createdProduct = createResponse.data?.data || createResponse.data;
               if (createdProduct) {
                 productId = createdProduct._id || createdProduct.id;
-                console.log(
-                  `Created new product: ${row.productName} with ID: ${productId}`
-                );
               } else {
-                throw new Error(
-                  `Failed to create product "${row.productName}"`
-                );
+                throw new Error(`Failed to create product "${row.productName}"`);
               }
             } catch (createErr) {
-              console.error("Error creating product:", createErr);
-              const errorMessage =
-                createErr.response?.data?.message ||
-                createErr.response?.data?.error ||
-                createErr.message ||
-                `Failed to create product "${row.productName}"`;
+              const errorMessage = createErr.response?.data?.message || createErr.response?.data?.error || createErr.message || `Failed to create product "${row.productName}"`;
               throw new Error(errorMessage);
             }
           }
 
-          // Upload images if any exist for this row
           let imageUrls = [];
           const rowImages = productImages[row.id] || [];
-
-          // Get existing images from previews (URLs that were already uploaded)
           const existingPreviews = imagePreviews[row.id] || {};
-          const existingImageKeys = Object.keys(existingPreviews).filter(
-            (key) => key.startsWith("existing-")
-          );
+          const existingImageKeys = Object.keys(existingPreviews).filter((key) => key.startsWith("existing-"));
           const existingUrls = existingImageKeys
             .sort((a, b) => {
               const aIndex = parseInt(a.replace("existing-", "")) || 0;
@@ -3954,139 +3711,67 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               return aIndex - bIndex;
             })
             .map((key) => existingPreviews[key])
-            .filter(
-              (url) => url && typeof url === "string" && url.trim() !== ""
-            );
+            .filter((url) => url && typeof url === "string" && url.trim() !== "");
 
           imageUrls = [...existingUrls];
 
-          // Upload new images if product exists
           if (productId && rowImages.length > 0) {
             try {
               for (const imageFile of rowImages) {
                 try {
-                  const uploadResponse = await productsAPI.uploadImage(
-                    productId,
-                    imageFile
-                  );
-                  const uploadedImageUrl =
-                    uploadResponse.data?.data?.imageUrl ||
-                    uploadResponse.data?.imageUrl ||
-                    uploadResponse.data?.data?.product?.images?.[0];
-
-                  if (uploadedImageUrl) {
-                    imageUrls.push(uploadedImageUrl);
-                    console.log(
-                      `Uploaded image for product ${productId}: ${imageFile.name}`
-                    );
-                  } else {
-                    console.warn(
-                      `Image uploaded but no URL returned for ${imageFile.name}`
-                    );
-                  }
-                } catch (uploadErr) {
-                  console.error(
-                    `Error uploading image ${imageFile.name}:`,
-                    uploadErr
-                  );
-                  // Continue with other images even if one fails
-                  const errorMessage =
-                    uploadErr.response?.data?.message ||
-                    uploadErr.response?.data?.error ||
-                    uploadErr.message ||
-                    "Failed to upload image";
-                  console.warn(
-                    `Skipping image ${imageFile.name}: ${errorMessage}`
-                  );
-                }
+                  const uploadResponse = await productsAPI.uploadImage(productId, imageFile);
+                  const uploadedImageUrl = uploadResponse.data?.data?.imageUrl || uploadResponse.data?.imageUrl || uploadResponse.data?.data?.product?.images?.[0];
+                  if (uploadedImageUrl) imageUrls.push(uploadedImageUrl);
+                } catch (uploadErr) {}
               }
-            } catch (err) {
-              console.error("Error uploading images:", err);
-              // Continue anyway - images are optional
-            }
+            } catch (err) {}
           }
 
-          // Calculate supplier payment and landed price from cost price, exchange rate, and percentage
           const costPrice = Number(row.costPrice || 0);
           const exRate = parsedExchangeRate;
           const percent = parsedPercentage;
           const quantity = Number(row.quantity);
 
-          // Validate quantity is a positive integer (no decimals allowed)
           if (!row.quantity || isNaN(quantity) || quantity <= 0 || !Number.isInteger(quantity)) {
-            throw new Error(`Invalid quantity for product: ${row.productName || row.productCode || 'Unknown'}. Quantity must be a positive integer (whole number).`);
+            throw new Error(`Invalid quantity for product: ${row.productName || row.productCode || 'Unknown'}. Quantity must be a positive integer.`);
           }
 
-          // Supplier Payment Amount (what admin pays supplier - NO exchange rate, NO profit margin)
-          // Formula: costPrice × quantity (in supplier currency)
           const supplierPaymentAmount = costPrice;
           const supplierPaymentTotal = supplierPaymentAmount * quantity;
 
-          // Landed Price (for inventory valuation - WITH profit margin)
-          // Formula: (cost price / exchange rate) × (1 + percentage/100)
-          // Truncate to 2 decimal places (no rounding) for database storage
           const landedPrice = truncateToTwoDecimals((costPrice / exRate) * (1 + percent / 100));
           const landedTotal = truncateToTwoDecimals(landedPrice * quantity);
 
-          // Build item payload according to manualEntryItemSchema
-          // Allowed fields: product, productName, productCode, productType, costPrice, primaryColor, size, material, description, productImage, quantity, landedTotal
           const itemPayload = {
             product: productId,
-            quantity: Math.floor(quantity), // Ensure it's an integer
+            quantity: Math.floor(quantity), 
             minSellingPrice: parseFloat(row.minSellingPrice) || 0,
             landedTotal: landedTotal,
           };
 
-          // Add optional fields only if they have values
-          if (row.productName) {
-            itemPayload.productName = row.productName;
-          }
-          if (row.productCode) {
-            itemPayload.productCode = row.productCode;
-          }
-          if (
-            row.season &&
-            Array.isArray(row.season) &&
-            row.season.length > 0
-          ) {
-            itemPayload.season = normalizeSeasonArray(row.season);
-          }
-          if (costPrice > 0) {
-            itemPayload.costPrice = costPrice;
-          }
+          if (row.productName) itemPayload.productName = row.productName;
+          if (row.productCode) itemPayload.productCode = row.productCode;
+          if (row.season && Array.isArray(row.season) && row.season.length > 0) itemPayload.season = normalizeSeasonArray(row.season);
+          if (costPrice > 0) itemPayload.costPrice = costPrice;
 
-          // primaryColor: send as array for backend processing
           if (Array.isArray(row.primaryColor) && row.primaryColor.length > 0) {
             itemPayload.primaryColor = row.primaryColor;
-          } else if (
-            typeof row.primaryColor === "string" &&
-            row.primaryColor.trim()
-          ) {
-            itemPayload.primaryColor = [row.primaryColor.trim()]; // Normalize to array
+          } else if (typeof row.primaryColor === "string" && row.primaryColor.trim()) {
+            itemPayload.primaryColor = [row.primaryColor.trim()]; 
           }
 
-          // size: send as array for backend processing
           if (Array.isArray(row.size) && row.size.length > 0) {
             itemPayload.size = row.size;
           } else if (typeof row.size === "string" && row.size.trim()) {
-            itemPayload.size = [row.size.trim()]; // Normalize to array
+            itemPayload.size = [row.size.trim()]; 
           }
 
-          if (row.material) {
-            itemPayload.material = row.material;
-          }
-          if (row.description) {
-            itemPayload.description = row.description;
-          }
-          if (imageUrls.length > 0) {
-            itemPayload.productImage = imageUrls;
-          }
+          if (row.material) itemPayload.material = row.material;
+          if (row.description) itemPayload.description = row.description;
+          if (imageUrls.length > 0) itemPayload.productImage = imageUrls;
 
-          // Add packet configuration if configured
           const packetConfig = productPackets[row.id];
           itemPayload.useVariantTracking = true;
-
-          // Heal packets to ensure both totalItems and totalItemsPerPacket exist (requirement for manual entry)
           itemPayload.packets = (packetConfig?.packets || []).map(p => ({
             ...p,
             totalItems: parseInt(p.totalItems || p.totalItemsPerPacket) || 0,
@@ -4097,79 +3782,36 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         })
       );
 
-      // Calculate subtotal and grandTotal
-      const subtotal = itemsWithProducts.reduce(
-        (sum, item) => sum + (item.landedTotal || 0),
-        0
-      );
-      const grandTotal = subtotal; // Landed total for inventory valuation (no discount applied here)
+      const subtotal = itemsWithProducts.reduce((sum, item) => sum + (item.landedTotal || 0), 0);
+      const grandTotal = subtotal; 
 
-      // Note: boxes are not part of manualEntryItemSchema, so we don't add them to items
-      // If boxes are needed, they should be handled at the order level, not item level
-
-      const purchaseDatePayload =
-        invoiceDate && invoiceDate !== initialInvoiceDateRef.current
-          ? invoiceDate
-          : undefined;
+      const purchaseDatePayload = invoiceDate && invoiceDate !== initialInvoiceDateRef.current ? invoiceDate : undefined;
 
       const payload = {
-        supplier: supplierId, // Use supplier ID directly
+        supplier: supplierId, 
         exchangeRate: parsedExchangeRate,
         percentage: parsedPercentage,
         subtotal: subtotal,
         totalDiscount: Number(discount || 0),
         totalTax: 0,
         shippingCost: 0,
-        grandTotal: grandTotal, // Landed total (inventory valuation)
+        grandTotal: grandTotal, 
         cashPayment: Number(cash || 0),
         bankPayment: Number(bank || 0),
-        remainingBalance: Math.max(0, totals.remaining), // Ensure >= 0 (negative values indicate overpayment/credit)
+        remainingBalance: Math.max(0, totals.remaining), 
         paymentStatus,
-        paymentTerms: "net30", // Default payment terms
-        notes: `Exchange Rate: ${exchangeRate}, Percentage: ${percentage}%. Manual entry - ${selectedSupplier?.name || "Supplier"
-          }`,
+        paymentTerms: "net30", 
+        notes: `Exchange Rate: ${exchangeRate}, Percentage: ${percentage}%. Manual entry - ${selectedSupplier?.name || "Supplier"}`,
         items: itemsWithProducts,
         totalBoxes: Number(totalBoxes || 0),
       };
 
-      if (purchaseDatePayload) {
-        payload.purchaseDate = purchaseDatePayload;
-      }
-
-      // Add logistics company if enabled and selected
+      if (purchaseDatePayload) payload.purchaseDate = purchaseDatePayload;
       if (enableLogisticsTracking && logisticsCompanyId) {
         payload.logisticsCompany = logisticsCompanyId;
-      } else {
-        // If logistics tracking is not enabled, don't send boxes either
-        if (!enableLogisticsTracking) {
-          payload.totalBoxes = 0;
-        }
+      } else if (!enableLogisticsTracking) {
+        payload.totalBoxes = 0;
       }
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/e0660d90-406d-498c-9b9c-ed0297888613', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: 'debug-session',
-          runId: 'pre-fix',
-          hypothesisId: 'H2',
-          location: 'components/forms/buying-form.jsx:handleSave:beforeCreate',
-          message: 'About to call purchasesAPI.create',
-          data: {
-            payloadSummary: {
-              supplier: payload.supplier,
-              itemsCount: Array.isArray(payload.items) ? payload.items.length : 0,
-              totalBoxes: payload.totalBoxes,
-              grandTotal: payload.grandTotal,
-              remainingBalance: payload.remainingBalance,
-              paymentStatus: payload.paymentStatus,
-            },
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => { });
-      // #endregion agent log
 
       const response = await purchasesAPI.create(payload);
 
@@ -4179,41 +3821,10 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         return;
       }
 
-      // Success! Call parent callback with response
-      if (onSave) {
-        onSave(response.data?.data || response.data);
-      }
+      if (onSave) onSave(response.data?.data || response.data);
     } catch (err) {
       console.error("Error saving purchase:", err);
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/e0660d90-406d-498c-9b9c-ed0297888613', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: 'debug-session',
-          runId: 'pre-fix',
-          hypothesisId: 'H4',
-          location: 'components/forms/buying-form.jsx:handleSave:catch',
-          message: 'Error during purchasesAPI.create',
-          data: {
-            name: err?.name,
-            message: err?.message,
-            responseStatus: err?.response?.status,
-            responseMessage: err?.response?.data?.message,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => { });
-      // #endregion agent log
-
-      // Extract error message from API response
-      const errorMessage =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        err.message ||
-        "Failed to save purchase. Please try again.";
-
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "Failed to save purchase. Please try again.";
       setError(errorMessage);
     } finally {
       setIsSaving(false);
@@ -4222,7 +3833,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
   return (
     <div className="space-y-6">
-      {/* Error Display */}
       {error && (
         <div className="rounded-lg border border-destructive bg-destructive/10 p-4 text-destructive">
           <div className="flex items-start gap-2">
@@ -4238,7 +3848,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         </div>
       )}
 
-      {/* Loading State for Suppliers */}
       {isLoadingSuppliers && (
         <div className="rounded-lg border border-border bg-muted p-4">
           <div className="flex items-center gap-2">
@@ -4252,7 +3861,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
       {/* Section 1: Buying Details - Complete Redesign */}
       <section className="rounded-lg border border-border bg-card shadow-sm mb-6 overflow-hidden">
-        {/* Header */}
         <div className="bg-muted/30 border-b border-border px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -4264,10 +3872,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           </div>
         </div>
 
-        {/* Content */}
         <div className="p-6">
           <div className="space-y-6">
-            {/* All Fields in One Row - Ordered: Invoice Date, Exchange Rate, Percentage, Supplier */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-0 items-start">
               {/* Invoice Date */}
               <div className="flex flex-col h-full">
@@ -4309,16 +3915,13 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   value={exchangeRate}
                   onChange={(e) => {
                     const value = e.target.value;
-                    // Allow only numbers and one decimal point, limit to 2 decimal places
                     let sanitized = value
                       .replace(/[^0-9.]/g, "")
                       .replace(/(\..*)\./, "$1");
-                    // Limit to 2 decimal places
                     const parts = sanitized.split(".");
                     if (parts[1] && parts[1].length > 2) {
                       sanitized = parts[0] + "." + parts[1].slice(0, 2);
                     }
-                    // Keep as string to allow typing decimal point
                     setExchangeRate(sanitized);
                   }}
                   className="h-11 w-full text-base font-medium"
@@ -4347,16 +3950,13 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   value={percentage}
                   onChange={(e) => {
                     const value = e.target.value;
-                    // Allow only numbers and one decimal point, limit to 2 decimal places
                     let sanitized = value
                       .replace(/[^0-9.]/g, "")
                       .replace(/(\..*)\./, "$1");
-                    // Limit to 2 decimal places
                     const parts = sanitized.split(".");
                     if (parts[1] && parts[1].length > 2) {
                       sanitized = parts[0] + "." + parts[1].slice(0, 2);
                     }
-                    // Keep as string to allow typing decimal point
                     setPercentage(sanitized);
                   }}
                   className="h-11 w-full text-base font-medium"
@@ -4381,7 +3981,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 <div className="flex gap-2 items-start">
                   <div className="flex-1 w-full h-11 relative">
                     <AutocompleteFilter
-                      value={currentSupplierName}
+                      value={supplierId}
                       onChange={handleSupplierChange}
                       options={supplierOptions}
                       placeholder={isLoadingSuppliers ? "Loading..." : "Search supplier..."}
@@ -5006,22 +4606,23 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                     <Input
                       type="text"
                       inputMode="numeric"
-                      value={row.quantity === 0 ? "" : String(row.quantity || "")}
+                      value={row.quantity}
                       onChange={(e) => {
                         const value = e.target.value;
-                        // Allow only positive integers (no decimals, no negative)
-                        let sanitized = value.replace(/[^0-9]/g, "");
-                        // Remove leading zeros (but allow single zero)
-                        if (sanitized.length > 1 && sanitized[0] === '0') {
-                          sanitized = sanitized.replace(/^0+/, '') || '0';
-                        }
-                        // Only update if it's a valid positive integer or empty (to allow clearing)
-                        if (sanitized === "" || (!isNaN(Number(sanitized)) && Number(sanitized) > 0 && Number.isInteger(Number(sanitized)))) {
-                          updateRow(
-                            row.id,
-                            "quantity",
-                            sanitized === "" ? "" : sanitized
-                          );
+                        const sanitized = value.replace(/[^0-9]/g, "");
+                        updateRow(
+                          row.id,
+                          "quantity",
+                          sanitized === "" ? "" : sanitized
+                        );
+                      }}
+                      onBlur={() => {
+                        if (row.quantity === "") return;
+                        const val = parseInt(row.quantity, 10);
+                        if (isNaN(val) || val < 1) {
+                          updateRow(row.id, "quantity", "");
+                        } else {
+                          updateRow(row.id, "quantity", val);
                         }
                       }}
                       className="h-8 text-xs text-right tabular-nums px-2"
@@ -5102,7 +4703,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 value={totalBoxes}
                 onChange={(e) => {
                   const value = e.target.value;
-                  // Allow only numbers
                   const sanitized = value.replace(/[^0-9]/g, "");
                   setTotalBoxes(sanitized === "" ? "" : Number(sanitized) || 0);
                 }}
@@ -5118,7 +4718,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
 
       {/* Section 3: Payment Summary - Professional Redesign */}
       <section className="rounded-lg border border-border bg-card overflow-hidden">
-        {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-muted/40 to-muted/20 border-b border-border">
           <div>
             <h2 className="text-lg font-semibold text-foreground">Payment Summary</h2>
@@ -5127,9 +4726,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Top Section: Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Supplier Payment Amount */}
             <div className="p-5 bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg border border-border">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -5146,7 +4743,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               </div>
             </div>
 
-            {/* Final Amount - Highlighted */}
             <div className="p-5 bg-gradient-to-br from-primary/15 via-primary/10 to-primary/5 rounded-lg border-2 border-primary/30 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
               <div className="relative">
@@ -5164,7 +4760,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               </div>
             </div>
 
-            {/* Landed Total */}
             <div className="p-5 bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg border border-border">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -5182,16 +4777,13 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
             </div>
           </div>
 
-          {/* Bottom Section: Payment Inputs & Balance */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left: Payment Inputs */}
             <div className="space-y-5">
               <div className="pb-2 border-b border-border">
                 <h3 className="text-sm font-semibold text-foreground">Payment Details</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">Enter payment amounts</p>
               </div>
 
-              {/* Discount */}
               <div className="space-y-2">
                 <Label htmlFor="discount" className="text-sm font-semibold text-foreground flex items-center gap-2">
                   Discount
@@ -5222,9 +4814,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                 </p>
               </div>
 
-              {/* Payment Methods Grid */}
               <div className="grid grid-cols-2 gap-4">
-                {/* Bank Payment */}
                 <div className="space-y-2">
                   <Label htmlFor="bank" className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -5253,7 +4843,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   </div>
                 </div>
 
-                {/* Cash Payment */}
                 <div className="space-y-2">
                   <Label htmlFor="cash" className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <Wallet className="h-4 w-4 text-muted-foreground" />
@@ -5284,7 +4873,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               </div>
             </div>
 
-            {/* Right: Remaining Balance */}
             <div className="space-y-5">
               <div className="pb-2 border-b border-border">
                 <h3 className="text-sm font-semibold text-foreground">Balance Summary</h3>
@@ -5338,10 +4926,8 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
           </div>
         </div>
 
-        {/* Action Bar - Modern Design */}
         <div className="px-6 py-5 bg-gradient-to-r from-muted/30 to-muted/20 border-t border-border">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-            {/* Keyboard Shortcuts */}
             <div className="flex items-center gap-4">
               <div className="text-xs text-muted-foreground">
                 <div className="flex flex-wrap items-center gap-2">
@@ -5358,7 +4944,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
               </div>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex gap-3">
               <Button
                 type="button"
@@ -5415,7 +5000,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
       {/* Add Supplier Dialog */}
       <Dialog open={showAddSupplier} onOpenChange={(open) => {
         if (!open) {
-          // Reset form when closing
           setNewSupplierName("");
           setNewSupplierPhone("");
           setNewSupplierPhoneAreaCode("");
@@ -5556,7 +5140,7 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
         </DialogContent>
       </Dialog>
 
-      {/* Image Gallery - Renders when imageGalleryState is set */}
+      {/* Image Gallery */}
       {imageGalleryState &&
         (() => {
           const rowId = imageGalleryState.rowId;
@@ -5631,7 +5215,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                   input.multiple = true;
                   input.click();
                 }
-                // Refresh gallery state after adding - wait for FileReader to complete
                 const updateGallery = (attempt = 0) => {
                   setTimeout(() => {
                     const existingPreviews = imagePreviews[rowId] || {};
@@ -5640,14 +5223,12 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                     ).filter((key) => key.startsWith("existing-"));
                     const newFiles = productImages[rowId] || [];
 
-                    // Check if all new files have previews ready
                     const allPreviewsReady = newFiles.every((file) => {
                       const fileId = getFileId(file);
                       return existingPreviews[fileId];
                     });
 
                     if (allPreviewsReady || attempt >= 10) {
-                      // All previews ready or max attempts reached
                       const updatedImages = [
                         ...existingImageKeys.map((key) => ({
                           id: key,
@@ -5670,7 +5251,6 @@ export default function BuyingForm({ initialSuppliers = [], onSave }) {
                         prev ? { ...prev, images: updatedImages } : null
                       );
                     } else {
-                      // Retry after 200ms
                       updateGallery(attempt + 1);
                     }
                   }, 200);

@@ -584,8 +584,6 @@
 //   );
 // }
 
-
-
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
@@ -844,7 +842,7 @@ export default function BarcodePrintModal({
           }
           .price {
             font-size: 8pt;
-            font-weight: 800;
+            font-weight: 400;
             color: #000;
             text-align: center;
             width: 100%;
@@ -869,7 +867,7 @@ export default function BarcodePrintModal({
             height: 12mm; /* Constrain image height so it never pushes out of the 25mm bounds */
           }
           .barcode-img img {
-            max-width: 100%;
+            max-width: 90%; /* REDUCED BY 10% */
             height: 100%;
             object-fit: contain;
           }
