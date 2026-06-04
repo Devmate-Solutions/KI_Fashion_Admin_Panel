@@ -788,17 +788,23 @@ export default function SellingPage() {
       filterValue: (row) => row.companyName && row.companyName !== "—" ? `${row.companyName} (${row.customerName})` : row.customerName || "—",
       pdfValue: (row) => row.companyName && row.companyName !== "—" ? `${row.companyName} (${row.customerName})` : row.customerName || "—",
       render: (row) => {
-        const company = row.companyName;
-        const name = row.customerName;
-        const hasCompany = company && company !== "—" && company !== name;
+        const companyName = row.companyName;
+        const contactName = row.customerName;
 
-        if (!hasCompany) {
-          return <span className="font-medium">{name || "—"}</span>;
+        if ((!companyName || companyName === "—") && (!contactName || contactName === "—")) {
+          return <div className="text-muted-foreground">—</div>;
         }
+
         return (
           <div className="flex flex-col">
-            <span className="font-medium">{company}</span>
-            <span className="text-[11px] text-muted-foreground leading-tight">{name || "—"}</span>
+            <span className="font-medium text-foreground">
+              {companyName && companyName !== "—" ? companyName : contactName}
+            </span>
+            {companyName && contactName && companyName !== contactName && companyName !== "—" && contactName !== "—" && (
+              <span className="text-[11px] text-muted-foreground leading-tight">
+                {contactName}
+              </span>
+            )}
           </div>
         );
       },

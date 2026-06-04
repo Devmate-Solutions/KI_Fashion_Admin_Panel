@@ -2995,11 +2995,52 @@ export default function StockPage() {
         ),
         pdfValue: (row) => row.productName || "Product"
       },
-      {
+     {
         header: "Supplier",
         accessor: "supplierName",
-        render: (row) => <div className="font-medium">{row.supplierName || "—"}</div>,
-        pdfValue: (row) => row.supplierName || "—",
+        render: (row) => {
+          // Safely extract company and name from possible nested paths
+          const company = row.supplierCompany || row.supplier?.companyName || row.supplier?.company || row.product?.supplier?.companyName || row.product?.supplier?.company;
+          const name = row.supplierName || row.supplier?.name || row.product?.supplier?.name;
+
+          // Clean out dashes or empty strings
+          const cleanCompany = company && company !== "—" && company !== "-" ? company : null;
+          const cleanName = name && name !== "—" && name !== "-" ? name : null;
+
+          if (!cleanCompany && !cleanName) {
+            return <div className="text-muted-foreground">—</div>;
+          }
+
+          // If company exists, use it as primary. Otherwise fall back to name.
+          const primaryText = cleanCompany || cleanName;
+          // If both exist and are different, show name as secondary
+          const secondaryText = (cleanCompany && cleanName && cleanCompany !== cleanName) ? cleanName : null;
+
+          return (
+            <div className="flex flex-col">
+              <span className="font-medium text-sm text-foreground">
+                {primaryText}
+              </span>
+              {secondaryText && (
+                <span className="text-xs text-muted-foreground mt-0.5">
+                  {secondaryText}
+                </span>
+              )}
+            </div>
+          );
+        },
+        pdfValue: (row) => {
+          const company = row.supplierCompany || row.supplier?.companyName || row.supplier?.company || row.product?.supplier?.companyName || row.product?.supplier?.company;
+          const name = row.supplierName || row.supplier?.name || row.product?.supplier?.name;
+          
+          const cleanCompany = company && company !== "—" && company !== "-" ? company : null;
+          const cleanName = name && name !== "—" && name !== "-" ? name : null;
+
+          if (cleanCompany && cleanName && cleanCompany !== cleanName) {
+            return `${cleanCompany} (${cleanName})`;
+          }
+          return cleanCompany || cleanName || "—";
+        },
         filterType: "autocomplete",
         filter: {
           value: filterForm.searchSupplier,
@@ -3402,7 +3443,7 @@ export default function StockPage() {
           </div>
         )}
       </div>
-
+{/* {JSON.stringify(filteredInventoryItems)} */}
       {/* CHANGED: DataTable now natively drives pagination and filter arrays entirely on the client side */}
       <DataTableFiltered
         columns={inventoryColumns}

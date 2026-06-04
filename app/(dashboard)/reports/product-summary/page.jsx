@@ -75,10 +75,36 @@ export default function ProductSummaryReportPage() {
 
   const columns = [
     {
-      header: "Supplier Name",
+      header: "Supplier",
       accessor: "supplierName",
       type: "string",
-      render: (row) => row.supplierCompany || row.supplierName || "—",
+      render: (row) => {
+        const companyName = row.supplierCompany || row.supplier?.companyName || row.supplier?.company;
+        const contactName = row.supplierName || row.supplier?.name;
+
+        if ((!companyName || companyName === "—" || companyName === "-") && (!contactName || contactName === "—" || contactName === "-")) {
+          return <div className="text-muted-foreground">—</div>;
+        }
+
+        return (
+          <div className="flex flex-col">
+            <span className="font-medium text-foreground">
+              {companyName && companyName !== "—" && companyName !== "-" ? companyName : contactName}
+            </span>
+            {contactName && companyName !== contactName && companyName !== "—" && companyName !== "-" && contactName !== "—" && contactName !== "-" && (
+              <span className="text-[11px] text-muted-foreground leading-tight">
+                {contactName}
+              </span>
+            )}
+          </div>
+        );
+      },
+      pdfValue: (row) => {
+        const companyName = row.supplierCompany || row.supplier?.companyName || row.supplier?.company;
+        const contactName = row.supplierName || row.supplier?.name;
+        if (companyName && companyName !== "-" && companyName !== "—") return companyName;
+        return contactName || "—";
+      },
     },
     {
       header: "Product Code",

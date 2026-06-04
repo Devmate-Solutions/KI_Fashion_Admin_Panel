@@ -110,14 +110,27 @@ export default function PayablesReportPage() {
       accessor: "name",
       filterType: "autocomplete",
 
-      render: (row) => (
-        <div>
-          <div className="font-medium">{row.company || row.name || row.supplierName || "—"}</div>
-          <div className="text-xs text-muted-foreground">
-            {[row.email, row.phone].filter(Boolean).join(" | ") || "—"}
+      render: (row) => {
+        const companyName = row.company;
+        const contactName = row.name || row.supplierName;
+
+        if ((!companyName || companyName === "—") && (!contactName || contactName === "—")) {
+          return <div className="text-muted-foreground">—</div>;
+        }
+
+        return (
+          <div className="flex flex-col">
+            <span className="font-medium text-foreground">
+              {companyName && companyName !== "—" ? companyName : contactName}
+            </span>
+            {companyName && contactName && companyName !== contactName && companyName !== "—" && contactName !== "—" && (
+              <span className="text-[11px] text-muted-foreground leading-tight">
+                {contactName}
+              </span>
+            )}
           </div>
-        </div>
-      ),
+        );
+      },
       pdfValue: (row) => row.company || row.name || row.supplierName || "—"
     },
     // {

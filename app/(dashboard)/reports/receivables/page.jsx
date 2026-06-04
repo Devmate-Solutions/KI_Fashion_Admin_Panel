@@ -120,14 +120,27 @@ export default function ReceivablesReportPage() {
       accessor: "name",
       filterType: "autocomplete",
 
-      render: (row) => (
-        <div>
-          <div className="font-medium">{row.company || row.name || "—"}</div>
-          <div className="text-[10px] text-muted-foreground">
-            {row.company && row.name && row.company !== row.name ? `(${row.name})` : [row.email, row.phone].filter(Boolean).join(" | ") || "—"}
+      render: (row) => {
+        const companyName = row.company;
+        const contactName = row.name || row.buyerName;
+
+        if ((!companyName || companyName === "—") && (!contactName || contactName === "—")) {
+          return <div className="text-muted-foreground">—</div>;
+        }
+
+        return (
+          <div className="flex flex-col">
+            <span className="font-medium text-foreground">
+              {companyName}
+            </span>
+            {companyName && contactName &&  companyName !== "—" && contactName !== "—" && (
+              <span className="text-[11px] text-muted-foreground leading-tight">
+                {contactName}
+              </span>
+            )}
           </div>
-        </div>
-      ),
+        );
+      },
       pdfValue: (row) => row.company || row.name || "—"
     },
     // {
@@ -188,44 +201,44 @@ export default function ReceivablesReportPage() {
   }
 
   const computeTotals = (rows) => {
-  const totalSales = rows.reduce(
-    (sum, r) => sum + Number(r.totalSales || 0),
-    0
-  )
+    const totalSales = rows.reduce(
+      (sum, r) => sum + Number(r.totalSales || 0),
+      0
+    )
 
-  const totalReceived = rows.reduce(
-    (sum, r) =>
-      sum +
-      Number(
-        r.amountReceived ||
-        r.amountGiven ||
-        0
-      ),
-    0
-  )
+    const totalReceived = rows.reduce(
+      (sum, r) =>
+        sum +
+        Number(
+          r.amountReceived ||
+          r.amountGiven ||
+          0
+        ),
+      0
+    )
 
-  const remainingBalance = rows.reduce(
-    (sum, r) =>
-      sum +
-      Number(
-        r.remainingBalance ||
-        r.outstanding ||
-        r.ledgerBalance ||
-        0
-      ),
-    0
-  )
+    const remainingBalance = rows.reduce(
+      (sum, r) =>
+        sum +
+        Number(
+          r.remainingBalance ||
+          r.outstanding ||
+          r.ledgerBalance ||
+          0
+        ),
+      0
+    )
 
-  return {
-    name: "",
+    return {
+      name: "",
 
-    totalSales: formatNumber(totalSales),
+      totalSales: formatNumber(totalSales),
 
-    amountReceived: formatNumber(totalReceived),
+      amountReceived: formatNumber(totalReceived),
 
-    remainingBalance: formatNumber(remainingBalance),
+      remainingBalance: formatNumber(remainingBalance),
+    }
   }
-}
 
   return (
     <ReportLayout
@@ -242,8 +255,8 @@ export default function ReceivablesReportPage() {
       showBeginningButton={!isEmployee}
       hideDateFilter={isEmployee}
     >
-     
 
+      {/* {JSON.stringify(receivablesData)} */}
 
       <PrintableTableFiltered enableColumnFilters={true}
         columns={columns}

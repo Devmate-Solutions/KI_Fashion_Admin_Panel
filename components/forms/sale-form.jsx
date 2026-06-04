@@ -2218,8 +2218,6 @@
 //     </div >
 //   )
 // }
-
-
 "use client"
 
 import { useEffect, useMemo, useState, useRef } from "react"
@@ -2321,11 +2319,6 @@ const roundCurrency = (value) => {
   return Math.round((normalized + Number.EPSILON) * 100) / 100
 }
 
-// A multi-section selling form: buyer/metadata, products cart, and payment summary.
-// Enhanced with keyboard shortcuts and better UX
-// Integrated with backend APIs for buyers and sales
-// Matches buying-form.jsx structure and design
-
 export default function SaleForm({ onSave, initialData, saleId }) {
   const router = useRouter()
   const isEditMode = !!saleId
@@ -2358,6 +2351,12 @@ export default function SaleForm({ onSave, initialData, saleId }) {
   const [isCreatingBuyer, setIsCreatingBuyer] = useState(false)
   const newBuyerPhoneInputRef = useRef(null)
   const manualCustomerPhoneInputRef = useRef(null)
+
+  // Refs for keyboard navigation and submission lock
+  const cashInputRef = useRef(null)
+  const bankInputRef = useRef(null)
+  const saveButtonRef = useRef(null)
+  const isSubmittingRef = useRef(false) // <-- SYNCHRONOUS SUBMIT LOCK
 
   // Autocomplete Derived Values
   const buyerOptions = useMemo(() => {
@@ -2420,7 +2419,7 @@ export default function SaleForm({ onSave, initialData, saleId }) {
   // Metadata fields
   const [saleDate, setSaleDate] = useState(new Date().toLocaleDateString('en-CA'))
   const [saleType, setSaleType] = useState("wholesale")
-  const [notes, setNotes] = useState("") // separate notes field for edit
+  const [notes, setNotes] = useState("") 
 
   // Cart rows
   const [rows, setRows] = useState([])
@@ -2513,11 +2512,6 @@ export default function SaleForm({ onSave, initialData, saleId }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData])
-
-  // Refs for keyboard navigation
-  const cashInputRef = useRef(null)
-  const bankInputRef = useRef(null)
-  const saveButtonRef = useRef(null)
 
   // Fetch all buyers
   useEffect(() => {
@@ -2729,7 +2723,6 @@ export default function SaleForm({ onSave, initialData, saleId }) {
       setIsCreatingBuyer(false)
     }
   }
-
 
   // Add new row to cart
   function addRow() {
@@ -2947,56 +2940,61 @@ export default function SaleForm({ onSave, initialData, saleId }) {
 
   // Save sale to backend
   async function handleSave() {
-    // Validation
-    if (!isManualCustomer && !buyerId) {
-      setError('Please select a buyer or enter manual customer details')
-      return
-    }
-
-    if (isManualCustomer && !manualCustomer.name.trim()) {
-      setError('Please enter manual customer name')
-      return
-    }
-
-    if (rows.length === 0) {
-      setError('Please add at least one product')
-      return
-    }
-
-    const invalidRows = rows.filter(row =>
-      !row.productName ||
-      !row.productCode ||
-      !row.unitPrice ||
-      row.unitPrice <= 0 ||
-      !row.quantity ||
-      row.quantity <= 0
-    )
-
-    if (invalidRows.length > 0) {
-      setError('Please fill in product name, code, unit price, and quantity for all rows')
-      return
-    }
-
-    if (addShippingCost) {
-      if (!logisticsCompanyId) {
-        setError('Please select a logistics company when shipping is enabled')
-        return
-      }
-
-      if (!shippingBoxes || Number(shippingBoxes) < 1) {
-        setError('Number of boxes must be at least 1 when shipping is enabled')
-        return
-      }
-
-      if (Number(buyerShippingCharge || 0) < 0) {
-        setError('Shipping charge cannot be negative')
-        return
-      }
-    }
+    // 1. INSTANT SYNCHRONOUS LOCK
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setIsSaving(true);
 
     try {
-      setIsSaving(true)
-      setError(null)
+      // --- Validation ---
+      if (!isManualCustomer && !buyerId) {
+        setError('Please select a buyer or enter manual customer details')
+        return
+      }
+
+      if (isManualCustomer && !manualCustomer.name.trim()) {
+        setError('Please enter manual customer name')
+        return
+      }
+
+      if (rows.length === 0) {
+        setError('Please add at least one product')
+        return
+      }
+
+      const invalidRows = rows.filter(row =>
+        !row.productName ||
+        !row.productCode ||
+        !row.unitPrice ||
+        row.unitPrice <= 0 ||
+        !row.quantity ||
+        row.quantity <= 0
+      )
+
+      if (invalidRows.length > 0) {
+        setError('Please fill in product name, code, unit price, and quantity for all rows')
+        return
+      }
+
+      if (addShippingCost) {
+        if (!logisticsCompanyId) {
+          setError('Please select a logistics company when shipping is enabled')
+          return
+        }
+
+        if (!shippingBoxes || Number(shippingBoxes) < 1) {
+          setError('Number of boxes must be at least 1 when shipping is enabled')
+          return
+        }
+
+        if (Number(buyerShippingCharge || 0) < 0) {
+          setError('Shipping charge cannot be negative')
+          return
+        }
+      }
+
+      // --- Clear previous errors ---
+      setError(null);
 
       const totalPaid = Number(cash || 0) + Number(bank || 0)
       const paymentStatus = totals.remaining <= 0
@@ -3149,7 +3147,6 @@ export default function SaleForm({ onSave, initialData, saleId }) {
           // Non-super-admin: show edit request panel instead of saving directly
           setPendingPayload(payload)
           setShowEditRequestPanel(true)
-          setIsSaving(false)
           return
         }
         response = await salesAPI.update(saleId, payload)
@@ -3177,7 +3174,9 @@ export default function SaleForm({ onSave, initialData, saleId }) {
 
       setError(errorMessage)
     } finally {
-      setIsSaving(false)
+      // 2. ALWAYS RELEASE THE LOCK
+      isSubmittingRef.current = false;
+      setIsSaving(false);
     }
   }
 

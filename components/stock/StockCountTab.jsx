@@ -410,7 +410,7 @@ export default function StockCountTab() {
                             </div>
                           </td>
                           <td className="p-4 align-middle text-right font-medium">
-                            {currency(entry.suggestedSellingPrice || 0)}
+                            {currency(entry.landedPrice || entry.costPrice || entry.suggestedSellingPrice || 0)}
                           </td>
                           {!isReadOnly && (
                             <td className="p-4 align-middle text-right">
